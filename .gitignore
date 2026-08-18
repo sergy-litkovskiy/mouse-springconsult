@@ -1,0 +1,23 @@
+# Залежності
+node_modules/
+
+# Збірка
+dist/
+.angular/
+*.tsbuildinfo
+
+# Оточення та секрети
+.env
+.env.*
+*.pem
+*.key
+
+# Логи та тимчасове
+*.log
+coverage/
+
+# IDE та ОС
+.idea/
+.vscode/
+.DS_Store
+/apps/web/src/environments/environment.development.ts
