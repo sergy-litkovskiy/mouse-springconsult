@@ -9,7 +9,7 @@
 > **Стан репозиторію: скелет.**
 >
 > *Є зараз:* документи (`SPEC.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `README.md`, ADR),
-> каталоги-заготовки під модулі й `apps/web/src/environments/`.
+> каркас каталогів під модулі й `apps/web/src/environments/`.
 >
 > *Ще немає:* коду, `package.json`, `tsconfig.json`, `angular.json`, Dockerfile-ів,
 > `docker-compose.yml`, `Caddyfile`, GitHub Actions.
@@ -51,7 +51,8 @@ docs/adr/                   архітектурні рішення
 
 Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `apps/web/Dockerfile`),
 `docker-compose.yml` і `docker-compose.prod.yml` — у корені репозиторію.
-Каталог створюється разом з першим файлом у ньому — порожніх «місць про запас» немає.
+Каркас каталогів вище закріплений у git файлами `.gitkeep` — це базова архітектура
+проєкту. Нових каталогів поза ним не заводимо.
 
 ## Сервіси в Docker Compose
 
@@ -167,7 +168,7 @@ chmod 600 .env
 4. разовий сервіс `migrate` застосовує міграції до старту `api`;
 5. health-check `/healthz`; при невдачі — відкат на попередній тег образу.
 
-Ручний деплой тим самим шляхом:
+Аварійний ручний деплой тим самим шляхом — коли GitHub Actions недоступні:
 
 ```bash
 ssh deploy@<server-ip> 'cd /opt/mouse && docker compose pull && docker compose up -d'
@@ -205,9 +206,9 @@ docker compose build api              # перезібрати образ піс
 docker compose run --rm api npm run typecheck     # tsc --noEmit
 docker compose run --rm api npm run lint
 docker compose run --rm api npm run test          # node --test, *.spec.ts поруч з кодом
-docker compose run --rm api npm run deps:check    # правила залежностей
+docker compose run --rm api npm run deps:check    # dependency-cruiser: межі модулів api
 docker compose run --rm api npm run format
-docker compose run --rm web npm run lint
+docker compose run --rm web npm run lint          # ESLint, зокрема межі між фічами
 docker compose run --rm web npm run test
 ```
 
