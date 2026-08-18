@@ -47,11 +47,27 @@ docs/adr/                                       архітектурні ріш�
 
 ## Правила залежностей (ОБОВ'ЯЗКОВІ)
 
-### Backend — межі між модулями
+```
+src/api.ts · src/worker.ts            composition root: тільки тут new Repository()
+      │
+      ▼
+modules/<feature>/
+   *.routes.ts ─► *.use-case.ts ─► *.port.ts · доменні типи      без I/O
+                                        ▲
+                  *.repository.ts · *.adapter.ts ┘               реалізують порти
+      │
+      ├─► modules/<other>/index.ts                               лише public API, без deep import
+      │
+      ▼
+src/config.ts · db.ts · logger.ts · queue.ts · errors.ts         не знають про modules
+src/contracts/                                                   чисті zod-схеми, без залежностей
+```
 
-```
-modules/*  →  src/*.ts (технічні сервіси)
-```
+Вертикаль — дозволений напрямок залежності. Єдина стрілка вгору — від реалізацій до
+порту; будь-яка інша зворотна стрілка є помилкою архітектури, а не стильовою дрібницею.
+Правила нижче — підписи до цієї схеми.
+
+### Backend — межі між модулями
 
 1. Технічні сервіси (`config.ts`, `db.ts`, `logger.ts`, `queue.ts`, `errors.ts`)
    лежать просто в `src/` і не імпортують нічого з `modules/` — вони не знають про бізнес.
@@ -68,12 +84,6 @@ modules/*  →  src/*.ts (технічні сервіси)
 
 Шари існують, але виражені **суфіксами файлів**, а не каталогами: модуль — це одна
 папка, і поки в ній менше десятка файлів, вкладеність лише заважає читати.
-
-```
-*.routes.ts  →  *.use-case.ts  →  *.port.ts / доменні типи
-                                        ↑
-                         *.repository.ts / *.adapter.ts (реалізації)
-```
 
 4. Доменні типи й порти (`*.port.ts`) не мають I/O: без `pg`, `fastify`, `@aws-sdk`,
    `@anthropic-ai/sdk`.
