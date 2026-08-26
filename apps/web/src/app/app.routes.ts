@@ -9,6 +9,12 @@ export const routes: Routes = [
     loadComponent: async () => (await import('./auth/login-page')).LoginPage,
   },
   {
+    path: 'products',
+    title: 'Каталог товарів — mouse',
+    canActivate: [authGuard],
+    loadComponent: async () => (await import('./products/product-catalog')).ProductCatalog,
+  },
+  {
     path: 'welcome',
     title: 'Вітаємо — mouse',
     canActivate: [authGuard],

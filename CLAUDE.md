@@ -45,7 +45,10 @@ docs/adr/                                       архітектурні ріш�
 > Angular-застосунок, `docker-compose.yml` і `Caddyfile` — у репозиторії.
 > `src/worker.ts` і `src/queue.ts` зʼявляться разом із першою задачею в черзі:
 > у `auth` асинхронної роботи немає, а порожній воркер — це каркас про запас.
-> Модулі `products`, `media`, `ai` поки що порожні теки з `.gitkeep`.
+> Модуль `products` читає каталог: `contracts/products*.ts`, `modules/products/`,
+> міграція таблиць `products` і `product_images`, Angular-фіча `app/products/`.
+> Запис (створення, редагування, видалення) і галерея в R2 — попереду.
+> Модулі `media` і `ai` поки що порожні теки з `.gitkeep`.
 
 ## Правила залежностей (ОБОВ'ЯЗКОВІ)
 

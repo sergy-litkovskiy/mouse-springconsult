@@ -19,6 +19,13 @@ import {
   systemClock,
   UserEntity,
 } from './modules/auth/index.ts';
+import {
+  createListProducts,
+  createProductRepository,
+  createProductsRoutes,
+  ProductEntity,
+  ProductImageEntity,
+} from './modules/products/index.ts';
 
 /**
  * Composition root of the HTTP process. Port implementations are created only here and
@@ -78,7 +85,9 @@ function createApp() {
 export type ApiServer = ReturnType<typeof createApp>;
 
 export async function buildServer(): Promise<ApiServer> {
-  const dataSource = createDataSource({ entities: [UserEntity] });
+  const dataSource = createDataSource({
+    entities: [UserEntity, ProductEntity, ProductImageEntity],
+  });
   await dataSource.initialize();
 
   const users = createUserRepository(dataSource);
@@ -100,6 +109,9 @@ export async function buildServer(): Promise<ApiServer> {
   });
   const logout = createLogout({ users, clock: systemClock });
   const authenticate = createAuthenticate({ users, sessionTokens });
+
+  const products = createProductRepository(dataSource);
+  const listProducts = createListProducts({ products });
 
   const app = createApp();
 
@@ -142,6 +154,15 @@ export async function buildServer(): Promise<ApiServer> {
       loginRateLimit: config.rateLimit.login,
     }),
     { prefix: '/auth' },
+  );
+
+  await app.register(
+    createProductsRoutes({
+      listProducts,
+      authenticate,
+      sessionCookieName: config.session.cookieName,
+    }),
+    { prefix: '/products' },
   );
 
   app.addHook('onClose', async () => {

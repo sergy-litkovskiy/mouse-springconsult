@@ -52,8 +52,10 @@ module.exports = {
       severity: 'error',
       comment:
         'Ports and domain types do not import pg, typeorm, fastify, argon2 or jose. ' +
-        'That is precisely why the domain can be tested without infrastructure.',
-      from: { path: '^src/modules/[^/]+/([^/]+\\.(port|use-case)\\.ts|user\\.ts)$' },
+        'That is precisely why the domain can be tested without infrastructure. ' +
+        'Domain files carry no layer suffix, so each one is listed by name: a new domain ' +
+        'type is unchecked until it is added here.',
+      from: { path: '^src/modules/[^/]+/([^/]+\\.(port|use-case)\\.ts|(user|product)\\.ts)$' },
       to: { dependencyTypes: ['npm'], path: IO_PACKAGES },
     },
 

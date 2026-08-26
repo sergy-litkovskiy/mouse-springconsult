@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthStore } from './auth/auth-store';
 
 /**
@@ -12,7 +12,7 @@ import { AuthStore } from './auth/auth-store';
  */
 @Component({
   selector: 'app-welcome',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, MatToolbarModule],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, MatToolbarModule, RouterLink],
   templateUrl: './welcome.html',
   styleUrl: './welcome.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
