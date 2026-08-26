@@ -26,7 +26,10 @@ Verification: Add the recommended lint and Prettier settings for the project.
     - invalid login highlights form fields in red and displays an error message;
     - successful validation leads to a temporary welcome page;
 
-It took about 1 hour to complete the feature.
+### F1 — retrospective
+The feature was created using standard prompting (see above). 
+The process went smoothly without any unnecessary questions or clarifications and took about 1 hour. 
+The AUTH feature is fairly standard and was implemented quite well.
 
 --------------------------------------------------------------------------------
 
@@ -34,9 +37,9 @@ It took about 1 hour to complete the feature.
 ## Backend (Node.js 26+, Caddy, REST, JWT, Postgres, TypeORM, TypeScript 6+):
 # scope:
     - routes and endpoints;
-	- unit tests for services, if needed;
+	  - unit tests for services, if needed;
     - PostgreSQL migrations to create the database (mouse_trading) and the tables required for the “Products” feature;
-	- Basic fields for database tables containing product descriptions: id, title for Prom, description for Prom, title for OLX, description for OLX, price, SEO keywords, category, published, account for Prom, account for OLX, product state (used or new);
+	  - Basic fields for database tables containing product descriptions: id, title for Prom, description for Prom, title for OLX, description for OLX, price, SEO keywords, category, published, account for Prom, account for OLX, product state (used or new);
     - Product images will be physically stored on Cloudflare R2 (to be implemented later). Image links and IDs are stored in the database. There can be up to 10 images per product, with one marked as the main image;
 # functionality:
     - Retrieve a list of products with pagination, filters (title, description, price, category, published, account for Prom, account for OLX), and sorting (title for Prom, title for OLX, price). All fields must be retrieved, including the list of images.
@@ -77,10 +80,6 @@ happened earlier, during scaffolding — both in tests, both the same shape, a r
    already green; `docker compose restart api` fixes it. The symptom reads as a broken
    route registration, which is the wrong place to look, and it belongs in the
    symptom-to-cause table.
-3. Nothing in the skills covers a brief that contradicts `SPEC.md`. The spec described
-   a `draft / ready / sold` status; the brief asked for `published` plus a `new / used`
-   condition. Implemented per the brief, flagged, and resolved by asking — `SPEC.md` and
-   `ARCHITECTURE.md` now say `published`, and a sold item is one taken off publication.
 
 **Scope.** The brief covers reading the catalogue only. Create, update and delete are not
 implemented, and a gallery has no upload path until the media module exists — the two
