@@ -1,0 +1,33 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# handle_path strips the prefix: /api/auth/login → /auth/login.
+	# The ng serve proxy performs the same rewrite in dev (apps/web/proxy.conf.json),
+	# so apiBaseUrl equals /api in both environments, the origin is one and CORS is never needed.
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

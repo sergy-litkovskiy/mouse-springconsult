@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src/**/*.ts", "../api/src/contracts/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "../api/src/contracts/**/*.spec.ts"]
+}

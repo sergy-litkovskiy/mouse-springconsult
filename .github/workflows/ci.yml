@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Everything runs in the same images as locally, so "works on my machine" stops being a
+# possible diagnosis. The values below are not secrets but CI stubs: config.ts validates
+# env at process start, so they are needed even where nothing touches the database.
+env:
+  CI_ENV_FILE: |
+    POSTGRES_USER=ci
+    POSTGRES_PASSWORD=ci
+    DATABASE_URL=postgres://ci:ci@postgres:5432/mouse_trading
+    NODE_ENV=test
+    LOG_LEVEL=error
+    JWT_SECRET=ci-secret-value-that-is-long-enough-for-hs256
+    ADMIN_BOOTSTRAP_EMAIL=admin@example.com
+    ADMIN_BOOTSTRAP_NAME=CI
+    ADMIN_BOOTSTRAP_PASSWORD=ci-admin-password
+
+jobs:
+  api:
+    name: api — format, lint, typecheck, deps, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: printf '%s' "$CI_ENV_FILE" > .env
+      - run: docker compose build api
+      - run: docker compose run --rm --no-deps api npm run format:check
+      - run: docker compose run --rm --no-deps api npm run lint
+      - run: docker compose run --rm --no-deps api npm run typecheck
+      - run: docker compose run --rm --no-deps api npm run deps:check
+      - run: docker compose run --rm --no-deps api npm run test
+
+  web:
+    name: web — format, lint, tests, production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: printf '%s' "$CI_ENV_FILE" > .env
+      - run: docker compose build web
+      - run: docker compose run --rm --no-deps web npm run format:check
+      - run: docker compose run --rm --no-deps web npm run lint
+      - run: docker compose run --rm --no-deps web npm run test
+      - run: docker compose run --rm --no-deps web npm run build
+
+  migrations:
+    name: migrations — up, down and a health check against a real Postgres
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: printf '%s' "$CI_ENV_FILE" > .env
+
+      - name: Create the database and apply migrations
+        run: docker compose run --rm migrate
+
+      # A migration without a working down is a migration that cannot be rolled back in production.
+      - name: Revert both migrations and apply them again
+        run: |
+          docker compose run --rm --no-deps api npm run db:migrate:revert
+          docker compose run --rm --no-deps api npm run db:migrate:revert
+          docker compose run --rm --no-deps api npm run db:migrate
+
+      - name: Wait for a healthy api
+        run: |
+          docker compose up -d api
+          for _ in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' mouse-api-1 2>/dev/null || echo starting)
+            if [ "$status" = "healthy" ]; then echo "api is healthy"; exit 0; fi
+            sleep 2
+          done
+          docker compose logs api
+          exit 1
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

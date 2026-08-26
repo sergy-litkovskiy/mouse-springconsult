@@ -6,17 +6,17 @@
 
 Домен: `mouse.springconsult.com.ua` · Обсяг: 50–100 товарів на місяць
 
-> **Стан репозиторію: скелет.**
+> **Стан репозиторію: реалізовано фічу `auth`.**
 >
-> *Є зараз:* документи (`SPEC.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `README.md`, ADR),
-> каркас каталогів під модулі й `apps/web/src/environments/`.
+> *Є зараз:* оточення Docker Compose (`postgres`, `migrate`, `api`, `web`), Caddy для
+> проду, GitHub Actions, ESLint + Prettier + dependency-cruiser на обидва застосунки.
+> Бекенд: вхід, вихід, перевірка сесії, сутність `users`, міграції (створення таблиці
+> та першого адміна) і 25 юніт-тестів. Фронт: сторінка входу на Angular Material,
+> guard, тимчасова сторінка вітання, 13 тестів.
 >
-> *Ще немає:* коду, `package.json`, `tsconfig.json`, `angular.json`, Dockerfile-ів,
-> `docker-compose.yml`, `Caddyfile`, GitHub Actions.
->
-> Отже структура, команди й шляхи нижче — **цільовий стан**. Зокрема
-> `apps/api/src/config.ts`, на який посилається розділ «Конфігурація», буде створено
-> разом з першим кодом бекенду; поки що перелік серверних змінних існує лише тут.
+> *Ще немає:* модулів `products`, `media`, `ai` — це порожні теки каркаса. Немає
+> `worker.ts` і черги: у `auth` асинхронної роботи немає, а порожній воркер був би
+> каркасом про запас. Вони зʼявляться разом із першою задачею для черги.
 
 ## Документація
 
@@ -25,13 +25,15 @@
 | [SPEC.md](SPEC.md) | Цілі, межі, технічні рішення, критерії приймання |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Схема розгортання, модулі, dependency rule |
 | [CLAUDE.md](CLAUDE.md) | Правила залежностей, конвенції, команди |
-| [docs/adr/](docs/adr/) | Архітектурні рішення та їх обґрунтування |
+| [docs/adr/0001](docs/adr/0001-initial-setup.md) | Початкова архітектура: модульний моноліт, черга в Postgres, бекенд без збірки |
+| [docs/adr/0002](docs/adr/0002-auth-jwt-and-typeorm.md) | Авторизація: JWT у httpOnly-cookie, TypeORM у шарі інфраструктури |
 
 ## Стек
 
 Angular 22 + Angular Material · Node.js 26 + Fastify · TypeScript 6.0.3 ·
-PostgreSQL 18 · pg-boss · Cloudflare R2 · sharp · Anthropic Claude (`claude-opus-5`) ·
-Caddy 2 · Docker Compose на Hetzner VPS · GitHub Actions
+PostgreSQL 18 + TypeORM · JWT у httpOnly-cookie (`jose`) + argon2id · pg-boss ·
+Cloudflare R2 · sharp · Anthropic Claude (`claude-opus-5`) · Caddy 2 ·
+Docker Compose на Hetzner VPS · GitHub Actions
 
 Бекенд не збирається — Node 26 виконує `.ts` напряму, `tsc` лишається перевіркою.
 TypeScript пінується на 6.0.3: Angular 22 вимагає `>=6.0 <6.1`.
@@ -39,10 +41,10 @@ TypeScript пінується на 6.0.3: Angular 22 вимагає `>=6.0 <6.1`
 ## Структура
 
 ```
-apps/api/src/               api.ts · worker.ts + config, db, logger, queue, errors
+apps/api/src/               api.ts (+ worker.ts згодом) · config, db, logger, errors
 apps/api/src/modules/       auth · products · media · ai
 apps/api/src/contracts/     zod-схеми запитів/відповідей, фронт бере з них типи
-apps/api/db/migrations/     міграції схеми
+apps/api/db/                міграції, їх раннер, створення БД
 apps/web/src/app/           auth · products — групування за фічею
 apps/web/src/environments/  конфіг фронту (@environments)
 infra/caddy/                Caddyfile
@@ -58,14 +60,14 @@ Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `app
 
 | Сервіс | Роль | dev | prod |
 |---|---|---|---|
-| `postgres` | Дані застосунку + черга pg-boss | 5432 | внутр. |
+| `postgres` | Дані застосунку (згодом — і черга pg-boss) | 5432 | внутр. |
 | `api` | Fastify: HTTP, авторизація, CRUD, постановка задач у чергу | 3000 (дебаг) | внутр. |
-| `worker` | Той самий образ, `APP_ROLE=worker`: sharp, R2, Claude, пошук цін | — | — |
+| `migrate` | Разова задача: створення БД і міграції перед стартом `api` | автоматично | автоматично |
 | `web` | `ng serve` у dev; у prod збирається в статику для Caddy | 4200 | — |
-| `migrate` | Разова задача: міграції перед стартом `api` | on-demand | on-demand |
 | `caddy` | TLS (Let's Encrypt), статика Angular, проксі `/api` | — | 80, 443 |
+| `worker` | Той самий образ, інша команда: sharp, R2, Claude — зʼявиться з першою задачею | — | — |
 
-У проді назовні відкриті лише 80/443 на Caddy; `postgres`, `api` і `worker`
+У проді назовні відкриті лише 80/443 на Caddy; `postgres` і `api`
 доступні тільки у внутрішній docker-мережі. У dev порти `api` і `web`
 публікуються на хост, щоб браузер міг звертатися до них напряму.
 
@@ -77,12 +79,13 @@ Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `app
 |---|---|---|---|
 | Конфіг фронту | `apps/web/src/environments/*.ts` | `production`, `apiBaseUrl` | браузер — усе публічне |
 | Константи бекенду | `apps/api/src/config.ts` — у коді | розміри зображень, ліміти, таймаути, TTL, параметри черги, модель AI | тільки сервер |
-| Секрети й машинозалежне | змінні оточення контейнерів | `DATABASE_URL`, ключі R2 і Anthropic, `SESSION_SECRET`, SMTP, домен | тільки процеси на VPS |
+| Секрети й машинозалежне | змінні оточення контейнерів | `DATABASE_URL`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_*`, ключі R2 і Anthropic, SMTP, домен | тільки процеси на VPS |
 
 **Секрет не може жити на першому рівні:** Angular запікає `environment.ts` у бандл,
-який завантажує браузер. `postgres`, `api`, `worker` і `caddy` до Angular стосунку не
-мають і читають лише змінні оточення — Docker Compose підхоплює їх з `.env` поруч з
-`docker-compose.yml`; файл не комітиться і шаблону в репозиторії не має.
+який завантажує браузер. `postgres`, `api` і `caddy` до Angular стосунку не мають і
+читають лише змінні оточення — Docker Compose підхоплює їх з `.env` поруч з
+`docker-compose.yml`. Сам `.env` не комітиться; у репозиторії лежить `.env.example`
+з переліком змінних і командами для генерації секретів.
 
 **Різниця між другим і третім рівнем — чи змінюється значення між машинами.**
 `1568 px` для AI-кадру, `q80`, ліміт у 12 фото на товар, TTL сесії — однакові
@@ -94,9 +97,10 @@ Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `app
 оголошені прямо в ньому, а env-змінні читаються й валідуються zod-схемою, яка падає
 на старті, якщо обов'язкової бракує.
 
-**`environment.development.ts` не комітиться** — у кожного свій `apiBaseUrl`.
-Після клонування його треба створити, інакше `ng serve` впаде: `angular.json`
-посилається на нього через `fileReplacements`.
+**`environment.development.ts` не комітиться** — це локальний файл розробника.
+`angular.json` посилається на нього через `fileReplacements`, тож без нього
+`ng serve` не запуститься; заготовку створює entrypoint контейнера `web` при
+першому старті, далі її можна правити під себе.
 
 ```ts
 // apps/web/src/environments/environment.development.ts
@@ -110,36 +114,44 @@ export const environment = {
 
 ## Локальний запуск
 
-**Потрібно:** тільки Docker + Docker Compose v2, бакет Cloudflare R2 і ключ
-Anthropic API. Node.js, npm і Angular CLI на хості **не потрібні** — уся розробка
-відбувається всередині контейнерів.
+**Потрібно:** тільки Docker + Docker Compose v2. Node.js, npm і Angular CLI на
+хості **не потрібні** — уся розробка відбувається всередині контейнерів. Працює
+однаково на Ubuntu і macOS (Docker Desktop, colima, OrbStack).
 
 ```bash
 git clone git@github.com:<owner>/mouse-springconsult.git
 cd mouse-springconsult
 
-# створити .env поруч з docker-compose.yml — DATABASE_URL, POSTGRES_*, R2_*,
-# ANTHROPIC_API_KEY, SESSION_SECRET (openssl rand -base64 48), SMTP_*,
-# ADMIN_BOOTSTRAP_EMAIL. Перелік і валідація — apps/api/src/config.ts
+cp .env.example .env
+# замінити секрети в .env:
+#   openssl rand -base64 48   → JWT_SECRET
+#   openssl rand -base64 24   → POSTGRES_PASSWORD (і той самий пароль у DATABASE_URL)
+#   openssl rand -base64 24   → ADMIN_BOOTSTRAP_PASSWORD
+# Перелік і валідація змінних — apps/api/src/config.ts (падає на старті, якщо бракує)
 
-docker compose up --build        # postgres, api, worker, web у watch-режимі
+docker compose up --build        # postgres → migrate → api → web
 ```
+
+Порядок старту забезпечує сам Compose: `api` не підніметься, поки `postgres` не
+стане здоровим, а разовий сервіс `migrate` не створить базу й не накотить міграції.
 
 Після старту:
 
 - UI — `http://localhost:4200` (`ng serve` усередині контейнера `web`)
 - API — через той самий origin: `ng serve` проксує `/api` на контейнер `api`
   (`proxy.conf.json`), тому сесійна cookie працює так само, як у проді
-- порт `3000` опубліковано лише для прямих запитів у обхід UI —
+- порт `3000` опубліковано лише для прямих запитів в обхід UI —
   health-check `http://localhost:3000/healthz`, `curl`, дебаг
-- перший адмін створюється за `ADMIN_BOOTSTRAP_EMAIL`; пароль задається через
-  посилання «Відновити доступ»
+- перший адмін — `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` з `.env`
+- якщо порти `5432`, `3000` чи `4200` вже зайняті іншим проєктом, їх можна
+  переназначити змінними `POSTGRES_HOST_PORT`, `API_HOST_PORT`, `WEB_HOST_PORT`
 
-`api` і `worker` перезапускаються самі при зміні файлів (`node --watch`), `web` —
-через `ng serve`. Код монтується в контейнер, а `node_modules` живуть в іменованому
-volume: нативні модулі (`sharp`, `argon2`) збираються під Linux і не сумісні з
-бінарниками, які поставилися б на macOS чи Windows. Саме тому `npm install` на хості
-не просто зайвий — він зламав би контейнер, якби `node_modules` монтувалися всередину.
+`api` перезапускається сам при зміні файлів (`node --watch`), `web` — через
+`ng serve`. Код монтується в контейнер, а `node_modules` живуть в іменованому
+volume: нативні модулі (`argon2`, згодом `sharp`) ставляться під Linux і не сумісні
+з бінарниками, які поставилися б на macOS чи Windows. Саме тому `npm install` на
+хості не просто зайвий — він зламав би контейнер, якби `node_modules` монтувалися
+всередину.
 
 ## Розгортання на Hetzner VPS
 
@@ -165,7 +177,7 @@ chmod 600 .env
 1. `lint` + `typecheck` + `test` + `deps:check` — у тих самих образах, що й локально;
 2. збірка образів `api` і `web`, публікація в GitHub Container Registry;
 3. SSH на VPS → `docker compose pull` → `docker compose up -d`;
-4. разовий сервіс `migrate` застосовує міграції до старту `api`;
+4. разовий сервіс `migrate` створює базу (якщо треба) і застосовує міграції до старту `api`;
 5. health-check `/healthz`; при невдачі — відкат на попередній тег образу.
 
 Аварійний ручний деплой тим самим шляхом — коли GitHub Actions недоступні:
@@ -185,40 +197,52 @@ Caddy отримує й автоматично оновлює сертифіка
 docker compose up -d --build          # підняти все
 docker compose down                   # зупинити (дані лишаються у volume)
 docker compose down -v                # зупинити і стерти дані
-docker compose logs -f api            # логи сервісу (api | worker | caddy | postgres)
+docker compose logs -f api            # логи сервісу (api | web | migrate | postgres)
 docker compose ps                     # стан контейнерів
-docker compose exec postgres psql -U $POSTGRES_USER $POSTGRES_DB
-docker compose restart worker         # перезапустити воркер
+docker compose exec postgres psql -U $POSTGRES_USER mouse_trading
 ```
 
 **Залежності**
 
 ```bash
-docker compose run --rm api npm install
-docker compose run --rm api npm install fastify-plugin -w apps/api
-docker compose run --rm web npm install @angular/cdk -w apps/web
+# Кожен застосунок має власний package.json і власний том node_modules,
+# тому прапорець -w не потрібен — команда і так виконується в потрібному контейнері.
+docker compose run --rm --no-deps api npm install fastify-plugin
+docker compose run --rm --no-deps web npm install @angular/cdk
 docker compose build api              # перезібрати образ після зміни package.json
 ```
 
 **Якість**
 
 ```bash
-docker compose run --rm api npm run typecheck     # tsc --noEmit
-docker compose run --rm api npm run lint
-docker compose run --rm api npm run test          # node --test, *.spec.ts поруч з кодом
-docker compose run --rm api npm run deps:check    # dependency-cruiser: межі модулів api
-docker compose run --rm api npm run format
-docker compose run --rm web npm run lint          # ESLint, зокрема межі між фічами
-docker compose run --rm web npm run test
+docker compose run --rm --no-deps api npm run typecheck   # tsc --noEmit
+docker compose run --rm --no-deps api npm run lint
+docker compose run --rm --no-deps api npm run test        # node --test, *.spec.ts поруч з кодом
+docker compose run --rm --no-deps api npm run deps:check  # dependency-cruiser: межі модулів
+docker compose run --rm --no-deps api npm run format
+docker compose run --rm --no-deps web npm run lint        # ESLint, зокрема межі між фічами
+docker compose run --rm --no-deps web npm run test        # vitest
+docker compose run --rm --no-deps web npm run build       # прод-збірка + бюджети
 ```
+
+Ті самі команди виконує CI (`.github/workflows/ci.yml`) — у тих самих образах.
 
 **База даних**
 
 ```bash
+docker compose run --rm api npm run db:create              # ідемпотентно створює mouse_trading
 docker compose run --rm api npm run db:migrate
+docker compose run --rm api npm run db:migrate:revert      # відкотити останню
+docker compose run --rm api npm run db:migrate:show
 docker compose run --rm api npm run db:migrate:new -- add-product-seo
-docker compose exec postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB > backup.sql
+docker compose exec postgres psql -U $POSTGRES_USER mouse_trading
+docker compose exec postgres pg_dump -U $POSTGRES_USER mouse_trading > backup.sql
 ```
+
+Базу створює не міграція, а `apps/api/db/init/0001-create-database.sql`:
+`CREATE DATABASE` не виконується всередині транзакції і потребує зʼєднання з
+іншою базою. У dev його проганяє контейнер `postgres` при першій ініціалізації
+тому, на наявному сервері — `npm run db:create`.
 
 **Angular CLI**
 
@@ -227,13 +251,7 @@ docker compose run --rm web npx ng generate component products/product-catalog
 docker compose run --rm web npx ng build            # збірка статики для проду
 ```
 
-**Черга**
-
-```bash
-docker compose logs -f worker
-docker compose exec postgres psql -U $POSTGRES_USER $POSTGRES_DB \
-  -c "select name, state, count(*) from pgboss.job group by 1,2;"
-```
+**Черга** — зʼявиться разом із сервісом `worker` і першою задачею для pg-boss.
 
 ## Бекап
 

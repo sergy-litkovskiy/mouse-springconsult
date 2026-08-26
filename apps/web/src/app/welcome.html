@@ -1,0 +1,23 @@
+<mat-toolbar class="welcome-bar">
+  <span class="welcome-bar__title">mouse — адмінка товарів</span>
+  <span class="welcome-bar__spacer"></span>
+  <button matButton type="button" (click)="logout()" [disabled]="leaving()">
+    <mat-icon>logout</mat-icon>
+    {{ leaving() ? 'Виходимо…' : 'Вийти' }}
+  </button>
+</mat-toolbar>
+
+<main class="welcome">
+  <mat-card class="welcome-card" appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Вітаємо, {{ user()?.displayName ?? 'адміністраторе' }}!</mat-card-title>
+      <mat-card-subtitle>{{ user()?.email }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p>
+        Вхід виконано. Це тимчасова сторінка — тут з’явиться каталог карток товарів із фільтром за
+        статусом і завантаженням фото.
+      </p>
+    </mat-card-content>
+  </mat-card>
+</main>
