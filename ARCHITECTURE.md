@@ -131,7 +131,7 @@ R2-клієнт і SMTP свідомо туди не потрапили — це
 ## Потік «фото → картка»
 
 1. `POST /api/products` з першим фото → `media` кладе оригінал у R2, `products`
-   створює `draft`, `api` ставить задачу `product.recognize` у pg-boss і одразу
+   створює неопубліковану картку, `api` ставить задачу `product.recognize` у pg-boss і одразу
    повертає `productId` + `jobId`.
 2. `worker` бере задачу: sharp зменшує кадр до ≤ 1568 px / JPEG q80 (економія
    токенів), `ai` викликає `claude-opus-5` зі structured outputs і отримує plain-text

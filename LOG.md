@@ -47,3 +47,41 @@ It took about 1 hour to complete the feature.
     - Tests, if needed;
 # functionality:
     - Display a list of products with pagination, filters (title, description, price, category, published, account for prom, account for olx), and sorting (title for prom, title for olx, price). In the table, display a thumbnail of the main image and, next to it, the total number of images (clicking on the number opens a modal window showing all the images for that product).
+
+### F2 — retrospective
+
+Run through the plugin skills. `/mouse-trading:feature-plan` was skipped — the brief
+above was specific enough to scaffold from; `:feature-scaffold` wrote the slice and
+`:feature-ship` took it green and committed it (`c728967`).
+
+**Prompts.** 3 skill invocations, 2 free-form prompts, 1 interrupt. Not one corrective
+prompt about the code itself: the brief went in once and was never renegotiated.
+
+**Time.** 22 minutes from the first generated file to the commit (18:09 → 18:31),
+excluding the reading of the `auth` reference implementation that preceded it. F1 took
+about an hour.
+
+**Gates.** All nine passed on the first run of `:feature-ship`. Two lint failures
+happened earlier, during scaffolding — both in tests, both the same shape, a redundant
+`?.`: `assert.equal` from `node:assert/strict` narrows through an optional chain, and
+`Element.textContent` is `string` in current DOM typings, not `string | null`.
+
+**Where the skills did not help.**
+
+1. `docker compose run api …` starts the `migrate` service through `depends_on`, so it
+   applies pending migrations before the command runs. `db:migrate` then reports "no
+   pending" for a migration nobody applied by hand, and verifying `revert` requires
+   `--no-deps`. The skill prescribes the revert check without this caveat.
+2. `node --watch` does not see host file changes under colima. A newly registered route
+   answered 404 while `typecheck`, `lint` and the tests — each its own container — were
+   already green; `docker compose restart api` fixes it. The symptom reads as a broken
+   route registration, which is the wrong place to look, and it belongs in the
+   symptom-to-cause table.
+3. Nothing in the skills covers a brief that contradicts `SPEC.md`. The spec described
+   a `draft / ready / sold` status; the brief asked for `published` plus a `new / used`
+   condition. Implemented per the brief, flagged, and resolved by asking — `SPEC.md` and
+   `ARCHITECTURE.md` now say `published`, and a sold item is one taken off publication.
+
+**Scope.** The brief covers reading the catalogue only. Create, update and delete are not
+implemented, and a gallery has no upload path until the media module exists — the two
+tables and their constraints are ready for both.
