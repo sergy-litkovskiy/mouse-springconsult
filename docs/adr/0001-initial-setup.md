@@ -3,6 +3,9 @@
 - **Статус:** Прийнято
 - **Дата:** 2026-08-18
 - **Контекст рішення:** старт проєкту `mouse.springconsult.com.ua`
+- **Переглянуто:** пункт 7 (бекенд без збірки) і шари всередині модуля —
+  [ADR 0003](0003-three-layer-classes.md) додав крок збірки `tsc` і замінив
+  `routes → use-case → port ← repository` на `Controller → Service → Repository`.
 
 ## Контекст
 

@@ -9,7 +9,7 @@ import {
 } from './products-limits.ts';
 
 /**
- * Contracts of the products module. `products.routes.ts` validates incoming requests with
+ * Contracts of the products module. `ProductController.ts` validates incoming requests with
  * them; the frontend takes the types through the `@contracts/*` alias — one description
  * of the catalogue for both sides.
  */
@@ -26,14 +26,23 @@ export const productImageSchema = z.object({
 
 export type ProductImage = z.infer<typeof productImageSchema>;
 
+/**
+ * The price as the database hands it over: a decimal string like "2499.00". It never
+ * becomes a number anywhere in the stack — that is what keeps the value the admin typed
+ * identical to the value that reaches Prom, with no float and no unit to agree on.
+ */
+const priceDecimal = z
+  .string()
+  .trim()
+  .regex(productConstraints.pricePattern, 'Price must be a decimal such as 2499.00');
+
 export const productSchema = z.object({
   id: z.uuid(),
   titleProm: z.string(),
   descriptionProm: z.string(),
   titleOlx: z.string(),
   descriptionOlx: z.string(),
-  /** Whole kopiykas. Money never travels as a float — see CLAUDE.md. */
-  priceCents: z.int().nonnegative(),
+  price: priceDecimal,
   seoKeywords: z.array(z.string()),
   category: z.string(),
   published: z.boolean(),
@@ -74,18 +83,9 @@ export const productListQuerySchema = z.object({
   title: trimmedFilter.optional(),
   /** Same, across both descriptions. */
   description: trimmedFilter.optional(),
-  priceMinCents: z.coerce
-    .number()
-    .int()
-    .nonnegative()
-    .max(productConstraints.maxPriceCents)
-    .optional(),
-  priceMaxCents: z.coerce
-    .number()
-    .int()
-    .nonnegative()
-    .max(productConstraints.maxPriceCents)
-    .optional(),
+  /** Inclusive bounds, decimal strings like the price itself. Nothing is coerced. */
+  priceMin: priceDecimal.optional(),
+  priceMax: priceDecimal.optional(),
   category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
   published: booleanFlag.optional(),
   accountProm: z.string().trim().min(1).max(productConstraints.accountMaxLength).optional(),

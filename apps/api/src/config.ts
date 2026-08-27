@@ -41,8 +41,6 @@ export const config = {
     memoryCost: 19_456,
     timeCost: 2,
     parallelism: 1,
-    minLength: 8,
-    maxLength: 128,
   },
 
   rateLimit: {

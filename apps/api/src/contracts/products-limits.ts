@@ -13,8 +13,14 @@ export const productConstraints = {
   maxKeywords: 30,
   /** A card carries a gallery, not an archive: ten frames is the agreed ceiling. */
   maxImagesPerProduct: 10,
-  /** Prices are whole kopiykas everywhere in the code; numeric(12,2) is the storage form. */
-  maxPriceCents: 99_999_999_999,
+  /**
+   * A price is a decimal string, exactly as `decimal(12,2)` stores and returns it, and
+   * nothing converts it on the way: not the ORM, not the API, not the browser. The
+   * pattern is the whole constraint — ten integer digits and at most two decimals are
+   * the column's own limits, and a leading minus is refused here as well as by
+   * `products_price_non_negative_check`.
+   */
+  pricePattern: /^\d{1,10}(\.\d{1,2})?$/,
 } as const;
 
 export const productPagination = {

@@ -26,7 +26,7 @@ env:
 
 jobs:
   api:
-    name: api — format, lint, typecheck, deps, tests
+    name: api — format, lint, typecheck, deps, build, tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -36,7 +36,12 @@ jobs:
       - run: docker compose run --rm --no-deps api npm run lint
       - run: docker compose run --rm --no-deps api npm run typecheck
       - run: docker compose run --rm --no-deps api npm run deps:check
-      - run: docker compose run --rm --no-deps api npm run test
+      # The backend is compiled (docs/adr/0003): everything below runs out of dist/.
+      - run: docker compose run --rm --no-deps api npm run build
+      # No --no-deps: the repository and schema specs run against a real Postgres, so the
+      # step needs the database up. The test database is the `_test` twin of DATABASE_URL
+      # and is created and migrated by the run itself.
+      - run: docker compose run --rm api npm run test
 
   web:
     name: web — format, lint, tests, production build

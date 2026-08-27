@@ -32,7 +32,11 @@
       "Bash(git branch)",
       "Bash(git branch:*)"
     ],
-    "deny": ["Bash(git push)", "Bash(git push *)", "Read(**/environment.prod.ts)"]
+    "deny": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Read(**/environment.prod.ts)"
+    ]
   },
   "enabledPlugins": {
     "mouse-trading@mouse-trading": true

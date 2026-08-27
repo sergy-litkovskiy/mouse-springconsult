@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
  * and live in `.dependency-cruiser.cjs` (`npm run deps:check`).
  */
 export default defineConfig([
-  globalIgnores(['node_modules/**', 'coverage/**']),
+  globalIgnores(['node_modules/**', 'dist/**', 'coverage/**']),
 
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
@@ -28,7 +28,8 @@ export default defineConfig([
       },
     },
     rules: {
-      // The backend runs without a build step: types must be erased explicitly.
+      // A type import is spelled out: it makes the layer a file depends on visible, and
+      // dependency-cruiser counts it as a dependency exactly like a value import.
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
@@ -46,8 +47,8 @@ export default defineConfig([
           ],
         },
       ],
-      // Ports are async by contract; a concrete implementation is allowed to be
-      // synchronous — that is no reason to rewrite the signature.
+      // A method is async by contract; an implementation that happens to be synchronous
+      // — a stub in a spec, say — is no reason to rewrite the signature.
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
@@ -58,11 +59,11 @@ export default defineConfig([
         'error',
         {
           selector: 'TSEnumDeclaration',
-          message: 'enum is not erasable: use a union or a const object.',
+          message: 'enum has a runtime shape of its own: use a union or a const object.',
         },
         {
           selector: 'TSModuleDeclaration[kind="namespace"]',
-          message: 'namespace is not erasable: use ordinary modules.',
+          message: 'namespace predates ES modules: use ordinary modules.',
         },
         {
           selector: 'ExportDefaultDeclaration',

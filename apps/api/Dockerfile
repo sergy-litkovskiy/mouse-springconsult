@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 #
 # One image, two roles (api / worker), as ARCHITECTURE.md requires.
-# There is no build step: Node 26 strips types and runs .ts directly, so the production
-# stage copies sources rather than a dist/ directory.
+# The backend is compiled: TypeORM entities carry decorators, which Node does not
+# transform (docs/adr/0003), so the production stage ships dist/ rather than sources.
 
 FROM node:26-slim AS base
 # argon2 installs from a prebuilt binary (prebuilds/linux-{arm64,x64}), so the image needs
@@ -29,14 +29,23 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "run", "dev"]
 
+# ── build ────────────────────────────────────────────────────────────────────
+# tsc needs typescript, which is a devDependency: the compilation happens in its own
+# stage so that the production image keeps only runtime dependencies and dist/.
+FROM base AS build
+COPY --from=deps /app/apps/api/node_modules ./node_modules
+COPY apps/api/package.json ./package.json
+COPY apps/api/tsconfig.json ./tsconfig.json
+COPY apps/api/src ./src
+COPY apps/api/db ./db
+RUN npm run build
+
 # ── production ───────────────────────────────────────────────────────────────
 FROM base AS production
 ENV NODE_ENV=production
 COPY apps/api/package.json apps/api/package-lock.json* ./
 RUN npm ci --omit=dev
-COPY apps/api/tsconfig.json ./tsconfig.json
-COPY apps/api/src ./src
-COPY apps/api/db ./db
+COPY --from=build /app/apps/api/dist ./dist
 USER node
 EXPOSE 3000
-CMD ["node", "src/api.ts"]
+CMD ["node", "--enable-source-maps", "dist/src/api.js"]

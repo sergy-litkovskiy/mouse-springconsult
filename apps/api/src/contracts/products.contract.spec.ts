@@ -14,17 +14,29 @@ describe('product list query contract', () => {
   });
 
   it('coerces the numbers a querystring delivers as strings', () => {
-    const parsed = productListQuerySchema.parse({
-      page: '3',
-      pageSize: '10',
-      priceMinCents: '50000',
-      priceMaxCents: '150000',
-    });
+    const parsed = productListQuerySchema.parse({ page: '3', pageSize: '10' });
 
     assert.equal(parsed.page, 3);
     assert.equal(parsed.pageSize, 10);
-    assert.equal(parsed.priceMinCents, 50_000);
-    assert.equal(parsed.priceMaxCents, 150_000);
+  });
+
+  it('leaves the price bounds as the decimal strings they arrive as', () => {
+    // Coercion is what the price must not go through: `decimal(12,2)` keeps the value,
+    // and a round trip through a JS number is exactly the rounding that loses it.
+    const parsed = productListQuerySchema.parse({ priceMin: '500.00', priceMax: '1500.50' });
+
+    assert.equal(parsed.priceMin, '500.00');
+    assert.equal(parsed.priceMax, '1500.50');
+  });
+
+  it('refuses a price that is not a decimal the column can hold', () => {
+    for (const priceMin of ['2499.999', '-1.00', '12345678901.00', 'дешево', '']) {
+      assert.equal(
+        productListQuerySchema.safeParse({ priceMin }).success,
+        false,
+        `${priceMin} must be rejected`,
+      );
+    }
   });
 
   it('reads published=false as false rather than as a truthy string', () => {
@@ -44,7 +56,7 @@ describe('product list query contract', () => {
 
   it('refuses a sort column that is not on the list', () => {
     // The value ends up in an ORDER BY, so an open string has no business getting here.
-    assert.equal(productListQuerySchema.safeParse({ sort: 'priceCents' }).success, false);
+    assert.equal(productListQuerySchema.safeParse({ sort: 'createdAt' }).success, false);
     assert.equal(productListQuerySchema.safeParse({ direction: 'sideways' }).success, false);
   });
 

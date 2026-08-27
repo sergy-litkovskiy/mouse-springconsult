@@ -29,11 +29,11 @@ export class ProductsApi {
     if (query.description !== undefined) {
       params = params.set('description', query.description);
     }
-    if (query.priceMinCents !== undefined) {
-      params = params.set('priceMinCents', query.priceMinCents);
+    if (query.priceMin !== undefined) {
+      params = params.set('priceMin', query.priceMin);
     }
-    if (query.priceMaxCents !== undefined) {
-      params = params.set('priceMaxCents', query.priceMaxCents);
+    if (query.priceMax !== undefined) {
+      params = params.set('priceMax', query.priceMax);
     }
     if (query.category !== undefined) {
       params = params.set('category', query.category);

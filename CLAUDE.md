@@ -8,7 +8,7 @@
 | Шар | Технологія |
 |---|---|
 | UI | Angular 22 (standalone, signals, zoneless) + Angular Material |
-| API | Node.js 26 (ESM, Fastify). Типи стрипаються нативно — бекенд **не збирається** |
+| API | Node.js 26 (ESM, Fastify). Збирається `tsc` у `dist/` — декоратори TypeORM |
 | TypeScript | **6.0.3** — жорсткий пін: Angular 22 вимагає `>=6.0 <6.1` |
 | БД | PostgreSQL 18 + TypeORM (тільки в шарі репозиторіїв) |
 | Авторизація | JWT (`jose`, HS256) у httpOnly-cookie, argon2id для паролів |
@@ -27,7 +27,8 @@ apps/api/src/                                   api.ts, worker.ts + техніч
                                                 (config, db, logger, queue, errors)
 apps/api/src/modules/{auth,products,media,ai}   бізнес-модулі
 apps/api/src/contracts/                         zod-схеми запитів/відповідей (@contracts)
-apps/api/db/                                    міграції, їх раннер, створення БД
+apps/api/db/                                    міграції, їх список і раннер, створення БД
+                                                (зокрема тестової)
 apps/web/                                       корінь Angular workspace (angular.json)
 apps/web/src/app/{auth,products}/               фічі Angular
 apps/web/src/environments/                      конфіг фронту (@environments)
@@ -37,18 +38,8 @@ docs/adr/                                       архітектурні ріш�
 
 Цей каркас — базова архітектура проєкту: він закріплений у git файлами `.gitkeep`
 і існує до першого рядка коду. Каталогів **поза** ним не заводимо: `pricing` живе
-всередині `ai` (той самий Claude, інший use-case), а модуль синхронізації з
+всередині `ai` (той самий Claude, інший метод сервісу), а модуль синхронізації з
 маркетплейсами з'явиться разом з першим файлом інтеграції.
-
-> **Стан.** Фіча `auth` реалізована: `src/api.ts`, `src/config.ts`, `src/db.ts`,
-> `src/logger.ts`, `src/errors.ts`, `src/contracts/`, `modules/auth/`, міграції,
-> Angular-застосунок, `docker-compose.yml` і `Caddyfile` — у репозиторії.
-> `src/worker.ts` і `src/queue.ts` зʼявляться разом із першою задачею в черзі:
-> у `auth` асинхронної роботи немає, а порожній воркер — це каркас про запас.
-> Модуль `products` читає каталог: `contracts/products*.ts`, `modules/products/`,
-> міграція таблиць `products` і `product_images`, Angular-фіча `app/products/`.
-> Запис (створення, редагування, видалення) і галерея в R2 — попереду.
-> Модулі `media` і `ai` поки що порожні теки з `.gitkeep`.
 
 ## Правила залежностей (ОБОВ'ЯЗКОВІ)
 
@@ -57,20 +48,17 @@ src/api.ts · src/worker.ts · db/*.ts  composition root: тільки тут ne
       │
       ▼
 modules/<feature>/
-   *.routes.ts ─► *.use-case.ts ─► *.port.ts · доменні типи      без I/O
-                                        ▲
-    *.repository.ts · *.adapter.ts · *.entity.ts ┘               реалізують порти
-      │
-      ├─► modules/<other>/index.ts                               лише public API, без deep import
+   *Controller.ts ─► *Service.ts ─► *Repository.ts ─► Entity (@Entity)
+      │                                                  typeorm · pg
+      ├─► modules/<other>/index.ts                       лише public API, без deep import
       │
       ▼
 src/config.ts · db.ts · logger.ts · queue.ts · errors.ts         не знають про modules
 src/contracts/                                                   чисті zod-схеми, без залежностей
 ```
 
-Вертикаль — дозволений напрямок залежності. Єдина стрілка вгору — від реалізацій до
-порту; будь-яка інша зворотна стрілка є помилкою архітектури, а не стильовою дрібницею.
-Правила нижче — підписи до цієї схеми.
+Вертикаль — дозволений напрямок залежності. Зворотна стрілка є помилкою архітектури, а
+не стильовою дрібницею. Правила нижче — підписи до цієї схеми.
 
 ### Backend — межі між модулями
 
@@ -87,52 +75,37 @@ src/contracts/                                                   чисті zod-
 
 ### Backend — межі всередині модуля
 
-Шари існують, але виражені **суфіксами файлів**, а не каталогами: модуль — це одна
-папка, і поки в ній менше десятка файлів, вкладеність лише заважає читати.
+Три шари, виражені **суфіксом імені класу**, а не каталогами: модуль — це одна папка, і
+поки в ній менше десятка файлів, вкладеність лише заважає читати.
 
-4. Доменні типи й порти (`*.port.ts`) не мають I/O: без `pg`, `typeorm`, `fastify`,
-   `argon2`, `jose`, `@aws-sdk`, `@anthropic-ai/sdk`.
-5. `*.use-case.ts` залежить від портів, а не від реалізацій. Імпорт `*.repository.ts`,
-   `*.adapter.ts` або `*.entity.ts` з use-case — помилка.
-6. `*.routes.ts` — валідація вхідних даних, авторизація, мапінг у DTO з `@contracts`.
-   Бізнес-логіки в роутах немає.
-7. Реалізації інстанціює тільки composition root — `src/api.ts` (HTTP-процес),
-   `src/worker.ts` (обробник черги) і скрипти в `db/` (процес міграцій).
-   Виняток один: `*.spec.ts` тестує адаптер напряму.
-8. Коли в модулі стає тісно (умовно понад 10 файлів) — розкладаємо його на підпапки.
+4. `*Controller.ts` — HTTP: zod-валідація вхідних даних, авторизація, куки, мапінг
+   доменних обʼєктів у DTO з `@contracts`. Бізнес-логіки немає; репозиторій контролер не
+   бачить взагалі — тільки сервіс.
+5. `*Service.ts` — бізнес-логіка. Тримає репозиторії напряму, про HTTP не знає:
+   ні `fastify`, ні куки, ні DTO сюди не потрапляють.
+6. `*Repository.ts` і entity-класи — єдине місце, де згадуються `typeorm` і `pg`.
+   Сервіс, який будує QueryBuilder, поглинув шар під собою; контролер, який це робить, —
+   два.
+7. Залежності передаються конструктором, а створює їх тільки composition root —
+   `src/api.ts` (HTTP-процес), `src/worker.ts` (обробник черги) і скрипти в `db/`
+   (процес міграцій). Виняток один: `*.spec.ts` створює клас напряму.
+8. Тестові двійники — підкласи справжніх класів з `override`, оголошені в тому ж
+   `*.spec.ts`. Окремих файлів з фейками не заводимо: двійник, який живе окремо від
+   тесту, поступово починає описувати власну семантику замість чужої, і тест починає
+   перевіряти його, а не код.
+9. Коли в модулі стає тісно (умовно понад 10 файлів) — розкладаємо його на підпапки.
    Не раніше.
 
 ### Frontend
 
-Дотримуємось [офіційного style guide Angular](https://angular.dev/style-guide).
-
-9. Групуємо **за фічею**, а не за типом коду. Каталогів `components/`, `services/`,
-   `directives/`, `pipes/`, `utils/`, `ui/`, `data-access/` не створюємо — це прямий
-   анти-патерн з гайду.
-10. Каталогів `core/` і `shared/` немає. Синглтони — це `providedIn: 'root'` у файлі
-    поруч з фічею, якій вони належать; NgModule-епоха, що породила `core/`, закінчилась.
-11. Фічі не імпортують одна одну. Коли щось знадобилось двом фічам — виносимо у файл
-    з конкретним іменем на рівні `app/` (напр. `app/confirm-dialog.ts`), а не в `shared/`.
-12. Типи запитів/відповідей беруться з `@contracts`. Дублювати інтерфейси DTO у web —
-    заборонено.
-13. Конфіг фронту — `@environments/environment`. Каталог лежить у застосунку
-    (`apps/web/src/environments/`), як і вимагає `ng generate environments`;
-    спільного на весь монорепо не буває — `fileReplacements` є механізмом білдера
-    Angular, а `apps/api` не збирається взагалі й читає `process.env`.
-    Angular підміняє файл при збірці
-    (`fileReplacements` в `angular.json`): `environment.ts` — production,
-    `environment.development.ts` — dev. Тримаємо там мінімум (`production`,
-    `apiBaseUrl`); секретів у ньому не буває — все, що потрапляє в бандл, публічне.
-    `environment.development.ts` у git не потрапляє, тому на чистому клоні його
-    створюють вручну — зразок у README. `apiBaseUrl` дорівнює `/api` в обох
-    оточеннях: у dev `ng serve` проксує `/api` на контейнер `api`
-    (`proxy.conf.json`), тож origin один і CORS не потрібен ніде.
+Правила 10–14 — у `apps/web/CLAUDE.md`: вони потрібні лише під час роботи з
+`apps/web/` і підвантажуються разом із файлами застосунку.
 
 Правила перевіряються автоматично — окремою командою на застосунок, бо `node_modules`
 у контейнерів різні:
 
 ```bash
-docker compose run --rm api npm run deps:check   # dependency-cruiser по glob-ах імен файлів
+docker compose run --rm api npm run deps:check   # dependency-cruiser по glob-ах імен класів
 docker compose run --rm web npm run lint         # ESLint-межі між фічами
 ```
 
@@ -142,16 +115,18 @@ PR з порушенням не мержиться.
 
 - **Мова.** Код, ідентифікатори, коміти, ADR — англійською. Тексти UI та
   згенерований AI контент — українською.
-- **Іменування файлів.** kebab-case, ім'я файлу = ім'я класу в ньому.
-  Angular (style guide 20+): **без** суфіксів `.component.ts` / `.service.ts` —
-  клас `ProductCatalog` лежить у `product-catalog.ts`, `ProductsApi` — у
+- **Іменування файлів.** Ім'я файлу = ім'я того, що він експортує.
+  Angular (style guide 20+): kebab-case і **без** суфіксів `.component.ts` /
+  `.service.ts` — клас `ProductCatalog` лежить у `product-catalog.ts`, `ProductsApi` — у
   `products-api.ts`, `authGuard` — у `auth-guard.ts`. Шаблон і стилі — поруч:
-  `product-catalog.html`, `product-catalog.css`. Тести — `*.spec.ts`.
-  Backend, навпаки, суфікси має, бо саме вони несуть межі шарів:
-  `.use-case.ts`, `.port.ts`, `.repository.ts`, `.adapter.ts`, `.entity.ts`,
-  `.routes.ts`. `.entity.ts` — ORM-мапінг: інфраструктура на одному щаблі з
-  репозиторієм, а не доменний тип. `.fixtures.ts` — тестові дублери портів;
-  імпортувати їх можна тільки з `*.spec.ts`.
+  `product-catalog.html`, `product-catalog.css`.
+  Backend — PascalCase, бо файл експортує однойменний клас: `ProductController.ts`,
+  `ProductService.ts`, `ProductRepository.ts`, `Product.ts`. Межу шару несе суфікс
+  **класу**, тож окремого суфікса у файлі не потрібно. Технічні модулі класів не
+  експортують і лишаються в нижньому регістрі: `config.ts`, `db.ts`, `logger.ts`,
+  `errors.ts`, `index.ts`. Виняток — `AuthErrors.ts`: доменні помилки модуля дрібні,
+  ходять разом і лежать в одному файлі.
+  Тести — `*.spec.ts` поруч з тим, що тестують: `ProductService.spec.ts`.
   Міграції — виняток: `1787734800000-create-users-table.ts`, бо TypeORM визначає
   порядок за timestamp'ом у кінці **імені класу**, і в імені файлу він стоїть
   першим, щоб порядок було видно і в `ls`.
@@ -159,14 +134,18 @@ PR з порушенням не мержиться.
   через яку його бачать інші модулі. Інших barrel-файлів не робимо; на фронті
   `index.ts` не потрібен зовсім.
 - **TypeScript.** `strict: true`, `noUncheckedIndexedAccess`, без `any`,
-  без `export default` (крім Angular-конфігів). ESM; в імпортах на бекенді пишемо
-  розширення **`.ts`**.
-- **Erasable syntax (бекенд).** Оскільки типи стираються, а не компілюються, синтаксис
-  має бути стираним: **без** `enum` (замість нього union або `const` об'єкт), **без**
-  parameter properties у конструкторах (`constructor(private x: X)`), **без**
-  `namespace`. Вмикається прапорцем `erasableSyntaxOnly` — порушення ловить `tsc`.
-  На фронті обмеження не діє: Angular компілюється своїм білдером.
-- **Валідація.** Кожен вхідний payload валідується zod-схемою на межі — у `*.routes.ts`.
+  без `export default` (крім Angular-конфігів). Без `enum` і `namespace` — union чи
+  `const`-обʼєкт і звичайні модулі роблять те саме, не заводячи власної рантайм-форми.
+  ESM; в імпортах на бекенді пишемо розширення **`.ts`**.
+- **Збірка бекенду.** `apps/api` компілюється `tsc` у `dist/`, звідки Node його й
+  запускає. Причина одна і не стильова: `@Entity`/`@Column` — декоратори, а Node їх не
+  трансформує, лише стирає типи. Разом зі збіркою повертаються parameter properties
+  (`constructor(private readonly x: X)`), якими описані залежності класів. В імпортах
+  далі пишемо `.ts` — `rewriteRelativeImportExtensions` замінює розширення на `.js` при
+  емісії, тож ті самі файли `contracts/` читає й Angular. Стектрейси показують рядки
+  `.ts` завдяки `--enable-source-maps`. Деталі —
+  [ADR 0003](docs/adr/0003-three-layer-classes.md).
+- **Валідація.** Кожен вхідний payload валідується zod-схемою на межі — у `*Controller.ts`.
   Схеми живуть у `apps/api/src/contracts/`: бекенд валідує ними вхідні дані, фронт
   імпортує з них типи через alias `@contracts/*`. Окремого npm-пакета під це немає —
   контракти належать API, який їх і виконує.
@@ -184,7 +163,11 @@ PR з порушенням не мержиться.
   для користувача формує фронт за полем `code` (`src/contracts/error.contract.ts`).
 - **БД.** Snake_case в SQL, camelCase у TS. Зміни схеми — тільки міграцією в
   `apps/api/db/migrations`. Ручний DDL на проді заборонено.
-- **Гроші.** Ціни — `numeric(12,2)` у БД, цілі копійки в коді. Ніяких `float`.
+- **Гроші.** Ціни — `decimal(12,2)` у БД і десятковий рядок у коді (`"2499.00"`).
+  Значення, яке віддав драйвер, доходить до браузера без жодного перетворення:
+  ні `transformer` на колонці, ні конвертера в репозиторії, ні копійок як окремої
+  одиниці. Ніяких `float`. Єдине округлення виконує сама колонка, і воно видиме
+  у результаті. Формат для показу (`Intl.NumberFormat`) — на клієнті.
 - **Час.** `timestamptz`, UTC у БД, форматування — на клієнті.
 - **Логи.** pino, JSON, structured. У логи не потрапляють: паролі, токени сесій,
   ключі R2/Anthropic, повні тіла зображень.
@@ -204,48 +187,15 @@ PR з порушенням не мержиться.
   з'являються ніколи.
 - **Коміти.** Conventional Commits: `feat(products): ...`, `fix(media): ...`.
 
-## Правила роботи з авторизацією
+## Правила модулів
 
-Обґрунтування — [ADR 0002](docs/adr/0002-auth-jwt-and-typeorm.md).
+Правила, специфічні для модуля, лежать поруч із ним і підвантажуються, щойно
+Claude торкається його файлів:
 
-- Сесія — JWT (HS256, `jose`) у cookie `HttpOnly; SameSite=Strict; Secure` у проді.
-  Ні `Authorization: Bearer`, ні localStorage: SPA і API живуть на одному домені,
-  тож токен не має причин бути доступним для JavaScript.
-- Прапорець «запам'ятати мене» керує **cookie**, а не логікою: без нього вона
-  сесійна, з ним отримує `Max-Age`. TTL — константи в `config.ts`.
-- Logout справді відкликає токени: зсуває `users.tokens_valid_from` у «зараз».
-  Перевірка сесії читає користувача з БД, тому деактивація акаунта діє негайно.
-- Паролі — argon2id з параметрами з `config.ts`. Ті самі параметри використовує
-  міграція першого користувача: інакше перший вхід відрізнявся б за часом.
-- Для невідомого email пароль усе одно звіряється з `decoyHash`. Це не
-  надмірність: без цього тривалість відповіді сама стає оракулом існування email.
-- Відповідь на невдалий вхід однакова для «немає такого email» і «пароль не
-  підійшов» — код `invalid_credentials`.
-- TypeORM бачать рівно два файли модуля: `user.entity.ts` і `user.repository.ts`.
-  Сутності описуються `EntitySchema`, а не декораторами — декоратори не стираються.
-
-## Правила роботи з AI-модулем
-
-- Модель — `claude-opus-5`, константа в `src/config.ts`. Не env-змінна: заміна моделі
-  змінює якість генерації, формат відповіді й собівартість картки, тому має проходити
-  через коміт і рев'ю, а не через рестарт контейнера з іншим значенням.
-- **Оптимізація перед відправкою.** Зображення до AI йде через sharp: довша сторона
-  ≤ 1568 px, JPEG q80, sRGB, EXIF вирізано (константи в `src/config.ts`). Це свідоме
-  зменшення рахунку, а не ліміт моделі: `claude-opus-5` приймає до 2576 px по довшій
-  стороні (до ~4784 візуальних токенів на кадр). Фото товару такої деталізації не
-  потребує; якщо розпізнавання почне помилятись — межу піднімаємо, попередньо
-  перемірявши вартість через `count_tokens`.
-- На розпізнавання відправляємо максимум 3 кадри (константа), а не всю галерею. Додаткові фото завантажуються **без** AI.
-- **Без зайвого форматування.** Відповідь запитуємо через structured outputs
-  (`output_config.format` з JSON-схемою) і зберігаємо як plain text. Markdown,
-  емодзі, обгортки «Ось ваш опис:» — не генеруємо і не парсимо.
-- Пошук ринкових цін — server tool `web_search_20260209` з `user_location` = UA;
-  повертаємо діапазон + посилання на джерела, ціну не вигадуємо.
-- Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`
-  не використовуємо — параметр видалено на цій моделі.
-- Кожен виклик логує `usage` (input/output/cache токени) в `ai_generations` —
-  без цього неможливо рахувати собівартість картки.
-- Виклики AI виконуються **тільки у worker** через чергу. HTTP-запит не чекає на AI.
+- `apps/api/src/modules/auth/CLAUDE.md` — сесія, JWT, argon2id, відкликання токенів.
+- `apps/api/src/modules/ai/CLAUDE.md` — модель, оптимізація зображень, structured
+  outputs, облік `usage`.
+- `apps/web/CLAUDE.md` — правила 10–14 фронтенду.
 
 ## Команди
 
@@ -262,9 +212,10 @@ docker compose restart worker
 docker compose ps
 
 # Разові команди — через контейнер. --no-deps не піднімає postgres там, де він не потрібен.
-docker compose run --rm --no-deps api npm run typecheck   # tsc --noEmit, збірки немає
+docker compose run --rm --no-deps api npm run build       # tsc → dist/
+docker compose run --rm --no-deps api npm run typecheck   # tsc --noEmit, без емісії
 docker compose run --rm --no-deps api npm run lint
-docker compose run --rm --no-deps api npm run test        # node --test, *.spec.ts поруч з кодом
+docker compose run --rm api npm run test                  # tsc + node --test; потребує Postgres
 docker compose run --rm --no-deps api npm run deps:check
 docker compose run --rm --no-deps api npm run format
 docker compose run --rm --no-deps web npm run lint        # ESLint, зокрема межі між фічами
@@ -279,12 +230,23 @@ docker compose build api
 docker compose run --rm api npm run db:create           # ідемпотентно створює mouse_trading
 docker compose run --rm api npm run db:migrate
 docker compose run --rm api npm run db:migrate:revert
-docker compose run --rm api npm run db:migrate:new -- <name>
+docker compose run --rm api npm run db:migrate:new -- <name>   # + запис у db/migrations-list.ts
 docker compose exec postgres psql -U $POSTGRES_USER postgres
 
 # Angular CLI
 docker compose run --rm --no-deps web npx ng generate component products/product-catalog
 ```
+
+`npm run test` — єдина команда без `--no-deps`: репозиторії, конвертери цін і
+обмеження схеми перевіряються на справжньому Postgres. Тестова база — двійник
+`DATABASE_URL` із суфіксом `_test`; окремої env-змінної під неї немає, створює
+й мігрує її сам прогін (`db/test-database.ts`). Порядок міграцій живе в
+`db/migrations-list.ts`, і `db:migrate:new` дописує туди новий клас сам.
+
+`test` і `dev` запускають `tsc` самі, тому окремо викликати `build` перед ними не
+потрібно. Решта команд працює з `dist/`, який лишається від попередньої збірки:
+`db:migrate` на чистому клоні виконують після `npm run build` (або через
+`docker compose run --rm migrate`, який збирає сам).
 
 Повний перелік команд (бекап, черга, `down -v`, `ng build`) — у README.
 

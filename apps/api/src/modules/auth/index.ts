@@ -2,31 +2,27 @@
  * Public API of the auth module. Other modules see it through this file only —
  * deep imports are forbidden and dependency-cruiser enforces that.
  */
-export type { User } from './user.ts';
-export { toAuthUser } from './user.ts';
-
+export { User, USERS_TABLE } from './User.ts';
+export { UserRepository } from './UserRepository.ts';
+export { PasswordHasher } from './PasswordHasher.ts';
+export { SessionTokens } from './SessionTokens.ts';
 export type {
-  Clock,
-  PasswordHasher,
+  IssuedToken,
+  IssueTokenInput,
   SessionClaims,
-  SessionTokens,
-  UserRepository,
-} from './auth.port.ts';
-export { systemClock } from './auth.port.ts';
+  SessionTokensConfig,
+} from './SessionTokens.ts';
+export { SystemClock } from './SystemClock.ts';
 
-export { InvalidCredentials, NotAuthenticated, UserDeactivated } from './auth.errors.ts';
+export { InvalidCredentials, NotAuthenticated, UserDeactivated } from './AuthErrors.ts';
 
-export type { Authenticate, AuthenticatedSession } from './authenticate.use-case.ts';
-export { createAuthenticate } from './authenticate.use-case.ts';
-export type { Login, LoginInput, LoginOutput } from './login.use-case.ts';
-export { createLogin } from './login.use-case.ts';
-export type { Logout } from './logout.use-case.ts';
-export { createLogout } from './logout.use-case.ts';
+export { AuthService } from './AuthService.ts';
+export type {
+  AuthenticatedSession,
+  AuthServiceConfig,
+  LoginInput,
+  LoginOutput,
+} from './AuthService.ts';
 
-export { UserEntity, USERS_TABLE } from './user.entity.ts';
-export { createUserRepository } from './user.repository.ts';
-export { createPasswordHasher } from './password-hasher.adapter.ts';
-export { createSessionTokens } from './session-token.adapter.ts';
-
-export type { AuthRoutesDependencies, SessionCookieConfig } from './auth.routes.ts';
-export { createAuthRoutes, createSessionGuard } from './auth.routes.ts';
+export { AuthController } from './AuthController.ts';
+export type { LoginRateLimit, SessionCookieConfig } from './AuthController.ts';

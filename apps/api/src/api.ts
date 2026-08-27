@@ -9,27 +9,25 @@ import { createDataSource } from './db.ts';
 import { isAppError } from './errors.ts';
 import { logger } from './logger.ts';
 import {
-  createAuthenticate,
-  createAuthRoutes,
-  createLogin,
-  createLogout,
-  createPasswordHasher,
-  createSessionTokens,
-  createUserRepository,
-  systemClock,
-  UserEntity,
+  AuthController,
+  AuthService,
+  PasswordHasher,
+  SessionTokens,
+  SystemClock,
+  User,
+  UserRepository,
 } from './modules/auth/index.ts';
 import {
-  createListProducts,
-  createProductRepository,
-  createProductsRoutes,
-  ProductEntity,
-  ProductImageEntity,
+  Product,
+  ProductController,
+  ProductImage,
+  ProductRepository,
+  ProductService,
 } from './modules/products/index.ts';
 
 /**
- * Composition root of the HTTP process. Port implementations are created only here and
- * wired to the use-cases; everything deeper receives ready-made functions.
+ * Composition root of the HTTP process. Repositories, services and controllers are
+ * created only here; every layer below receives its collaborators through a constructor.
  */
 
 /** The single HTTP error mapping. Stack traces and 5xx messages never leave the process. */
@@ -85,33 +83,37 @@ function createApp() {
 export type ApiServer = ReturnType<typeof createApp>;
 
 export async function buildServer(): Promise<ApiServer> {
-  const dataSource = createDataSource({
-    entities: [UserEntity, ProductEntity, ProductImageEntity],
-  });
+  const dataSource = createDataSource({ entities: [User, Product, ProductImage] });
   await dataSource.initialize();
 
-  const users = createUserRepository(dataSource);
-  const passwordHasher = createPasswordHasher();
-  const sessionTokens = createSessionTokens({
-    secret: env.JWT_SECRET,
-    issuer: config.session.issuer,
-    audience: config.session.audience,
-    algorithm: config.session.algorithm,
-  });
+  const authService = new AuthService(
+    new UserRepository(dataSource),
+    new PasswordHasher(),
+    new SessionTokens({
+      secret: env.JWT_SECRET,
+      issuer: config.session.issuer,
+      audience: config.session.audience,
+      algorithm: config.session.algorithm,
+    }),
+    new SystemClock(),
+    {
+      ttlSeconds: config.session.ttlSeconds,
+      rememberMeTtlSeconds: config.session.rememberMeTtlSeconds,
+    },
+  );
+  const authController = new AuthController(
+    authService,
+    {
+      name: config.session.cookieName,
+      path: config.session.cookiePath,
+      secure: isProduction,
+    },
+    config.rateLimit.login,
+  );
 
-  const login = createLogin({
-    users,
-    passwordHasher,
-    sessionTokens,
-    clock: systemClock,
-    ttlSeconds: config.session.ttlSeconds,
-    rememberMeTtlSeconds: config.session.rememberMeTtlSeconds,
-  });
-  const logout = createLogout({ users, clock: systemClock });
-  const authenticate = createAuthenticate({ users, sessionTokens });
-
-  const products = createProductRepository(dataSource);
-  const listProducts = createListProducts({ products });
+  const productController = new ProductController(
+    new ProductService(new ProductRepository(dataSource)),
+  );
 
   const app = createApp();
 
@@ -142,26 +144,18 @@ export async function buildServer(): Promise<ApiServer> {
   });
 
   await app.register(
-    createAuthRoutes({
-      login,
-      logout,
-      authenticate,
-      cookie: {
-        name: config.session.cookieName,
-        path: config.session.cookiePath,
-        secure: isProduction,
-      },
-      loginRateLimit: config.rateLimit.login,
-    }),
+    async (instance) => {
+      authController.register(instance);
+    },
     { prefix: '/auth' },
   );
 
+  // One guard for every protected route in every module: the cookie name is known to the
+  // auth controller and nowhere else, so a new module gets the check by receiving it.
   await app.register(
-    createProductsRoutes({
-      listProducts,
-      authenticate,
-      sessionCookieName: config.session.cookieName,
-    }),
+    async (instance) => {
+      productController.register(instance, authController.sessionGuard);
+    },
     { prefix: '/products' },
   );
 

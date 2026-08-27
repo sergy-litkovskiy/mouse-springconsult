@@ -3,7 +3,7 @@ import { authConstraints } from './auth-limits.ts';
 
 /**
  * Contracts of the auth module. The backend validates incoming payloads with them in
- * `auth.routes.ts`, the frontend imports types via the `@contracts/*` alias — one description.
+ * `AuthController.ts`, the frontend imports types via the `@contracts/*` alias — one description.
  */
 export const loginRequestSchema = z.object({
   email: z

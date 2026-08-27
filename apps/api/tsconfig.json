@@ -6,10 +6,25 @@
     "moduleResolution": "nodenext",
     "types": ["node"],
 
-    /* The backend is not built: Node 26 strips types and runs .ts directly. */
-    "noEmit": true,
+    /*
+     * The backend is compiled by tsc. TypeORM entities are described with decorators, and
+     * Node strips types but does not transform decorators — see docs/adr/0003. `outDir`
+     * mirrors the tree, so `src/api.ts` becomes `dist/src/api.js`.
+     */
+    "outDir": "./dist",
+    "rootDir": ".",
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    /* Imports keep the .ts extension in source; tsc rewrites them to .js on emit. */
     "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
+    /*
+     * Fields declared without an initializer must not be defined as `undefined` on the
+     * instance: TypeORM assigns them itself, and a own property that already exists makes
+     * a loaded entity indistinguishable from an empty one.
+     */
+    "useDefineForClassFields": false,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
 
@@ -22,5 +37,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "db/**/*.ts"]
+  "include": ["src/**/*.ts", "db/**/*.ts"],
+  "exclude": ["dist"]
 }

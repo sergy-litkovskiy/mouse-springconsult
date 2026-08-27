@@ -25,7 +25,7 @@ const MOUSE: Product = {
   descriptionProm: 'Бездротова миша у відмінному стані.',
   titleOlx: 'Logitech MX Master 3 бездротова',
   descriptionOlx: 'Продам мишу, повний комплект.',
-  priceCents: 249_900,
+  price: '2499.00',
   seoKeywords: ['миша', 'logitech'],
   category: 'Периферія',
   published: true,
@@ -46,7 +46,7 @@ const KEYBOARD: Product = {
   id: '22222222-2222-4222-8222-222222222222',
   titleProm: 'Клавіатура Keychron K2',
   titleOlx: 'Keychron K2 механічна',
-  priceCents: 320_000,
+  price: '3200.00',
   published: false,
   accountProm: null,
   accountOlx: null,
@@ -170,11 +170,11 @@ describe('ProductCatalog', () => {
 
     const request = expectRequest();
     expect(request.request.params.get('title')).toBe('миша');
-    // Hryvnias in the form, kopiykas in the contract.
-    expect(request.request.params.get('priceMinCents')).toBe('100000');
+    // The price travels as the decimal the admin typed; nothing rescales it on the way.
+    expect(request.request.params.get('priceMin')).toBe('1000');
     expect(request.request.params.get('page')).toBe('1');
     expect(request.request.params.has('description')).toBe(false);
-    expect(request.request.params.has('priceMaxCents')).toBe(false);
+    expect(request.request.params.has('priceMax')).toBe(false);
 
     request.flush({ ...PAGE, items: [MOUSE], total: 1 });
     await settle();
