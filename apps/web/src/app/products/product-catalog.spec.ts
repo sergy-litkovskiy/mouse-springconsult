@@ -4,8 +4,10 @@ import {
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
-import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import type { Product, ProductList } from '@contracts/products.contract';
 import { ProductCatalog } from './product-catalog';
 
@@ -57,19 +59,38 @@ const KEYBOARD: Product = {
 const PAGE: ProductList = { items: [MOUSE, KEYBOARD], total: 2, page: 1, pageSize: 20 };
 
 describe('ProductCatalog', () => {
-  let fixture: ComponentFixture<ProductCatalog>;
+  let harness: RouterTestingHarness;
   let http: HttpTestingController;
   let element: HTMLElement;
 
   /**
-   * Loading is asynchronous, so a single whenStable() is not enough: the microtask queue
-   * has to drain before the table reflects the response.
+   * The table is opened through the router, not built by hand: its whole state arrives as
+   * query parameters, so a test that skips the router tests a component nobody runs.
    */
+  async function open(url = '/products'): Promise<void> {
+    harness = await RouterTestingHarness.create(url);
+    element = harness.routeNativeElement!;
+    await tick();
+  }
+
+  /**
+   * Drains the microtask queue and repaints — a navigation, the inputs the router fills from
+   * it and the request the resource makes of them are three separate turns. `whenStable()`
+   * has no place here: a resource holds a pending task while it loads, so waiting for
+   * stability before the answer is flushed waits for something this test is about to do.
+   */
+  async function tick(): Promise<void> {
+    for (let round = 0; round < 2; round += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      harness.detectChanges();
+    }
+  }
+
+  /** Once the answer has been flushed there is nothing left in flight to wait for. */
   async function settle(): Promise<void> {
-    await fixture.whenStable();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await tick();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
   }
 
   function expectRequest(): TestRequest {
@@ -90,22 +111,27 @@ describe('ProductCatalog', () => {
     element.querySelector('form')?.dispatchEvent(new Event('submit'));
   }
 
-  beforeEach(async () => {
+  beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [ProductCatalog],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter(
+          [{ path: 'products', component: ProductCatalog }],
+          withComponentInputBinding(),
+        ),
+      ],
     });
-    fixture = TestBed.createComponent(ProductCatalog);
     http = TestBed.inject(HttpTestingController);
-    element = fixture.nativeElement as HTMLElement;
-    await fixture.whenStable();
   });
 
   afterEach(() => {
-    http.verify();
+    // A request the resource dropped on purpose is not a request anyone forgot.
+    http.verify({ ignoreCancelled: true });
   });
 
   it('asks for the first page with the default ordering', async () => {
+    await open();
     const request = expectRequest();
 
     expect(request.request.params.get('page')).toBe('1');
@@ -119,7 +145,40 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
+  it('takes the whole state of the table out of the address bar', async () => {
+    await open('/products?page=2&pageSize=10&sort=price&direction=desc&title=миша&published=false');
+    const request = expectRequest();
+
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('pageSize')).toBe('10');
+    expect(request.request.params.get('sort')).toBe('price');
+    expect(request.request.params.get('direction')).toBe('desc');
+    expect(request.request.params.get('title')).toBe('миша');
+    expect(request.request.params.get('published')).toBe('false');
+
+    request.flush({ ...PAGE, page: 2, pageSize: 10 });
+    await settle();
+
+    // The filters show what the rows underneath them were selected by.
+    const title = element.querySelector<HTMLInputElement>('input[formcontrolname="title"]');
+    expect(title?.value).toBe('миша');
+  });
+
+  it('falls back to the defaults for a query string that was typed by hand', async () => {
+    await open('/products?page=nonsense&pageSize=9999&sort=category&direction=sideways');
+    const request = expectRequest();
+
+    expect(request.request.params.get('page')).toBe('1');
+    expect(request.request.params.get('pageSize')).toBe('20');
+    expect(request.request.params.get('sort')).toBe('titleProm');
+    expect(request.request.params.get('direction')).toBe('asc');
+
+    request.flush(PAGE);
+    await settle();
+  });
+
   it('renders a row per product with the price and the condition in Ukrainian', async () => {
+    await open();
     expectRequest().flush(PAGE);
     await settle();
 
@@ -133,10 +192,11 @@ describe('ProductCatalog', () => {
   });
 
   it('shows the main frame as the thumbnail and the total number of images beside it', async () => {
+    await open();
     expectRequest().flush(PAGE);
     await settle();
 
-    const thumbnails = element.querySelectorAll<HTMLImageElement>('.gallery-cell__thumb');
+    const thumbnails = element.querySelectorAll<HTMLImageElement>('.gallery-cell__thumb img');
     // The main image is second in the array — the thumbnail follows isMain, not position.
     expect(thumbnails[0]?.src).toContain('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 
@@ -148,6 +208,7 @@ describe('ProductCatalog', () => {
   });
 
   it('opens the gallery dialog when the image count is clicked', async () => {
+    await open();
     expectRequest().flush(PAGE);
     await settle();
 
@@ -159,19 +220,24 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('sends only the filters that were filled in and returns to the first page', async () => {
+  it('writes the applied filters into the URL and returns to the first page', async () => {
+    await open('/products?page=2');
     expectRequest().flush({ ...PAGE, page: 2 });
     await settle();
 
     type('title', '  миша  ');
-    type('priceMin', '1000');
+    type('priceMin', '1000.50');
     submitFilters();
-    await settle();
+    await tick();
+
+    const url = TestBed.inject(Router).url;
+    expect(url).toContain('priceMin=1000.50');
+    expect(url).not.toContain('page=');
 
     const request = expectRequest();
     expect(request.request.params.get('title')).toBe('миша');
     // The price travels as the decimal the admin typed; nothing rescales it on the way.
-    expect(request.request.params.get('priceMin')).toBe('1000');
+    expect(request.request.params.get('priceMin')).toBe('1000.50');
     expect(request.request.params.get('page')).toBe('1');
     expect(request.request.params.has('description')).toBe(false);
     expect(request.request.params.has('priceMax')).toBe(false);
@@ -182,13 +248,58 @@ describe('ProductCatalog', () => {
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(1);
   });
 
+  it('refuses a price the contract would reject instead of asking the server', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    type('priceMin', '1000.555');
+    submitFilters();
+    await tick();
+
+    http.expectNone((request) => request.url === '/api/products');
+    expect(element.textContent).toContain('Ціна виглядає як');
+  });
+
+  it('refuses an upper bound below the lower one', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    type('priceMin', '5000.00');
+    type('priceMax', '1000.00');
+    submitFilters();
+    await tick();
+
+    http.expectNone((request) => request.url === '/api/products');
+    expect(element.textContent).toContain('не може бути меншою');
+  });
+
+  it('abandons the page in flight instead of letting two answers race', async () => {
+    await open();
+    const first = expectRequest();
+
+    await harness.navigateByUrl('/products?page=3');
+    await tick();
+
+    expect(first.cancelled).toBe(true);
+
+    const second = expectRequest();
+    expect(second.request.params.get('page')).toBe('3');
+    second.flush({ ...PAGE, page: 3 });
+    await settle();
+
+    expect(element.querySelectorAll('tr[mat-row]').length).toBe(2);
+  });
+
   it('reports a failure instead of leaving stale rows on screen', async () => {
+    await open();
     expectRequest().flush(PAGE);
     await settle();
 
     type('title', 'нічого');
     submitFilters();
-    await settle();
+    await tick();
 
     expectRequest().flush(
       { error: { code: 'not_authenticated', message: 'Authentication required' } },

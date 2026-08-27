@@ -1,7 +1,6 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -12,8 +11,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
 import { authConstraints } from '@contracts/auth-limits';
 import { apiErrorCodes } from '@contracts/error-codes';
-import type { ApiError } from '@contracts/error.contract';
+import { apiErrorMessage } from '../api-error-message';
 import { AuthStore } from './auth-store';
+import { safeReturnUrl } from './safe-return-url';
 
 /**
  * Sign-in form. The texts are Ukrainian with no translation layer: the admin panel is
@@ -28,7 +28,6 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.validationFailed]: 'Перевірте правильність заповнення полів.',
 };
 
-const NETWORK_ERROR_MESSAGE = 'Немає зв’язку із сервером. Перевірте мережу і спробуйте ще раз.';
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося увійти. Спробуйте ще раз.';
 
 /** The error the server pins on both fields: hinting which one is wrong is not allowed. */
@@ -53,22 +52,37 @@ const CREDENTIALS_ERROR = { credentials: true } as const;
 export class LoginPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly formBuilder = inject(FormBuilder);
+
+  /**
+   * Where the admin was heading before the guard sent them here. The router fills this in
+   * from the query string (`withComponentInputBinding`), so the deep link a bookmark pointed
+   * at survives the detour instead of being replaced by a fixed landing page.
+   */
+  readonly returnUrl = input<string>();
 
   protected readonly submitting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly passwordVisible = signal(false);
   protected readonly passwordMinLength = authConstraints.passwordMinLength;
+  protected readonly passwordMaxLength = authConstraints.passwordMaxLength;
+  protected readonly emailMaxLength = authConstraints.emailMaxLength;
 
-  protected readonly form = new FormGroup({
-    email: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.email],
-    }),
-    password: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.minLength(authConstraints.passwordMinLength)],
-    }),
-    rememberMe: new FormControl(false, { nonNullable: true }),
+  /** The limits are the contract's own, imported rather than restated next to the inputs. */
+  protected readonly form = this.formBuilder.nonNullable.group({
+    email: [
+      '',
+      [Validators.required, Validators.email, Validators.maxLength(authConstraints.emailMaxLength)],
+    ],
+    password: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(authConstraints.passwordMinLength),
+        Validators.maxLength(authConstraints.passwordMaxLength),
+      ],
+    ],
+    rememberMe: [false],
   });
 
   constructor() {
@@ -101,7 +115,7 @@ export class LoginPage {
 
     try {
       await this.auth.login(this.form.getRawValue());
-      await this.router.navigate(['/welcome']);
+      await this.router.navigateByUrl(safeReturnUrl(this.returnUrl()));
     } catch (error: unknown) {
       this.showFailure(error);
     } finally {
@@ -110,7 +124,7 @@ export class LoginPage {
   }
 
   private showFailure(error: unknown): void {
-    this.formError.set(toMessage(error));
+    this.formError.set(apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE));
     this.form.controls.email.setErrors(CREDENTIALS_ERROR);
     this.form.controls.password.setErrors(CREDENTIALS_ERROR);
     this.form.controls.email.markAsTouched();
@@ -124,16 +138,4 @@ export class LoginPage {
       }
     }
   }
-}
-
-function toMessage(error: unknown): string {
-  if (!(error instanceof HttpErrorResponse)) {
-    return UNKNOWN_ERROR_MESSAGE;
-  }
-  if (error.status === 0) {
-    return NETWORK_ERROR_MESSAGE;
-  }
-
-  const code = (error.error as ApiError | null)?.error.code;
-  return (code === undefined ? undefined : ERROR_MESSAGES[code]) ?? UNKNOWN_ERROR_MESSAGE;
 }

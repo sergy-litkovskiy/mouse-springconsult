@@ -21,6 +21,12 @@ const SESSION = {
 describe('authGuard', () => {
   let http: HttpTestingController;
 
+  function activate(url: string): Promise<boolean | UrlTree> {
+    return TestBed.runInInjectionContext(() =>
+      authGuard({} as ActivatedRouteSnapshot, { url } as RouterStateSnapshot),
+    ) as Promise<boolean | UrlTree>;
+  }
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -33,24 +39,28 @@ describe('authGuard', () => {
   });
 
   it('lets a route through when a session exists', async () => {
-    const result = TestBed.runInInjectionContext(() =>
-      authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
-    ) as Promise<boolean | UrlTree>;
+    const result = activate('/products');
 
     http.expectOne('/api/auth/me').flush(SESSION);
 
     expect(await result).toBe(true);
   });
 
-  it('redirects to /login when there is no session', async () => {
-    const result = TestBed.runInInjectionContext(() =>
-      authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
-    ) as Promise<boolean | UrlTree>;
+  it('redirects to /login and remembers where the admin was heading', async () => {
+    const result = activate('/products?page=3');
 
     http.expectOne('/api/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     const resolved = await result;
     expect(resolved).toBeInstanceOf(UrlTree);
-    expect(String(resolved)).toBe('/login');
+    expect(String(resolved)).toBe('/login?returnUrl=%2Fproducts%3Fpage%3D3');
+  });
+
+  it('adds no returnUrl for the root, which is not a destination worth returning to', async () => {
+    const result = activate('/');
+
+    http.expectOne('/api/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(String(await result)).toBe('/login');
   });
 });

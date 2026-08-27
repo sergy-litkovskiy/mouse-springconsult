@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -15,7 +16,7 @@ export type ProductGalleryData = {
 
 @Component({
   selector: 'app-product-gallery-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule],
+  imports: [NgOptimizedImage, MatButtonModule, MatDialogModule, MatIconModule],
   templateUrl: './product-gallery-dialog.html',
   styleUrl: './product-gallery-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
