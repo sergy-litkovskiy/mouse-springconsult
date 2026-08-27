@@ -37,6 +37,13 @@
   padding-bottom: 22px;
 }
 
+.filters__error {
+  grid-column: 1 / -1;
+  margin: 0 0 8px;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+}
+
 .catalog__table {
   overflow: hidden;
 }
@@ -62,11 +69,18 @@
 }
 
 .gallery-cell__thumb {
+  position: relative;
+  display: block;
   width: 48px;
   height: 48px;
   border-radius: 6px;
-  object-fit: cover;
+  overflow: hidden;
   background-color: var(--mat-sys-surface-container-high);
+}
+
+/* NgOptimizedImage in `fill` mode stretches the frame; the crop is the container's business. */
+.gallery-cell__thumb img {
+  object-fit: cover;
 }
 
 .gallery-cell__thumb--empty {
@@ -82,6 +96,7 @@
 
 .catalog__error {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   margin: 16px;

@@ -7,17 +7,20 @@
   list-style: none;
 }
 
+/*
+ * The square is reserved by the container, not by the image: with `fill` the frame has no
+ * intrinsic size of its own, so the row keeps its height while the photograph is still on
+ * its way from R2 instead of collapsing and jumping.
+ */
 .gallery__item {
   position: relative;
+  aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
   background-color: var(--mat-sys-surface-container-high);
 }
 
 .gallery__image {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
   object-fit: cover;
 }
 

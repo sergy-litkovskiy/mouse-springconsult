@@ -1,0 +1,13 @@
+<mat-toolbar class="app-bar">
+  <span class="app-bar__title">mouse — адмінка товарів</span>
+  <span class="app-bar__spacer"></span>
+  @if (user(); as admin) {
+    <span class="app-bar__user">{{ admin.displayName }}</span>
+  }
+  <button matButton type="button" (click)="logout()" [disabled]="leaving()">
+    <mat-icon>logout</mat-icon>
+    {{ leaving() ? 'Виходимо…' : 'Вийти' }}
+  </button>
+</mat-toolbar>
+
+<router-outlet />

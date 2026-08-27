@@ -30,6 +30,8 @@
           />
           @if (form.controls.email.hasError('required')) {
             <mat-error>Вкажіть email.</mat-error>
+          } @else if (form.controls.email.hasError('maxlength')) {
+            <mat-error>Email довший за {{ emailMaxLength }} символів.</mat-error>
           } @else if (form.controls.email.hasError('email')) {
             <mat-error>Схоже, це не email.</mat-error>
           } @else if (form.controls.email.hasError('credentials')) {
@@ -59,6 +61,8 @@
             <mat-error>Вкажіть пароль.</mat-error>
           } @else if (form.controls.password.hasError('minlength')) {
             <mat-error>Пароль коротший за {{ passwordMinLength }} символів.</mat-error>
+          } @else if (form.controls.password.hasError('maxlength')) {
+            <mat-error>Пароль довший за {{ passwordMaxLength }} символів.</mat-error>
           } @else if (form.controls.password.hasError('credentials')) {
             <mat-error>Невірний email або пароль.</mat-error>
           }

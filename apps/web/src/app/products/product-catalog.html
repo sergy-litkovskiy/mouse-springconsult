@@ -9,26 +9,41 @@
       <mat-form-field appearance="outline">
         <mat-label>Назва</mat-label>
         <input matInput formControlName="title" placeholder="Prom або OLX" />
+        @if (filters.controls.title.hasError('maxlength')) {
+          <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Опис</mat-label>
         <input matInput formControlName="description" placeholder="Prom або OLX" />
+        @if (filters.controls.description.hasError('maxlength')) {
+          <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Ціна від, ₴</mat-label>
-        <input matInput type="number" min="0" step="0.01" formControlName="priceMin" />
+        <input matInput inputmode="decimal" formControlName="priceMin" placeholder="1000.00" />
+        @if (filters.controls.priceMin.hasError('price')) {
+          <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Ціна до, ₴</mat-label>
-        <input matInput type="number" min="0" step="0.01" formControlName="priceMax" />
+        <input matInput inputmode="decimal" formControlName="priceMax" placeholder="5000.00" />
+        @if (filters.controls.priceMax.hasError('price')) {
+          <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Категорія</mat-label>
         <input matInput formControlName="category" />
+        @if (filters.controls.category.hasError('maxlength')) {
+          <mat-error>Довше за {{ categoryMaxLength }} символів.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -43,11 +58,17 @@
       <mat-form-field appearance="outline">
         <mat-label>Акаунт Prom</mat-label>
         <input matInput formControlName="accountProm" />
+        @if (filters.controls.accountProm.hasError('maxlength')) {
+          <mat-error>Довше за {{ accountMaxLength }} символів.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Акаунт OLX</mat-label>
         <input matInput formControlName="accountOlx" />
+        @if (filters.controls.accountOlx.hasError('maxlength')) {
+          <mat-error>Довше за {{ accountMaxLength }} символів.</mat-error>
+        }
       </mat-form-field>
 
       <div class="filters__actions">
@@ -56,6 +77,11 @@
           Скинути
         </button>
       </div>
+
+      <!-- The pair is wrong, not either field on its own, so the message belongs to the form. -->
+      @if (priceRangeInvalid()) {
+        <p class="filters__error" role="alert">«Ціна до» не може бути меншою за «ціну від».</p>
+      }
     </form>
   </mat-card>
 
@@ -68,6 +94,9 @@
       <p class="catalog__error" role="alert">
         <mat-icon aria-hidden="true">error_outline</mat-icon>
         <span>{{ message }}</span>
+        <button matButton type="button" (click)="retry()" [disabled]="loading()">
+          Спробувати ще раз
+        </button>
       </p>
     }
 
@@ -77,8 +106,8 @@
         [dataSource]="products()"
         matSort
         matSortDisableClear
-        [matSortActive]="sortField()"
-        [matSortDirection]="sortDirection()"
+        [matSortActive]="sort()"
+        [matSortDirection]="direction()"
         (matSortChange)="changeSort($event)"
       >
         <ng-container matColumnDef="gallery">
@@ -86,12 +115,9 @@
           <td mat-cell *matCellDef="let product">
             <div class="gallery-cell">
               @if (mainImage(product); as image) {
-                <img
-                  class="gallery-cell__thumb"
-                  [src]="image.url"
-                  [alt]="product.titleProm"
-                  loading="lazy"
-                />
+                <span class="gallery-cell__thumb">
+                  <img [ngSrc]="image.url" fill [alt]="product.titleProm" />
+                </span>
               } @else {
                 <span class="gallery-cell__thumb gallery-cell__thumb--empty" aria-hidden="true">
                   <mat-icon>image_not_supported</mat-icon>

@@ -80,6 +80,9 @@ export default defineConfig([
                 '**/utils/**',
                 '**/services/**',
                 '**/components/**',
+                // The ban is on directories of this project, not on package entry points:
+                // `@angular/core/testing` and `@angular/core/rxjs-interop` are neither.
+                '!@angular/**',
               ],
               message:
                 'Group by feature, not by kind of code: this project has no core/, shared/, ' +

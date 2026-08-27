@@ -7,7 +7,7 @@
     <ul class="gallery">
       @for (image of data.images; track image.id) {
         <li class="gallery__item">
-          <img class="gallery__image" [src]="image.url" [alt]="data.title" loading="lazy" />
+          <img class="gallery__image" [ngSrc]="image.url" fill [alt]="data.title" />
           @if (image.isMain) {
             <span class="gallery__badge">
               <mat-icon aria-hidden="true">star</mat-icon>

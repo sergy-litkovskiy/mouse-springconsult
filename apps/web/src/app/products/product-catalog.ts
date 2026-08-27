@@ -1,6 +1,8 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { NgOptimizedImage } from '@angular/common';
+import { httpResource } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,25 +15,55 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { firstValueFrom } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
-import type { Product, ProductImage, ProductListQuery } from '@contracts/products.contract';
+import type {
+  Product,
+  ProductImage,
+  ProductList,
+  ProductListQuery,
+} from '@contracts/products.contract';
 import {
+  productConstraints,
   productPagination,
   productSortDefaults,
   type ProductCondition,
+  type ProductSortDirection,
   type ProductSortField,
 } from '@contracts/products-limits';
+import { apiErrorMessage } from '../api-error-message';
+import {
+  asQueryParam,
+  priceBound,
+  priceRange,
+  publishedControlValue,
+  toPage,
+  toPageSize,
+  toPriceFilter,
+  toPublishedFilter,
+  textFilter,
+  toSortDirection,
+  toSortField,
+} from './product-catalog-query';
 import { ProductGalleryDialog, type ProductGalleryData } from './product-gallery-dialog';
 import { ProductsApi } from './products-api';
+import { ukrainianPaginatorIntl } from './ukrainian-paginator-intl';
 
 /**
- * Product catalogue: a page of cards with filters, sorting and pagination. The state of
- * the table is one signal holding the very query the API takes — every control writes
- * into it and every write is followed by exactly one request.
+ * Product catalogue: a page of cards with filters, sorting and pagination.
+ *
+ * The state of the table is the URL. Every control writes into the address bar, the inputs
+ * below are filled back from it by the router (`withComponentInputBinding`), and the request
+ * follows the inputs. That is what makes F5, a link sent to the second admin and the Back
+ * button behave the way the admin expects — a component signal does none of the three.
  *
  * Filters are applied by a button rather than on every keystroke: the catalogue is read
  * by one or two admins, and a debounce would only add a delay nobody asked for.
+ *
+ * What a filter value may be — coming from the URL and coming from the form — lives in
+ * `product-catalog-query.ts`, because neither an `input()` transform nor a `ValidatorFn`
+ * can be a member of this class.
  */
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
@@ -39,7 +71,6 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.tooManyRequests]: 'Забагато запитів. Спробуйте за хвилину.',
 };
 
-const NETWORK_ERROR_MESSAGE = 'Немає зв’язку із сервером. Перевірте мережу і спробуйте ще раз.';
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося завантажити каталог. Спробуйте ще раз.';
 
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
@@ -53,53 +84,10 @@ const priceFormat = new Intl.NumberFormat('uk-UA', {
   minimumFractionDigits: 2,
 });
 
-/** The paginator ships with English labels; the admin panel is Ukrainian throughout. */
-function ukrainianPaginatorIntl(): MatPaginatorIntl {
-  const intl = new MatPaginatorIntl();
-  intl.itemsPerPageLabel = 'Товарів на сторінці:';
-  intl.nextPageLabel = 'Наступна сторінка';
-  intl.previousPageLabel = 'Попередня сторінка';
-  intl.firstPageLabel = 'Перша сторінка';
-  intl.lastPageLabel = 'Остання сторінка';
-  intl.getRangeLabel = (page, pageSize, length): string => {
-    if (length === 0) {
-      return '0 з 0';
-    }
-    const start = page * pageSize + 1;
-    const end = Math.min(start + pageSize - 1, length);
-    return `${String(start)}–${String(end)} з ${String(length)}`;
-  };
-  return intl;
-}
-
-/**
- * The bound as the contract wants it: a decimal string. `String` on a value the number
- * input produced is a serialisation, not a conversion — there is no unit to change,
- * because hryvnias are what the admin types and what `decimal(12,2)` stores.
- */
-function toPriceBound(hryvnias: number | null): string | undefined {
-  return hryvnias === null || Number.isNaN(hryvnias) ? undefined : String(hryvnias);
-}
-
-function trimmed(value: string): string | undefined {
-  const cleaned = value.trim();
-  return cleaned === '' ? undefined : cleaned;
-}
-
-function toMessage(error: unknown): string {
-  if (!(error instanceof HttpErrorResponse)) {
-    return UNKNOWN_ERROR_MESSAGE;
-  }
-  if (error.status === 0) {
-    return NETWORK_ERROR_MESSAGE;
-  }
-  const code = (error.error as { error?: { code?: string } } | null)?.error?.code;
-  return (code === undefined ? undefined : ERROR_MESSAGES[code]) ?? UNKNOWN_ERROR_MESSAGE;
-}
-
 @Component({
   selector: 'app-product-catalog',
   imports: [
+    NgOptimizedImage,
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
@@ -121,25 +109,94 @@ function toMessage(error: unknown): string {
 export class ProductCatalog {
   private readonly api = inject(ProductsApi);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly formBuilder = inject(FormBuilder);
 
-  private readonly query = signal<ProductListQuery>({
-    page: productPagination.defaultPage,
-    pageSize: productPagination.defaultPageSize,
-    sort: productSortDefaults.field,
-    direction: productSortDefaults.direction,
+  readonly page = input<number, string | undefined>(productPagination.defaultPage, {
+    transform: toPage,
+  });
+  readonly pageSize = input<number, string | undefined>(productPagination.defaultPageSize, {
+    transform: toPageSize,
+  });
+  readonly sort = input<ProductSortField, string | undefined>(productSortDefaults.field, {
+    transform: toSortField,
+  });
+  readonly direction = input<ProductSortDirection, string | undefined>(
+    productSortDefaults.direction,
+    { transform: toSortDirection },
+  );
+  readonly title = input<string | undefined, string | undefined>(undefined, {
+    transform: textFilter(productConstraints.titleMaxLength),
+  });
+  readonly description = input<string | undefined, string | undefined>(undefined, {
+    transform: textFilter(productConstraints.titleMaxLength),
+  });
+  readonly priceMin = input<string | undefined, string | undefined>(undefined, {
+    transform: toPriceFilter,
+  });
+  readonly priceMax = input<string | undefined, string | undefined>(undefined, {
+    transform: toPriceFilter,
+  });
+  readonly category = input<string | undefined, string | undefined>(undefined, {
+    transform: textFilter(productConstraints.categoryMaxLength),
+  });
+  readonly published = input<boolean | undefined, string | undefined>(undefined, {
+    transform: toPublishedFilter,
+  });
+  readonly accountProm = input<string | undefined, string | undefined>(undefined, {
+    transform: textFilter(productConstraints.accountMaxLength),
+  });
+  readonly accountOlx = input<string | undefined, string | undefined>(undefined, {
+    transform: textFilter(productConstraints.accountMaxLength),
   });
 
-  protected readonly products = signal<readonly Product[]>([]);
-  protected readonly total = signal(0);
-  protected readonly loading = signal(false);
-  protected readonly loadError = signal<string | null>(null);
+  /**
+   * The eight filters on their own, apart from paging and ordering. The form mirrors these and
+   * only these: a click on the paginator or a sort header is not a reason to wipe text the
+   * admin has typed into a filter and not yet applied.
+   */
+  private readonly appliedFilters = computed(() => ({
+    title: this.title(),
+    description: this.description(),
+    priceMin: this.priceMin(),
+    priceMax: this.priceMax(),
+    category: this.category(),
+    published: this.published(),
+    accountProm: this.accountProm(),
+    accountOlx: this.accountOlx(),
+  }));
 
-  protected readonly pageIndex = computed(() => this.query().page - 1);
-  protected readonly pageSize = computed(() => this.query().pageSize);
-  protected readonly sortField = computed<ProductSortField>(() => this.query().sort);
-  protected readonly sortDirection = computed(() => this.query().direction);
+  /** Every field in one place: an optional filter added to the contract is visible here. */
+  private readonly query = computed<ProductListQuery>(() => ({
+    page: this.page(),
+    pageSize: this.pageSize(),
+    sort: this.sort(),
+    direction: this.direction(),
+    ...this.appliedFilters(),
+  }));
 
+  private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
+
+  protected readonly products = computed<readonly Product[]>(() =>
+    this.catalogue.hasValue() ? this.catalogue.value().items : [],
+  );
+  protected readonly total = computed(() =>
+    this.catalogue.hasValue() ? this.catalogue.value().total : 0,
+  );
+  protected readonly loading = this.catalogue.isLoading;
+  protected readonly loadError = computed(() => {
+    const error = this.catalogue.error();
+    return error === undefined
+      ? null
+      : apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE);
+  });
+
+  protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
+  protected readonly titleMaxLength = productConstraints.titleMaxLength;
+  protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
+  protected readonly accountMaxLength = productConstraints.accountMaxLength;
   protected readonly columns = [
     'gallery',
     'titleProm',
@@ -152,83 +209,119 @@ export class ProductCatalog {
     'accountOlx',
   ];
 
-  protected readonly filters = new FormGroup({
-    title: new FormControl('', { nonNullable: true }),
-    description: new FormControl('', { nonNullable: true }),
-    priceMin: new FormControl<number | null>(null),
-    priceMax: new FormControl<number | null>(null),
-    category: new FormControl('', { nonNullable: true }),
-    // '' means "not asked about", which is not the same as "unpublished".
-    published: new FormControl<'' | 'true' | 'false'>('', { nonNullable: true }),
-    accountProm: new FormControl('', { nonNullable: true }),
-    accountOlx: new FormControl('', { nonNullable: true }),
-  });
+  /**
+   * The price bounds are text, not `type="number"`: a number input hands Angular a `number`,
+   * and a price that has been through a float is no longer the value the admin typed. The
+   * limits on the text fields are the contract's own, imported rather than restated.
+   */
+  protected readonly filters = this.formBuilder.nonNullable.group(
+    {
+      title: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
+      description: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
+      priceMin: ['', [priceBound]],
+      priceMax: ['', [priceBound]],
+      category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
+      // '' means "not asked about", which is not the same as "unpublished".
+      published: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
+      accountProm: ['', [Validators.maxLength(productConstraints.accountMaxLength)]],
+      accountOlx: ['', [Validators.maxLength(productConstraints.accountMaxLength)]],
+    },
+    // The bounds are wrong as a pair, not one at a time, so the rule belongs to the group.
+    { validators: [priceRange] },
+  );
+
+  /**
+   * A reactive form is not a signal, and zoneless change detection does not watch one. The
+   * per-field messages are `mat-form-field`'s own business; this one belongs to the group,
+   * so the template reads it as a signal instead of as a method call on the form.
+   */
+  protected readonly priceRangeInvalid = toSignal(
+    this.filters.events.pipe(map(() => this.filters.hasError('priceRange'))),
+    { initialValue: false },
+  );
 
   constructor() {
-    void this.load();
+    // The form shows what the URL is asking for: after a reload, or a Back out of a filtered
+    // page, the fields have to agree with the rows underneath them.
+    effect(() => {
+      const applied = this.appliedFilters();
+      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
+      // URL got backwards has to reach the message rather than only the validator.
+      this.filters.setValue({
+        title: applied.title ?? '',
+        description: applied.description ?? '',
+        priceMin: applied.priceMin ?? '',
+        priceMax: applied.priceMax ?? '',
+        category: applied.category ?? '',
+        published: publishedControlValue(applied.published),
+        accountProm: applied.accountProm ?? '',
+        accountOlx: applied.accountOlx ?? '',
+      });
+    });
   }
 
   protected applyFilters(): void {
-    const value = this.filters.getRawValue();
-    const query: ProductListQuery = {
-      // A new filter set means a new result set, so the paginator starts over.
-      page: 1,
-      pageSize: this.query().pageSize,
-      sort: this.query().sort,
-      direction: this.query().direction,
-      ...(trimmed(value.title) === undefined ? {} : { title: trimmed(value.title) }),
-      ...(trimmed(value.description) === undefined
-        ? {}
-        : { description: trimmed(value.description) }),
-      ...(toPriceBound(value.priceMin) === undefined
-        ? {}
-        : { priceMin: toPriceBound(value.priceMin) }),
-      ...(toPriceBound(value.priceMax) === undefined
-        ? {}
-        : { priceMax: toPriceBound(value.priceMax) }),
-      ...(trimmed(value.category) === undefined ? {} : { category: trimmed(value.category) }),
-      ...(value.published === '' ? {} : { published: value.published === 'true' }),
-      ...(trimmed(value.accountProm) === undefined
-        ? {}
-        : { accountProm: trimmed(value.accountProm) }),
-      ...(trimmed(value.accountOlx) === undefined ? {} : { accountOlx: trimmed(value.accountOlx) }),
-    };
+    if (this.filters.invalid) {
+      this.filters.markAllAsTouched();
+      return;
+    }
 
-    this.query.set(query);
-    void this.load();
+    const value = this.filters.getRawValue();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: {
+        // A new filter set means a new result set, so the paginator starts over.
+        page: null,
+        title: asQueryParam(value.title),
+        description: asQueryParam(value.description),
+        priceMin: asQueryParam(value.priceMin),
+        priceMax: asQueryParam(value.priceMax),
+        category: asQueryParam(value.category),
+        published: value.published === '' ? null : value.published,
+        accountProm: asQueryParam(value.accountProm),
+        accountOlx: asQueryParam(value.accountOlx),
+      },
+    });
   }
 
   protected resetFilters(): void {
-    this.filters.reset({
-      title: '',
-      description: '',
-      priceMin: null,
-      priceMax: null,
-      category: '',
-      published: '',
-      accountProm: '',
-      accountOlx: '',
-    });
+    this.filters.reset();
     this.applyFilters();
   }
 
   protected changePage(event: PageEvent): void {
-    this.query.update((query) => ({
-      ...query,
-      page: event.pageIndex + 1,
-      pageSize: event.pageSize,
-    }));
-    void this.load();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      // What the defaults already say is left unsaid, so one view has one URL however the
+      // admin arrived at it — otherwise Back steps through states that render identically.
+      queryParams: {
+        page: event.pageIndex === 0 ? null : event.pageIndex + 1,
+        pageSize: event.pageSize === productPagination.defaultPageSize ? null : event.pageSize,
+      },
+    });
   }
 
+  /**
+   * `event.active` is a plain string — the id of whichever header was clicked. Checking it
+   * against the contract's list is what keeps a `mat-sort-header` added to a column the API
+   * cannot sort by from turning into a request the server refuses.
+   */
   protected changeSort(event: Sort): void {
-    const field = (
-      event.direction === '' ? productSortDefaults.field : event.active
-    ) as ProductSortField;
-    const direction = event.direction === '' ? productSortDefaults.direction : event.direction;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: {
+        sort: toSortField(event.active),
+        direction: toSortDirection(event.direction),
+        page: null,
+      },
+    });
+  }
 
-    this.query.update((query) => ({ ...query, sort: field, direction, page: 1 }));
-    void this.load();
+  protected retry(): void {
+    this.catalogue.reload();
   }
 
   protected mainImage(product: Product): ProductImage | null {
@@ -247,22 +340,5 @@ export class ProductCatalog {
   protected openGallery(product: Product): void {
     const data: ProductGalleryData = { title: product.titleProm, images: product.images };
     this.dialog.open(ProductGalleryDialog, { data, width: 'min(92vw, 60rem)' });
-  }
-
-  private async load(): Promise<void> {
-    this.loading.set(true);
-    this.loadError.set(null);
-
-    try {
-      const page = await firstValueFrom(this.api.list(this.query()));
-      this.products.set(page.items);
-      this.total.set(page.total);
-    } catch (error: unknown) {
-      this.products.set([]);
-      this.total.set(0);
-      this.loadError.set(toMessage(error));
-    } finally {
-      this.loading.set(false);
-    }
   }
 }

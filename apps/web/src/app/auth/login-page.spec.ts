@@ -87,9 +87,9 @@ describe('LoginPage', () => {
     expect(element.textContent).toContain('Схоже, це не email');
   });
 
-  it('navigates to the welcome page after a successful sign-in', async () => {
+  it('opens the catalogue after a successful sign-in', async () => {
     const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     fill('admin@example.com', 'correct-horse', true);
     submit();
@@ -104,7 +104,37 @@ describe('LoginPage', () => {
     request.flush(SESSION);
     await settle();
 
-    expect(navigate).toHaveBeenCalledWith(['/welcome']);
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products');
+  });
+
+  it('returns to the page the guard interrupted', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture.componentRef.setInput('returnUrl', '/products?page=3');
+
+    fill('admin@example.com', 'correct-horse');
+    submit();
+    await settle();
+
+    http.expectOne('/api/auth/login').flush(SESSION);
+    await settle();
+
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products?page=3');
+  });
+
+  it('refuses a returnUrl that points outside the application', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture.componentRef.setInput('returnUrl', 'https://evil.example/phish');
+
+    fill('admin@example.com', 'correct-horse');
+    submit();
+    await settle();
+
+    http.expectOne('/api/auth/login').flush(SESSION);
+    await settle();
+
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products');
   });
 
   it('highlights both fields and shows a message on wrong credentials', async () => {
