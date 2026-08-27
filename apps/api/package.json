@@ -1,0 +1,50 @@
+{
+  "name": "@mouse/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "scripts": {
+    "start": "node src/api.ts",
+    "dev": "node --watch src/api.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
+    "format:check": "prettier --check --ignore-path ../../.prettierignore .",
+    "test": "node --test --experimental-test-module-mocks 'src/**/*.spec.ts'",
+    "test:watch": "node --test --watch 'src/**/*.spec.ts'",
+    "deps:check": "depcruise src db --config .dependency-cruiser.cjs",
+    "db:create": "node db/create-database.ts",
+    "db:migrate": "node db/migrate.ts up",
+    "db:migrate:revert": "node db/migrate.ts down",
+    "db:migrate:show": "node db/migrate.ts show",
+    "db:migrate:new": "node db/new-migration.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "argon2": "^0.45.1",
+    "fastify": "^5.12.1",
+    "jose": "^6.2.10",
+    "pg": "^8.23.0",
+    "pino": "^10.3.1",
+    "typeorm": "^1.1.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.3.0",
+    "@types/pg": "^8.15.6",
+    "dependency-cruiser": "^18.2.0",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
+    "pino-pretty": "^13.1.3",
+    "prettier": "^3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.68.0"
+  }
+}

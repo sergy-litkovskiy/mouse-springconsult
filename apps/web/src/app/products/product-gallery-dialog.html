@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  @if (data.images.length === 0) {
+    <p class="gallery-empty">Фотографій ще немає.</p>
+  } @else {
+    <ul class="gallery">
+      @for (image of data.images; track image.id) {
+        <li class="gallery__item">
+          <img class="gallery__image" [src]="image.url" [alt]="data.title" loading="lazy" />
+          @if (image.isMain) {
+            <span class="gallery__badge">
+              <mat-icon aria-hidden="true">star</mat-icon>
+              Головне
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton mat-dialog-close>Закрити</button>
+</mat-dialog-actions>

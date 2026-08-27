@@ -1,0 +1,177 @@
+<main class="catalog">
+  <header class="catalog__header">
+    <h1>Каталог товарів</h1>
+    <p class="catalog__count">Знайдено: {{ total() }}</p>
+  </header>
+
+  <mat-card class="catalog__filters" appearance="outlined">
+    <form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
+      <mat-form-field appearance="outline">
+        <mat-label>Назва</mat-label>
+        <input matInput formControlName="title" placeholder="Prom або OLX" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Опис</mat-label>
+        <input matInput formControlName="description" placeholder="Prom або OLX" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Ціна від, ₴</mat-label>
+        <input matInput type="number" min="0" step="0.01" formControlName="priceMin" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Ціна до, ₴</mat-label>
+        <input matInput type="number" min="0" step="0.01" formControlName="priceMax" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Категорія</mat-label>
+        <input matInput formControlName="category" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Публікація</mat-label>
+        <mat-select formControlName="published">
+          <mat-option value="">Будь-яка</mat-option>
+          <mat-option value="true">Опубліковані</mat-option>
+          <mat-option value="false">Чернетки</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Акаунт Prom</mat-label>
+        <input matInput formControlName="accountProm" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Акаунт OLX</mat-label>
+        <input matInput formControlName="accountOlx" />
+      </mat-form-field>
+
+      <div class="filters__actions">
+        <button matButton="filled" type="submit" [disabled]="loading()">Застосувати</button>
+        <button matButton type="button" (click)="resetFilters()" [disabled]="loading()">
+          Скинути
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card class="catalog__table" appearance="outlined">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Завантаження каталогу" />
+    }
+
+    @if (loadError(); as message) {
+      <p class="catalog__error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </p>
+    }
+
+    <div class="catalog__scroll">
+      <table
+        mat-table
+        [dataSource]="products()"
+        matSort
+        matSortDisableClear
+        [matSortActive]="sortField()"
+        [matSortDirection]="sortDirection()"
+        (matSortChange)="changeSort($event)"
+      >
+        <ng-container matColumnDef="gallery">
+          <th mat-header-cell *matHeaderCellDef scope="col">Фото</th>
+          <td mat-cell *matCellDef="let product">
+            <div class="gallery-cell">
+              @if (mainImage(product); as image) {
+                <img
+                  class="gallery-cell__thumb"
+                  [src]="image.url"
+                  [alt]="product.titleProm"
+                  loading="lazy"
+                />
+              } @else {
+                <span class="gallery-cell__thumb gallery-cell__thumb--empty" aria-hidden="true">
+                  <mat-icon>image_not_supported</mat-icon>
+                </span>
+              }
+
+              <button
+                matButton
+                type="button"
+                class="gallery-cell__count"
+                (click)="openGallery(product)"
+                [disabled]="product.images.length === 0"
+                [matTooltip]="'Переглянути всі фото товару'"
+                [attr.aria-label]="'Фотографії товару ' + product.titleProm"
+              >
+                {{ product.images.length }}
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="titleProm">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Назва Prom</th>
+          <td mat-cell *matCellDef="let product">{{ product.titleProm }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="titleOlx">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Назва OLX</th>
+          <td mat-cell *matCellDef="let product">{{ product.titleOlx }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Ціна</th>
+          <td mat-cell *matCellDef="let product" class="catalog__price">
+            {{ formatPrice(product.priceCents) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef scope="col">Категорія</th>
+          <td mat-cell *matCellDef="let product">{{ product.category }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="condition">
+          <th mat-header-cell *matHeaderCellDef scope="col">Стан</th>
+          <td mat-cell *matCellDef="let product">{{ conditionLabel(product.condition) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="published">
+          <th mat-header-cell *matHeaderCellDef scope="col">Публікація</th>
+          <td mat-cell *matCellDef="let product">
+            {{ product.published ? 'Опубліковано' : 'Чернетка' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="accountProm">
+          <th mat-header-cell *matHeaderCellDef scope="col">Акаунт Prom</th>
+          <td mat-cell *matCellDef="let product">{{ product.accountProm ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="accountOlx">
+          <th mat-header-cell *matHeaderCellDef scope="col">Акаунт OLX</th>
+          <td mat-cell *matCellDef="let product">{{ product.accountOlx ?? '—' }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+
+    @if (!loading() && products().length === 0 && loadError() === null) {
+      <p class="catalog__empty">Товарів за цими умовами немає.</p>
+    }
+
+    <mat-paginator
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      (page)="changePage($event)"
+    />
+  </mat-card>
+</main>

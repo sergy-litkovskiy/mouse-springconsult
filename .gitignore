@@ -1,22 +1,23 @@
-# Залежності
+# Dependencies
 node_modules/
 
-# Збірка
+# Build output
 dist/
 .angular/
 *.tsbuildinfo
 
-# Оточення та секрети
+# Environment and secrets
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 
-# Логи та тимчасове
+# Logs and temporary files
 *.log
 coverage/
 
-# IDE та ОС
+# IDE and OS
 .idea/
 .vscode/
 .DS_Store

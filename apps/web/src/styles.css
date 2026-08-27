@@ -1,0 +1,16 @@
+/* Global styles. The Angular Material theme is wired up in angular.json as a prebuilt
+   bundle (`prebuilt-themes/azure-blue.css`) — which is why the project has no Sass and
+   component styles stay plain CSS. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}

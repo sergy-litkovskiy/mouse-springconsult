@@ -10,7 +10,8 @@
 | UI | Angular 22 (standalone, signals, zoneless) + Angular Material |
 | API | Node.js 26 (ESM, Fastify). Типи стрипаються нативно — бекенд **не збирається** |
 | TypeScript | **6.0.3** — жорсткий пін: Angular 22 вимагає `>=6.0 <6.1` |
-| БД | PostgreSQL 18 |
+| БД | PostgreSQL 18 + TypeORM (тільки в шарі репозиторіїв) |
+| Авторизація | JWT (`jose`, HS256) у httpOnly-cookie, argon2id для паролів |
 | Черга | pg-boss (поверх PostgreSQL, без Redis) |
 | Файли | Cloudflare R2 (S3 API, `@aws-sdk/client-s3`) |
 | Зображення | sharp |
@@ -26,7 +27,7 @@ apps/api/src/                                   api.ts, worker.ts + техніч
                                                 (config, db, logger, queue, errors)
 apps/api/src/modules/{auth,products,media,ai}   бізнес-модулі
 apps/api/src/contracts/                         zod-схеми запитів/відповідей (@contracts)
-apps/api/db/migrations/                         міграції схеми
+apps/api/db/                                    міграції, їх раннер, створення БД
 apps/web/                                       корінь Angular workspace (angular.json)
 apps/web/src/app/{auth,products}/               фічі Angular
 apps/web/src/environments/                      конфіг фронту (@environments)
@@ -39,22 +40,26 @@ docs/adr/                                       архітектурні ріш�
 всередині `ai` (той самий Claude, інший use-case), а модуль синхронізації з
 маркетплейсами з'явиться разом з першим файлом інтеграції.
 
-> **Файли — цільовий стан.** У репозиторії зараз є каркас каталогів, документи і
-> `apps/web/src/environments/`. Ті, на які посилаються правила нижче — `src/api.ts`,
-> `src/worker.ts`, `src/config.ts`, `src/contracts/`, `angular.json`, `package.json`,
-> `docker-compose.yml`, `Caddyfile` — з'являться разом з першим кодом. Документи
-> кажуть, **куди що класти**, а не що вже написано.
+> **Стан.** Фіча `auth` реалізована: `src/api.ts`, `src/config.ts`, `src/db.ts`,
+> `src/logger.ts`, `src/errors.ts`, `src/contracts/`, `modules/auth/`, міграції,
+> Angular-застосунок, `docker-compose.yml` і `Caddyfile` — у репозиторії.
+> `src/worker.ts` і `src/queue.ts` зʼявляться разом із першою задачею в черзі:
+> у `auth` асинхронної роботи немає, а порожній воркер — це каркас про запас.
+> Модуль `products` читає каталог: `contracts/products*.ts`, `modules/products/`,
+> міграція таблиць `products` і `product_images`, Angular-фіча `app/products/`.
+> Запис (створення, редагування, видалення) і галерея в R2 — попереду.
+> Модулі `media` і `ai` поки що порожні теки з `.gitkeep`.
 
 ## Правила залежностей (ОБОВ'ЯЗКОВІ)
 
 ```
-src/api.ts · src/worker.ts            composition root: тільки тут new Repository()
+src/api.ts · src/worker.ts · db/*.ts  composition root: тільки тут new Repository()
       │
       ▼
 modules/<feature>/
    *.routes.ts ─► *.use-case.ts ─► *.port.ts · доменні типи      без I/O
                                         ▲
-                  *.repository.ts · *.adapter.ts ┘               реалізують порти
+    *.repository.ts · *.adapter.ts · *.entity.ts ┘               реалізують порти
       │
       ├─► modules/<other>/index.ts                               лише public API, без deep import
       │
@@ -85,14 +90,15 @@ src/contracts/                                                   чисті zod-
 Шари існують, але виражені **суфіксами файлів**, а не каталогами: модуль — це одна
 папка, і поки в ній менше десятка файлів, вкладеність лише заважає читати.
 
-4. Доменні типи й порти (`*.port.ts`) не мають I/O: без `pg`, `fastify`, `@aws-sdk`,
-   `@anthropic-ai/sdk`.
-5. `*.use-case.ts` залежить від портів, а не від реалізацій. Імпорт `*.repository.ts`
-   або `*.adapter.ts` з use-case — помилка.
+4. Доменні типи й порти (`*.port.ts`) не мають I/O: без `pg`, `typeorm`, `fastify`,
+   `argon2`, `jose`, `@aws-sdk`, `@anthropic-ai/sdk`.
+5. `*.use-case.ts` залежить від портів, а не від реалізацій. Імпорт `*.repository.ts`,
+   `*.adapter.ts` або `*.entity.ts` з use-case — помилка.
 6. `*.routes.ts` — валідація вхідних даних, авторизація, мапінг у DTO з `@contracts`.
    Бізнес-логіки в роутах немає.
-7. Реалізації інстанціює тільки composition root — `src/api.ts` (HTTP-процес) і
-   `src/worker.ts` (обробник черги).
+7. Реалізації інстанціює тільки composition root — `src/api.ts` (HTTP-процес),
+   `src/worker.ts` (обробник черги) і скрипти в `db/` (процес міграцій).
+   Виняток один: `*.spec.ts` тестує адаптер напряму.
 8. Коли в модулі стає тісно (умовно понад 10 файлів) — розкладаємо його на підпапки.
    Не раніше.
 
@@ -142,7 +148,13 @@ PR з порушенням не мержиться.
   `products-api.ts`, `authGuard` — у `auth-guard.ts`. Шаблон і стилі — поруч:
   `product-catalog.html`, `product-catalog.css`. Тести — `*.spec.ts`.
   Backend, навпаки, суфікси має, бо саме вони несуть межі шарів:
-  `.use-case.ts`, `.port.ts`, `.repository.ts`, `.adapter.ts`, `.routes.ts`.
+  `.use-case.ts`, `.port.ts`, `.repository.ts`, `.adapter.ts`, `.entity.ts`,
+  `.routes.ts`. `.entity.ts` — ORM-мапінг: інфраструктура на одному щаблі з
+  репозиторієм, а не доменний тип. `.fixtures.ts` — тестові дублери портів;
+  імпортувати їх можна тільки з `*.spec.ts`.
+  Міграції — виняток: `1787734800000-create-users-table.ts`, бо TypeORM визначає
+  порядок за timestamp'ом у кінці **імені класу**, і в імені файлу він стоїть
+  першим, щоб порядок було видно і в `ls`.
 - **Експорти.** Модуль бекенду має `index.ts` з явним public API — це єдина точка,
   через яку його бачать інші модулі. Інших barrel-файлів не робимо; на фронті
   `index.ts` не потрібен зовсім.
@@ -158,10 +170,18 @@ PR з порушенням не мержиться.
   Схеми живуть у `apps/api/src/contracts/`: бекенд валідує ними вхідні дані, фронт
   імпортує з них типи через alias `@contracts/*`. Окремого npm-пакета під це немає —
   контракти належать API, який їх і виконує.
+- **Контракти: схеми окремо, константи окремо.** У `contracts/` два роди файлів.
+  `*.contract.ts` — zod-схеми й виведені з них типи; фронт бере звідти **тільки
+  типи** (`import type`), які стираються при збірці. Константи контракту
+  (`error-codes.ts`, `auth-limits.ts`) залежностей не мають, і саме їх фронт
+  імпортує в рантаймі. Розділення не косметичне: один рантайм-імпорт зі
+  zod-файлу затягує в бандл браузера всю бібліотеку валідації — виміряно 55 КБ
+  gzip у чанку сторінки входу заради обʼєкта з шести рядків.
 - **Помилки.** Базовий клас `AppError` — у `src/errors.ts`; доменні помилки
   (`ProductNotFound`, `InvalidCredentials`) оголошує той модуль, якому вони належать.
   HTTP-мапінг — один error-handler, зареєстрований у `src/api.ts`. Стек-трейси
-  назовні не віддаємо.
+  назовні не віддаємо. Повідомлення в API — англійською, як і решта коду: текст
+  для користувача формує фронт за полем `code` (`src/contracts/error.contract.ts`).
 - **БД.** Snake_case в SQL, camelCase у TS. Зміни схеми — тільки міграцією в
   `apps/api/db/migrations`. Ручний DDL на проді заборонено.
 - **Гроші.** Ціни — `numeric(12,2)` у БД, цілі копійки в коді. Ніяких `float`.
@@ -173,15 +193,36 @@ PR з порушенням не мержиться.
   2. `src/config.ts` — **константи бекенду прямо в коді**: розміри зображень і якість
      JPEG, ліміти завантаження, параметри черги, таймаути, TTL сесії, ідентифікатор
      моделі. Типізовані, з коментарями, змінюються через коміт.
-  3. `process.env` — **тільки** секрети й машинозалежне: `DATABASE_URL`, креденшели
-     R2, `ANTHROPIC_API_KEY`, `SESSION_SECRET`, SMTP, домен. Читаються й валідуються
-     zod-схемою в тому ж `src/config.ts`, яка падає на старті, якщо чогось бракує.
+  3. `process.env` — **тільки** секрети й машинозалежне: `DATABASE_URL`, `JWT_SECRET`,
+     `ADMIN_BOOTSTRAP_*`, креденшели R2, `ANTHROPIC_API_KEY`, SMTP, домен. Читаються
+     й валідуються zod-схемою в тому ж `src/config.ts`, яка падає на старті, якщо
+     чогось бракує. Зразок — `.env.example`; сам `.env` у git не потрапляє.
 
   Критерій: якщо значення однакове на всіх машинах — це константа, а не env-змінна.
   Env, яка ніколи не змінюється, лише ховає число від типізації й від рев'ю.
-  Ключ Anthropic, креденшели R2, пароль БД і `SESSION_SECRET` у файлах Angular не
+  Ключ Anthropic, креденшели R2, пароль БД і `JWT_SECRET` у файлах Angular не
   з'являються ніколи.
 - **Коміти.** Conventional Commits: `feat(products): ...`, `fix(media): ...`.
+
+## Правила роботи з авторизацією
+
+Обґрунтування — [ADR 0002](docs/adr/0002-auth-jwt-and-typeorm.md).
+
+- Сесія — JWT (HS256, `jose`) у cookie `HttpOnly; SameSite=Strict; Secure` у проді.
+  Ні `Authorization: Bearer`, ні localStorage: SPA і API живуть на одному домені,
+  тож токен не має причин бути доступним для JavaScript.
+- Прапорець «запам'ятати мене» керує **cookie**, а не логікою: без нього вона
+  сесійна, з ним отримує `Max-Age`. TTL — константи в `config.ts`.
+- Logout справді відкликає токени: зсуває `users.tokens_valid_from` у «зараз».
+  Перевірка сесії читає користувача з БД, тому деактивація акаунта діє негайно.
+- Паролі — argon2id з параметрами з `config.ts`. Ті самі параметри використовує
+  міграція першого користувача: інакше перший вхід відрізнявся б за часом.
+- Для невідомого email пароль усе одно звіряється з `decoyHash`. Це не
+  надмірність: без цього тривалість відповіді сама стає оракулом існування email.
+- Відповідь на невдалий вхід однакова для «немає такого email» і «пароль не
+  підійшов» — код `invalid_credentials`.
+- TypeORM бачать рівно два файли модуля: `user.entity.ts` і `user.repository.ts`.
+  Сутності описуються `EntitySchema`, а не декораторами — декоратори не стираються.
 
 ## Правила роботи з AI-модулем
 
@@ -220,26 +261,29 @@ docker compose logs -f api        # api | worker | web | postgres
 docker compose restart worker
 docker compose ps
 
-# Разові команди — через контейнер
-docker compose run --rm api npm run typecheck   # tsc --noEmit, збірки немає
-docker compose run --rm api npm run lint
-docker compose run --rm api npm run test        # node --test, *.spec.ts поруч з кодом
-docker compose run --rm api npm run deps:check
-docker compose run --rm api npm run format
-docker compose run --rm web npm run lint        # ESLint, зокрема межі між фічами
-docker compose run --rm web npm run test
+# Разові команди — через контейнер. --no-deps не піднімає postgres там, де він не потрібен.
+docker compose run --rm --no-deps api npm run typecheck   # tsc --noEmit, збірки немає
+docker compose run --rm --no-deps api npm run lint
+docker compose run --rm --no-deps api npm run test        # node --test, *.spec.ts поруч з кодом
+docker compose run --rm --no-deps api npm run deps:check
+docker compose run --rm --no-deps api npm run format
+docker compose run --rm --no-deps web npm run lint        # ESLint, зокрема межі між фічами
+docker compose run --rm --no-deps web npm run test        # vitest через @angular/build:unit-test
 
-# Залежності — після зміни package.json перезібрати образ
-docker compose run --rm api npm install <pkg> -w apps/api
+# Залежності. Кожен застосунок має власний package.json і власний том node_modules,
+# тому прапорець -w не потрібен: команда виконується всередині потрібного контейнера.
+docker compose run --rm --no-deps api npm install <pkg>
 docker compose build api
 
 # База
+docker compose run --rm api npm run db:create           # ідемпотентно створює mouse_trading
 docker compose run --rm api npm run db:migrate
+docker compose run --rm api npm run db:migrate:revert
 docker compose run --rm api npm run db:migrate:new -- <name>
-docker compose exec postgres psql -U $POSTGRES_USER $POSTGRES_DB
+docker compose exec postgres psql -U $POSTGRES_USER postgres
 
 # Angular CLI
-docker compose run --rm web npx ng generate component products/product-catalog
+docker compose run --rm --no-deps web npx ng generate component products/product-catalog
 ```
 
 Повний перелік команд (бекап, черга, `down -v`, `ng build`) — у README.

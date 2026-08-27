@@ -1,0 +1,46 @@
+/* https://angular.dev/reference/configs/angular-compiler-options */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    /*
+     * Contracts live in apps/api, which runs without a build step, so its internal imports
+     * carry the .ts extension. Angular compiles those same files with its own builder,
+     * so the extension has to be allowed here as well.
+     */
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      /* Contracts belong to the API — the frontend takes types from them instead of restating them. */
+      "@contracts/*": ["../api/src/contracts/*"],
+      /*
+       * Contracts sit outside apps/web, so their `import { z } from 'zod'` resolves from
+       * apps/api/, where there are no node_modules and should not be: the web container
+       * installs only its own dependencies. So zod is pointed at explicitly — it is
+       * declared in this application's package.json.
+       */
+      "zod": ["./node_modules/zod"],
+      "@environments/environment": ["./src/environments/environment"]
+    }
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true,
+    "typeCheckHostBindings": true
+  },
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.spec.json" }]
+}
