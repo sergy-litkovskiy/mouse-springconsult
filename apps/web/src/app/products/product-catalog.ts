@@ -2,13 +2,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  type AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  type ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -34,15 +28,27 @@ import {
   productConstraints,
   productPagination,
   productSortDefaults,
-  productSortDirections,
-  productSortFields,
   type ProductCondition,
   type ProductSortDirection,
   type ProductSortField,
 } from '@contracts/products-limits';
 import { apiErrorMessage } from '../api-error-message';
+import {
+  asQueryParam,
+  priceBound,
+  priceRange,
+  publishedControlValue,
+  toPage,
+  toPageSize,
+  toPriceFilter,
+  toPublishedFilter,
+  toSortDirection,
+  toSortField,
+  toTextFilter,
+} from './product-catalog-query';
 import { ProductGalleryDialog, type ProductGalleryData } from './product-gallery-dialog';
 import { ProductsApi } from './products-api';
+import { ukrainianPaginatorIntl } from './ukrainian-paginator-intl';
 
 /**
  * Product catalogue: a page of cards with filters, sorting and pagination.
@@ -54,6 +60,10 @@ import { ProductsApi } from './products-api';
  *
  * Filters are applied by a button rather than on every keystroke: the catalogue is read
  * by one or two admins, and a debounce would only add a delay nobody asked for.
+ *
+ * What a filter value may be — coming from the URL and coming from the form — lives in
+ * `product-catalog-query.ts`, because neither an `input()` transform nor a `ValidatorFn`
+ * can be a member of this class.
  */
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
@@ -73,108 +83,6 @@ const priceFormat = new Intl.NumberFormat('uk-UA', {
   currency: 'UAH',
   minimumFractionDigits: 2,
 });
-
-/** The paginator ships with English labels; the admin panel is Ukrainian throughout. */
-function ukrainianPaginatorIntl(): MatPaginatorIntl {
-  const intl = new MatPaginatorIntl();
-  intl.itemsPerPageLabel = 'Товарів на сторінці:';
-  intl.nextPageLabel = 'Наступна сторінка';
-  intl.previousPageLabel = 'Попередня сторінка';
-  intl.firstPageLabel = 'Перша сторінка';
-  intl.lastPageLabel = 'Остання сторінка';
-  intl.getRangeLabel = (page, pageSize, length): string => {
-    if (length === 0) {
-      return '0 з 0';
-    }
-    const start = page * pageSize + 1;
-    const end = Math.min(start + pageSize - 1, length);
-    return `${String(start)}–${String(end)} з ${String(length)}`;
-  };
-  return intl;
-}
-
-/**
- * A query parameter is whatever the address bar happens to hold, and the address bar is
- * typed by hand as often as it is written by the paginator. Anything the contract does not
- * accept falls back to the default here rather than travelling to the server to be refused.
- */
-function toPage(value: string | undefined): number {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : productPagination.defaultPage;
-}
-
-function toPageSize(value: string | undefined): number {
-  const size = Number(value);
-  return Number.isInteger(size) && size > 0 && size <= productPagination.maxPageSize
-    ? size
-    : productPagination.defaultPageSize;
-}
-
-function isSortField(value: string | undefined): value is ProductSortField {
-  return value !== undefined && (productSortFields as readonly string[]).includes(value);
-}
-
-function isSortDirection(value: string | undefined): value is ProductSortDirection {
-  return value !== undefined && (productSortDirections as readonly string[]).includes(value);
-}
-
-function toSortField(value: string | undefined): ProductSortField {
-  return isSortField(value) ? value : productSortDefaults.field;
-}
-
-function toSortDirection(value: string | undefined): ProductSortDirection {
-  return isSortDirection(value) ? value : productSortDefaults.direction;
-}
-
-function toTextFilter(value: string | undefined): string | undefined {
-  const cleaned = value?.trim() ?? '';
-  return cleaned === '' ? undefined : cleaned;
-}
-
-/**
- * The bound as the contract wants it: a decimal string, unchanged all the way to the ORDER BY.
- * `productConstraints.pricePattern` is the same expression the backend validates with, applied
- * here so that "1000.555" is dropped by the page that produced it instead of coming back as a
- * generic `validation_failed` that names no field.
- */
-function toPriceFilter(value: string | undefined): string | undefined {
-  const cleaned = value?.trim() ?? '';
-  return productConstraints.pricePattern.test(cleaned) ? cleaned : undefined;
-}
-
-function toPublishedFilter(value: string | undefined): boolean | undefined {
-  if (value === 'true') {
-    return true;
-  }
-  return value === 'false' ? false : undefined;
-}
-
-/** An empty field is not a filter, and `null` is how the router is told to drop a parameter. */
-function asParam(value: string): string | null {
-  const cleaned = value.trim();
-  return cleaned === '' ? null : cleaned;
-}
-
-function priceBound(control: AbstractControl): ValidationErrors | null {
-  const value = (control.value as string).trim();
-  return value === '' || productConstraints.pricePattern.test(value) ? null : { price: true };
-}
-
-/**
- * Comparing two bounds is not converting them: the strings are what travel to the API, and
- * `Number` is used here the way `Intl.NumberFormat` is used below the table — to read a value,
- * never to store or send one.
- */
-function priceRange(group: AbstractControl): ValidationErrors | null {
-  const min = (group.get('priceMin')?.value as string | undefined)?.trim() ?? '';
-  const max = (group.get('priceMax')?.value as string | undefined)?.trim() ?? '';
-  const bothValid =
-    productConstraints.pricePattern.test(min) && productConstraints.pricePattern.test(max);
-  if (!bothValid) {
-    return null;
-  }
-  return Number(min) <= Number(max) ? null : { priceRange: true };
-}
 
 @Component({
   selector: 'app-product-catalog',
@@ -360,14 +268,14 @@ export class ProductCatalog {
       queryParams: {
         // A new filter set means a new result set, so the paginator starts over.
         page: null,
-        title: asParam(value.title),
-        description: asParam(value.description),
-        priceMin: asParam(value.priceMin),
-        priceMax: asParam(value.priceMax),
-        category: asParam(value.category),
+        title: asQueryParam(value.title),
+        description: asQueryParam(value.description),
+        priceMin: asQueryParam(value.priceMin),
+        priceMax: asQueryParam(value.priceMax),
+        category: asQueryParam(value.category),
         published: value.published === '' ? null : value.published,
-        accountProm: asParam(value.accountProm),
-        accountOlx: asParam(value.accountOlx),
+        accountProm: asQueryParam(value.accountProm),
+        accountOlx: asQueryParam(value.accountOlx),
       },
     });
   }
@@ -423,11 +331,4 @@ export class ProductCatalog {
     const data: ProductGalleryData = { title: product.titleProm, images: product.images };
     this.dialog.open(ProductGalleryDialog, { data, width: 'min(92vw, 60rem)' });
   }
-}
-
-function publishedControlValue(published: boolean | undefined): '' | 'true' | 'false' {
-  if (published === undefined) {
-    return '';
-  }
-  return published ? 'true' : 'false';
 }
