@@ -1,4 +1,4 @@
-import { DataSource, type DataSourceOptions, type EntitySchema, type MixedList } from 'typeorm';
+import { DataSource, type DataSourceOptions } from 'typeorm';
 import { config, env } from './config.ts';
 
 /**
@@ -8,7 +8,7 @@ import { config, env } from './config.ts';
  * root (`src/api.ts` for the HTTP process, `db/migrate.ts` for migrations).
  */
 export type CreateDataSourceInput = {
-  readonly entities?: MixedList<EntitySchema>;
+  readonly entities?: DataSourceOptions['entities'];
   readonly migrations?: DataSourceOptions['migrations'];
   readonly url?: string;
 };

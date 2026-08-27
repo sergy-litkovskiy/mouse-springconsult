@@ -126,7 +126,7 @@
         <ng-container matColumnDef="price">
           <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Ціна</th>
           <td mat-cell *matCellDef="let product" class="catalog__price">
-            {{ formatPrice(product.priceCents) }}
+            {{ formatPrice(product.price) }}
           </td>
         </ng-container>
 

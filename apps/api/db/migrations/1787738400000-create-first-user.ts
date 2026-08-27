@@ -7,7 +7,7 @@ import { config, env } from '../../src/config.ts';
  * `ADMIN_BOOTSTRAP_PASSWORD`: neither the password nor its hash lives in the repository.
  *
  * Hashing happens right here with the same argon2id parameters as in
- * `password-hasher.adapter.ts` — otherwise the first sign-in would cost differently and
+ * `PasswordHasher.ts` — otherwise the first sign-in would cost differently and
  * give itself away through the response time.
  *
  * `down` removes exactly this user, by email.

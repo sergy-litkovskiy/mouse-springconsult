@@ -72,9 +72,13 @@ function ukrainianPaginatorIntl(): MatPaginatorIntl {
   return intl;
 }
 
-/** Kopiykas in the contract, hryvnias in the form: the admin types what is on the price tag. */
-function toKopiykas(hryvnias: number | null): number | undefined {
-  return hryvnias === null || Number.isNaN(hryvnias) ? undefined : Math.round(hryvnias * 100);
+/**
+ * The bound as the contract wants it: a decimal string. `String` on a value the number
+ * input produced is a serialisation, not a conversion — there is no unit to change,
+ * because hryvnias are what the admin types and what `decimal(12,2)` stores.
+ */
+function toPriceBound(hryvnias: number | null): string | undefined {
+  return hryvnias === null || Number.isNaN(hryvnias) ? undefined : String(hryvnias);
 }
 
 function trimmed(value: string): string | undefined {
@@ -176,12 +180,12 @@ export class ProductCatalog {
       ...(trimmed(value.description) === undefined
         ? {}
         : { description: trimmed(value.description) }),
-      ...(toKopiykas(value.priceMin) === undefined
+      ...(toPriceBound(value.priceMin) === undefined
         ? {}
-        : { priceMinCents: toKopiykas(value.priceMin) }),
-      ...(toKopiykas(value.priceMax) === undefined
+        : { priceMin: toPriceBound(value.priceMin) }),
+      ...(toPriceBound(value.priceMax) === undefined
         ? {}
-        : { priceMaxCents: toKopiykas(value.priceMax) }),
+        : { priceMax: toPriceBound(value.priceMax) }),
       ...(trimmed(value.category) === undefined ? {} : { category: trimmed(value.category) }),
       ...(value.published === '' ? {} : { published: value.published === 'true' }),
       ...(trimmed(value.accountProm) === undefined
@@ -231,8 +235,9 @@ export class ProductCatalog {
     return product.images.find((image) => image.isMain) ?? product.images[0] ?? null;
   }
 
-  protected formatPrice(cents: number): string {
-    return priceFormat.format(cents / 100);
+  /** Display only: the decimal string keeps its exact value, Intl decides how it looks. */
+  protected formatPrice(price: string): string {
+    return priceFormat.format(Number(price));
   }
 
   protected conditionLabel(condition: ProductCondition): string {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createSessionTokens } from './session-token.adapter.ts';
+import { SessionTokens } from './SessionTokens.ts';
 
 const SECRET = 'test-secret-that-is-long-enough-for-hs256';
 const OTHER_SECRET = 'another-secret-that-is-long-enough-for-hs256';
@@ -13,8 +13,8 @@ const USER_ID = '11111111-1111-4111-8111-111111111111';
  */
 const NOW = new Date(Math.floor(Date.now() / 1000) * 1000);
 
-function makeAdapter(secret = SECRET) {
-  return createSessionTokens({
+function makeTokens(secret = SECRET): SessionTokens {
+  return new SessionTokens({
     secret,
     issuer: 'mouse.test',
     audience: 'mouse-admin',
@@ -22,9 +22,9 @@ function makeAdapter(secret = SECRET) {
   });
 }
 
-describe('session token adapter (JWT)', () => {
+describe('session tokens (JWT)', () => {
   it('issues a token it can read back', async () => {
-    const tokens = makeAdapter();
+    const tokens = makeTokens();
 
     const issued = await tokens.issue({
       userId: USER_ID,
@@ -43,18 +43,18 @@ describe('session token adapter (JWT)', () => {
   });
 
   it('does not accept a token signed with a different secret', async () => {
-    const issued = await makeAdapter(OTHER_SECRET).issue({
+    const issued = await makeTokens(OTHER_SECRET).issue({
       userId: USER_ID,
       email: 'admin@example.com',
       ttlSeconds: 3600,
       now: NOW,
     });
 
-    assert.equal(await makeAdapter().verify(issued.token), null);
+    assert.equal(await makeTokens().verify(issued.token), null);
   });
 
   it('does not accept a tampered payload', async () => {
-    const tokens = makeAdapter();
+    const tokens = makeTokens();
     const issued = await tokens.issue({
       userId: USER_ID,
       email: 'admin@example.com',
@@ -74,7 +74,7 @@ describe('session token adapter (JWT)', () => {
   });
 
   it('does not accept an expired token', async () => {
-    const tokens = makeAdapter();
+    const tokens = makeTokens();
     const expired = await tokens.issue({
       userId: USER_ID,
       email: 'admin@example.com',
@@ -86,7 +86,7 @@ describe('session token adapter (JWT)', () => {
   });
 
   it('does not accept garbage instead of a token', async () => {
-    const tokens = makeAdapter();
+    const tokens = makeTokens();
 
     assert.equal(await tokens.verify('not-a-jwt'), null);
     assert.equal(await tokens.verify(''), null);

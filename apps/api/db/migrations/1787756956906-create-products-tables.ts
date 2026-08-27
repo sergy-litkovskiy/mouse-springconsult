@@ -8,8 +8,9 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * the state of the item as the marketplaces name it — `published` answers a different
  * question, so the two never collapse into one column.
  *
- * The price is `numeric(12,2)`; the code counts in whole kopiykas and converts at the ORM
- * boundary. Money never becomes a float.
+ * The price is `numeric(12,2)` — the spelling `decimal(12,2)` names the same type. The
+ * code carries it as the decimal string the driver returns and converts it nowhere, so
+ * money never becomes a float and the column is the only thing that rounds it.
  *
  * There are no secondary indexes on `products` on purpose. At 50–100 cards a month a
  * sequential scan over a few thousand rows is cheaper than indexes to maintain, and the

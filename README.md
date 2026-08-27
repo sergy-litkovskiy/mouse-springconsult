@@ -27,6 +27,7 @@
 | [CLAUDE.md](CLAUDE.md) | Правила залежностей, конвенції, команди |
 | [docs/adr/0001](docs/adr/0001-initial-setup.md) | Початкова архітектура: модульний моноліт, черга в Postgres, бекенд без збірки |
 | [docs/adr/0002](docs/adr/0002-auth-jwt-and-typeorm.md) | Авторизація: JWT у httpOnly-cookie, TypeORM у шарі інфраструктури |
+| [docs/adr/0003](docs/adr/0003-three-layer-classes.md) | Тришарова архітектура на класах, збірка бекенду, іменування PascalCase |
 
 ## Стек
 
@@ -35,8 +36,10 @@ PostgreSQL 18 + TypeORM · JWT у httpOnly-cookie (`jose`) + argon2id · pg-boss
 Cloudflare R2 · sharp · Anthropic Claude (`claude-opus-5`) · Caddy 2 ·
 Docker Compose на Hetzner VPS · GitHub Actions
 
-Бекенд не збирається — Node 26 виконує `.ts` напряму, `tsc` лишається перевіркою.
-TypeScript пінується на 6.0.3: Angular 22 вимагає `>=6.0 <6.1`.
+Бекенд збирається `tsc` у `dist/`: entity описані декораторами TypeORM, а Node їх не
+трансформує ([ADR 0003](docs/adr/0003-three-layer-classes.md)). Шари всередині модуля —
+`Controller → Service → Repository → Entity`. TypeScript пінується на 6.0.3: Angular 22
+вимагає `>=6.0 <6.1`.
 
 ## Структура
 
@@ -215,29 +218,45 @@ docker compose build api              # перезібрати образ піс
 **Якість**
 
 ```bash
+docker compose run --rm --no-deps api npm run build       # tsc → apps/api/dist
 docker compose run --rm --no-deps api npm run typecheck   # tsc --noEmit
 docker compose run --rm --no-deps api npm run lint
-docker compose run --rm --no-deps api npm run test        # node --test, *.spec.ts поруч з кодом
-docker compose run --rm --no-deps api npm run deps:check  # dependency-cruiser: межі модулів
+docker compose run --rm api npm run test                  # tsc + node --test; потребує Postgres
+docker compose run --rm --no-deps api npm run deps:check  # dependency-cruiser: межі шарів
 docker compose run --rm --no-deps api npm run format
 docker compose run --rm --no-deps web npm run lint        # ESLint, зокрема межі між фічами
 docker compose run --rm --no-deps web npm run test        # vitest
 docker compose run --rm --no-deps web npm run build       # прод-збірка + бюджети
 ```
 
+`npm run test` — єдина команда без `--no-deps`: репозиторії й обмеження схеми
+перевіряються на справжньому Postgres. База для тестів — двійник `DATABASE_URL`
+із суфіксом `_test` (`mouse_trading_test`); окремої env-змінної немає, а створює
+й мігрує її сам прогін тестів. Робочі дані вона не чіпає.
+
+Бекенд збирається: entity описані декораторами TypeORM, а Node їх не трансформує
+([ADR 0003](docs/adr/0003-three-layer-classes.md)). `test` і `dev` запускають `tsc`
+самі, тож окремо викликати `build` перед ними не потрібно; решта команд працює з
+`dist/`, який лишається від попередньої збірки. Стектрейси показують рядки `.ts` —
+процес стартує з `--enable-source-maps`.
+
 Ті самі команди виконує CI (`.github/workflows/ci.yml`) — у тих самих образах.
 
 **База даних**
 
 ```bash
+docker compose run --rm migrate                            # build + db:create + db:migrate
 docker compose run --rm api npm run db:create              # ідемпотентно створює mouse_trading
 docker compose run --rm api npm run db:migrate
 docker compose run --rm api npm run db:migrate:revert      # відкотити останню
 docker compose run --rm api npm run db:migrate:show
-docker compose run --rm api npm run db:migrate:new -- add-product-seo
+docker compose run --rm api npm run db:migrate:new -- add-product-seo  # + запис у migrations-list.ts
 docker compose exec postgres psql -U $POSTGRES_USER mouse_trading
 docker compose exec postgres pg_dump -U $POSTGRES_USER mouse_trading > backup.sql
 ```
+
+Скрипти `db:*` виконують `dist/db/*.js`, тому на чистому клоні їм передує
+`npm run build` — або одразу `docker compose run --rm migrate`, який збирає сам.
 
 Базу створює не міграція, а `apps/api/db/init/0001-create-database.sql`:
 `CREATE DATABASE` не виконується всередині транзакції і потребує зʼєднання з

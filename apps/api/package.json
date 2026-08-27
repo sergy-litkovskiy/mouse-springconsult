@@ -7,21 +7,22 @@
     "node": ">=26.0.0"
   },
   "scripts": {
-    "start": "node src/api.ts",
-    "dev": "node --watch src/api.ts",
+    "build": "tsc",
+    "start": "node --enable-source-maps dist/src/api.js",
+    "dev": "tsc && (tsc --watch --preserveWatchOutput & node --enable-source-maps --watch dist/src/api.js)",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --ignore-path ../../.prettierignore .",
     "format:check": "prettier --check --ignore-path ../../.prettierignore .",
-    "test": "node --test --experimental-test-module-mocks 'src/**/*.spec.ts'",
-    "test:watch": "node --test --watch 'src/**/*.spec.ts'",
+    "test": "tsc && node --test --test-concurrency=1 'dist/**/*.spec.js'",
+    "test:watch": "tsc --watch --preserveWatchOutput & node --test --watch --test-concurrency=1 'dist/**/*.spec.js'",
     "deps:check": "depcruise src db --config .dependency-cruiser.cjs",
-    "db:create": "node db/create-database.ts",
-    "db:migrate": "node db/migrate.ts up",
-    "db:migrate:revert": "node db/migrate.ts down",
-    "db:migrate:show": "node db/migrate.ts show",
-    "db:migrate:new": "node db/new-migration.ts"
+    "db:create": "node dist/db/create-database.js",
+    "db:migrate": "node dist/db/migrate.js up",
+    "db:migrate:revert": "node dist/db/migrate.js down",
+    "db:migrate:show": "node dist/db/migrate.js show",
+    "db:migrate:new": "node dist/db/new-migration.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
