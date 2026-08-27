@@ -43,7 +43,7 @@ export class AppLayout {
     } catch {
       // The server did not confirm it, but the session is gone locally either way.
     }
-    this.leaving.set(false);
     await this.router.navigate(['/login']);
+    this.leaving.set(false);
   }
 }

@@ -12,8 +12,8 @@ import { Router } from '@angular/router';
 import { authConstraints } from '@contracts/auth-limits';
 import { apiErrorCodes } from '@contracts/error-codes';
 import { apiErrorMessage } from '../api-error-message';
+import { returnUrlTree } from '../safe-return-url';
 import { AuthStore } from './auth-store';
-import { safeReturnUrl } from './safe-return-url';
 
 /**
  * Sign-in form. The texts are Ukrainian with no translation layer: the admin panel is
@@ -115,7 +115,7 @@ export class LoginPage {
 
     try {
       await this.auth.login(this.form.getRawValue());
-      await this.router.navigateByUrl(safeReturnUrl(this.returnUrl()));
+      await this.router.navigateByUrl(returnUrlTree(this.router, this.returnUrl()));
     } catch (error: unknown) {
       this.showFailure(error);
     } finally {

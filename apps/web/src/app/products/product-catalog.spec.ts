@@ -126,8 +126,7 @@ describe('ProductCatalog', () => {
   });
 
   afterEach(() => {
-    // A request the resource dropped on purpose is not a request anyone forgot.
-    http.verify({ ignoreCancelled: true });
+    http.verify();
   });
 
   it('asks for the first page with the default ordering', async () => {
@@ -175,6 +174,56 @@ describe('ProductCatalog', () => {
 
     request.flush(PAGE);
     await settle();
+  });
+
+  it('drops a filter the address bar made longer than the contract allows', async () => {
+    await open(`/products?category=${'я'.repeat(200)}`);
+    const request = expectRequest();
+
+    // 120 is the contract's own bound; the server would only answer validation_failed.
+    expect(request.request.params.has('category')).toBe(false);
+
+    request.flush(PAGE);
+    await settle();
+  });
+
+  it('keeps filter text that has not been applied yet when the page changes', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    type('title', 'миша');
+    await harness.navigateByUrl('/products?page=2');
+    await tick();
+
+    const title = element.querySelector<HTMLInputElement>('input[formcontrolname="title"]');
+    expect(title?.value).toBe('миша');
+
+    expectRequest().flush({ ...PAGE, page: 2, total: 100 });
+    await settle();
+  });
+
+  it('leaves the first page out of the URL rather than spelling it out', async () => {
+    await open('/products?page=2');
+    expectRequest().flush({ ...PAGE, page: 2, total: 100 });
+    await settle();
+
+    element.querySelector<HTMLButtonElement>('button[aria-label="Попередня сторінка"]')?.click();
+    await tick();
+
+    // The same view the admin would have reached by applying a filter, and the same URL.
+    expect(TestBed.inject(Router).url).toBe('/products');
+
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+  });
+
+  it('explains a price range the address bar got backwards', async () => {
+    await open('/products?priceMin=5000.00&priceMax=1000.00');
+    expectRequest().flush({ ...PAGE, items: [], total: 0 });
+    await settle();
+
+    expect(element.textContent).toContain('не може бути меншою');
   });
 
   it('renders a row per product with the price and the condition in Ukrainian', async () => {

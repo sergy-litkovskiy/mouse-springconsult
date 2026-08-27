@@ -45,9 +45,17 @@ export function toSortDirection(value: string | undefined): ProductSortDirection
   return isSortDirection(value) ? value : productSortDefaults.direction;
 }
 
-export function toTextFilter(value: string | undefined): string | undefined {
-  const cleaned = value?.trim() ?? '';
-  return cleaned === '' ? undefined : cleaned;
+/**
+ * A text filter carries the contract's own limit, the way `toPriceFilter` carries the price
+ * pattern: a URL typed by hand is normalised here rather than round-tripped to the server for
+ * a `validation_failed` that names no field. A factory because the bound differs per field and
+ * an `input()` transform takes only the value.
+ */
+export function textFilter(maxLength: number): (value: string | undefined) => string | undefined {
+  return (value) => {
+    const cleaned = value?.trim() ?? '';
+    return cleaned === '' || cleaned.length > maxLength ? undefined : cleaned;
+  };
 }
 
 /**

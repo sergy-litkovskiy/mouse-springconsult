@@ -45,12 +45,6 @@ describe('AuthStore', () => {
     expect(store.isAuthenticated()).toBe(true);
   });
 
-  it('keeps the moment the server said the session dies', async () => {
-    await signIn();
-
-    expect(store.expiresAt()).toBe(SESSION.expiresAt);
-  });
-
   it('forgets the user after signing out', async () => {
     await signIn();
 
@@ -87,6 +81,18 @@ describe('AuthStore', () => {
     await signIn(EXPIRED_SESSION);
 
     expect(await store.restoreSession()).toBeNull();
+    expect(store.isAuthenticated()).toBe(false);
+  });
+
+  it('does not let a session check that was overtaken by a sign-out write itself back', async () => {
+    const restoring = store.restoreSession();
+    const probe = http.expectOne('/api/auth/me');
+
+    // The admin signs out while the check is still in flight.
+    store.clearSession();
+    probe.flush(SESSION);
+
+    expect(await restoring).toBeNull();
     expect(store.isAuthenticated()).toBe(false);
   });
 

@@ -56,6 +56,16 @@ describe('guestGuard', () => {
     expect(String(await result)).toBe('/products?page=2');
   });
 
+  it('falls back to the catalogue when the returnUrl cannot be parsed', async () => {
+    // A lone `%` is a path decodeURIComponent throws on — from inside a guard that would
+    // fail the navigation outright and leave the admin on a blank page.
+    const result = activate('/products?q=100%');
+
+    http.expectOne('/api/auth/me').flush(SESSION);
+
+    expect(String(await result)).toBe('/products');
+  });
+
   it('refuses a returnUrl pointing outside the application', async () => {
     const result = activate('//evil.example/phish');
 

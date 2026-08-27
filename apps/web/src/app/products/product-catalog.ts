@@ -42,9 +42,9 @@ import {
   toPageSize,
   toPriceFilter,
   toPublishedFilter,
+  textFilter,
   toSortDirection,
   toSortField,
-  toTextFilter,
 } from './product-catalog-query';
 import { ProductGalleryDialog, type ProductGalleryData } from './product-gallery-dialog';
 import { ProductsApi } from './products-api';
@@ -127,10 +127,10 @@ export class ProductCatalog {
     { transform: toSortDirection },
   );
   readonly title = input<string | undefined, string | undefined>(undefined, {
-    transform: toTextFilter,
+    transform: textFilter(productConstraints.titleMaxLength),
   });
   readonly description = input<string | undefined, string | undefined>(undefined, {
-    transform: toTextFilter,
+    transform: textFilter(productConstraints.titleMaxLength),
   });
   readonly priceMin = input<string | undefined, string | undefined>(undefined, {
     transform: toPriceFilter,
@@ -139,27 +139,24 @@ export class ProductCatalog {
     transform: toPriceFilter,
   });
   readonly category = input<string | undefined, string | undefined>(undefined, {
-    transform: toTextFilter,
+    transform: textFilter(productConstraints.categoryMaxLength),
   });
   readonly published = input<boolean | undefined, string | undefined>(undefined, {
     transform: toPublishedFilter,
   });
   readonly accountProm = input<string | undefined, string | undefined>(undefined, {
-    transform: toTextFilter,
+    transform: textFilter(productConstraints.accountMaxLength),
   });
   readonly accountOlx = input<string | undefined, string | undefined>(undefined, {
-    transform: toTextFilter,
+    transform: textFilter(productConstraints.accountMaxLength),
   });
 
   /**
-   * Every field is listed, so a filter added to the contract fails to compile here until it is
-   * bound — the one place in this file where forgetting would be silent otherwise.
+   * The eight filters on their own, apart from paging and ordering. The form mirrors these and
+   * only these: a click on the paginator or a sort header is not a reason to wipe text the
+   * admin has typed into a filter and not yet applied.
    */
-  private readonly query = computed<ProductListQuery>(() => ({
-    page: this.page(),
-    pageSize: this.pageSize(),
-    sort: this.sort(),
-    direction: this.direction(),
+  private readonly appliedFilters = computed(() => ({
     title: this.title(),
     description: this.description(),
     priceMin: this.priceMin(),
@@ -168,6 +165,15 @@ export class ProductCatalog {
     published: this.published(),
     accountProm: this.accountProm(),
     accountOlx: this.accountOlx(),
+  }));
+
+  /** Every field in one place: an optional filter added to the contract is visible here. */
+  private readonly query = computed<ProductListQuery>(() => ({
+    page: this.page(),
+    pageSize: this.pageSize(),
+    sort: this.sort(),
+    direction: this.direction(),
+    ...this.appliedFilters(),
   }));
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
@@ -238,20 +244,19 @@ export class ProductCatalog {
     // The form shows what the URL is asking for: after a reload, or a Back out of a filtered
     // page, the fields have to agree with the rows underneath them.
     effect(() => {
-      const query = this.query();
-      this.filters.setValue(
-        {
-          title: query.title ?? '',
-          description: query.description ?? '',
-          priceMin: query.priceMin ?? '',
-          priceMax: query.priceMax ?? '',
-          category: query.category ?? '',
-          published: publishedControlValue(query.published),
-          accountProm: query.accountProm ?? '',
-          accountOlx: query.accountOlx ?? '',
-        },
-        { emitEvent: false },
-      );
+      const applied = this.appliedFilters();
+      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
+      // URL got backwards has to reach the message rather than only the validator.
+      this.filters.setValue({
+        title: applied.title ?? '',
+        description: applied.description ?? '',
+        priceMin: applied.priceMin ?? '',
+        priceMax: applied.priceMax ?? '',
+        category: applied.category ?? '',
+        published: publishedControlValue(applied.published),
+        accountProm: applied.accountProm ?? '',
+        accountOlx: applied.accountOlx ?? '',
+      });
     });
   }
 
@@ -289,7 +294,12 @@ export class ProductCatalog {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParamsHandling: 'merge',
-      queryParams: { page: event.pageIndex + 1, pageSize: event.pageSize },
+      // What the defaults already say is left unsaid, so one view has one URL however the
+      // admin arrived at it — otherwise Back steps through states that render identically.
+      queryParams: {
+        page: event.pageIndex === 0 ? null : event.pageIndex + 1,
+        pageSize: event.pageSize === productPagination.defaultPageSize ? null : event.pageSize,
+      },
     });
   }
 

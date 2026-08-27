@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, Router, type UrlTree } from '@angular/router';
+import { isWorthReturningTo } from '../safe-return-url';
 import { AuthStore } from './auth-store';
 
 /**
@@ -19,6 +20,8 @@ export const authGuard: CanActivateFn = async (_route, state): Promise<boolean |
   }
 
   const target = state.url;
-  const keepTarget = target !== '/' && !target.startsWith('/login');
-  return router.createUrlTree(['/login'], keepTarget ? { queryParams: { returnUrl: target } } : {});
+  return router.createUrlTree(
+    ['/login'],
+    isWorthReturningTo(target) ? { queryParams: { returnUrl: target } } : {},
+  );
 };

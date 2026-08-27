@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, Router, type UrlTree } from '@angular/router';
+import { returnUrlTree } from '../safe-return-url';
 import { AuthStore } from './auth-store';
-import { safeReturnUrl } from './safe-return-url';
 
 /**
  * The mirror image of `authGuard`: the sign-in form is for those who are not signed in.
@@ -13,7 +13,5 @@ export const guestGuard: CanActivateFn = async (route): Promise<boolean | UrlTre
   const router = inject(Router);
 
   const user = await store.restoreSession();
-  return user === null
-    ? true
-    : router.parseUrl(safeReturnUrl(route.queryParamMap.get('returnUrl')));
+  return user === null ? true : returnUrlTree(router, route.queryParamMap.get('returnUrl'));
 };

@@ -104,7 +104,7 @@ describe('LoginPage', () => {
     request.flush(SESSION);
     await settle();
 
-    expect(navigate).toHaveBeenCalledWith('/products');
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products');
   });
 
   it('returns to the page the guard interrupted', async () => {
@@ -119,7 +119,7 @@ describe('LoginPage', () => {
     http.expectOne('/api/auth/login').flush(SESSION);
     await settle();
 
-    expect(navigate).toHaveBeenCalledWith('/products?page=3');
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products?page=3');
   });
 
   it('refuses a returnUrl that points outside the application', async () => {
@@ -134,7 +134,7 @@ describe('LoginPage', () => {
     http.expectOne('/api/auth/login').flush(SESSION);
     await settle();
 
-    expect(navigate).toHaveBeenCalledWith('/products');
+    expect(String(navigate.mock.lastCall?.[0])).toBe('/products');
   });
 
   it('highlights both fields and shows a message on wrong credentials', async () => {

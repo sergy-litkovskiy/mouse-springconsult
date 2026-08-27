@@ -1,4 +1,4 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { AuthUser, LoginRequest, Session } from '@contracts/auth.contract';
 import { AuthApi } from './auth-api';
@@ -11,13 +11,11 @@ import { AuthApi } from './auth-api';
  * reload can be answered in exactly one way — by asking `GET /auth/me`.
  *
  * The whole session is kept, `expiresAt` included: the server names the moment the cookie
- * dies, and a frontend that throws that away has no way to know it is holding a user who
- * is no longer signed in.
+ * dies, and a store that throws that away answers the guards' question with a session it
+ * has no reason to believe in. There is no timer on that moment — a "remember me" cookie
+ * outlives what `setTimeout` can hold, and a session that dies unnoticed in an open tab is
+ * caught by the very next request through `authInterceptor`.
  */
-
-/** `setTimeout` stores the delay in a signed 32-bit integer; anything longer fires at once. */
-const MAX_TIMEOUT_DELAY = 2_147_483_647;
-
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
   private readonly api = inject(AuthApi);
@@ -25,21 +23,21 @@ export class AuthStore {
   private readonly sessionChecked = signal(false);
   /** Several guards on one navigation must not fire several identical requests. */
   private restoring: Promise<AuthUser | null> | null = null;
-  private expiryTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Bumped by everything that decides the session is gone. An answer to `GET /auth/me` that
+   * lands after a sign-out describes a session nobody has any more, and writing it back
+   * would sign the admin in again with a cookie the server has already forgotten.
+   */
+  private generation = 0;
 
   readonly user = computed(() => this.session()?.user ?? null);
-  readonly expiresAt = computed(() => this.session()?.expiresAt ?? null);
   readonly isAuthenticated = computed(() => this.session() !== null);
-
-  constructor() {
-    inject(DestroyRef).onDestroy(() => {
-      this.cancelExpiry();
-    });
-  }
 
   async login(request: LoginRequest): Promise<AuthUser> {
     const session = await firstValueFrom(this.api.login(request));
-    this.acceptSession(session);
+    this.generation += 1;
+    this.session.set(session);
+    this.sessionChecked.set(true);
     return session.user;
   }
 
@@ -57,7 +55,7 @@ export class AuthStore {
    * already known: a sign-out, and a 401 on any other call.
    */
   clearSession(): void {
-    this.cancelExpiry();
+    this.generation += 1;
     this.session.set(null);
     this.sessionChecked.set(true);
     this.restoring = null;
@@ -75,48 +73,23 @@ export class AuthStore {
   }
 
   private async fetchSession(): Promise<AuthUser | null> {
+    const generation = this.generation;
     try {
-      this.acceptSession(await firstValueFrom(this.api.currentSession()));
+      const session = await firstValueFrom(this.api.currentSession());
+      if (generation === this.generation) {
+        this.session.set(session);
+      }
     } catch {
-      this.cancelExpiry();
-      this.session.set(null);
+      if (generation === this.generation) {
+        this.session.set(null);
+      }
     } finally {
-      this.sessionChecked.set(true);
-      this.restoring = null;
+      if (generation === this.generation) {
+        this.sessionChecked.set(true);
+        this.restoring = null;
+      }
     }
     return this.user();
-  }
-
-  private acceptSession(session: Session): void {
-    this.session.set(session);
-    this.sessionChecked.set(true);
-    this.scheduleExpiry(session.expiresAt);
-  }
-
-  /**
-   * The timer is what makes `isAuthenticated()` tell the truth without polling. It cannot
-   * cover everything — a sleeping machine, or a TTL longer than `setTimeout` can hold — so
-   * `restoreSession()` checks the clock as well.
-   */
-  private scheduleExpiry(expiresAt: string): void {
-    this.cancelExpiry();
-    const delay = Date.parse(expiresAt) - Date.now();
-    if (Number.isNaN(delay) || delay > MAX_TIMEOUT_DELAY) {
-      return;
-    }
-    this.expiryTimer = setTimeout(
-      () => {
-        this.clearSession();
-      },
-      Math.max(delay, 0),
-    );
-  }
-
-  private cancelExpiry(): void {
-    if (this.expiryTimer !== null) {
-      clearTimeout(this.expiryTimer);
-      this.expiryTimer = null;
-    }
   }
 
   private hasExpired(): boolean {

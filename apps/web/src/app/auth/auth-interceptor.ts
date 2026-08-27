@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { environment } from '@environments/environment';
+import { isWorthReturningTo } from '../safe-return-url';
 import { AuthStore } from './auth-store';
 
 /**
@@ -38,5 +39,5 @@ function isSessionLost(error: unknown): boolean {
 
 /** Where the admin was when the session died — worth coming back to, unless it was the form. */
 function returnTo(url: string): { queryParams?: { returnUrl: string } } {
-  return url === '/' || url.startsWith('/login') ? {} : { queryParams: { returnUrl: url } };
+  return isWorthReturningTo(url) ? { queryParams: { returnUrl: url } } : {};
 }
