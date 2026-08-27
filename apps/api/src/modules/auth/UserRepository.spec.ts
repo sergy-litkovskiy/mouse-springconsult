@@ -1,4 +1,4 @@
-  import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
 import { createDataSource } from '../../db.ts';
