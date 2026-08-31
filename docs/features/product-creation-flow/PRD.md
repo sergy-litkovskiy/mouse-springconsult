@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Approved
 owner: "Serhii"
 reviewers: []
 updated_at: "2026-08-31"
