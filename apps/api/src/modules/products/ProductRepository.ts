@@ -20,9 +20,9 @@ export type ProductFilters = {
   readonly priceMin?: string | undefined;
   readonly priceMax?: string | undefined;
   readonly category?: string | undefined;
-  readonly published?: boolean | undefined;
-  readonly accountProm?: string | undefined;
-  readonly accountOlx?: string | undefined;
+  /** Presence on each marketplace is asked about separately, or not at all. */
+  readonly publishedProm?: boolean | undefined;
+  readonly publishedOlx?: boolean | undefined;
 };
 
 export type ProductListCriteria = {
@@ -74,14 +74,13 @@ function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilter
   if (filters.category !== undefined) {
     query.andWhere('product.category = :category', { category: filters.category });
   }
-  if (filters.published !== undefined) {
-    query.andWhere('product.published = :published', { published: filters.published });
+  if (filters.publishedProm !== undefined) {
+    query.andWhere('product.publishedProm = :publishedProm', {
+      publishedProm: filters.publishedProm,
+    });
   }
-  if (filters.accountProm !== undefined) {
-    query.andWhere('product.accountProm = :accountProm', { accountProm: filters.accountProm });
-  }
-  if (filters.accountOlx !== undefined) {
-    query.andWhere('product.accountOlx = :accountOlx', { accountOlx: filters.accountOlx });
+  if (filters.publishedOlx !== undefined) {
+    query.andWhere('product.publishedOlx = :publishedOlx', { publishedOlx: filters.publishedOlx });
   }
 }
 

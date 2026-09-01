@@ -14,8 +14,12 @@ import { ProductImage } from './ProductImage.ts';
  *
  * Prom and OLX get separate title and description fields rather than one shared text:
  * the marketplaces differ in length limits and in tone, and a card is prepared for both
- * at once. `condition` is what the marketplaces call the state of the item — `published`
- * answers a different question and the two never collapse into one flag.
+ * at once. `condition` is what the marketplaces call the state of the item, and it never
+ * collapses into a publication flag — it answers a different question.
+ *
+ * Publication is two flags for the same reason there are two titles: the card is one and
+ * the marketplaces are two. A listing goes up on Prom and comes down from OLX on days of
+ * their own, so one shared flag would be wrong about a card that lives on a single site.
  *
  * Every column states its type explicitly instead of leaning on the metadata tsc emits:
  * `verbatimModuleSyntax` erases a type-only import, so a type inferred from a signature
@@ -58,14 +62,11 @@ export class Product {
   @Column({ name: 'category', type: 'varchar', length: 120 })
   category!: string;
 
-  @Column({ name: 'published', type: 'boolean', default: false })
-  published!: boolean;
+  @Column({ name: 'published_prom', type: 'boolean', default: false })
+  publishedProm!: boolean;
 
-  @Column({ name: 'account_prom', type: 'varchar', length: 120, nullable: true })
-  accountProm!: string | null;
-
-  @Column({ name: 'account_olx', type: 'varchar', length: 120, nullable: true })
-  accountOlx!: string | null;
+  @Column({ name: 'published_olx', type: 'boolean', default: false })
+  publishedOlx!: boolean;
 
   @Column({ name: 'condition', type: 'varchar', length: 8 })
   condition!: ProductCondition;

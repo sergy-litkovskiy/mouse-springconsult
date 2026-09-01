@@ -47,28 +47,21 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Публікація</mat-label>
-        <mat-select formControlName="published">
+        <mat-label>Публікація Prom</mat-label>
+        <mat-select formControlName="publishedProm">
           <mat-option value="">Будь-яка</mat-option>
           <mat-option value="true">Опубліковані</mat-option>
-          <mat-option value="false">Чернетки</mat-option>
+          <mat-option value="false">Не опубліковані</mat-option>
         </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Акаунт Prom</mat-label>
-        <input matInput formControlName="accountProm" />
-        @if (filters.controls.accountProm.hasError('maxlength')) {
-          <mat-error>Довше за {{ accountMaxLength }} символів.</mat-error>
-        }
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Акаунт OLX</mat-label>
-        <input matInput formControlName="accountOlx" />
-        @if (filters.controls.accountOlx.hasError('maxlength')) {
-          <mat-error>Довше за {{ accountMaxLength }} символів.</mat-error>
-        }
+        <mat-label>Публікація OLX</mat-label>
+        <mat-select formControlName="publishedOlx">
+          <mat-option value="">Будь-яка</mat-option>
+          <mat-option value="true">Опубліковані</mat-option>
+          <mat-option value="false">Не опубліковані</mat-option>
+        </mat-select>
       </mat-form-field>
 
       <div class="filters__actions">
@@ -166,21 +159,18 @@
           <td mat-cell *matCellDef="let product">{{ conditionLabel(product.condition) }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="published">
-          <th mat-header-cell *matHeaderCellDef scope="col">Публікація</th>
+        <ng-container matColumnDef="publishedProm">
+          <th mat-header-cell *matHeaderCellDef scope="col">Prom</th>
           <td mat-cell *matCellDef="let product">
-            {{ product.published ? 'Опубліковано' : 'Чернетка' }}
+            {{ product.publishedProm ? 'Опубліковано' : 'Ні' }}
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="accountProm">
-          <th mat-header-cell *matHeaderCellDef scope="col">Акаунт Prom</th>
-          <td mat-cell *matCellDef="let product">{{ product.accountProm ?? '—' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="accountOlx">
-          <th mat-header-cell *matHeaderCellDef scope="col">Акаунт OLX</th>
-          <td mat-cell *matCellDef="let product">{{ product.accountOlx ?? '—' }}</td>
+        <ng-container matColumnDef="publishedOlx">
+          <th mat-header-cell *matHeaderCellDef scope="col">OLX</th>
+          <td mat-cell *matCellDef="let product">
+            {{ product.publishedOlx ? 'Опубліковано' : 'Ні' }}
+          </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="columns"></tr>

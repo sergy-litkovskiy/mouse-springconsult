@@ -63,9 +63,8 @@ export class ProductController {
       price: product.price,
       seoKeywords: [...product.seoKeywords],
       category: product.category,
-      published: product.published,
-      accountProm: product.accountProm,
-      accountOlx: product.accountOlx,
+      publishedProm: product.publishedProm,
+      publishedOlx: product.publishedOlx,
       condition: product.condition,
       images: [...product.images]
         .sort((left, right) => left.position - right.position)

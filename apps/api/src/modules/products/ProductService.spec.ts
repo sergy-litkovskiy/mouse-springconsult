@@ -65,9 +65,8 @@ describe('product service', () => {
       priceMin: '100.00',
       priceMax: '5000.00',
       category: 'Периферія',
-      published: true,
-      accountProm: 'prom-main',
-      accountOlx: 'olx-main',
+      publishedProm: true,
+      publishedOlx: false,
     });
 
     assert.deepEqual(repository.lastCriteria?.filters, {
@@ -76,9 +75,8 @@ describe('product service', () => {
       priceMin: '100.00',
       priceMax: '5000.00',
       category: 'Периферія',
-      published: true,
-      accountProm: 'prom-main',
-      accountOlx: 'olx-main',
+      publishedProm: true,
+      publishedOlx: false,
     });
   });
 

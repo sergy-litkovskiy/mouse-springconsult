@@ -141,18 +141,15 @@ export class ProductCatalog {
   readonly category = input<string | undefined, string | undefined>(undefined, {
     transform: textFilter(productConstraints.categoryMaxLength),
   });
-  readonly published = input<boolean | undefined, string | undefined>(undefined, {
+  readonly publishedProm = input<boolean | undefined, string | undefined>(undefined, {
     transform: toPublishedFilter,
   });
-  readonly accountProm = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(productConstraints.accountMaxLength),
-  });
-  readonly accountOlx = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(productConstraints.accountMaxLength),
+  readonly publishedOlx = input<boolean | undefined, string | undefined>(undefined, {
+    transform: toPublishedFilter,
   });
 
   /**
-   * The eight filters on their own, apart from paging and ordering. The form mirrors these and
+   * The seven filters on their own, apart from paging and ordering. The form mirrors these and
    * only these: a click on the paginator or a sort header is not a reason to wipe text the
    * admin has typed into a filter and not yet applied.
    */
@@ -162,9 +159,8 @@ export class ProductCatalog {
     priceMin: this.priceMin(),
     priceMax: this.priceMax(),
     category: this.category(),
-    published: this.published(),
-    accountProm: this.accountProm(),
-    accountOlx: this.accountOlx(),
+    publishedProm: this.publishedProm(),
+    publishedOlx: this.publishedOlx(),
   }));
 
   /** Every field in one place: an optional filter added to the contract is visible here. */
@@ -196,7 +192,6 @@ export class ProductCatalog {
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
-  protected readonly accountMaxLength = productConstraints.accountMaxLength;
   protected readonly columns = [
     'gallery',
     'titleProm',
@@ -204,9 +199,8 @@ export class ProductCatalog {
     'price',
     'category',
     'condition',
-    'published',
-    'accountProm',
-    'accountOlx',
+    'publishedProm',
+    'publishedOlx',
   ];
 
   /**
@@ -221,10 +215,9 @@ export class ProductCatalog {
       priceMin: ['', [priceBound]],
       priceMax: ['', [priceBound]],
       category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
-      // '' means "not asked about", which is not the same as "unpublished".
-      published: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
-      accountProm: ['', [Validators.maxLength(productConstraints.accountMaxLength)]],
-      accountOlx: ['', [Validators.maxLength(productConstraints.accountMaxLength)]],
+      // '' means "not asked about", which is not the same as "not published there".
+      publishedProm: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
+      publishedOlx: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
     },
     // The bounds are wrong as a pair, not one at a time, so the rule belongs to the group.
     { validators: [priceRange] },
@@ -253,9 +246,8 @@ export class ProductCatalog {
         priceMin: applied.priceMin ?? '',
         priceMax: applied.priceMax ?? '',
         category: applied.category ?? '',
-        published: publishedControlValue(applied.published),
-        accountProm: applied.accountProm ?? '',
-        accountOlx: applied.accountOlx ?? '',
+        publishedProm: publishedControlValue(applied.publishedProm),
+        publishedOlx: publishedControlValue(applied.publishedOlx),
       });
     });
   }
@@ -278,9 +270,8 @@ export class ProductCatalog {
         priceMin: asQueryParam(value.priceMin),
         priceMax: asQueryParam(value.priceMax),
         category: asQueryParam(value.category),
-        published: value.published === '' ? null : value.published,
-        accountProm: asQueryParam(value.accountProm),
-        accountOlx: asQueryParam(value.accountOlx),
+        publishedProm: value.publishedProm === '' ? null : value.publishedProm,
+        publishedOlx: value.publishedOlx === '' ? null : value.publishedOlx,
       },
     });
   }

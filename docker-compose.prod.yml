@@ -26,12 +26,53 @@ services:
       timeout: 5s
       retries: 10
 
+  # A snapshot taken before every migration run: `migrate` starts only once it has
+  # succeeded, so a deploy that would apply destructive DDL stops while the previous api
+  # keeps serving. The image is the server's own, so pg_dump always matches the server
+  # version — the api image is node:26-slim and carries no Postgres client at all.
+  #
+  # The dumps land in ./backups next to this file and the fourteen newest are kept.
+  # Copying them off the host is a separate job: a backup that lives on the disk it
+  # protects is not a backup.
+  backup:
+    image: postgres:18-alpine
+    env_file: [.env]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backups:/backups
+    # The official entrypoint exists to initialise a server; this container is a client,
+    # so it is bypassed. `sh -e` makes any failed line here fail the whole deploy — which
+    # is the entire point of the service.
+    entrypoint: ['sh', '-euc']
+    command:
+      - |
+        url="$${DATABASE_URL%%\?*}"
+        db="$${url##*/}"
+        # The very first deploy has no database yet — db:create runs in `migrate`, after
+        # this. The list is read from the maintenance database rather than guessed from a
+        # failed pg_dump: a dump that fails on bad credentials must stop the deploy, and
+        # a missing database must not.
+        databases="$$(psql "$${url%/*}/postgres" -tAc 'select datname from pg_database')"
+        if ! echo "$$databases" | grep -qx "$$db"; then
+          echo "database $$db does not exist yet — nothing to back up"
+          exit 0
+        fi
+        file="/backups/$$db-$$(date -u +%Y%m%dT%H%M%SZ).dump"
+        pg_dump --format=custom --file="$$file" "$$DATABASE_URL"
+        echo "wrote $$file"
+        ls -1t /backups/*.dump 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$$old"; done
+    restart: 'no'
+
   migrate:
     image: ${API_IMAGE:-ghcr.io/OWNER/mouse-api:latest}
     env_file: [.env]
     depends_on:
       postgres:
         condition: service_healthy
+      backup:
+        condition: service_completed_successfully
     command: sh -c "npm run db:create && npm run db:migrate"
     restart: 'no'
 
