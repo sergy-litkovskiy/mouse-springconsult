@@ -5,9 +5,13 @@
 
 FROM node:26-slim AS base
 WORKDIR /app/apps/web
+# NG_CLI_ANALYTICS: without it the first `ng` run in a container writes a random user id
+# into angular.json — a repository file, reformatted by the CLI, which then fails
+# `npm run format:check` in CI. The CLI must not edit the source it is pointed at.
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false \
     NPM_CONFIG_FUND=false \
-    NPM_CONFIG_AUDIT=false
+    NPM_CONFIG_AUDIT=false \
+    NG_CLI_ANALYTICS=false
 
 # ── deps ─────────────────────────────────────────────────────────────────────
 FROM base AS deps

@@ -39,9 +39,8 @@ async function seedProduct(seed: ProductSeed = {}): Promise<string> {
     price: '2499.00',
     seoKeywords: ['миша', 'logitech'],
     category: 'Комп’ютерна периферія',
-    published: true,
-    accountProm: 'prom-main',
-    accountOlx: 'olx-main',
+    publishedProm: true,
+    publishedOlx: true,
     condition: 'used',
     ...seed,
   };
@@ -174,16 +173,30 @@ describe('product repository (postgres)', () => {
 
   it('counts the rows behind the filter, not the size of the page', async () => {
     for (const index of [0, 1, 2, 3, 4]) {
-      await seedProduct({ titleProm: `Товар ${String(index)}`, published: index < 3 });
+      await seedProduct({ titleProm: `Товар ${String(index)}`, publishedProm: index < 3 });
     }
 
     const page = await products.list({
       ...BASE_CRITERIA,
       pageSize: 2,
-      filters: { published: true },
+      filters: { publishedProm: true },
     });
 
     assert.equal(page.total, 3);
     assert.equal(page.items.length, 2);
+  });
+
+  it('answers about one marketplace without answering about the other', async () => {
+    // The card the two columns exist for: it is up on Prom and not on OLX, and a single
+    // shared flag could not be true and false about it at the same time.
+    await seedProduct({ titleProm: 'Лише на Prom', publishedProm: true, publishedOlx: false });
+    await seedProduct({ titleProm: 'На обох', publishedProm: true, publishedOlx: true });
+
+    const onProm = await products.list({ ...BASE_CRITERIA, filters: { publishedProm: true } });
+    const notOnOlx = await products.list({ ...BASE_CRITERIA, filters: { publishedOlx: false } });
+
+    assert.equal(onProm.total, 2);
+    assert.equal(notOnOlx.total, 1);
+    assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
   });
 });

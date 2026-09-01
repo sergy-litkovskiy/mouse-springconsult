@@ -39,11 +39,22 @@ describe('product list query contract', () => {
     }
   });
 
-  it('reads published=false as false rather than as a truthy string', () => {
+  it('reads publishedProm=false as false rather than as a truthy string', () => {
     // z.coerce.boolean() would return true here: Boolean('false') is true. That is the
     // whole reason the flag is spelled out in the contract.
-    assert.equal(productListQuerySchema.parse({ published: 'false' }).published, false);
-    assert.equal(productListQuerySchema.parse({ published: 'true' }).published, true);
+    assert.equal(productListQuerySchema.parse({ publishedProm: 'false' }).publishedProm, false);
+    assert.equal(productListQuerySchema.parse({ publishedProm: 'true' }).publishedProm, true);
+  });
+
+  it('keeps the two marketplaces independent of each other', () => {
+    // The card is one and the sites are two: asking about Prom says nothing about OLX.
+    const parsed = productListQuerySchema.parse({ publishedProm: 'true', publishedOlx: 'false' });
+
+    assert.equal(parsed.publishedProm, true);
+    assert.equal(parsed.publishedOlx, false);
+
+    const promOnly = productListQuerySchema.parse({ publishedProm: 'true' });
+    assert.equal(Object.hasOwn(promOnly, 'publishedOlx'), false);
   });
 
   it('refuses a page size above the ceiling instead of silently clamping it', () => {
@@ -69,6 +80,6 @@ describe('product list query contract', () => {
     const parsed = productListQuerySchema.parse({ page: '1' });
 
     assert.equal(Object.hasOwn(parsed, 'title'), false);
-    assert.equal(Object.hasOwn(parsed, 'published'), false);
+    assert.equal(Object.hasOwn(parsed, 'publishedProm'), false);
   });
 });

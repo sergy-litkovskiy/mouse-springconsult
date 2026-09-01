@@ -10,7 +10,10 @@ const SESSION: Session = {
     email: 'admin@example.com',
     displayName: 'Адміністратор',
   },
-  expiresAt: '2026-09-01T10:00:00.000Z',
+  // An hour ahead of the run rather than a fixed date. `hasExpired` compares this with
+  // `Date.now()`, so a hardcoded moment is a bomb: the suite passes until that day and
+  // fails from it on.
+  expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 };
 
 /** The same session, but the server said it died before this test started. */

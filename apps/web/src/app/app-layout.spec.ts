@@ -11,7 +11,8 @@ const SESSION = {
     email: 'admin@example.com',
     displayName: 'Адміністратор',
   },
-  expiresAt: '2026-09-01T10:00:00.000Z',
+  // An hour ahead of the run: a fixed moment expires the session the day it names.
+  expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 };
 
 describe('AppLayout', () => {

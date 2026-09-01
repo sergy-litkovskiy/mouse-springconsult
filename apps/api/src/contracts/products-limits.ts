@@ -8,7 +8,6 @@ export const productConstraints = {
   titleMaxLength: 200,
   descriptionMaxLength: 8_000,
   categoryMaxLength: 120,
-  accountMaxLength: 120,
   keywordMaxLength: 60,
   maxKeywords: 30,
   /** A card carries a gallery, not an archive: ten frames is the agreed ceiling. */

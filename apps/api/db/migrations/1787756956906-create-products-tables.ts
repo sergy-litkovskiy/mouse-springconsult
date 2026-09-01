@@ -5,8 +5,19 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Prom and OLX get their own title and description columns: the marketplaces differ in
  * length limits and in tone, and a card is prepared for both in one pass. `condition` is
- * the state of the item as the marketplaces name it — `published` answers a different
- * question, so the two never collapse into one column.
+ * the state of the item as the marketplaces name it, and it answers a different question
+ * than either publication flag, so the columns never collapse into one.
+ *
+ * Publication is two columns because the card is one and the marketplaces are two: a
+ * listing goes up on Prom and comes down from OLX on days of their own, and one shared
+ * flag would start lying the moment a card exists on a single site. Every state the
+ * glossary names — draft, published-prom, published-olx — is a pair of these booleans.
+ *
+ * The key is `uuidv7()` rather than a fully random v4. A card needs its id before its row
+ * exists — an R2 key is `products/{id}/…`, written while the upload is still in flight —
+ * and v7 keeps that while ordering ids by time, so inserts append to the end of the index
+ * instead of landing all over it. That is the only thing randomness costs here, and v7
+ * gives it back for nothing.
  *
  * The price is `numeric(12,2)` — the spelling `decimal(12,2)` names the same type. The
  * code carries it as the decimal string the driver returns and converts it nowhere, so
@@ -23,7 +34,7 @@ export class CreateProductsTables1787756956906 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       create table "products" (
-        "id"                uuid          primary key default gen_random_uuid(),
+        "id"                uuid          primary key default uuidv7(),
         "title_prom"        varchar(200)  not null,
         "description_prom"  text          not null default '',
         "title_olx"         varchar(200)  not null,
@@ -31,9 +42,8 @@ export class CreateProductsTables1787756956906 implements MigrationInterface {
         "price"             numeric(12,2) not null default 0,
         "seo_keywords"      text[]        not null default '{}',
         "category"          varchar(120)  not null,
-        "published"         boolean       not null default false,
-        "account_prom"      varchar(120),
-        "account_olx"       varchar(120),
+        "published_prom"    boolean       not null default false,
+        "published_olx"     boolean       not null default false,
         "condition"         varchar(8)    not null default 'used',
         "created_at"        timestamptz   not null default now(),
         "updated_at"        timestamptz   not null default now(),
@@ -50,7 +60,7 @@ export class CreateProductsTables1787756956906 implements MigrationInterface {
      */
     await queryRunner.query(`
       create table "product_images" (
-        "id"          uuid    primary key default gen_random_uuid(),
+        "id"          uuid    primary key default uuidv7(),
         "product_id"  uuid    not null references "products" ("id") on delete cascade,
         "r2_key"      text    not null,
         "url"         text    not null,

@@ -30,9 +30,8 @@ const MOUSE: Product = {
   price: '2499.00',
   seoKeywords: ['миша', 'logitech'],
   category: 'Периферія',
-  published: true,
-  accountProm: 'prom-main',
-  accountOlx: 'olx-main',
+  publishedProm: true,
+  publishedOlx: false,
   condition: 'used',
   images: [
     makeImage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 0, false),
@@ -49,9 +48,8 @@ const KEYBOARD: Product = {
   titleProm: 'Клавіатура Keychron K2',
   titleOlx: 'Keychron K2 механічна',
   price: '3200.00',
-  published: false,
-  accountProm: null,
-  accountOlx: null,
+  publishedProm: false,
+  publishedOlx: false,
   condition: 'new',
   images: [],
 };
@@ -145,7 +143,10 @@ describe('ProductCatalog', () => {
   });
 
   it('takes the whole state of the table out of the address bar', async () => {
-    await open('/products?page=2&pageSize=10&sort=price&direction=desc&title=миша&published=false');
+    await open(
+      '/products?page=2&pageSize=10&sort=price&direction=desc&title=миша' +
+        '&publishedProm=false&publishedOlx=true',
+    );
     const request = expectRequest();
 
     expect(request.request.params.get('page')).toBe('2');
@@ -153,7 +154,8 @@ describe('ProductCatalog', () => {
     expect(request.request.params.get('sort')).toBe('price');
     expect(request.request.params.get('direction')).toBe('desc');
     expect(request.request.params.get('title')).toBe('миша');
-    expect(request.request.params.get('published')).toBe('false');
+    expect(request.request.params.get('publishedProm')).toBe('false');
+    expect(request.request.params.get('publishedOlx')).toBe('true');
 
     request.flush({ ...PAGE, page: 2, pageSize: 10 });
     await settle();
@@ -236,8 +238,16 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('Keychron K2 механічна');
     expect(element.textContent).toContain('Вживаний');
     expect(element.textContent).toContain('Новий');
-    expect(element.textContent).toContain('Чернетка');
     expect(element.textContent).toContain('Знайдено: 2');
+
+    // MOUSE is up on Prom and not on OLX: the two columns say different things about the
+    // same card, which is the whole point of there being two of them.
+    const firstRow = element.querySelector('tr[mat-row]');
+    const cells = [...(firstRow?.querySelectorAll('td') ?? [])].map((cell) =>
+      cell.textContent.trim(),
+    );
+    expect(cells.at(-2)).toBe('Опубліковано');
+    expect(cells.at(-1)).toBe('Ні');
   });
 
   it('shows the main frame as the thumbnail and the total number of images beside it', async () => {

@@ -17,6 +17,9 @@ dist/
 *.log
 coverage/
 
+# Database dumps written by the `backup` service of docker-compose.prod.yml
+backups/
+
 # IDE and OS
 .idea/
 .vscode/

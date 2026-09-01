@@ -65,24 +65,20 @@ jobs:
       - name: Create the database and apply migrations
         run: docker compose run --rm migrate
 
-      # A migration without a working down is a migration that cannot be rolled back in production.
-      - name: Revert both migrations and apply them again
+      # A migration without a working down is a migration that cannot be rolled back in
+      # production. The number of steps is read from the migrations themselves, so a new
+      # migration is covered without anyone remembering to edit this file.
+      - name: Revert every migration and apply them again
         run: |
-          docker compose run --rm --no-deps api npm run db:migrate:revert
-          docker compose run --rm --no-deps api npm run db:migrate:revert
-          docker compose run --rm --no-deps api npm run db:migrate
+          count=$(ls apps/api/db/migrations/*.ts | wc -l | tr -d '[:space:]')
+          docker compose run --rm --no-deps api sh -c \
+            "for _ in \$(seq 1 $count); do npm run db:migrate:revert || exit 1; done && npm run db:migrate"
 
+      # The only place in CI where the server process actually starts: the composition root,
+      # the zod validation of env and the route registration are not exercised by the specs.
       - name: Wait for a healthy api
-        run: |
-          docker compose up -d api
-          for _ in $(seq 1 30); do
-            status=$(docker inspect -f '{{.State.Health.Status}}' mouse-api-1 2>/dev/null || echo starting)
-            if [ "$status" = "healthy" ]; then echo "api is healthy"; exit 0; fi
-            sleep 2
-          done
-          docker compose logs api
-          exit 1
+        run: docker compose up -d --wait --wait-timeout 90 api
 
-      - name: Tear down
-        if: always()
-        run: docker compose down -v
+      - name: Api logs on failure
+        if: failure()
+        run: docker compose logs api

@@ -45,9 +45,8 @@ export const productSchema = z.object({
   price: priceDecimal,
   seoKeywords: z.array(z.string()),
   category: z.string(),
-  published: z.boolean(),
-  accountProm: z.string().nullable(),
-  accountOlx: z.string().nullable(),
+  publishedProm: z.boolean(),
+  publishedOlx: z.boolean(),
   condition: z.enum(productConditions),
   images: z.array(productImageSchema),
   /** ISO 8601, UTC. Formatting belongs to the client. */
@@ -59,9 +58,9 @@ export type Product = z.infer<typeof productSchema>;
 
 /**
  * A querystring arrives as strings, so numbers and booleans are coerced here rather than
- * in the route. `published` is spelled out instead of `z.coerce.boolean()` on purpose:
- * coercion runs `Boolean(value)`, and the string "false" is truthy — the filter would
- * then be incapable of ever selecting unpublished cards.
+ * in the route. The publication flags are spelled out instead of `z.coerce.boolean()` on
+ * purpose: coercion runs `Boolean(value)`, and the string "false" is truthy — the filters
+ * would then be incapable of ever selecting cards that are not on a marketplace.
  */
 const booleanFlag = z
   .enum(['true', 'false'])
@@ -87,9 +86,12 @@ export const productListQuerySchema = z.object({
   priceMin: priceDecimal.optional(),
   priceMax: priceDecimal.optional(),
   category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
-  published: booleanFlag.optional(),
-  accountProm: z.string().trim().min(1).max(productConstraints.accountMaxLength).optional(),
-  accountOlx: z.string().trim().min(1).max(productConstraints.accountMaxLength).optional(),
+  /**
+   * One card, two marketplaces, two independent questions: each flag asks about its own
+   * site, and a flag left out asks nothing at all.
+   */
+  publishedProm: booleanFlag.optional(),
+  publishedOlx: booleanFlag.optional(),
 
   sort: z.enum(productSortFields).default(productSortDefaults.field),
   direction: z.enum(productSortDirections).default(productSortDefaults.direction),
