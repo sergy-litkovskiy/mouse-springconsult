@@ -11,9 +11,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router } from '@angular/router';
 import { authConstraints } from '@contracts/auth-limits';
 import { apiErrorCodes } from '@contracts/error-codes';
-import { apiErrorMessage } from '../api-error-message';
-import { returnUrlTree } from '../safe-return-url';
-import { AuthStore } from './auth-store';
+import { apiErrorMessage } from '../../api-error-message';
+import { returnUrlTree } from '../../safe-return-url';
+import { AuthStore } from '../auth-store';
 
 /**
  * Sign-in form. The texts are Ukrainian with no translation layer: the admin panel is

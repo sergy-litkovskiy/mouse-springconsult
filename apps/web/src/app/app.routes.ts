@@ -13,7 +13,7 @@ export const routes: Routes = [
     path: 'login',
     title: 'Вхід — mouse',
     canActivate: [guestGuard],
-    loadComponent: async () => (await import('./auth/login-page')).LoginPage,
+    loadComponent: async () => (await import('./auth/login/login-page')).LoginPage,
   },
   {
     path: '',
@@ -24,7 +24,8 @@ export const routes: Routes = [
       {
         path: 'products',
         title: 'Каталог товарів — mouse',
-        loadComponent: async () => (await import('./products/product-catalog')).ProductCatalog,
+        loadComponent: async () =>
+          (await import('./products/catalog/product-catalog')).ProductCatalog,
       },
       { path: '**', redirectTo: 'products' },
     ],

@@ -307,8 +307,9 @@ apps/api/src/contracts/
 
 apps/api/db/migrations/<timestamp>-drop-product-image-url.ts
 apps/api/src/config.ts        + межа розміру тіла запиту; + envSchema для креденшелів R2
-apps/web/src/app/products/    product-form.ts/html/css (новий); зміни в product-gallery-dialog.*,
-                              products-api.ts, product-catalog.*
+apps/web/src/app/products/form/       product-form.ts/html/css — нова підфіча
+apps/web/src/app/products/            зміни в gallery/product-gallery-dialog.*,
+                                      products-api.ts, catalog/product-catalog.*
 apps/web/src/app/confirm-dialog.ts   новий: спільний, бо підтвердження потрібне у двох місцях
                                      (правило 12 — спільне піднімається на рівень app/)
 ```

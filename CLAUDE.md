@@ -30,7 +30,8 @@ apps/api/src/contracts/                         zod-схеми запитів/в
 apps/api/db/                                    міграції, їх список і раннер, створення БД
                                                 (зокрема тестової)
 apps/web/                                       корінь Angular workspace (angular.json)
-apps/web/src/app/{auth,products}/               фічі Angular
+apps/web/src/app/{auth,products}/               фічі Angular; діляться на підфічі —
+                                                auth/login, products/catalog, products/gallery
 apps/web/src/environments/                      конфіг фронту (@environments)
 infra/caddy/                                    Caddyfile
 docs/adr/                                       архітектурні рішення
@@ -98,7 +99,7 @@ src/contracts/                                                   чисті zod-
 
 ### Frontend
 
-Правила 10–14 — у `apps/web/CLAUDE.md`: вони потрібні лише під час роботи з
+Правила 10–15 — у `apps/web/CLAUDE.md`: вони потрібні лише під час роботи з
 `apps/web/` і підвантажуються разом із файлами застосунку.
 
 Правила перевіряються автоматично — окремою командою на застосунок, бо `node_modules`
@@ -197,7 +198,7 @@ Claude торкається його файлів:
 - `apps/api/src/modules/auth/CLAUDE.md` — сесія, JWT, argon2id, відкликання токенів.
 - `apps/api/src/modules/ai/CLAUDE.md` — модель, оптимізація зображень, structured
   outputs, облік `usage`.
-- `apps/web/CLAUDE.md` — правила 10–14 фронтенду.
+- `apps/web/CLAUDE.md` — правила 10–15 фронтенду.
 
 ## Команди
 
@@ -236,7 +237,7 @@ docker compose run --rm api npm run db:migrate:new -- <name>   # + запис у
 docker compose exec postgres psql -U $POSTGRES_USER postgres
 
 # Angular CLI
-docker compose run --rm --no-deps web npx ng generate component products/product-catalog
+docker compose run --rm --no-deps web npx ng generate component products/form/product-form
 ```
 
 `npm run test` — єдина команда без `--no-deps`: репозиторії, конвертери цін і

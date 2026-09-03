@@ -49,7 +49,8 @@ apps/api/src/               api.ts (+ worker.ts згодом) · config, db, log
 apps/api/src/modules/       auth · products · media · ai
 apps/api/src/contracts/     zod-схеми запитів/відповідей, фронт бере з них типи
 apps/api/db/                міграції, їх раннер, створення БД
-apps/web/src/app/           auth · products — групування за фічею
+apps/web/src/app/           auth · products — групування за фічею; фіча ділиться на
+                            підфічі: auth/login · products/catalog · products/gallery
 apps/web/src/environments/  конфіг фронту (@environments)
 infra/caddy/                Caddyfile
 docs/adr/                   архітектурні рішення
@@ -270,7 +271,7 @@ docker compose exec postgres pg_dump -U $POSTGRES_USER mouse_trading > backup.sq
 **Angular CLI**
 
 ```bash
-docker compose run --rm web npx ng generate component products/product-catalog
+docker compose run --rm web npx ng generate component products/form/product-form
 docker compose run --rm web npx ng build            # збірка статики для проду
 ```
 

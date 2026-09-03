@@ -32,7 +32,7 @@ import {
   type ProductSortDirection,
   type ProductSortField,
 } from '@contracts/products-limits';
-import { apiErrorMessage } from '../api-error-message';
+import { apiErrorMessage } from '../../api-error-message';
 import {
   asQueryParam,
   priceBound,
@@ -46,9 +46,9 @@ import {
   toSortDirection,
   toSortField,
 } from './product-catalog-query';
-import { ProductGalleryDialog, type ProductGalleryData } from './product-gallery-dialog';
-import { ProductsApi } from './products-api';
-import { ukrainianPaginatorIntl } from './ukrainian-paginator-intl';
+import { ProductGalleryDialog, type ProductGalleryData } from '../gallery/product-gallery-dialog';
+import { ProductsApi } from '../products-api';
+import { itemsPaginatorIntl } from './items-paginator-intl';
 
 /**
  * Product catalogue: a page of cards with filters, sorting and pagination.
@@ -101,7 +101,7 @@ const priceFormat = new Intl.NumberFormat('uk-UA', {
     MatTableModule,
     MatTooltipModule,
   ],
-  providers: [{ provide: MatPaginatorIntl, useFactory: ukrainianPaginatorIntl }],
+  providers: [{ provide: MatPaginatorIntl, useFactory: itemsPaginatorIntl }],
   templateUrl: './product-catalog.html',
   styleUrl: './product-catalog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
