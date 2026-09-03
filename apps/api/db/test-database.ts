@@ -2,7 +2,7 @@ import type { DataSource } from 'typeorm';
 import { env } from '../src/config.ts';
 import { createDataSource } from '../src/db.ts';
 import { ensureDatabase, quoteIdentifier } from './create-database.ts';
-import { migrations } from './migrations-list.ts';
+import { migrationsGlob } from './migrations-glob.ts';
 
 /**
  * The throwaway database the integration specs run against. Imported from `*.spec.ts`
@@ -34,7 +34,7 @@ export async function prepareTestDatabase(): Promise<string> {
   const url = testDatabaseUrl();
   await ensureDatabase(url);
 
-  const dataSource = createDataSource({ url, migrations });
+  const dataSource = createDataSource({ url, migrations: [migrationsGlob] });
   await dataSource.initialize();
   try {
     await dataSource.runMigrations({ transaction: 'each' });
