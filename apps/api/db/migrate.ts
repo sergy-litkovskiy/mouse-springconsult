@@ -1,19 +1,20 @@
 import { createDataSource } from '../src/db.ts';
-import { migrations } from './migrations-list.ts';
+import { migrationsGlob } from './migrations-glob.ts';
 
 /**
  * Composition root of the migration process — the third entry point alongside api.ts.
  *
- * The order of migrations lives in `migrations-list.ts`: `db/test-database.ts` needs the
- * same list, and `npm run db:migrate:new` appends to it, so keeping it here would mean
- * two places to edit.
+ * Migrations are found by a glob rather than listed by hand. Order does not depend on
+ * that glob: TypeORM sorts by the timestamp at the end of the class name, so the sequence
+ * is the same whichever way the files are discovered — and a hand-kept list only added a
+ * registration step that could be forgotten.
  */
 
 const usage = 'usage: node db/migrate.ts <up|down|show>';
 
 async function main(): Promise<void> {
   const command = process.argv[2] ?? 'up';
-  const dataSource = createDataSource({ migrations });
+  const dataSource = createDataSource({ migrations: [migrationsGlob] });
   await dataSource.initialize();
 
   try {
@@ -34,10 +35,12 @@ async function main(): Promise<void> {
       }
       case 'show': {
         const pending = await dataSource.showMigrations();
-        process.stdout.write(
-          `${migrations.map((m) => `  ${m.name}`).join('\n')}\n` +
-            `pending: ${pending ? 'yes' : 'no'}\n`,
-        );
+        // `name` is optional on the interface; every migration here sets it, and the
+        // class name is the same string anyway.
+        const known = dataSource.migrations
+          .map((m) => `  ${m.name ?? m.constructor.name}`)
+          .join('\n');
+        process.stdout.write(`${known}\npending: ${pending ? 'yes' : 'no'}\n`);
         break;
       }
       default: {
