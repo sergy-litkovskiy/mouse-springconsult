@@ -1,0 +1,763 @@
+openapi: 3.1.0
+info:
+  title: product-creation-flow API
+  version: 0.1.0
+  description: |
+    Картка комісійного товару як єдине місце, де живуть тексти під Prom і OLX, ціна,
+    галерея до десяти кадрів і дві незалежні відмітки присутності. Розрив між
+    генерацією тексту в зовнішньому чаті й карткою товару (idea-brief §2) закривається
+    тим, що підготовка й ручне редагування пишуть в ті самі поля тим самим маршрутом
+    (AC-12) — окремого "прийняти як AI-підготовлене" немає.
+
+    **Поставка 1** (у цій версії контракту — реалізована): картка, галерея, зовнішнє
+    сховище, відмітки присутності. Ендпоінти `/products`, `/products/{id}`,
+    `/products/{id}/images*`.
+
+    **Поставка 2** (спроектована в data-model.md, таблиці ще без міграції): тексти,
+    діапазон ціни, пропозиції, вартість підготовки. Ендпоінти
+    `/products/{id}/preparation-runs*` і `/products/{id}/suggestions/*` описані тут
+    наперед, бо форма зберігання вже зафіксована ([sad.md §1](../sad.md)), а розділяти
+    контракт на дві версії означало б переписувати схему `Product` двічі.
+
+    Джерела: [PRD](../PRD.md) · [data-model.md](../data-model.md) · [sad.md §6](../sad.md).
+    Аудит розбіжностей — [api-sync-report.md](./api-sync-report.md).
+
+servers:
+  - url: https://mouse.springconsult.com.ua/api
+    description: Production (Caddy handle_path /api/* → api:3000, префікс знято)
+  - url: http://localhost:4200/api
+    description: Local dev (ng serve proxy.conf.json, той самий префікс)
+
+security:
+  - sessionCookie: []
+
+tags:
+  - name: products
+    description: Картка товару — поставка 1
+  - name: images
+    description: Галерея картки — поставка 1
+  - name: preparation
+    description: Запуски підготовки AI (поставка 2, data-model.md спроектовано)
+  - name: suggestions
+    description: Пропозиції моделі на поле картки (поставка 2, data-model.md спроектовано)
+
+paths:
+  /products:
+    get:
+      tags: [products]
+      summary: Список карток з фільтрами й сторінкуванням
+      description: >-
+        Уже реалізовано (`ProductController.list`). Сторінкування — offset
+        (`page`/`pageSize`/`total`), не курсорне: це дефолт `feature-api-forge`
+        (сам виведений із цього прецеденту), не відхилення від нього — див.
+        api-sync-report.md.
+      operationId: listProducts
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - { $ref: "#/components/parameters/TitleFilter" }
+        - { $ref: "#/components/parameters/DescriptionFilter" }
+        - { $ref: "#/components/parameters/PriceMin" }
+        - { $ref: "#/components/parameters/PriceMax" }
+        - { $ref: "#/components/parameters/CategoryFilter" }
+        - { $ref: "#/components/parameters/PublishedProm" }
+        - { $ref: "#/components/parameters/PublishedOlx" }
+        - { $ref: "#/components/parameters/Sort" }
+        - { $ref: "#/components/parameters/Direction" }
+      responses:
+        "200":
+          description: Сторінка карток
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductList" }
+              example:
+                items:
+                  - $ref: "#/components/examples/ProductExample/value"
+                total: 1
+                page: 1
+                pageSize: 20
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
+    post:
+      tags: [products]
+      summary: Створити нову картку
+      description: >-
+        Порожня картка (без текстів, кадрів і ціни) — потрібна до вставки, бо ключ
+        R2 кадру складається з `products/{id}/{кадр}` (data-model.md, `products.id`).
+        US-01/US-06 продовжують заповненням через `POST .../images` і `PATCH /products/{id}`.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductCreateRequest" }
+            example: { category: "Побутова техніка", condition: "used" }
+      responses:
+        "201":
+          description: Картку створено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
+  /products/{productId}:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+
+    get:
+      tags: [products]
+      summary: Отримати картку з галереєю й непідтвердженими пропозиціями
+      description: >-
+        Одне читання обслуговує сценарії 5, 7, 8, 9 sad.md §6 ("перечитує картку") —
+        окремого ендпоінту для пропозицій немає (Conflicts-таблиця скіла: додавати
+        ендпоінт без AC на нього не можна).
+      operationId: getProduct
+      responses:
+        "200":
+          description: Картка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+              example: { $ref: "#/components/examples/ProductExample/value" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+
+    patch:
+      tags: [products]
+      summary: Зберегти картку (розпізнавання, тексти, ключові слова, ціна, відмітки)
+      description: >-
+        Один маршрут для ручного шляху (US-06, AC-12) і для правки AI-підготовленого
+        (US-05, AC-11 — сама звірка "поточне ↔ остання прийнята пропозиція" належить
+        поставці 2 і виконується під час читання, а не тут). Ключові слова понад
+        тридцять не відхиляються, а обрізаються (AC-07) — рахунок відкинутого
+        повертається в тілі відповіді, не як помилка.
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductUpdateRequest" }
+      responses:
+        "200":
+          description: Оновлена картка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductUpdateResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+        "422":
+          description: Ціна не є невідʼємним числом із щонайбільше двома знаками (AC-09)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error:
+                  code: invalid_price
+                  message: "Ціна має бути невідʼємним числом із не більш ніж двома знаками після коми"
+
+    delete:
+      tags: [products]
+      summary: Видалити картку остаточно
+      description: >-
+        Спершу об'єкти кадрів прибираються з R2 пакетним викликом, потім рядок картки —
+        і лише тоді кадри каскадом ([ADR 0012](../adr/0012-delete-permanently-in-the-same-request.md)).
+        Якщо сховище недоступне — не видаляється нічого (§4 S4, sad.md сценарій 4).
+        PRD не має власного AC на видалення картки — це задокументована прогалина
+        (sad.md §11, рядок "PRD не має ні user story, ні критерію приймання на
+        видалення"), контракт її не приховує.
+      operationId: deleteProduct
+      responses:
+        "204": { description: Видалено }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+        "502": { $ref: "#/components/responses/StorageUnavailable" }
+
+  /products/{productId}/images:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+
+    post:
+      tags: [images]
+      summary: Додати кадр у галерею
+      description: >-
+        Один синхронний запит (§4 S1): перевірка типу за сигнатурою вмісту й розміру
+        до звернення до сховища ([ADR 0004](../adr/0004-validate-uploads-in-api-before-r2.md)),
+        оригінал у R2, рядок у `product_images`. Похідних розмірів немає.
+      operationId: uploadProductImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: До 10 МБ (PRD §6); тип перевіряється за сигнатурою, не за розширенням.
+      responses:
+        "201":
+          description: Кадр додано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductImage" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+        "409":
+          description: Галерея вже має десять кадрів (AC-02)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: gallery_full, message: "Галерея вміщає щонайбільше десять кадрів" }
+        "413":
+          description: Файл більший за 10 МБ (PRD §6)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: file_too_large, message: "Файл перевищує 10 МБ" }
+        "422":
+          description: Вміст файлу не є зображенням (ADR 0004)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: invalid_file, message: "Файл не є зображенням" }
+        "502": { $ref: "#/components/responses/StorageUnavailable" }
+
+  /products/{productId}/images/{imageId}:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+      - { $ref: "#/components/parameters/ImageId" }
+
+    delete:
+      tags: [images]
+      summary: Видалити кадр
+      description: >-
+        Спершу об'єкт у R2, потім рядок (§4 S4, sad.md сценарій 4). Повторне видалення
+        того самого ключа так само успішне — операція ідемпотентна на стороні R2.
+      operationId: deleteProductImage
+      responses:
+        "204": { description: Видалено }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ImageNotFound" }
+        "502": { $ref: "#/components/responses/StorageUnavailable" }
+
+  /products/{productId}/images/{imageId}/main:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+      - { $ref: "#/components/parameters/ImageId" }
+
+    put:
+      tags: [images]
+      summary: Призначити кадр головним
+      description: >-
+        Однією транзакцією знімає ознаку з попереднього головного й ставить на обраний
+        (AC-03, sad.md сценарій 3); інваріант "рівно один головний" тримає частковий
+        унікальний індекс `product_images_main_key`, вже наявний у БД. `PUT`, не `POST`:
+        повторний виклик з тим самим кадром — той самий результат.
+      operationId: setMainProductImage
+      responses:
+        "200":
+          description: Оновлена галерея
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProductImage" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ImageNotFound" }
+
+  /products/{productId}/preparation-runs:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+
+    post:
+      tags: [preparation]
+      summary: Запустити підготовку (тексти, ціна або обидва)
+      description: >-
+        **Поставка 2 — ендпоінт спроектований, таблиця `product_preparation_runs`
+        іще без міграції (data-model.md, розділ Migrations).**
+
+        Гейт AC-06 ("не внесено розпізнавання" = обидва описи порожні) перевіряється
+        синхронно до постановки задачі — перевірка коштує одного читання, запуск
+        коштує грошей (sad.md сценарій 7). Ідемпотентність — **не** заголовок клієнта:
+        ключ (картка, область, версія входу) обчислює сервер із `idempotency_key`
+        UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом
+        повертає наявний запуск (`200`), а не створює новий (`201`). "Версія входу" —
+        відкритий пункт data-model.md (Open items), контракт лишає його явним, а не
+        ховає.
+      operationId: startPreparationRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreparationRunCreateRequest" }
+            example: { scope: both }
+      responses:
+        "201":
+          description: Новий запуск поставлено в чергу
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+        "200":
+          description: Той самий вхід уже має незавершений запуск — повернуто його
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+        "409":
+          description: Немає кадру або не внесено розпізнавання (AC-06)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error:
+                  code: preparation_input_incomplete
+                  message: "Додайте кадр і внесіть розпізнавання перед підготовкою"
+                  details: { missing: ["gallery"] }
+        "429":
+          description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: preparation_rate_limited, message: "Забагато запусків підряд, спробуйте пізніше" }
+
+  /products/{productId}/preparation-runs/{runId}:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+      - { $ref: "#/components/parameters/RunId" }
+
+    get:
+      tags: [preparation]
+      summary: Стан запуску (полінг)
+      description: >-
+        **Поставка 2 — спроектовано.** sad.md сценарії 7-8: фронт питає стан у циклі,
+        поки запуск не завершено; `errorCode` заповнюється лише при `status: failed`
+        і є тим самим доменним кодом, який AC-10 показує людині.
+      operationId: getPreparationRun
+      responses:
+        "200":
+          description: Стан запуску
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404":
+          description: Картку або запуск не знайдено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /products/{productId}/suggestions/{suggestionId}/accept:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+      - { $ref: "#/components/parameters/SuggestionId" }
+
+    post:
+      tags: [suggestions]
+      summary: Прийняти пропозицію поля
+      description: >-
+        **Поставка 2 — спроектовано.** Пише значення пропозиції в поле картки й
+        позначає `resolution = accepted` (sad.md сценарій 9, гілка "user приймає
+        пропозицію"). Автоматичне застосування (поки поле не розходиться з останньою
+        прийнятою пропозицією) не проходить через цей ендпоінт — воно відбувається
+        всередині читання картки ([ADR 0006](../adr/0006-store-generated-values-as-separate-suggestions.md)),
+        цей маршрут — лише явна дія людини після розходження (AC-11).
+      operationId: acceptFieldSuggestion
+      responses:
+        "200":
+          description: Пропозицію прийнято, картку оновлено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/SuggestionNotFound" }
+        "409": { $ref: "#/components/responses/SuggestionAlreadyResolved" }
+
+  /products/{productId}/suggestions/{suggestionId}/reject:
+    parameters:
+      - { $ref: "#/components/parameters/ProductId" }
+      - { $ref: "#/components/parameters/SuggestionId" }
+
+    post:
+      tags: [suggestions]
+      summary: Відхилити пропозицію поля
+      description: >-
+        **Поставка 2 — спроектовано.** Позначає `resolution = rejected`, поле картки
+        не змінюється (sad.md сценарій 9, гілка "user відхиляє").
+      operationId: rejectFieldSuggestion
+      responses:
+        "200":
+          description: Пропозицію відхилено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/SuggestionNotFound" }
+        "409": { $ref: "#/components/responses/SuggestionAlreadyResolved" }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: mouse_session
+      description: >-
+        JWT (HS256, jose) у HttpOnly-cookie ([ADR 0002](../../../adr/0002-auth-jwt-and-typeorm.md)
+        · `modules/auth/CLAUDE.md`). Не Bearer-токен — SPA й API на одному домені,
+        токен не має причин бути доступним для JavaScript. Ролей немає, перевірка
+        одна: активна сесія (`sessionGuard`).
+
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    SuggestionId:
+      name: suggestionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    TitleFilter:
+      name: title
+      in: query
+      description: Підрядок, без урахування регістру, по обох заголовках
+      schema: { type: string, maxLength: 200 }
+    DescriptionFilter:
+      name: description
+      in: query
+      schema: { type: string, maxLength: 200 }
+    PriceMin:
+      name: priceMin
+      in: query
+      schema: { type: string, pattern: '^\d{1,10}(\.\d{1,2})?$' }
+    PriceMax:
+      name: priceMax
+      in: query
+      schema: { type: string, pattern: '^\d{1,10}(\.\d{1,2})?$' }
+    CategoryFilter:
+      name: category
+      in: query
+      schema: { type: string, maxLength: 120 }
+    PublishedProm:
+      name: publishedProm
+      in: query
+      schema: { type: boolean }
+    PublishedOlx:
+      name: publishedOlx
+      in: query
+      schema: { type: boolean }
+    Sort:
+      name: sort
+      in: query
+      schema: { type: string, enum: [titleProm, titleOlx, price], default: titleProm }
+    Direction:
+      name: direction
+      in: query
+      schema: { type: string, enum: [asc, desc], default: asc }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      description: >-
+        Обгорнуто в `error` (не пласко `{code, message}`) — форма наявного
+        `contracts/error.contract.ts`, скіл-дефолт узгоджено з нею, а не навпаки.
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: gallery_full }
+            message: { type: string }
+            details: { type: object }
+
+    ProductImage:
+      type: object
+      required: [id, r2Key, url, position, isMain]
+      properties:
+        id: { type: string, format: uuid }
+        r2Key:
+          type: string
+          description: products/{productId}/{imageId} — невгадуваний ключ (ADR 0007)
+        url:
+          type: string
+          format: uri
+          description: Складено з ключа й публічного домену бакета при мапінгу в DTO (ADR 0007)
+        position: { type: integer, minimum: 0 }
+        isMain: { type: boolean }
+
+    Product:
+      type: object
+      required:
+        - id
+        - titleProm
+        - descriptionProm
+        - titleOlx
+        - descriptionOlx
+        - price
+        - seoKeywords
+        - category
+        - publishedProm
+        - publishedOlx
+        - condition
+        - images
+        - isReady
+        - pendingSuggestions
+        - totalInputTokens
+        - totalOutputTokens
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: string, format: uuid }
+        titleProm: { type: string, maxLength: 200 }
+        descriptionProm: { type: string, maxLength: 8000 }
+        titleOlx: { type: string, maxLength: 200 }
+        descriptionOlx: { type: string, maxLength: 8000 }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          description: Десятковий рядок, як повертає decimal(12,2) — без float і без transformer.
+        seoKeywords:
+          type: array
+          maxItems: 30
+          items: { type: string, maxLength: 60 }
+        category: { type: string, maxLength: 120 }
+        publishedProm: { type: boolean }
+        publishedOlx: { type: boolean }
+        condition: { type: string, enum: [new, used] }
+        images:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/ProductImage" }
+        isReady:
+          type: boolean
+          description: >-
+            Похідне поле, не колонка: обидва описи непорожні, price > 0, є хоча б один
+            кадр ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
+        pendingSuggestions:
+          type: array
+          description: >-
+            **Поставка 2 — спроектовано.** Непідтверджені пропозиції поруч зі
+            значеннями (sad.md сценарій 9). Порожній масив, поки таблиці немає.
+          items: { $ref: "#/components/schemas/FieldSuggestion" }
+        totalInputTokens:
+          type: integer
+          minimum: 0
+          description: >-
+            **Поставка 2 — спроектовано.** Сума `product_preparation_runs.input_tokens`
+            по картці (AC-14). Гроші не показуються: перевід токенів у вартість
+            потребує ціни моделі, якої немає в data-model.md (PRD §8, відкрите
+            питання) — контракт не вигадує курс.
+        totalOutputTokens: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ProductList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+
+    ProductCreateRequest:
+      type: object
+      required: [category]
+      properties:
+        category: { type: string, maxLength: 120 }
+        condition: { type: string, enum: [new, used], default: used }
+
+    ProductUpdateRequest:
+      type: object
+      description: Усі поля опційні — PATCH змінює лише надіслане.
+      properties:
+        titleProm: { type: string, maxLength: 200 }
+        descriptionProm: { type: string, maxLength: 8000 }
+        titleOlx: { type: string, maxLength: 200 }
+        descriptionOlx: { type: string, maxLength: 8000 }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+        seoKeywords:
+          type: array
+          items: { type: string, maxLength: 60 }
+          description: Понад тридцять — не помилка; зайве обрізається (AC-07).
+        category: { type: string, maxLength: 120 }
+        condition: { type: string, enum: [new, used] }
+        publishedProm: { type: boolean }
+        publishedOlx: { type: boolean }
+
+    ProductUpdateResponse:
+      allOf:
+        - { $ref: "#/components/schemas/Product" }
+        - type: object
+          required: [discardedKeywordsCount]
+          properties:
+            discardedKeywordsCount:
+              type: integer
+              minimum: 0
+              description: Скільки ключових слів понад межу 30 відкинуто цим збереженням (AC-07).
+
+    PreparationRunCreateRequest:
+      type: object
+      required: [scope]
+      properties:
+        scope:
+          type: string
+          enum: [texts, price, both]
+          description: >-
+            "ціна" без перезапуску текстів — AC-10b має предмет саме завдяки цій
+            області (data-model.md, product_preparation_runs.scope).
+
+    PreparationRun:
+      type: object
+      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      required: [id, productId, scope, status, model, inputTokens, outputTokens, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        scope: { type: string, enum: [texts, price, both] }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        errorCode:
+          type: [string, null]
+          description: Заповнено лише при status=failed; той самий код, що показує AC-10.
+        model: { type: string, example: claude-opus-5 }
+        inputTokens: { type: integer, minimum: 0 }
+        outputTokens: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, null], format: date-time }
+        finishedAt: { type: [string, null], format: date-time }
+
+    FieldSuggestion:
+      type: object
+      description: >-
+        **Поставка 2 — спроектовано.** `value` поліморфне за `field` (JSONB у
+        data-model.md, розділ "Чому JSONB"); форма для `price` — TBD у
+        data-model.md Open items, тут — best-effort, потребує підтвердження при
+        появі міграції (низька впевненість походження, на відміну від решти полів
+        сценарію A).
+      required: [id, runId, field, value, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        field:
+          type: string
+          enum: [descriptionProm, descriptionOlx, seoKeywords, price]
+        value:
+          description: >-
+            Рядок для description*, масив рядків для seoKeywords,
+            {priceFrom, priceTo} для price (десяткові рядки).
+        resolution: { type: [string, null], enum: [accepted, rejected, null] }
+        resolvedAt: { type: [string, null], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+  responses:
+    ValidationError:
+      description: Тіло запиту не пройшло zod-валідацію
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: validation_failed
+              message: "Query parameters are invalid"
+              details: { fields: { price: ["Price must be a decimal such as 2499.00"] } }
+    NotAuthenticated:
+      description: Немає активної сесії
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: not_authenticated, message: "Authentication required" }
+    ProductNotFound:
+      description: Картку не знайдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: product_not_found, message: "Product not found" }
+    ImageNotFound:
+      description: Кадр не знайдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: image_not_found, message: "Image not found" }
+    SuggestionNotFound:
+      description: Пропозицію не знайдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: suggestion_not_found, message: "Suggestion not found" }
+    SuggestionAlreadyResolved:
+      description: Пропозиція вже прийнята або відхилена
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: suggestion_already_resolved, message: "Suggestion is already resolved" }
+    StorageUnavailable:
+      description: R2 недоступне після повторів клієнта S3 (sad.md сценарій 2)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: storage_unavailable, message: "Файлове сховище тимчасово недоступне" }
+
+  examples:
+    ProductExample:
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: "Кавомашина DeLonghi ECAM, б/у"
+        descriptionProm: "Кавомашина DeLonghi ECAM у гарному стані. Автоматичний капучинатор, регулювання помелу. Без сколів, повний комплект."
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно, причина продажу — оновлення моделі."
+        price: "8500.00"
+        seoKeywords: ["кавомашина", "delonghi", "ecam", "капучинатор"]
+        category: "Побутова техніка"
+        publishedProm: false
+        publishedOlx: true
+        condition: used
+        images:
+          - id: "01930000-0000-7000-8000-000000000002"
+            r2Key: "products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            url: "https://media.mouse.springconsult.com.ua/products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            position: 0
+            isMain: true
+        isReady: true
+        pendingSuggestions: []
+        totalInputTokens: 0
+        totalOutputTokens: 0
+        createdAt: "2026-09-01T10:00:00.000Z"
+        updatedAt: "2026-09-03T11:30:00.000Z"
