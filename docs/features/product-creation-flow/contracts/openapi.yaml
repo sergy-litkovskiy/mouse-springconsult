@@ -48,8 +48,9 @@ paths:
       summary: Список карток з фільтрами й сторінкуванням
       description: >-
         Уже реалізовано (`ProductController.list`). Сторінкування — offset
-        (`page`/`pageSize`/`total`), не курсорне: контракт описує наявну поведінку,
-        не дефолт скіла — див. api-sync-report.md, розбіжність №1.
+        (`page`/`pageSize`/`total`), не курсорне: це дефолт `feature-api-forge`
+        (сам виведений із цього прецеденту), не відхилення від нього — див.
+        api-sync-report.md.
       operationId: listProducts
       parameters:
         - { $ref: "#/components/parameters/Page" }

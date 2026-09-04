@@ -1,0 +1,170 @@
+openapi: 3.1.0
+info:
+  title: <Feature> API
+  version: 0.1.0
+  description: |
+    <Одноабзацна мотивація фічі — з idea-brief.md, якщо є.>
+
+    Джерела: [PRD](../PRD.md) · [data-model.md](../data-model.md) · [sad.md §6](../sad.md).
+    Аудит розбіжностей — [api-sync-report.md](./api-sync-report.md).
+
+servers:
+  - url: https://mouse.springconsult.com.ua/api
+    description: Production (Caddy handle_path /api/* → api:3000, префікс знято)
+  - url: http://localhost:4200/api
+    description: Local dev (ng serve proxy.conf.json, той самий префікс)
+
+# mouse.springconsult.com.ua — cookie-сесія, не Bearer (auth/CLAUDE.md).
+# Публічний ендпоінт (якщо колись зʼявиться) оголошує security: [] явно.
+security:
+  - sessionCookie: []
+
+tags:
+  - name: <resource>
+    description: <Один рядок про сутність.>
+
+paths:
+  /<resources>:
+    get:
+      tags: [<resource>]
+      summary: <Список ... з фільтрами й офсет-пагінацією>
+      operationId: list<Resources>
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      responses:
+        "200":
+          description: Сторінка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/<Resource>Page" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
+    post:
+      tags: [<resource>]
+      summary: <Створити ...>
+      operationId: create<Resource>
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/<Resource>CreateRequest" }
+            example: {}
+      responses:
+        "201":
+          description: Створено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/<Resource>" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
+  /<resources>/{<resource>Id}:
+    parameters:
+      - { $ref: "#/components/parameters/<Resource>Id" }
+
+    get:
+      tags: [<resource>]
+      summary: <Отримати ...>
+      operationId: get<Resource>
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/<Resource>" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/<Resource>NotFound" }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: mouse_session
+      description: >-
+        JWT (HS256, jose) у HttpOnly-cookie (ADR 0002 · auth/CLAUDE.md). Не Bearer-токен —
+        SPA й API на одному домені. Ролей немає, перевірка одна: активна сесія
+        (sessionGuard).
+
+  parameters:
+    <Resource>Id:
+      name: <resource>Id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      description: >-
+        Обгорнуто в error (не пласко {code, message}) — форма contracts/error.contract.ts;
+        це дефолт mouse-springconsult, узгоджений з наявним кодом, а не з публічним
+        гайдлайном.
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: <resource>_not_found }
+            message: { type: string }
+            details: { type: object }
+
+    <Resource>:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        # ...
+
+    <Resource>Page:
+      type: object
+      required: [items, total, page, pageSize]
+      description: Офсет-пагінація — дефолт цього репо, не курсор.
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/<Resource>" }
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+
+    <Resource>CreateRequest:
+      type: object
+      required: []
+      properties: {}
+
+  responses:
+    ValidationError:
+      description: Тіло запиту не пройшло zod-валідацію
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: validation_failed, message: "Request is invalid" }
+    NotAuthenticated:
+      description: Немає активної сесії
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: not_authenticated, message: "Authentication required" }
+    <Resource>NotFound:
+      description: <Resource> не знайдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: <resource>_not_found, message: "<Resource> not found" }
