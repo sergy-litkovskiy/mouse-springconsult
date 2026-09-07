@@ -1,7 +1,7 @@
 ---
 id: T03
 title: "Доменні коди помилок картки і ProductErrors.ts"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -72,7 +72,12 @@ components:
 1. `contracts/error-codes.ts` — дописати сім доменних кодів поставки 1; файл лишається **без жодного імпорту**.
 2. `modules/products/ProductErrors.ts` — класи-нащадки `AppError` за взірцем `modules/auth/AuthErrors.ts`, кожен зі своїм `statusCode` за контрактом.
 3. `modules/products/index.ts` — вивести нові помилки в public API модуля.
-4. `apps/web/src/app/api-error-message.ts` — текст українською на кожен новий код.
+4. ~~`apps/web/src/app/api-error-message.ts` — текст українською на кожен новий код.~~
+   **Перенесено.** Цей файл мапи не тримає — він приймає її параметром
+   (`messages: Readonly<Record<string, string>>`), а самі мапи живуть у фічах:
+   `products/catalog/product-catalog.ts` і `auth/login/login-page.ts`. Компонентів,
+   яким належать нові коди (форма картки, галерея), ще немає — тексти йдуть разом
+   з ними у [T24](close-preparation-open-items.md) і далі.
 5. Перевірити, що error-handler у `src/api.ts` нових гілок не потребує: мапінг `AppError` → HTTP уже є.
 
 ## Out of scope
@@ -82,12 +87,13 @@ components:
 
 ## DoD
 
-- [ ] Кожен доменний код поставки 1 з контракту має константу в `error-codes.ts` **і** клас у `ProductErrors.ts` — звірено списком, не оком.
-- [ ] `error-codes.ts` не отримав жодного імпорту: рантаймовий імпорт зі zod-файлу коштує ~55 КБ gzip у бандлі.
-- [ ] Кожен новий код має текст українською; жодного сирого `code` в інтерфейсі.
-- [ ] `statusCode` кожного класу збігається з кодом відповіді в контракті (409 для `gallery_full`, 413 для `file_too_large`, 422 для `invalid_file` і `invalid_price`, 502 для `storage_unavailable`).
-- [ ] `npm run test` в `api` і `web` зелений; `deps:check` зелений.
-- [ ] Коміт: `feat(products): add domain error codes for the card`.
+- [x] Кожен доменний код поставки 1 з контракту має константу в `error-codes.ts` **і** клас у `ProductErrors.ts` — звірено списком, не оком.
+- [x] `error-codes.ts` не отримав жодного імпорту: рантаймовий імпорт зі zod-файлу коштує ~55 КБ gzip у бандлі.
+- [ ] Кожен новий код має текст українською; жодного сирого `code` в інтерфейсі —
+      перенесено разом з п.4 checklist до задач, які вводять ці компоненти.
+- [x] `statusCode` кожного класу збігається з кодом відповіді в контракті (409 для `gallery_full`, 413 для `file_too_large`, 422 для `invalid_file` і `invalid_price`, 502 для `storage_unavailable`).
+- [x] `npm run test` в `api` і `web` зелений; `deps:check` зелений.
+- [x] Коміт: `feat(products): add domain error codes for the card`.
 
 ## Links
 
