@@ -19,7 +19,7 @@
       "Bash(docker compose up:*)",
       "Bash(docker compose down:*)",
       "Bash(docker compose exec:*)",
-      "Bash(git commit -m ' *)",
+      "Bash(git commit:*)",
       "Bash(git stash *)",
       "Bash(git add *)",
       "Bash(git status)",
@@ -39,6 +39,7 @@
     ]
   },
   "enabledPlugins": {
-    "mouse-trading@mouse-trading": true
+    "mouse-trading@mouse-trading": true,
+    "ralph-loop@claude-plugins-official": true
   }
 }

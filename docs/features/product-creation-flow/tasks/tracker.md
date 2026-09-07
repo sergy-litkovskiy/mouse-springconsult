@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-05"
+updated_at: "2026-09-07"
 stage: "13"
 ---
 
@@ -17,14 +17,14 @@ stage: "13"
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T01 | [Узгодити PRD з архітектурою](align-prd-with-architecture.md) | Todo | — | S | Serhii | — |
+| T01 | [Узгодити PRD з архітектурою](align-prd-with-architecture.md) | Done | — | S | Serhii | — |
 | T02 | [Переписати рядок про R2](rewrite-r2-boundary-rule.md) | Todo | — | XS | Serhii | — |
 
 ## Поставка 1 — картка й галерея
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T03 | [Доменні коди помилок картки](add-product-error-codes.md) | Blocked | T01 | S | Serhii | — |
+| T03 | [Доменні коди помилок картки](add-product-error-codes.md) | Todo | T01 | S | Serhii | — |
 | T04 | [Межа розміру кадру й типи](add-upload-limits-contract.md) | Todo | — | XS | Serhii | — |
 | T05 | [Схеми запису картки](add-product-write-contracts.md) | Blocked | T04 | S | Serhii | — |
 | T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Blocked | T04 | S | Serhii | — |
@@ -50,7 +50,7 @@ stage: "13"
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T24 | [Закрити чотири TBD](close-preparation-open-items.md) | Blocked | T01 | S | Serhii | — |
+| T24 | [Закрити чотири TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
 | T25 | [Черга і `worker`](add-queue-and-worker.md) | Blocked | T23 | S | Serhii | — |
 | T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Blocked | T24, T25 | S | Serhii | — |
 | T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Blocked | T25 | S | Serhii | — |
@@ -63,8 +63,9 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T01, T02, T04, T09, T19 — жодної незакритої залежності. T24 не залежить від коду поставки 1
-і може вестись паралельно з усією нею.
+T02, T03, T04, T09, T19, T24 — жодної незакритої залежності: T01 закрито 2026-09-07, і
+блокер T03 та T24 разом з ним знято. T24 не залежить від коду поставки 1 і може вестись
+паралельно з усією нею.
 
 ## Спільний DoD
 

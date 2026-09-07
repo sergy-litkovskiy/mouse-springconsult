@@ -1,7 +1,7 @@
 ---
 id: T24
 title: "Закрити чотири TBD і статус запуску при частковій відмові"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: decision
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T01]
 blocks: [T26]
-updated_at: "2026-09-05"
+updated_at: "2026-09-07"
 ---
 
 # T24 — Закрити чотири TBD і статус запуску при частковій відмові
