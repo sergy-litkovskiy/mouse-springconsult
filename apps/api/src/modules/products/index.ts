@@ -11,3 +11,13 @@ export type { ProductFilters, ProductListCriteria } from './ProductRepository.ts
 
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
+
+export {
+  FileTooLarge,
+  GalleryFull,
+  ImageNotFound,
+  InvalidFile,
+  InvalidPrice,
+  ProductNotFound,
+  StorageUnavailable,
+} from './ProductErrors.ts';

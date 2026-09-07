@@ -49,6 +49,10 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
    `apps/api/src/modules/products/ProductErrors.ts` досі не існує (є лише
    `modules/auth/AuthErrors.ts` як взірець). Одинадцять кодів контракту лишаються
    специфікацією для стейджу break-tasks.
+   **Waiver знято 2026-09-07 частково:** [T03](../tasks/add-product-error-codes.md)
+   ввів `ProductErrors.ts` із сімома кодами поставки 1. Чотири коди поставки 2
+   (`preparation_input_incomplete`, `preparation_rate_limited`, `suggestion_not_found`,
+   `suggestion_already_resolved`) досі без класів — за ними T29 і T30.
 3. **Validation ↔ DB constraints** — ✓.
 4. **Entity ↔ endpoint** — ✓.
 5. **OpenAPI ↔ sequence** — ✓, з двома нотатками (supporting, не блокер):
