@@ -1,7 +1,7 @@
 ---
 id: T03
 title: "Доменні коди помилок картки і ProductErrors.ts"
-status: Blocked
+status: Todo
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1600
 blocked_by: [T01]
 blocks: [T10]
-updated_at: "2026-09-05"
+updated_at: "2026-09-07"
 ---
 
 # T03 — Доменні коди помилок картки і `ProductErrors.ts`
