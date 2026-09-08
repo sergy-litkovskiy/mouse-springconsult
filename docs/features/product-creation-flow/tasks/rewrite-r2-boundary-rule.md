@@ -1,7 +1,7 @@
 ---
 id: T02
 title: "Переписати рядок про R2 в CLAUDE.md і ARCHITECTURE.md"
-status: Todo
+status: Done
 delivery: 0
 gate_profile: docs
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: []
 blocks: []
-updated_at: "2026-09-05"
+updated_at: "2026-09-08"
 ---
 
 # T02 — Переписати рядок про R2 в `CLAUDE.md` і `ARCHITECTURE.md`
@@ -81,10 +81,10 @@ Presigned-URL-варіант дав би тут `POST /products/{id}/images/uplo
 
 ## DoD
 
-- [ ] Обидва файли розрізняють напрямок: читання йде повз API, запис — через API з перевіркою.
-- [ ] Слів «тільки presigned URL» в обох файлах немає — перевірено `grep`.
-- [ ] Формулювання в `CLAUDE.md` і `ARCHITECTURE.md` збігається дослівно: розійшовшись, вони знову почнуть суперечити одне одному.
-- [ ] Коміт: `docs: split the R2 rule into read and write paths`.
+- [x] Обидва файли розрізняють напрямок: читання йде повз API, запис — через API з перевіркою.
+- [x] Слів «тільки presigned URL» в обох файлах немає — перевірено `grep`.
+- [x] Формулювання в `CLAUDE.md` і `ARCHITECTURE.md` збігається дослівно: розійшовшись, вони знову почнуть суперечити одне одному.
+- [x] Коміт: `docs: split the R2 rule into read and write paths`.
 
 ## Links
 

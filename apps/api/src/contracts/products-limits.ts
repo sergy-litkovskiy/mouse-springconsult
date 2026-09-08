@@ -13,6 +13,15 @@ export const productConstraints = {
   /** A card carries a gallery, not an archive: ten frames is the agreed ceiling. */
   maxImagesPerProduct: 10,
   /**
+   * Ceiling for a single frame, written as megabytes so the unit stays visible: the
+   * browser refuses the file before it starts sending, and the service refuses it again
+   * after. Two more places carry the same number and none of them can see this one —
+   * `config.http` (the media route's own `bodyLimitBytes`, not the 256 KB default) and
+   * `infra/caddy/Caddyfile` (`request_body max_size`). They drift silently: a proxy
+   * rejecting at 8 MB answers with its own 413, and the domain error never runs.
+   */
+  maxImageBytes: 10 * 1024 * 1024,
+  /**
    * A price is a decimal string, exactly as `decimal(12,2)` stores and returns it, and
    * nothing converts it on the way: not the ORM, not the API, not the browser. The
    * pattern is the whole constraint — ten integer digits and at most two decimals are
@@ -27,6 +36,14 @@ export const productPagination = {
   defaultPageSize: 20,
   maxPageSize: 50,
 } as const;
+
+/**
+ * Image types the gallery accepts. A closed list: the frontend filters the file dialog by
+ * it, and the service matches the content signature against it — the extension and the
+ * browser-supplied MIME type are both hints, not evidence.
+ */
+export const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type AllowedImageType = (typeof allowedImageTypes)[number];
 
 /** Condition of the item, as Prom and OLX both name it. */
 export const productConditions = ['new', 'used'] as const;
