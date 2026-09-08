@@ -18,16 +18,16 @@ stage: "13"
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
 | T01 | [Узгодити PRD з архітектурою](align-prd-with-architecture.md) | Done | — | S | Serhii | — |
-| T02 | [Переписати рядок про R2](rewrite-r2-boundary-rule.md) | Todo | — | XS | Serhii | — |
+| T02 | [Переписати рядок про R2](rewrite-r2-boundary-rule.md) | Done | — | XS | Serhii | — |
 
 ## Поставка 1 — картка й галерея
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
 | T03 | [Доменні коди помилок картки](add-product-error-codes.md) | Done | T01 | S | Serhii | — |
-| T04 | [Межа розміру кадру й типи](add-upload-limits-contract.md) | Todo | — | XS | Serhii | — |
-| T05 | [Схеми запису картки](add-product-write-contracts.md) | Blocked | T04 | S | Serhii | — |
-| T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Blocked | T04 | S | Serhii | — |
+| T04 | [Межа розміру кадру й типи](add-upload-limits-contract.md) | Done | — | XS | Serhii | — |
+| T05 | [Схеми запису картки](add-product-write-contracts.md) | Todo | T04 | S | Serhii | — |
+| T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Todo | T04 | S | Serhii | — |
 | T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Blocked | T06 | S | Serhii | — |
 | T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T04, T07 | S | Serhii | — |
 | T09 | [Репозиторій запису картки](add-product-write-repository.md) | Todo | — | S | Serhii | — |

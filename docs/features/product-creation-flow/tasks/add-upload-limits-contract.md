@@ -1,7 +1,7 @@
 ---
 id: T04
 title: "Межа розміру кадру й перелік типів у products-limits.ts"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: [T05, T06, T08]
-updated_at: "2026-09-05"
+updated_at: "2026-09-08"
 ---
 
 # T04 — Межа розміру кадру й перелік типів у `products-limits.ts`
@@ -74,11 +74,11 @@ updated_at: "2026-09-05"
 
 ## DoD
 
-- [ ] `products-limits.ts` не має жодного імпорту — перевірено `grep '^import'`.
-- [ ] Одиниця виміру видима в коді, а не схована в числі `10485760`.
-- [ ] Коментар називає обидва парні місця поіменно, щоб [T06](configure-r2-and-body-limits.md) не довелось їх шукати.
-- [ ] `npm run typecheck` і `lint` в `api` зелені.
-- [ ] Коміт: `feat(products): add upload limits to the contract constants`.
+- [x] `products-limits.ts` не має жодного імпорту — перевірено `grep '^import'`.
+- [x] Одиниця виміру видима в коді, а не схована в числі `10485760`.
+- [x] Коментар називає обидва парні місця поіменно, щоб [T06](configure-r2-and-body-limits.md) не довелось їх шукати.
+- [x] `npm run typecheck` і `lint` в `api` зелені.
+- [x] Коміт: `feat(products): add upload limits to the contract constants`.
 
 ## Links
 
