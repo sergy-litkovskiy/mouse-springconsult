@@ -26,7 +26,7 @@ stage: "13"
 |----|--------|--------|------|-----|-------|-----|
 | T03 | [Доменні коди помилок картки](add-product-error-codes.md) | Done | T01 | S | Serhii | — |
 | T04 | [Межа розміру кадру й типи](add-upload-limits-contract.md) | Done | — | XS | Serhii | — |
-| T05 | [Схеми запису картки](add-product-write-contracts.md) | Todo | T04 | S | Serhii | — |
+| T05 | [Схеми запису картки](add-product-write-contracts.md) | Done | T04 | S | Serhii | — |
 | T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Todo | T04 | S | Serhii | — |
 | T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Blocked | T06 | S | Serhii | — |
 | T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T04, T07 | S | Serhii | — |
@@ -39,7 +39,7 @@ stage: "13"
 | T15 | [Головний кадр](add-set-main-image-endpoint.md) | Blocked | T11, T13 | XS | Serhii | — |
 | T16 | [Видалення кадру](add-delete-image-endpoint.md) | Blocked | T08, T11, T13 | S | Serhii | — |
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Blocked | T08, T09, T16 | S | Serhii | — |
-| T18 | [Клієнт API на фронті](extend-products-api-client.md) | Blocked | T05 | S | Serhii | — |
+| T18 | [Клієнт API на фронті](extend-products-api-client.md) | Todo | T05 | S | Serhii | — |
 | T19 | [Діалог підтвердження](add-confirm-dialog.md) | Todo | — | XS | Serhii | — |
 | T20 | [Форма картки](add-product-form-subfeature.md) | Blocked | T18 | S | Serhii | — |
 | T21 | [Діалог галереї](add-gallery-upload-dialog.md) | Blocked | T18, T19 | S | Serhii | — |
@@ -63,10 +63,11 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T05, T06, T10, T13, T19, T24 — жодної незакритої залежності. T09 закрито
-2026-09-09, і разом з ним знято блокери T10 (T03 закрито раніше) та T13. T17 лишається
-`Blocked`, бо чекає ще й на T08 і T16. T24 не залежить від коду поставки 1 і може
-вестись паралельно з усією нею.
+T02, T04, T09, T19, T24 — жодної незакритої залежності: T01 закрито 2026-09-07, і
+блокер T03 та T24 разом з ним знято. T03 закрито 2026-09-07; T10 лишається `Blocked`,
+бо чекає ще й на T09. T24 не залежить від коду поставки 1 і може вестись паралельно
+з усією нею. T05 закрито 2026-09-09, і T18 знято з блокування; T11 лишається
+`Blocked`, бо чекає ще й на T10.
 
 ## Спільний DoD
 

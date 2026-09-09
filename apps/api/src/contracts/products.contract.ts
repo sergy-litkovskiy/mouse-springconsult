@@ -109,3 +109,78 @@ export const productListSchema = z.object({
 });
 
 export type ProductList = z.infer<typeof productListSchema>;
+
+/**
+ * Write side of the catalogue. The bounds are the ones the column already declares, so a
+ * value the schema lets through is a value the table can hold: what is required here is
+ * exactly what `products` declares NOT NULL without a default, and what carries a default
+ * here carries the same default there.
+ */
+const cardTitle = z.string().trim().min(1).max(productConstraints.titleMaxLength);
+const cardDescription = z.string().max(productConstraints.descriptionMaxLength);
+const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMaxLength);
+
+/**
+ * Thirty is not a bound of this schema on purpose: AC-07 has the service keep the first
+ * thirty words and discard the rest, and a schema that refused the thirty-first would
+ * make that impossible — the request would never reach the service to be trimmed.
+ */
+const cardKeywords = z.array(z.string().trim().min(1).max(productConstraints.keywordMaxLength));
+
+export const productCreateSchema = z.object({
+  titleProm: cardTitle,
+  titleOlx: cardTitle,
+  category: cardCategory,
+  descriptionProm: cardDescription.default(''),
+  descriptionOlx: cardDescription.default(''),
+  /** `NUMERIC(12,2) DEFAULT 0` gives back "0.00", and the predicate of readiness reads it as "not priced yet". */
+  price: priceDecimal.default('0.00'),
+  seoKeywords: cardKeywords.default([]),
+  condition: z.enum(productConditions).default('used'),
+});
+
+/** What the backend works with once a creation request has been validated. */
+export type ProductCreate = z.infer<typeof productCreateSchema>;
+
+/**
+ * A PATCH changes what it sends and nothing else, so every field is optional and none of
+ * them has a default — a default here would silently rewrite a column the admin never
+ * touched. The two publication marks are separate fields rather than one: a card lives on
+ * two marketplaces, and taking it off Prom says nothing about OLX (AC-13).
+ */
+export const productUpdateSchema = z.object({
+  titleProm: cardTitle.optional(),
+  titleOlx: cardTitle.optional(),
+  category: cardCategory.optional(),
+  descriptionProm: cardDescription.optional(),
+  descriptionOlx: cardDescription.optional(),
+  price: priceDecimal.optional(),
+  seoKeywords: cardKeywords.optional(),
+  condition: z.enum(productConditions).optional(),
+  publishedProm: z.boolean().optional(),
+  publishedOlx: z.boolean().optional(),
+});
+
+export type ProductUpdate = z.infer<typeof productUpdateSchema>;
+
+export const productCardSchema = productSchema.extend({
+  /**
+   * Derived, not a column: both descriptions non-empty, a price above zero and at least
+   * one frame in the gallery. It is computed on read (ADR 0009), which is why it appears
+   * in the response and never in a request.
+   */
+  isReady: z.boolean(),
+});
+
+export type ProductCard = z.infer<typeof productCardSchema>;
+
+export const productUpdateResponseSchema = productCardSchema.extend({
+  /**
+   * Derived, not a column: how many keywords past the ceiling of thirty this save threw
+   * away (AC-07). Zero is the ordinary answer, and going over the ceiling is reported
+   * here rather than as an error.
+   */
+  discardedKeywordsCount: z.int().nonnegative(),
+});
+
+export type ProductUpdateResponse = z.infer<typeof productUpdateResponseSchema>;
