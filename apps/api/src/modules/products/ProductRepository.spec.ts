@@ -4,7 +4,11 @@ import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/t
 import { createDataSource } from '../../db.ts';
 import { PRODUCTS_TABLE, Product } from './Product.ts';
 import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
-import { ProductRepository, type ProductListCriteria } from './ProductRepository.ts';
+import {
+  ProductRepository,
+  type ProductChanges,
+  type ProductListCriteria,
+} from './ProductRepository.ts';
 
 /**
  * The repository against a real Postgres. Everything checked here is exactly what a stub
@@ -23,12 +27,58 @@ const BASE_CRITERIA: ProductListCriteria = {
   filters: {},
 };
 
+/**
+ * Every writable column with a value different from the one `seedProduct` puts there.
+ * The partial update is checked field by field against this map rather than on a single
+ * favourite column: an UPDATE that quietly resets a neighbour is exactly the defect a
+ * one-field test cannot see.
+ */
+const REPLACEMENTS: Required<ProductChanges> = {
+  titleProm: 'Миша Logitech MX Master 3S',
+  descriptionProm: 'Оновлений опис для Prom.',
+  titleOlx: 'Logitech MX Master 3S',
+  descriptionOlx: 'Оновлений опис для OLX.',
+  price: '2799.00',
+  seoKeywords: ['миша', 'logitech', 'mx master'],
+  category: 'Аксесуари',
+  publishedProm: false,
+  publishedOlx: false,
+  condition: 'new',
+};
+
+/** The writable half of a card — what a partial update is allowed to touch. */
+function writableOf(product: Product): Required<ProductChanges> {
+  return {
+    titleProm: product.titleProm,
+    descriptionProm: product.descriptionProm,
+    titleOlx: product.titleOlx,
+    descriptionOlx: product.descriptionOlx,
+    price: product.price,
+    seoKeywords: product.seoKeywords,
+    category: product.category,
+    publishedProm: product.publishedProm,
+    publishedOlx: product.publishedOlx,
+    condition: product.condition,
+  };
+}
+
 const dataSource = createDataSource({
   url: testDatabaseUrl(),
   entities: [Product, ProductImage],
 });
 
 let products: ProductRepository;
+
+/** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
+const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
+
+/** Turns "the row must be there" into a failure with a name instead of a null check. */
+function must<T>(value: T | null, what: string): T {
+  if (value === null) {
+    throw new Error(`${what} was expected to exist`);
+  }
+  return value;
+}
 
 async function seedProduct(seed: ProductSeed = {}): Promise<string> {
   const row: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'images'> = {
@@ -184,6 +234,108 @@ describe('product repository (postgres)', () => {
 
     assert.equal(page.total, 3);
     assert.equal(page.items.length, 2);
+  });
+
+  it('creates a card the database can identify before it has texts, price or frames', async () => {
+    // The three columns without a default are the whole of what a caller must supply:
+    // an R2 key is products/{id}/…, so the id has to exist before a frame does.
+    const created = await products.create({
+      titleProm: 'Порожня картка',
+      titleOlx: 'Порожня картка',
+      category: 'Комп’ютерна периферія',
+    });
+
+    assert.match(created.id, /^[0-9a-f-]{36}$/u);
+    assert.deepEqual(writableOf(created), {
+      titleProm: 'Порожня картка',
+      titleOlx: 'Порожня картка',
+      category: 'Комп’ютерна периферія',
+      descriptionProm: '',
+      descriptionOlx: '',
+      price: '0.00',
+      seoKeywords: [],
+      publishedProm: false,
+      publishedOlx: false,
+      condition: 'used',
+    });
+    assert.deepEqual(created.images, []);
+  });
+
+  it('returns a created price as the column stores it, not as it was passed', async () => {
+    const created = await products.create({
+      titleProm: 'З ціною',
+      titleOlx: 'З ціною',
+      category: 'Комп’ютерна периферія',
+      price: '2499.5',
+    });
+
+    // Reading the row back is what shows the scale of decimal(12,2) doing the rounding;
+    // returning the insert argument would have hidden it.
+    assert.equal(created.price, '2499.50');
+  });
+
+  for (const [column, replacement] of Object.entries(REPLACEMENTS)) {
+    it(`updates ${column} without touching any other column`, async () => {
+      const id = await seedProduct();
+      const before = must(await products.findById(id), 'the seeded card');
+
+      const change: ProductChanges = {};
+      Object.assign(change, { [column]: replacement });
+      const updated = must(await products.update(id, change), 'the updated card');
+
+      assert.deepEqual(writableOf(updated), { ...writableOf(before), ...change });
+    });
+  }
+
+  it('leaves the card exactly as it was when the change set is empty', async () => {
+    const id = await seedProduct();
+    const before = must(await products.findById(id), 'the seeded card');
+
+    const updated = must(await products.update(id, {}), 'the untouched card');
+
+    assert.deepEqual(writableOf(updated), writableOf(before));
+  });
+
+  it('reports a missing card on update rather than creating one', async () => {
+    const updated = await products.update(MISSING_ID, { titleProm: 'Немає такої' });
+
+    assert.equal(updated, null);
+  });
+
+  it('takes the gallery rows down together with the card', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const deleted = await products.delete(id);
+
+    // The cascade is the database's, declared on the foreign key: asking the table
+    // directly is the only way to see that nothing had to delete these rows by hand.
+    assert.equal(deleted, true);
+    assert.equal(await dataSource.getRepository(ProductImage).countBy({ productId: id }), 0);
+    assert.equal(await products.findById(id), null);
+  });
+
+  it('reports a missing card on delete instead of pretending it removed one', async () => {
+    assert.equal(await products.delete(MISSING_ID), false);
+  });
+
+  it('finds one card with its gallery in position order', async () => {
+    const id = await seedProduct({ titleProm: 'Шукана' });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+    await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+
+    const found = must(await products.findById(id), 'the seeded card');
+
+    assert.equal(found.titleProm, 'Шукана');
+    assert.deepEqual(
+      found.images.map((image) => image.r2Key),
+      [`products/${id}/first.jpg`, `products/${id}/second.jpg`],
+    );
+  });
+
+  it('returns null for a card that does not exist', async () => {
+    assert.equal(await products.findById(MISSING_ID), null);
   });
 
   it('answers about one marketplace without answering about the other', async () => {

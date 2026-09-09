@@ -30,11 +30,11 @@ stage: "13"
 | T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Todo | T04 | S | Serhii | — |
 | T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Blocked | T06 | S | Serhii | — |
 | T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T04, T07 | S | Serhii | — |
-| T09 | [Репозиторій запису картки](add-product-write-repository.md) | Todo | — | S | Serhii | — |
-| T10 | [Сервіс картки](add-product-card-service.md) | Blocked | T03, T09 | S | Serhii | — |
+| T09 | [Репозиторій запису картки](add-product-write-repository.md) | Done | — | S | Serhii | — |
+| T10 | [Сервіс картки](add-product-card-service.md) | Todo | T03, T09 | S | Serhii | — |
 | T11 | [Маршрути картки](add-product-card-routes.md) | Blocked | T05, T10 | S | Serhii | — |
 | T12 | [Знести `product_images.url`](drop-product-image-url.md) | Blocked | T06, T11 | S | Serhii | — |
-| T13 | [Репозиторій кадрів](add-image-repository.md) | Blocked | T09 | S | Serhii | — |
+| T13 | [Репозиторій кадрів](add-image-repository.md) | Todo | T09 | S | Serhii | — |
 | T14 | [Приймання кадру](add-image-upload-endpoint.md) | Blocked | T08, T12, T13 | S | Serhii | — |
 | T15 | [Головний кадр](add-set-main-image-endpoint.md) | Blocked | T11, T13 | XS | Serhii | — |
 | T16 | [Видалення кадру](add-delete-image-endpoint.md) | Blocked | T08, T11, T13 | S | Serhii | — |
@@ -63,10 +63,10 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T02, T04, T09, T19, T24 — жодної незакритої залежності: T01 закрито 2026-09-07, і
-блокер T03 та T24 разом з ним знято. T03 закрито 2026-09-07; T10 лишається `Blocked`,
-бо чекає ще й на T09. T24 не залежить від коду поставки 1 і може вестись паралельно
-з усією нею.
+T05, T06, T10, T13, T19, T24 — жодної незакритої залежності. T09 закрито
+2026-09-09, і разом з ним знято блокери T10 (T03 закрито раніше) та T13. T17 лишається
+`Blocked`, бо чекає ще й на T08 і T16. T24 не залежить від коду поставки 1 і може
+вестись паралельно з усією нею.
 
 ## Спільний DoD
 
