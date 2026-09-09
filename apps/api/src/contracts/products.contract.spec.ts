@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { productListQuerySchema } from './products.contract.ts';
-import { productPagination } from './products-limits.ts';
+import {
+  productCreateSchema,
+  productListQuerySchema,
+  productUpdateResponseSchema,
+  productUpdateSchema,
+} from './products.contract.ts';
+import { productConstraints, productPagination } from './products-limits.ts';
 
 describe('product list query contract', () => {
   it('applies pagination and sorting defaults to an empty query', () => {
@@ -81,5 +86,108 @@ describe('product list query contract', () => {
 
     assert.equal(Object.hasOwn(parsed, 'title'), false);
     assert.equal(Object.hasOwn(parsed, 'publishedProm'), false);
+  });
+});
+
+describe('product write contracts', () => {
+  const newCard = { titleProm: 'Миша', titleOlx: 'Миша', category: 'Периферія' };
+
+  it('requires of a new card exactly the columns that have no default', () => {
+    // title_prom, title_olx and category are NOT NULL without a default; everything else
+    // the table fills in, so the schema fills it in the same way.
+    const parsed = productCreateSchema.parse(newCard);
+
+    assert.equal(parsed.descriptionProm, '');
+    assert.equal(parsed.descriptionOlx, '');
+    assert.equal(parsed.price, '0.00');
+    assert.deepEqual(parsed.seoKeywords, []);
+    assert.equal(parsed.condition, 'used');
+  });
+
+  it('refuses a card without a title or with one that is only whitespace', () => {
+    assert.equal(
+      productCreateSchema.safeParse({ ...newCard, titleProm: undefined }).success,
+      false,
+    );
+    assert.equal(productCreateSchema.safeParse({ ...newCard, titleProm: '   ' }).success, false);
+    assert.equal(productCreateSchema.safeParse({ ...newCard, category: '' }).success, false);
+    assert.equal(productUpdateSchema.safeParse({ titleOlx: '  ' }).success, false);
+  });
+
+  it('refuses a price the column cannot hold, on both write routes (AC-09)', () => {
+    for (const price of ['2499.999', '-1.00', '12345678901.00', 'дешево']) {
+      assert.equal(
+        productCreateSchema.safeParse({ ...newCard, price }).success,
+        false,
+        `${price} must be rejected on create`,
+      );
+      assert.equal(
+        productUpdateSchema.safeParse({ price }).success,
+        false,
+        `${price} must be rejected on update`,
+      );
+    }
+  });
+
+  it('accepts the thirty-first keyword instead of rejecting it (AC-07)', () => {
+    // Trimming past the ceiling belongs to the service. A schema that refused the excess
+    // here would leave the service nothing to trim and AC-07 nothing to describe.
+    const tooMany = Array.from(
+      { length: productConstraints.maxKeywords + 1 },
+      (_, i) => `слово${String(i)}`,
+    );
+
+    assert.equal(
+      productCreateSchema.parse({ ...newCard, seoKeywords: tooMany }).seoKeywords.length,
+      31,
+    );
+    assert.equal(productUpdateSchema.parse({ seoKeywords: tooMany }).seoKeywords?.length, 31);
+  });
+
+  it('leaves a field the update did not send out of the parsed object', () => {
+    // A default here would rewrite a column the admin never touched.
+    const parsed = productUpdateSchema.parse({ price: '2499.00' });
+
+    assert.equal(parsed.price, '2499.00');
+    assert.equal(Object.hasOwn(parsed, 'titleProm'), false);
+    assert.equal(Object.hasOwn(parsed, 'condition'), false);
+  });
+
+  it('keeps the two publication marks independent of each other (AC-13)', () => {
+    const parsed = productUpdateSchema.parse({ publishedProm: true, publishedOlx: false });
+
+    assert.equal(parsed.publishedProm, true);
+    assert.equal(parsed.publishedOlx, false);
+
+    const olxOnly = productUpdateSchema.parse({ publishedOlx: true });
+    assert.equal(Object.hasOwn(olxOnly, 'publishedProm'), false);
+  });
+
+  it('carries both derived fields in the update response', () => {
+    const card = {
+      id: '0199c0de-0000-7000-8000-000000000001',
+      titleProm: 'Миша',
+      descriptionProm: 'Опис',
+      titleOlx: 'Миша',
+      descriptionOlx: 'Опис',
+      price: '2499.00',
+      seoKeywords: ['миша'],
+      category: 'Периферія',
+      publishedProm: false,
+      publishedOlx: false,
+      condition: 'used',
+      images: [],
+      createdAt: '2026-09-09T10:00:00.000Z',
+      updatedAt: '2026-09-09T10:00:00.000Z',
+      isReady: false,
+      discardedKeywordsCount: 1,
+    };
+
+    assert.equal(productUpdateResponseSchema.parse(card).discardedKeywordsCount, 1);
+    assert.equal(productUpdateResponseSchema.parse(card).isReady, false);
+
+    const withoutReadiness: Record<string, unknown> = { ...card };
+    delete withoutReadiness['isReady'];
+    assert.equal(productUpdateResponseSchema.safeParse(withoutReadiness).success, false);
   });
 });

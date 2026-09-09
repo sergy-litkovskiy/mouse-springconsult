@@ -1,7 +1,7 @@
 ---
 id: T05
 title: "Схеми створення й оновлення картки, похідна готовність"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1700
 blocked_by: [T04]
 blocks: [T11, T18]
-updated_at: "2026-09-05"
+updated_at: "2026-09-09"
 ---
 
 # T05 — Схеми створення й оновлення картки, похідна готовність
@@ -96,11 +96,11 @@ updated_at: "2026-09-05"
 
 ## DoD
 
-- [ ] Кожне поле схеми має походження з [data-model.md](../data-model.md) або з AC — жодного вигаданого.
-- [ ] Форма на дроті camelCase, як уже повертає `productSchema`; snake_case лишається в SQL.
-- [ ] Схема **не** відхиляє 31 слово: перевірено тестом, бо інакше AC-07 стане неможливим.
-- [ ] `npm run test` в `api` зелений — включно з чотирма новими випадками меж.
-- [ ] Коміт: `feat(products): add write contracts for the card`.
+- [x] Кожне поле схеми має походження з [data-model.md](../data-model.md) або з AC — жодного вигаданого.
+- [x] Форма на дроті camelCase, як уже повертає `productSchema`; snake_case лишається в SQL.
+- [x] Схема **не** відхиляє 31 слово: перевірено тестом, бо інакше AC-07 стане неможливим.
+- [x] `npm run test` в `api` зелений — включно з чотирма новими випадками меж.
+- [x] Коміт: `feat(products): add write contracts for the card`.
 
 ## Links
 
