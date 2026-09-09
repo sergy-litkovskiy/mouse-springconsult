@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
 import { createDataSource } from '../../db.ts';
 import { PRODUCTS_TABLE, Product } from './Product.ts';
 import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
-import { ProductRepository, type ProductListCriteria } from './ProductRepository.ts';
+import {
+  ProductRepository,
+  type ProductChanges,
+  type ProductListCriteria,
+} from './ProductRepository.ts';
 
 /**
  * The repository against a real Postgres. Everything checked here is exactly what a stub
@@ -27,6 +32,27 @@ const dataSource = createDataSource({
   url: testDatabaseUrl(),
   entities: [Product, ProductImage],
 });
+
+/**
+ * One change per entry, and together they cover every field `update` accepts. Each value
+ * differs from what `seedProduct` writes, so a field that was not asked about announces
+ * itself by keeping the seeded value.
+ */
+const SINGLE_FIELD_UPDATES: readonly {
+  readonly field: keyof Required<ProductChanges>;
+  readonly changes: ProductChanges;
+}[] = [
+  { field: 'titleProm', changes: { titleProm: 'Оновлена назва для Prom' } },
+  { field: 'descriptionProm', changes: { descriptionProm: 'Оновлений опис для Prom' } },
+  { field: 'titleOlx', changes: { titleOlx: 'Оновлена назва для OLX' } },
+  { field: 'descriptionOlx', changes: { descriptionOlx: 'Оновлений опис для OLX' } },
+  { field: 'price', changes: { price: '3199.00' } },
+  { field: 'seoKeywords', changes: { seoKeywords: ['клавіатура', 'keychron'] } },
+  { field: 'category', changes: { category: 'Аудіотехніка' } },
+  { field: 'publishedProm', changes: { publishedProm: false } },
+  { field: 'publishedOlx', changes: { publishedOlx: false } },
+  { field: 'condition', changes: { condition: 'new' } },
+];
 
 let products: ProductRepository;
 
@@ -198,5 +224,113 @@ describe('product repository (postgres)', () => {
     assert.equal(onProm.total, 2);
     assert.equal(notOnOlx.total, 1);
     assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
+  });
+  it('creates an empty card the database fills with its own defaults', async () => {
+    const created = await products.create({ category: 'Побутова техніка', condition: 'used' });
+
+    assert.match(created.id, /^[0-9a-f-]{36}$/);
+    assert.equal(created.category, 'Побутова техніка');
+    assert.equal(created.condition, 'used');
+    // Nothing but the category and the condition was said, and the row is still complete:
+    // every remaining column carries the default the migration gave it.
+    assert.equal(created.titleProm, '');
+    assert.equal(created.titleOlx, '');
+    assert.equal(created.descriptionProm, '');
+    assert.equal(created.descriptionOlx, '');
+    assert.equal(created.price, '0.00');
+    assert.deepEqual(created.seoKeywords, []);
+    assert.equal(created.publishedProm, false);
+    assert.equal(created.publishedOlx, false);
+    assert.deepEqual(created.images, []);
+  });
+
+  it('gives a new card an id that is readable before anything else is written', async () => {
+    // The id is what an R2 key is built from — `products/{id}/{frame}` — so it has to be
+    // usable straight from `create`, not after a first save of the texts.
+    const created = await products.create({ category: 'Побутова техніка', condition: 'new' });
+
+    const found = await products.findById(created.id);
+    assert.ok(found !== null);
+
+    assert.equal(found.id, created.id);
+    assert.equal(found.condition, 'new');
+  });
+
+  it('reads one card with its gallery in position order', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg`, isMain: false });
+    await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+
+    const found = await products.findById(id);
+
+    assert.deepEqual(
+      found?.images.map((image) => image.r2Key),
+      [`products/${id}/first.jpg`, `products/${id}/second.jpg`],
+    );
+  });
+
+  it('answers with null about a card that does not exist', async () => {
+    assert.equal(await products.findById(randomUUID()), null);
+  });
+
+  for (const { field, changes } of SINGLE_FIELD_UPDATES) {
+    it(`updates ${field} and leaves every other field as it was`, async () => {
+      const id = await seedProduct();
+      const before = await products.findById(id);
+      assert.ok(before !== null);
+
+      const after = await products.update(id, changes);
+      assert.ok(after !== null);
+
+      assert.deepEqual(after[field], changes[field]);
+      for (const other of SINGLE_FIELD_UPDATES) {
+        if (other.field !== field) {
+          assert.deepEqual(after[other.field], before[other.field], `${other.field} was rewritten`);
+        }
+      }
+    });
+  }
+
+  it('reads an updated price back as the column wrote it, not as it was given', async () => {
+    const id = await seedProduct();
+
+    const updated = await products.update(id, { price: '1799.5' });
+
+    // decimal(12,2) is the only thing that normalises money here, and its work is visible
+    // in the answer rather than hidden in a converter on the way out.
+    assert.equal(updated?.price, '1799.50');
+  });
+
+  it('accepts an empty set of changes and reads the card back untouched', async () => {
+    const id = await seedProduct();
+
+    const updated = await products.update(id, {});
+    assert.ok(updated !== null);
+
+    assert.equal(updated.titleProm, 'Миша Logitech MX Master 3');
+    assert.equal(updated.price, '2499.00');
+  });
+
+  it('answers with null when the card to update does not exist', async () => {
+    assert.equal(await products.update(randomUUID(), { titleProm: 'Байдуже' }), null);
+  });
+
+  it('deletes a card together with its frames', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const deleted = await products.delete(id);
+
+    assert.equal(deleted, true);
+    assert.equal(await products.findById(id), null);
+    // Asked of the database rather than of the repository: the cascade belongs to the FK,
+    // and nothing in the code removes these rows.
+    const remainingImages = await dataSource.getRepository(ProductImage).countBy({ productId: id });
+    assert.equal(remainingImages, 0);
+  });
+
+  it('reports that there was nothing to delete', async () => {
+    assert.equal(await products.delete(randomUUID()), false);
   });
 });

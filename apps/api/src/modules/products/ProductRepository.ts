@@ -1,5 +1,9 @@
 import { In, type DataSource, type SelectQueryBuilder } from 'typeorm';
-import type { ProductSortDirection, ProductSortField } from '../../contracts/products-limits.ts';
+import type {
+  ProductCondition,
+  ProductSortDirection,
+  ProductSortField,
+} from '../../contracts/products-limits.ts';
 import { Product, type ProductPage } from './Product.ts';
 import { ProductImage } from './ProductImage.ts';
 
@@ -24,6 +28,23 @@ export type ProductFilters = {
   readonly publishedProm?: boolean | undefined;
   readonly publishedOlx?: boolean | undefined;
 };
+
+/**
+ * What an empty card is made of. A card is created before it has anything to say — the R2
+ * key of a frame is `products/{id}/…`, so the id has to exist before the first upload —
+ * and these two are all the caller can know at that moment.
+ */
+export type ProductDraft = {
+  readonly category: string;
+  readonly condition: ProductCondition;
+};
+
+/**
+ * A partial write. A field left out of the object is a field the update does not touch:
+ * the manual path and the AI path write through this same set, and neither of them fills
+ * the whole card at once.
+ */
+export type ProductChanges = Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'images'>>;
 
 export type ProductListCriteria = {
   /** 1-based: what the paginator shows is what the API takes. */
@@ -107,6 +128,68 @@ export class ProductRepository {
     }
 
     return { items: products, total, page: criteria.page, pageSize: criteria.pageSize };
+  }
+
+  /** One card with its gallery, or null when there is no such row. */
+  async findById(id: string): Promise<Product | null> {
+    const product = await this.dataSource.getRepository(Product).findOneBy({ id });
+    if (product === null) {
+      return null;
+    }
+
+    product.images = (await this.galleriesOf([id])).get(id) ?? [];
+    return product;
+  }
+
+  /**
+   * An empty card. Besides the draft only the two title columns are named: they are the
+   * NOT NULL columns the migration left without a default. Everything else — both
+   * descriptions, the zero price, the empty keyword array, both publication flags — has a
+   * default in the database already, and repeating it here would be a second copy of it
+   * that nothing keeps in step.
+   *
+   * The row is read back instead of being returned from the insert, because the value the
+   * column produces is not always the value that went in: `decimal(12,2)` pads a price to
+   * its scale, and the caller must see what the database holds.
+   */
+  async create(draft: ProductDraft): Promise<Product> {
+    const repository = this.dataSource.getRepository(Product);
+    const inserted = await repository.save({
+      category: draft.category,
+      condition: draft.condition,
+      titleProm: '',
+      titleOlx: '',
+    });
+
+    const product = await repository.findOneByOrFail({ id: inserted.id });
+    // A card created a statement ago has no frames: the gallery is empty by construction,
+    // and asking the database about it would be a query with a known answer.
+    product.images = [];
+    return product;
+  }
+
+  /**
+   * A partial update; returns the card as it now stands, or null when the id names no
+   * row. An empty set of changes is a legitimate request and reads the card back
+   * unchanged — TypeORM would refuse to build an UPDATE with nothing to set.
+   */
+  async update(id: string, changes: ProductChanges): Promise<Product | null> {
+    if (Object.keys(changes).length > 0) {
+      await this.dataSource.getRepository(Product).update({ id }, changes);
+    }
+
+    return this.findById(id);
+  }
+
+  /**
+   * Removes the row for good — there is no `deleted_at` (ADR 0012). The frames go with it
+   * through `on delete cascade`, so nothing sweeps `product_images` first. Answers whether
+   * there was a row to remove; clearing the objects out of R2 belongs to the caller and
+   * happens before this.
+   */
+  async delete(id: string): Promise<boolean> {
+    const result = await this.dataSource.getRepository(Product).delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 
   /**
