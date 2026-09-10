@@ -347,7 +347,12 @@ describe('product repository (postgres)', () => {
   it('adds a frame with the fields it was given, not main by default', async () => {
     const id = await seedProduct();
 
-    const image = await products.addImage(id, `products/${id}/first.jpg`, 'https://r2.example.com/first.jpg', 0);
+    const image = await products.addImage(
+      id,
+      `products/${id}/first.jpg`,
+      'https://r2.example.com/first.jpg',
+      0,
+    );
 
     assert.equal(image.productId, id);
     assert.equal(image.r2Key, `products/${id}/first.jpg`);
@@ -380,7 +385,10 @@ describe('product repository (postgres)', () => {
     const id = await seedProduct();
     const other = await seedProduct({ titleProm: 'Інша картка' });
     const main = await seedImage(id, { position: 0, isMain: true });
-    const foreignImage = await seedImage(other, { position: 0, r2Key: `products/${other}/first.jpg` });
+    const foreignImage = await seedImage(other, {
+      position: 0,
+      r2Key: `products/${other}/first.jpg`,
+    });
 
     const changed = await products.setMainImage(id, foreignImage);
 
@@ -394,7 +402,9 @@ describe('product repository (postgres)', () => {
     const id = await seedProduct();
     await seedImage(id, { position: 0, isMain: true });
 
-    await assert.rejects(seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg`, isMain: true }));
+    await assert.rejects(
+      seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg`, isMain: true }),
+    );
   });
 
   it('never lets another connection see the moment between clearing and setting the main frame', async () => {

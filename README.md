@@ -135,6 +135,8 @@ cp .env.example .env
 #   openssl rand -base64 24   → ADMIN_BOOTSTRAP_PASSWORD
 # Перелік і валідація змінних — apps/api/src/config.ts (падає на старті, якщо бракує)
 
+git config core.hooksPath .githooks   # одноразово: pre-commit ловить format:check до CI
+
 docker compose up --build        # postgres → migrate → api → web
 ```
 
