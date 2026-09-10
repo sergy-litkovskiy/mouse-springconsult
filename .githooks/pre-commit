@@ -1,0 +1,27 @@
+#!/bin/sh
+# Дзеркалить перші кроки CI (.github/workflows/ci.yml) для застосунків, яких
+# торкнувся коміт, — щоб `format:check` падав тут, а не в GitHub Actions.
+# Активація: git config core.hooksPath .githooks (див. README, "Локальний запуск").
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+fail=0
+
+if echo "$staged" | grep -q '^apps/api/'; then
+  echo "pre-commit: prettier --check (api)"
+  docker compose run --rm --no-deps api npm run format:check || fail=1
+fi
+
+if echo "$staged" | grep -q '^apps/web/'; then
+  echo "pre-commit: prettier --check (web)"
+  docker compose run --rm --no-deps web npm run format:check || fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "Форматування не пройшло. Виправте і додайте файли в коміт ще раз:"
+  echo "  docker compose run --rm --no-deps api npm run format"
+  echo "  docker compose run --rm --no-deps web npm run format"
+  exit 1
+fi
+
+exit 0

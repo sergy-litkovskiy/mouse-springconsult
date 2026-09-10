@@ -166,6 +166,78 @@ export class ProductRepository {
   }
 
   /**
+   * `url` is still a stored, `NOT NULL` column: ADR 0007 removes it, but only once `config`
+   * carries the R2 bucket domain (T06) and the controller learns to compose the address from
+   * `r2Key` itself (T12) — until then this repository keeps taking it as an argument, same as
+   * the column requires (data-model.md, `product_images`).
+   */
+  async addImage(
+    productId: string,
+    r2Key: string,
+    url: string,
+    position: number,
+  ): Promise<ProductImage> {
+    const repository = this.dataSource.getRepository(ProductImage);
+    return repository.save(repository.create({ productId, r2Key, url, position, isMain: false }));
+  }
+
+  async countImages(productId: string): Promise<number> {
+    return this.dataSource.getRepository(ProductImage).countBy({ productId });
+  }
+
+  /**
+   * The target is looked up before anything is written: clearing the old main first and only
+   * then discovering `imageId` does not belong to this card would leave the gallery with none
+   * at all, which is worse than refusing the change. Both writes that follow happen inside the
+   * same transaction so no other connection ever reads the moment between them —
+   * `product_images_main_key` is checked per statement, not deferred, but nothing commits
+   * between clearing the old main and setting the new one.
+   */
+  async setMainImage(productId: string, imageId: string): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const images = manager.getRepository(ProductImage);
+      const target = await images.findOneBy({ id: imageId, productId });
+      if (target === null) {
+        return false;
+      }
+      await images.update({ productId, isMain: true }, { isMain: false });
+      await images.update({ id: imageId }, { isMain: true });
+      return true;
+    });
+  }
+
+  /**
+   * `product_images_position_key` is declared `deferrable initially deferred`, so within one
+   * transaction two rows may share a position between statements — only the state at commit
+   * has to be unique. Outside a transaction a swap would fail on whichever `update` ran second.
+   */
+  async reorderImages(productId: string, order: readonly string[]): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const images = manager.getRepository(ProductImage);
+      for (const [position, imageId] of order.entries()) {
+        await images.update({ id: imageId, productId }, { position });
+      }
+    });
+  }
+
+  async findImage(productId: string, imageId: string): Promise<ProductImage | null> {
+    return this.dataSource.getRepository(ProductImage).findOneBy({ id: imageId, productId });
+  }
+
+  /** The keys of a card's gallery, for the caller that has to remove the R2 objects behind them. */
+  async findImageKeys(productId: string): Promise<string[]> {
+    const images = await this.dataSource
+      .getRepository(ProductImage)
+      .find({ where: { productId }, select: { r2Key: true } });
+    return images.map((image) => image.r2Key);
+  }
+
+  async deleteImage(imageId: string): Promise<boolean> {
+    const result = await this.dataSource.getRepository(ProductImage).delete({ id: imageId });
+    return (result.affected ?? 0) > 0;
+  }
+
+  /**
    * `getRepository` is called here rather than kept in a field: a stub subclass in a spec
    * overrides every method, so it must be constructible without a live DataSource.
    */

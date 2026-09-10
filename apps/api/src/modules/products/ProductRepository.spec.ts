@@ -94,7 +94,7 @@ async function seedProduct(seed: ProductSeed = {}): Promise<string> {
   return saved.id;
 }
 
-async function seedImage(productId: string, seed: ImageSeed = {}): Promise<void> {
+async function seedImage(productId: string, seed: ImageSeed = {}): Promise<string> {
   const row: Omit<ProductImage, 'id'> = {
     productId,
     r2Key: `products/${productId}/original.jpg`,
@@ -104,7 +104,8 @@ async function seedImage(productId: string, seed: ImageSeed = {}): Promise<void>
     ...seed,
   };
 
-  await dataSource.getRepository(ProductImage).save(row);
+  const saved = await dataSource.getRepository(ProductImage).save(row);
+  return saved.id;
 }
 
 describe('product repository (postgres)', () => {
@@ -341,5 +342,142 @@ describe('product repository (postgres)', () => {
     assert.equal(onProm.total, 2);
     assert.equal(notOnOlx.total, 1);
     assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
+  });
+
+  it('adds a frame with the fields it was given, not main by default', async () => {
+    const id = await seedProduct();
+
+    const image = await products.addImage(
+      id,
+      `products/${id}/first.jpg`,
+      'https://r2.example.com/first.jpg',
+      0,
+    );
+
+    assert.equal(image.productId, id);
+    assert.equal(image.r2Key, `products/${id}/first.jpg`);
+    assert.equal(image.isMain, false);
+  });
+
+  it('counts only the frames of the card that was asked about', async () => {
+    const counted = await seedProduct();
+    const other = await seedProduct({ titleProm: 'Інша картка' });
+    await seedImage(counted, { position: 0 });
+    await seedImage(counted, { position: 1, r2Key: `products/${counted}/second.jpg` });
+    await seedImage(other, { position: 0, r2Key: `products/${other}/first.jpg` });
+
+    assert.equal(await products.countImages(counted), 2);
+  });
+
+  it('makes the assigned frame the only main one', async () => {
+    const id = await seedProduct();
+    const first = await seedImage(id, { position: 0, isMain: true });
+    const second = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const changed = await products.setMainImage(id, second);
+
+    assert.equal(changed, true);
+    assert.equal((await products.findImage(id, second))?.isMain, true);
+    assert.equal((await products.findImage(id, first))?.isMain, false);
+  });
+
+  it('leaves the main frame as it was when the target does not belong to the card', async () => {
+    const id = await seedProduct();
+    const other = await seedProduct({ titleProm: 'Інша картка' });
+    const main = await seedImage(id, { position: 0, isMain: true });
+    const foreignImage = await seedImage(other, {
+      position: 0,
+      r2Key: `products/${other}/first.jpg`,
+    });
+
+    const changed = await products.setMainImage(id, foreignImage);
+
+    assert.equal(changed, false);
+    assert.equal((await products.findImage(id, main))?.isMain, true);
+  });
+
+  it('rejects two main frames for the same card at the database itself', async () => {
+    // `products.setMainImage` cannot produce this state — the point is to prove the invariant
+    // is the index, not the calling code, per the story's DoD ("перевірено проти індексу").
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+
+    await assert.rejects(
+      seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg`, isMain: true }),
+    );
+  });
+
+  it('never lets another connection see the moment between clearing and setting the main frame', async () => {
+    const id = await seedProduct();
+    const original = await seedImage(id, { position: 0, isMain: true });
+    const next = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      // The same two statements setMainImage runs, but paused mid-way on a connection of
+      // their own so a read from the pool's other connections can land between them.
+      await runner.manager
+        .getRepository(ProductImage)
+        .update({ productId: id, isMain: true }, { isMain: false });
+
+      const seenMidway = await dataSource
+        .getRepository(ProductImage)
+        .findOneBy({ productId: id, isMain: true });
+      assert.equal(
+        seenMidway?.id,
+        original,
+        'a concurrent read must still see the original main frame, never none at all',
+      );
+
+      await runner.manager
+        .getRepository(ProductImage)
+        .update({ id: next, productId: id }, { isMain: true });
+      await runner.commitTransaction();
+    } finally {
+      await runner.release();
+    }
+
+    assert.equal((await products.findImage(id, next))?.isMain, true);
+  });
+
+  it('swaps two frames without tripping over the position they trade', async () => {
+    const id = await seedProduct();
+    const first = await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg` });
+    const second = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    await products.reorderImages(id, [second, first]);
+
+    assert.equal((await products.findImage(id, second))?.position, 0);
+    assert.equal((await products.findImage(id, first))?.position, 1);
+  });
+
+  it('finds a frame scoped to its own card, not by id alone', async () => {
+    const id = await seedProduct();
+    const other = await seedProduct({ titleProm: 'Інша картка' });
+    const imageId = await seedImage(id, { position: 0 });
+
+    assert.equal((await products.findImage(id, imageId))?.id, imageId);
+    assert.equal(await products.findImage(other, imageId), null);
+  });
+
+  it('returns the r2 keys of a card gallery for the caller that has to remove the objects', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg` });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const keys = await products.findImageKeys(id);
+
+    assert.deepEqual(keys.sort(), [`products/${id}/first.jpg`, `products/${id}/second.jpg`].sort());
+  });
+
+  it('deletes a frame and reports it, unlike a missing one', async () => {
+    const id = await seedProduct();
+    const imageId = await seedImage(id, { position: 0 });
+
+    assert.equal(await products.deleteImage(imageId), true);
+    assert.equal(await products.findImage(id, imageId), null);
+    assert.equal(await products.deleteImage(imageId), false);
   });
 });
