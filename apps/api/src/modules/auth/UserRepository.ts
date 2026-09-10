@@ -2,12 +2,8 @@ import type { DataSource } from 'typeorm';
 import { User } from './User.ts';
 
 /**
- * Persistence of the administrators — the only place in the module where TypeORM is
- * mentioned. Instantiated by the composition root alone (`src/api.ts`).
- *
- * `getRepository` is called inside each method rather than kept in a field: a stub
- * subclass in a spec overrides every method, so it must be constructible without a live
- * DataSource.
+ * `getRepository` is called inside each method rather than kept in a field: a stub subclass in a
+ * spec overrides every method, so it must be constructible without a live DataSource.
  */
 export class UserRepository {
   constructor(private readonly dataSource: DataSource) {}
@@ -22,7 +18,6 @@ export class UserRepository {
     return this.dataSource.getRepository(User).findOne({ where: { id } });
   }
 
-  /** Records a successful sign-in. */
   async recordLogin(userId: string, at: Date): Promise<void> {
     await this.dataSource.getRepository(User).update({ id: userId }, { lastLoginAt: at });
   }

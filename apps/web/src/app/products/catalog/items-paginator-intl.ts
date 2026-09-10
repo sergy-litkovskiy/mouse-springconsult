@@ -1,12 +1,9 @@
 import { MatPaginatorIntl } from '@angular/material/paginator';
 
 /**
- * Ukrainian labels for the catalogue paginator: the component ships with English ones, and
- * the admin panel is Ukrainian throughout. The wording names the items it counts ("Товарів
- * на сторінці"), so the factory lives beside its only caller rather than at the feature level.
- *
- * A factory rather than a subclass: the class has nothing to override, only strings to set,
- * and `providers:` needs a function it can call before the component exists.
+ * The wording names the items it counts ("Товарів на сторінці"), so this lives beside its only
+ * caller rather than at the feature level. A factory rather than a subclass: there is nothing to
+ * override, only strings to set, and `providers:` needs a function it can call.
  */
 export function itemsPaginatorIntl(): MatPaginatorIntl {
   const intl = new MatPaginatorIntl();

@@ -2,15 +2,7 @@ import { AppError } from '../../errors.ts';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 
-/**
- * Domain errors of the product card. Declared by the module they belong to; the HTTP status
- * is stated here, while the mapping into a response is done by the single error handler in
- * `src/api.ts` — which needs no branch per class, only `AppError`.
- *
- * Messages are English, like the rest of the code: the server sends a `code`, and the text
- * a person reads is composed by the frontend from it. Each status below is the one the
- * contract promises for that code (contracts/openapi.yaml).
- */
+/** Each status below is the one the contract promises for that code (contracts/openapi.yaml). */
 export class ProductNotFound extends AppError {
   constructor(productId: string) {
     super({
@@ -34,8 +26,8 @@ export class ImageNotFound extends AppError {
 }
 
 /**
- * A card carries a gallery, not an archive. The ceiling travels in `details` because the
- * frontend states it in the message, and a number duplicated in two languages drifts.
+ * The ceiling travels in `details` because the frontend states it in the message, and a number
+ * duplicated in two languages drifts.
  */
 export class GalleryFull extends AppError {
   constructor() {
@@ -71,9 +63,8 @@ export class FileTooLarge extends AppError {
 }
 
 /**
- * The external file store answered with a failure, or did not answer, after the S3 client
- * exhausted its own retries (sad.md scenario 2). 502 rather than 500: the fault is upstream,
- * and everything already entered on the card survives it.
+ * Raised after the S3 client has exhausted its own retries (sad.md scenario 2). 502 rather than
+ * 500: the fault is upstream, and everything already entered on the card survives it.
  */
 export class StorageUnavailable extends AppError {
   constructor(cause?: unknown) {
@@ -87,8 +78,8 @@ export class StorageUnavailable extends AppError {
 }
 
 /**
- * A price the `decimal(12,2)` column cannot hold as written. Kept apart from
- * `validation_failed` because the frontend puts it on the price field, not on the form.
+ * Kept apart from `validation_failed` because the frontend puts it on the price field rather
+ * than on the form.
  */
 export class InvalidPrice extends AppError {
   constructor() {

@@ -1,10 +1,6 @@
 import { z } from 'zod';
 import { authConstraints } from './auth-limits.ts';
 
-/**
- * Contracts of the auth module. The backend validates incoming payloads with them in
- * `AuthController.ts`, the frontend imports types via the `@contracts/*` alias — one description.
- */
 export const loginRequestSchema = z.object({
   email: z
     .string()
@@ -20,9 +16,8 @@ export const loginRequestSchema = z.object({
   rememberMe: z.boolean().default(false),
 });
 
-/** What the client sends (rememberMe is optional — it has a default). */
+/** `input` and not `infer`: to the client `rememberMe` is optional, since it has a default. */
 export type LoginRequest = z.input<typeof loginRequestSchema>;
-/** What the backend sees after validation. */
 export type LoginCommand = z.output<typeof loginRequestSchema>;
 
 export const authUserSchema = z.object({
@@ -35,7 +30,6 @@ export type AuthUser = z.infer<typeof authUserSchema>;
 
 export const sessionSchema = z.object({
   user: authUserSchema,
-  /** ISO 8601, UTC. Formatting is the client's job. */
   expiresAt: z.iso.datetime(),
 });
 

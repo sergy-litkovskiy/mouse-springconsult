@@ -2,17 +2,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /**
- * Generator of an empty migration: `npm run db:migrate:new -- add-product-seo`.
+ * `npm run db:migrate:new -- add-product-seo`.
  *
- * The class name ends with a timestamp — that is what TypeORM orders migrations by — so
- * in the file name it comes first, to keep the order visible in `ls` as well.
+ * The class name ends with a timestamp — that is what TypeORM orders migrations by — so in the
+ * file name it comes first, to keep the order visible in `ls` as well. Writing the file is all
+ * there is to it: `db/migrations-glob.ts` picks the directory up whole.
  *
- * Writing the file is all there is to it: `db/migrations-glob.ts` picks the directory up
- * whole, so a new migration takes effect the moment it compiles.
- *
- * The generator itself runs compiled, out of `dist/db/`, while what it writes are
- * sources: the target directory comes from the working directory — npm sets it to the
- * package root — rather than from `import.meta.url`.
+ * The generator runs compiled, out of `dist/db/`, while what it writes are sources — hence the
+ * target directory from the working directory (npm sets it to the package root) rather than from
+ * `import.meta.url`.
  */
 const here = join(process.cwd(), 'db');
 

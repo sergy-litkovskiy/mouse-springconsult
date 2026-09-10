@@ -50,21 +50,6 @@ import { ProductGalleryDialog, type ProductGalleryData } from '../gallery/produc
 import { ProductsApi } from '../products-api';
 import { itemsPaginatorIntl } from './items-paginator-intl';
 
-/**
- * Product catalogue: a page of cards with filters, sorting and pagination.
- *
- * The state of the table is the URL. Every control writes into the address bar, the inputs
- * below are filled back from it by the router (`withComponentInputBinding`), and the request
- * follows the inputs. That is what makes F5, a link sent to the second admin and the Back
- * button behave the way the admin expects — a component signal does none of the three.
- *
- * Filters are applied by a button rather than on every keystroke: the catalogue is read
- * by one or two admins, and a debounce would only add a delay nobody asked for.
- *
- * What a filter value may be — coming from the URL and coming from the form — lives in
- * `product-catalog-query.ts`, because neither an `input()` transform nor a `ValidatorFn`
- * can be a member of this class.
- */
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
   [apiErrorCodes.validationFailed]: 'Перевірте значення у фільтрах.',
@@ -84,6 +69,12 @@ const priceFormat = new Intl.NumberFormat('uk-UA', {
   minimumFractionDigits: 2,
 });
 
+/**
+ * The state of the table is the URL: every control writes into the address bar, the inputs
+ * are filled back from it by the router (`withComponentInputBinding`), and the request follows
+ * the inputs. That is what makes F5, a link sent to the second admin and the Back button
+ * behave the way the admin expects — a component signal does none of the three.
+ */
 @Component({
   selector: 'app-product-catalog',
   imports: [
@@ -149,9 +140,9 @@ export class ProductCatalog {
   });
 
   /**
-   * The seven filters on their own, apart from paging and ordering. The form mirrors these and
-   * only these: a click on the paginator or a sort header is not a reason to wipe text the
-   * admin has typed into a filter and not yet applied.
+   * Apart from paging and ordering, because the form mirrors these and only these: a click on
+   * the paginator or a sort header is not a reason to wipe text the admin has typed into a
+   * filter and not yet applied.
    */
   private readonly appliedFilters = computed(() => ({
     title: this.title(),
@@ -163,7 +154,6 @@ export class ProductCatalog {
     publishedOlx: this.publishedOlx(),
   }));
 
-  /** Every field in one place: an optional filter added to the contract is visible here. */
   private readonly query = computed<ProductListQuery>(() => ({
     page: this.page(),
     pageSize: this.pageSize(),
@@ -205,8 +195,7 @@ export class ProductCatalog {
 
   /**
    * The price bounds are text, not `type="number"`: a number input hands Angular a `number`,
-   * and a price that has been through a float is no longer the value the admin typed. The
-   * limits on the text fields are the contract's own, imported rather than restated.
+   * and a price that has been through a float is no longer the value the admin typed.
    */
   protected readonly filters = this.formBuilder.nonNullable.group(
     {
@@ -226,7 +215,7 @@ export class ProductCatalog {
   /**
    * A reactive form is not a signal, and zoneless change detection does not watch one. The
    * per-field messages are `mat-form-field`'s own business; this one belongs to the group,
-   * so the template reads it as a signal instead of as a method call on the form.
+   * so the template has to read it as a signal.
    */
   protected readonly priceRangeInvalid = toSignal(
     this.filters.events.pipe(map(() => this.filters.hasError('priceRange'))),
@@ -234,8 +223,8 @@ export class ProductCatalog {
   );
 
   constructor() {
-    // The form shows what the URL is asking for: after a reload, or a Back out of a filtered
-    // page, the fields have to agree with the rows underneath them.
+    // After a reload, or a Back out of a filtered page, the fields have to agree with the
+    // rows underneath them.
     effect(() => {
       const applied = this.appliedFilters();
       // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
@@ -296,8 +285,8 @@ export class ProductCatalog {
 
   /**
    * `event.active` is a plain string — the id of whichever header was clicked. Checking it
-   * against the contract's list is what keeps a `mat-sort-header` added to a column the API
-   * cannot sort by from turning into a request the server refuses.
+   * against the contract's list keeps a `mat-sort-header` on a column the API cannot sort by
+   * from turning into a request the server refuses.
    */
   protected changeSort(event: Sort): void {
     void this.router.navigate([], {

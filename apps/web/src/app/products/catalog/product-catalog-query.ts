@@ -10,20 +10,15 @@ import {
 } from '@contracts/products-limits';
 
 /**
- * One question — what is an acceptable filter value — asked at the three boundaries the
- * catalogue has: the address bar, the filter form, and the request.
+ * What an acceptable filter value is, asked at the three boundaries the catalogue has: the
+ * address bar, the filter form and the request. None of it can live on the component — an
+ * `input()` transform runs before there is an instance to call a method on, and a `ValidatorFn`
+ * is a plain function by definition — and keeping it in one file is what keeps the transform's
+ * reading of `productConstraints` and the validator's from drifting apart.
  *
- * None of it can live on the component. An `input()` transform runs before there is an
- * instance to call a method on, and a `ValidatorFn` is a plain function by definition.
- * Keeping it here instead of beside the component keeps the two readings of
- * `productConstraints` — the transform's and the validator's — in one place, where they
- * cannot drift apart.
- */
-
-/**
- * A query parameter is whatever the address bar happens to hold, and the address bar is
- * typed by hand as often as it is written by the paginator. Anything the contract does not
- * accept falls back to the default here rather than travelling to the server to be refused.
+ * A query parameter is whatever the address bar happens to hold, typed by hand as often as it is
+ * written by the paginator, so anything the contract does not accept falls back to the default
+ * here rather than travelling to the server to be refused.
  */
 export function toPage(value: string | undefined): number {
   const page = Number(value);
@@ -45,12 +40,7 @@ export function toSortDirection(value: string | undefined): ProductSortDirection
   return isSortDirection(value) ? value : productSortDefaults.direction;
 }
 
-/**
- * A text filter carries the contract's own limit, the way `toPriceFilter` carries the price
- * pattern: a URL typed by hand is normalised here rather than round-tripped to the server for
- * a `validation_failed` that names no field. A factory because the bound differs per field and
- * an `input()` transform takes only the value.
- */
+/** A factory because the bound differs per field and an `input()` transform takes only the value. */
 export function textFilter(maxLength: number): (value: string | undefined) => string | undefined {
   return (value) => {
     const cleaned = value?.trim() ?? '';
@@ -59,10 +49,8 @@ export function textFilter(maxLength: number): (value: string | undefined) => st
 }
 
 /**
- * The bound as the contract wants it: a decimal string, unchanged all the way to the ORDER BY.
- * `productConstraints.pricePattern` is the same expression the backend validates with, applied
- * here so that "1000.555" is dropped by the page that produced it instead of coming back as a
- * generic `validation_failed` that names no field.
+ * The same expression the backend validates with, applied here so that "1000.555" is dropped by
+ * the page that produced it instead of coming back as a `validation_failed` that names no field.
  */
 export function toPriceFilter(value: string | undefined): string | undefined {
   const cleaned = value?.trim() ?? '';
@@ -82,7 +70,6 @@ export function asQueryParam(value: string): string | null {
   return cleaned === '' ? null : cleaned;
 }
 
-/** The other direction: what the select shows for the filter the URL is carrying. */
 export function publishedControlValue(published: boolean | undefined): '' | 'true' | 'false' {
   if (published === undefined) {
     return '';
@@ -97,8 +84,7 @@ export function priceBound(control: AbstractControl): ValidationErrors | null {
 
 /**
  * Comparing two bounds is not converting them: the strings are what travel to the API, and
- * `Number` is used here the way `Intl.NumberFormat` is used under the table — to read a value,
- * never to store or send one.
+ * `Number` reads a value here without ever storing or sending one.
  */
 export function priceRange(group: AbstractControl): ValidationErrors | null {
   const min = (group.get('priceMin')?.value as string | undefined)?.trim() ?? '';

@@ -25,12 +25,7 @@ import {
   ProductService,
 } from './modules/products/index.ts';
 
-/**
- * Composition root of the HTTP process. Repositories, services and controllers are
- * created only here; every layer below receives its collaborators through a constructor.
- */
-
-/** The single HTTP error mapping. Stack traces and 5xx messages never leave the process. */
+/** The single HTTP error mapping: stack traces and 5xx messages never leave the process. */
 function toApiError(error: unknown): { statusCode: number; body: ApiError } {
   if (isAppError(error)) {
     return {

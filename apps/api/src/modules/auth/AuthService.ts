@@ -6,13 +6,7 @@ import type { SystemClock } from './SystemClock.ts';
 import type { User } from './User.ts';
 import type { UserRepository } from './UserRepository.ts';
 
-/**
- * Business logic of a session: signing in, checking a session, signing out. The
- * repository, the hasher, the tokens and the clock come in through the constructor and
- * are created by the composition root.
- */
 export type AuthServiceConfig = {
-  /** Regular sign-in. */
   readonly ttlSeconds: number;
   /** "Remember me": the token lives as long as the cookie does. */
   readonly rememberMeTtlSeconds: number;
@@ -88,10 +82,8 @@ export class AuthService {
   }
 
   /**
-   * Session check. Used both by the guard of protected routes and by `GET /auth/me`.
-   *
-   * A valid signature is not enough: the user is read from the database so that
-   * deactivation and logout take effect immediately, not "once the token expires".
+   * A valid signature is not enough: the user is read from the database so that deactivation and
+   * logout take effect immediately, not "once the token expires".
    */
   async authenticate(token: string | undefined): Promise<AuthenticatedSession> {
     if (token === undefined || token === '') {
@@ -116,18 +108,14 @@ export class AuthService {
   }
 
   /**
-   * Signing out. The cookie is cleared by the controller, while the real revocation
-   * happens here: `tokensValidFrom` moves to "now", so a copy of the token that someone
-   * managed to lift from the browser is no longer accepted.
+   * The cookie is cleared by the controller; the revocation happens here — `tokensValidFrom`
+   * moves to "now", so a copy of the token lifted from the browser is no longer accepted.
    */
   async logout(userId: string): Promise<void> {
     await this.users.revokeTokensIssuedBefore(userId, this.clock.now());
   }
 
-  /**
-   * What is safe to hand out: no password hash, no internal fields. The narrowing happens
-   * here rather than in the controller — who may see what is not a formatting question.
-   */
+  /** The narrowing happens here rather than in the controller: who may see what is not a formatting question. */
   private toAuthUser(user: User): AuthUser {
     return { id: user.id, email: user.email, displayName: user.displayName };
   }

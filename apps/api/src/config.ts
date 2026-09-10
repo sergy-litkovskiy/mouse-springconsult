@@ -1,15 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Backend configuration has two levels, and they do not overlap.
- *
- * 1. `config` — constants written in code. Identical on every machine, typed,
- *    changed through a commit and a review.
- * 2. `env` — secrets and machine-specific values only. Validated by the zod schema
- *    below, which fails at process start when something required is missing.
- *
- * Rule of thumb: a value that is the same everywhere is a constant, not an env var.
- */
+/** A value that is the same on every machine belongs in `config`; `env` takes only the rest. */
 
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * HOUR_SECONDS;
@@ -25,7 +16,7 @@ export const config = {
 
   session: {
     cookieName: 'mouse_session',
-    /** Regular sign-in. The cookie is a session cookie — it dies with the browser tab. */
+    /** Regular sign-in: the cookie has no Max-Age and dies with the browser. */
     ttlSeconds: 72 * HOUR_SECONDS,
     /** "Remember me": the cookie gets a Max-Age and the token lives just as long. */
     rememberMeTtlSeconds: 30 * DAY_SECONDS,
@@ -52,7 +43,6 @@ export const config = {
   db: {
     poolSize: 10,
     connectTimeoutMs: 10_000,
-    /** Only migrations change the schema; synchronize is never turned on. */
     synchronize: false,
   },
 } as const;
@@ -64,10 +54,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  /**
-   * The first administrator. Needed only by the migration process; the password is
-   * never stored in the repository — neither in plain text nor as a hash.
-   */
+  /** Read by the migration process alone; the password is never stored in the repository. */
   ADMIN_BOOTSTRAP_EMAIL: z
     .string()
     .trim()

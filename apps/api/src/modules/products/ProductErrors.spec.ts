@@ -15,11 +15,7 @@ import {
   StorageUnavailable,
 } from './ProductErrors.ts';
 
-/**
- * The contract promises one status per code, and the DoD asks for that to be checked
- * against a list rather than by eye. This is the list: every delivery-1 domain code, the
- * class that carries it, and the status openapi.yaml answers with.
- */
+/** Every delivery-1 domain code, the class that carries it, and the status openapi.yaml promises. */
 const domainErrors = [
   { error: new ProductNotFound('p-1'), code: apiErrorCodes.productNotFound, statusCode: 404 },
   { error: new ImageNotFound('i-1'), code: apiErrorCodes.imageNotFound, statusCode: 404 },

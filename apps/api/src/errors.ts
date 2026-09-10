@@ -1,9 +1,3 @@
-/**
- * Base application error. Domain errors are declared by the module they belong to;
- * this file holds only the contract shared with the error handler in api.ts.
- *
- * Technical service: knows nothing about modules/.
- */
 export type AppErrorInit = {
   readonly code: string;
   readonly statusCode: number;

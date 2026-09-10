@@ -3,14 +3,10 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 import { config, env } from '../../src/config.ts';
 
 /**
- * The first administrator. Login and password come from `ADMIN_BOOTSTRAP_EMAIL` and
- * `ADMIN_BOOTSTRAP_PASSWORD`: neither the password nor its hash lives in the repository.
- *
- * Hashing happens right here with the same argon2id parameters as in
- * `PasswordHasher.ts` — otherwise the first sign-in would cost differently and
+ * Login and password come from `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD`: neither
+ * the password nor its hash lives in the repository. Hashing happens here with the same argon2id
+ * parameters as in `PasswordHasher.ts` — otherwise the first sign-in would cost differently and
  * give itself away through the response time.
- *
- * `down` removes exactly this user, by email.
  */
 export class CreateFirstUser1787738400000 implements MigrationInterface {
   name = 'CreateFirstUser1787738400000';

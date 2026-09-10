@@ -4,13 +4,10 @@ import { createDataSource } from '../src/db.ts';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from './test-database.ts';
 
 /**
- * Constraints that exist in SQL and nowhere else.
- *
- * The `migrations` job in CI runs up → down → up, which proves a migration applies and
- * reverts. What it cannot prove is that the constraints behave the way the comments in
- * the migration claim — that the deferred unique lets a reorder through, that the partial
- * unique allows exactly one main frame, that the CHECK really closes the list of
- * conditions. Those are checked here, with raw SQL: the ORM has no say in any of it.
+ * The `migrations` job in CI runs up → down → up, which proves a migration applies and reverts.
+ * What it cannot prove is that the constraints behave as claimed — that the deferred unique lets
+ * a reorder through, that the partial unique allows exactly one main frame, that the CHECK really
+ * closes the list of conditions. Those are checked here in raw SQL, with no ORM in the way.
  */
 const dataSource = createDataSource({ url: testDatabaseUrl() });
 

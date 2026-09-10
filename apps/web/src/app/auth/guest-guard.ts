@@ -4,9 +4,8 @@ import { returnUrlTree } from '../safe-return-url';
 import { AuthStore } from './auth-store';
 
 /**
- * The mirror image of `authGuard`: the sign-in form is for those who are not signed in.
- * Without it an admin who opens a bookmark of the site root is shown a login form and retypes
- * credentials the browser was already sending in a live cookie.
+ * The mirror image of `authGuard`. Without it an admin who opens a bookmark of the site root is
+ * shown a login form and retypes credentials the browser was already sending in a live cookie.
  */
 export const guestGuard: CanActivateFn = async (route): Promise<boolean | UrlTree> => {
   const store = inject(AuthStore);

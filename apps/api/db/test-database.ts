@@ -5,17 +5,14 @@ import { ensureDatabase, quoteIdentifier } from './create-database.ts';
 import { migrationsGlob } from './migrations-glob.ts';
 
 /**
- * The throwaway database the integration specs run against. Imported from `*.spec.ts`
- * only — the rule is pinned down in `.dependency-cruiser.cjs`.
+ * The name is derived from DATABASE_URL rather than configured separately: whatever database the
+ * machine works with, the tests get its `_test` twin, and CI needs no extra variable. Node runs
+ * every spec file in its own process, so `prepareTestDatabase` is called from each of them; after
+ * the first one the migrations are a no-op.
  *
- * The name is derived from DATABASE_URL rather than configured separately: whatever
- * database the machine works with, the tests get its `_test` twin, and CI needs no extra
- * variable. Node runs every spec file in its own process, so `prepareTestDatabase` is
- * called from each of them; after the first one the migrations are a no-op.
- *
- * The runner is pinned to one file at a time (`--test-concurrency=1` in package.json):
- * every spec here works against the same database and truncates the same tables, so a
- * second file running in parallel would pull the rows out from under the first.
+ * The runner is pinned to one file at a time (`--test-concurrency=1` in package.json): every spec
+ * works against this same database and truncates the same tables, so a second file running in
+ * parallel would pull the rows out from under the first.
  */
 
 export function testDatabaseUrl(): string {
@@ -29,7 +26,6 @@ export function testDatabaseUrl(): string {
   return url.toString();
 }
 
-/** Creates the test database if it is missing and brings it up to the latest migration. */
 export async function prepareTestDatabase(): Promise<string> {
   const url = testDatabaseUrl();
   await ensureDatabase(url);
@@ -46,9 +42,8 @@ export async function prepareTestDatabase(): Promise<string> {
 }
 
 /**
- * Empties the tables between tests, so every one of them starts from a known database.
- * `restart identity cascade` rather than `delete`: it is faster and it clears the rows
- * that migrations seeded — the first administrator among them.
+ * `restart identity cascade` rather than `delete`: it is faster and it clears the rows that
+ * migrations seeded — the first administrator among them.
  */
 export async function resetTables(
   dataSource: DataSource,

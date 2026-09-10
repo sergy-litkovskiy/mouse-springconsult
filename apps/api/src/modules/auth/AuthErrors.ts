@@ -1,12 +1,6 @@
 import { AppError } from '../../errors.ts';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 
-/**
- * Domain errors are declared by the module they belong to. The HTTP status is stated
- * here, while the mapping into a response is done by the single error handler in `src/api.ts`.
- *
- * User-facing text is composed by the frontend from `code`: the server does not do UI.
- */
 export class InvalidCredentials extends AppError {
   constructor() {
     super({

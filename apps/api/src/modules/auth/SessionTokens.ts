@@ -1,11 +1,9 @@
 import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
 
 /**
- * Session tokens on JWT (jose, HS256).
- *
- * The token travels in an httpOnly cookie rather than localStorage: the SPA and the API
- * live on one domain behind Caddy, so cross-origin headers are unnecessary and XSS has
- * nowhere to read it from. See ADR 0002.
+ * The token travels in an httpOnly cookie rather than localStorage: the SPA and the API live on
+ * one domain behind Caddy, so cross-origin headers are unnecessary and XSS has nowhere to read it
+ * from. See ADR 0002.
  */
 export type SessionTokensConfig = {
   readonly secret: string;

@@ -7,13 +7,13 @@ import { isWorthReturningTo } from '../safe-return-url';
 import { AuthStore } from './auth-store';
 
 /**
- * A 401 says the session is gone, and that is a fact about the whole application — not a
- * detail of whichever page happened to make the request. Handled page by page it produces a
- * deadlock: the table shows "sign in again" while the store still holds the stale user, so
- * every guard keeps letting the navigation through and every request keeps failing.
+ * A 401 is a fact about the whole application, not about whichever page made the request.
+ * Handled page by page it produces a deadlock: the table shows "sign in again" while the store
+ * still holds the stale user, so every guard keeps letting the navigation through and every
+ * request keeps failing.
  *
- * The `auth` endpoints are the exception, and each for its own reason: `login` answers 401 for
- * a wrong password, `me` answers 401 to mean "no session — which is what it was asked", and
+ * The `auth` endpoints are the exception, each for its own reason: `login` answers 401 for a
+ * wrong password, `me` answers 401 to mean "no session", which is what it was asked, and
  * `logout` has nothing left to invalidate.
  */
 const authEndpointPrefix = `${environment.apiBaseUrl}/auth/`;

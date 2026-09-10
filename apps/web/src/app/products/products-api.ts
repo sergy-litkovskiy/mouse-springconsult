@@ -4,9 +4,6 @@ import type { ProductListQuery } from '@contracts/products.contract';
 import { environment } from '@environments/environment';
 
 /**
- * HTTP transport of the catalogue. The query type comes from `@contracts` — the very zod
- * schema the backend validates the request with.
- *
  * What is returned is a request, not a subscription: `httpResource` owns the lifecycle and
  * cancels the previous request the moment the query changes, so two pages in flight can no
  * longer resolve out of order and paint the wrong one.
@@ -21,9 +18,8 @@ export class ProductsApi {
 }
 
 /**
- * Every field the query actually holds becomes a parameter, including fields the contract
- * grows later. A hand-written list of `if`s compiles just as well and silently drops the new
- * filter: the admin sets it, the table ignores it, and nothing fails anywhere.
+ * Every field the query holds becomes a parameter, including fields the contract grows later: a
+ * hand-written list of `if`s compiles just as well and silently drops the new filter.
  *
  * A filter that was not set is not sent at all — an empty parameter would arrive as an empty
  * string and be rejected as invalid rather than understood as "no filter".

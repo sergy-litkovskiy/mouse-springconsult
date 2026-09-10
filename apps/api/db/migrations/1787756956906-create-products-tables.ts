@@ -1,32 +1,21 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Product cards and their galleries.
+ * Title, description and publication are doubled per marketplace because the card is one and
+ * the marketplaces are two: they differ in length limits and in tone, and a listing goes up on
+ * Prom and comes down from OLX on days of their own. Every state the glossary names — draft,
+ * published-prom, published-olx — is a pair of these booleans.
  *
- * Prom and OLX get their own title and description columns: the marketplaces differ in
- * length limits and in tone, and a card is prepared for both in one pass. `condition` is
- * the state of the item as the marketplaces name it, and it answers a different question
- * than either publication flag, so the columns never collapse into one.
+ * `uuidv7()` rather than a random v4: a card needs its id before its row exists — an R2 key is
+ * `products/{id}/…`, written while the upload is still in flight — and v7 keeps that while
+ * ordering ids by time, so inserts append to the end of the index instead of landing all over it.
  *
- * Publication is two columns because the card is one and the marketplaces are two: a
- * listing goes up on Prom and comes down from OLX on days of their own, and one shared
- * flag would start lying the moment a card exists on a single site. Every state the
- * glossary names — draft, published-prom, published-olx — is a pair of these booleans.
+ * `numeric(12,2)` is the same type as `decimal(12,2)`, and it is the only thing that rounds a
+ * price: the code carries the decimal string the driver returns and converts it nowhere.
  *
- * The key is `uuidv7()` rather than a fully random v4. A card needs its id before its row
- * exists — an R2 key is `products/{id}/…`, written while the upload is still in flight —
- * and v7 keeps that while ordering ids by time, so inserts append to the end of the index
- * instead of landing all over it. That is the only thing randomness costs here, and v7
- * gives it back for nothing.
- *
- * The price is `numeric(12,2)` — the spelling `decimal(12,2)` names the same type. The
- * code carries it as the decimal string the driver returns and converts it nowhere, so
- * money never becomes a float and the column is the only thing that rounds it.
- *
- * There are no secondary indexes on `products` on purpose. At 50–100 cards a month a
- * sequential scan over a few thousand rows is cheaper than indexes to maintain, and the
- * substring filters use `ilike '%…%'`, which no B-tree can serve anyway — that would take
- * pg_trgm, and it is not worth an extension yet.
+ * There are no secondary indexes on `products` on purpose. At 50–100 cards a month a sequential
+ * scan over a few thousand rows is cheaper than indexes to maintain, and the substring filters
+ * use `ilike '%…%'`, which no B-tree can serve anyway — that would take pg_trgm.
  */
 export class CreateProductsTables1787756956906 implements MigrationInterface {
   name = 'CreateProductsTables1787756956906';
@@ -53,10 +42,8 @@ export class CreateProductsTables1787756956906 implements MigrationInterface {
     `);
 
     /*
-     * A gallery holds at most ten frames — the ceiling lives as a constant in
-     * `contracts/products-limits.ts` and is enforced where images are added. Expressing
-     * it here would take a trigger, and there is nothing to guard yet: uploading arrives
-     * with the media module.
+     * The ceiling of ten frames per gallery is not expressed here: it would take a trigger,
+     * and it is enforced in `contracts/products-limits.ts` where images are added.
      */
     await queryRunner.query(`
       create table "product_images" (
@@ -80,7 +67,6 @@ export class CreateProductsTables1787756956906 implements MigrationInterface {
       `create unique index "product_images_r2_key_key" on "product_images" ("r2_key")`,
     );
 
-    // Exactly one main frame per card, guaranteed by the database rather than by care.
     await queryRunner.query(
       `create unique index "product_images_main_key" on "product_images" ("product_id") where "is_main"`,
     );
