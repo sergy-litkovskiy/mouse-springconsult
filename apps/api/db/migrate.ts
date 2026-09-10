@@ -1,14 +1,7 @@
 import { createDataSource } from '../src/db.ts';
 import { migrationsGlob } from './migrations-glob.ts';
 
-/**
- * Composition root of the migration process — the third entry point alongside api.ts.
- *
- * Migrations are found by a glob rather than listed by hand. Order does not depend on
- * that glob: TypeORM sorts by the timestamp at the end of the class name, so the sequence
- * is the same whichever way the files are discovered — and a hand-kept list only added a
- * registration step that could be forgotten.
- */
+/** Composition root of the migration process — the third entry point alongside api.ts. */
 
 const usage = 'usage: node db/migrate.ts <up|down|show>';
 

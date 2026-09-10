@@ -1,7 +1,3 @@
-/**
- * Public API of the auth module. Other modules see it through this file only —
- * deep imports are forbidden and dependency-cruiser enforces that.
- */
 export { User, USERS_TABLE } from './User.ts';
 export { UserRepository } from './UserRepository.ts';
 export { PasswordHasher } from './PasswordHasher.ts';

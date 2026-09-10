@@ -5,12 +5,9 @@ import type { LoginRequest, Session } from '@contracts/auth.contract';
 import { environment } from '@environments/environment';
 
 /**
- * HTTP transport of authentication. Request and response types come from `@contracts` —
- * the very zod schemas the backend validates incoming data with.
- *
  * The session travels in an httpOnly cookie, so the token is neither stored nor read here:
- * JavaScript simply cannot see it. `withCredentials` is set explicitly even though the
- * origin is the same — so that changing `apiBaseUrl` cannot break auth silently.
+ * JavaScript simply cannot see it. `withCredentials` is set explicitly even though the origin is
+ * the same, so that changing `apiBaseUrl` cannot break auth silently.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthApi {

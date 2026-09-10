@@ -6,9 +6,8 @@ import { USERS_TABLE, User } from './User.ts';
 import { UserRepository } from './UserRepository.ts';
 
 /**
- * The user repository against a real Postgres: the email lookup and the two writes a
- * session depends on. The stub in `AuthService.spec.ts` promises the service the same
- * behaviour; this is where the promise is checked against the database.
+ * The stub in `AuthService.spec.ts` promises the service this behaviour; here the promise is
+ * checked against a real Postgres.
  */
 const EPOCH = new Date('2026-01-01T00:00:00.000Z');
 const LOGIN_AT = new Date('2026-03-01T12:00:00.000Z');

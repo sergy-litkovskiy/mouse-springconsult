@@ -6,16 +6,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-/**
- * An administrator of the panel: the model of the domain and the ORM mapping in one
- * class. The table itself is created by a migration; `synchronize` stays off forever.
- *
- * Every column states its type explicitly instead of leaning on the metadata tsc emits:
- * `verbatimModuleSyntax` erases a type-only import, so a type inferred from a signature
- * would depend on how the file happens to import it.
- */
 export const USERS_TABLE = 'users';
 
+/**
+ * Every column states its type explicitly instead of leaning on the metadata tsc emits:
+ * `verbatimModuleSyntax` erases a type-only import, so a type inferred from a signature would
+ * depend on how the file happens to import it.
+ */
 @Entity({ name: USERS_TABLE })
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -34,9 +31,8 @@ export class User {
   isActive!: boolean;
 
   /**
-   * The moment from which session tokens count as valid. Logout moves it to "now", and
-   * every token issued earlier stops being accepted at once — revocation without a
-   * separate table and without checking each request against a revocation list.
+   * Logout moves it to "now", and every token issued earlier stops being accepted at once —
+   * revocation without a separate table and without a list to check each request against.
    */
   @Column({ name: 'tokens_valid_from', type: 'timestamptz' })
   tokensValidFrom!: Date;

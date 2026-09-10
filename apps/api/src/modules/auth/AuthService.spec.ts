@@ -10,13 +10,9 @@ import { User } from './User.ts';
 import { UserRepository } from './UserRepository.ts';
 
 /**
- * The service without a database and without argon2. The doubles are subclasses of the
- * real collaborators: overriding a method is enough, and the signature the service calls
- * is checked by the compiler rather than restated in a hand-written fake.
- *
- * `SessionTokens` is the genuine one — jose signs an HS256 token in microseconds, so
- * there is nothing to gain by faking it and something to lose: the spec then also proves
- * that a token this service issues is a token it accepts back.
+ * `SessionTokens` is the genuine one — jose signs an HS256 token in microseconds, so there is
+ * nothing to gain by faking it and something to lose: the spec then also proves that a token this
+ * service issues is a token it accepts back.
  */
 /**
  * "Now" is genuine, only truncated to a second: jose writes `iat`/`exp` with one-second

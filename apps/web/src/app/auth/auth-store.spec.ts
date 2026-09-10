@@ -10,13 +10,10 @@ const SESSION: Session = {
     email: 'admin@example.com',
     displayName: 'Адміністратор',
   },
-  // An hour ahead of the run rather than a fixed date. `hasExpired` compares this with
-  // `Date.now()`, so a hardcoded moment is a bomb: the suite passes until that day and
-  // fails from it on.
+  // An hour ahead of the run: a fixed moment expires the session the day it names.
   expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 };
 
-/** The same session, but the server said it died before this test started. */
 const EXPIRED_SESSION: Session = { ...SESSION, expiresAt: '2020-01-01T00:00:00.000Z' };
 
 describe('AuthStore', () => {

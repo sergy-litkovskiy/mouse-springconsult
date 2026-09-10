@@ -4,17 +4,14 @@ import type { AuthUser, LoginRequest, Session } from '@contracts/auth.contract';
 import { AuthApi } from './auth-api';
 
 /**
- * Authentication state of the application. The singleton lives next to the feature it
- * belongs to (`providedIn: 'root'`), not in a separate `core/` directory.
+ * An httpOnly cookie cannot be read from JS, so "am I still signed in" after a page reload can be
+ * answered in exactly one way — by asking `GET /auth/me`.
  *
- * An httpOnly cookie cannot be read from JS, so "am I still signed in" after a page
- * reload can be answered in exactly one way — by asking `GET /auth/me`.
- *
- * The whole session is kept, `expiresAt` included: the server names the moment the cookie
- * dies, and a store that throws that away answers the guards' question with a session it
- * has no reason to believe in. There is no timer on that moment — a "remember me" cookie
- * outlives what `setTimeout` can hold, and a session that dies unnoticed in an open tab is
- * caught by the very next request through `authInterceptor`.
+ * The whole session is kept, `expiresAt` included: the server names the moment the cookie dies,
+ * and a store that throws that away answers the guards' question with a session it has no reason
+ * to believe in. There is no timer on that moment — a "remember me" cookie outlives what
+ * `setTimeout` can hold, and a session that dies unnoticed in an open tab is caught by the very
+ * next request through `authInterceptor`.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
@@ -50,10 +47,7 @@ export class AuthStore {
     }
   }
 
-  /**
-   * Drops the session without asking the server — for the two cases where the answer is
-   * already known: a sign-out, and a 401 on any other call.
-   */
+  /** Without asking the server: the answer is already known after a sign-out or a 401. */
   clearSession(): void {
     this.generation += 1;
     this.session.set(null);

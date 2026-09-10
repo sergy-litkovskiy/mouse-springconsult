@@ -21,10 +21,6 @@ declare module 'fastify' {
   }
 }
 
-/**
- * HTTP layer of the auth module: input validation, cookie handling, mapping into DTOs.
- * There is no business logic here — it lives in `AuthService`.
- */
 export type SessionCookieConfig = {
   readonly name: string;
   readonly path: string;

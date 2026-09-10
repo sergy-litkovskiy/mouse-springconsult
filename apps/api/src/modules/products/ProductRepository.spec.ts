@@ -11,10 +11,9 @@ import {
 } from './ProductRepository.ts';
 
 /**
- * The repository against a real Postgres. Everything checked here is exactly what a stub
- * cannot answer, because the answer belongs to SQL and not to the code around it: LIKE
- * escaping, `ilike`, what decimal(12,2) gives back, the stability of LIMIT/OFFSET on a
- * tied sort column, and the second query that fetches the galleries.
+ * Against a real Postgres, because everything checked here is what a stub cannot answer: LIKE
+ * escaping, `ilike`, what decimal(12,2) gives back, the stability of LIMIT/OFFSET on a tied sort
+ * column, and the second query that fetches the galleries.
  */
 type ProductSeed = Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'images'>>;
 type ImageSeed = Partial<Omit<ProductImage, 'id' | 'productId'>>;
@@ -28,10 +27,8 @@ const BASE_CRITERIA: ProductListCriteria = {
 };
 
 /**
- * Every writable column with a value different from the one `seedProduct` puts there.
- * The partial update is checked field by field against this map rather than on a single
- * favourite column: an UPDATE that quietly resets a neighbour is exactly the defect a
- * one-field test cannot see.
+ * Every writable column with a value different from the one `seedProduct` puts there: an UPDATE
+ * that quietly resets a neighbour is exactly the defect a one-field test cannot see.
  */
 const REPLACEMENTS: Required<ProductChanges> = {
   titleProm: 'Миша Logitech MX Master 3S',
@@ -46,7 +43,6 @@ const REPLACEMENTS: Required<ProductChanges> = {
   condition: 'new',
 };
 
-/** The writable half of a card — what a partial update is allowed to touch. */
 function writableOf(product: Product): Required<ProductChanges> {
   return {
     titleProm: product.titleProm,
@@ -72,7 +68,6 @@ let products: ProductRepository;
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
 const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
 
-/** Turns "the row must be there" into a failure with a name instead of a null check. */
 function must<T>(value: T | null, what: string): T {
   if (value === null) {
     throw new Error(`${what} was expected to exist`);
@@ -174,8 +169,6 @@ describe('product repository (postgres)', () => {
 
     const page = await products.list(BASE_CRITERIA);
 
-    // Character for character: no transformer stands between the column and the caller,
-    // so nothing rounds the value a second time.
     assert.equal(page.items[0]?.price, '2499.00');
   });
 
@@ -184,8 +177,6 @@ describe('product repository (postgres)', () => {
 
     const page = await products.list(BASE_CRITERIA);
 
-    // The only normalisation a price goes through belongs to decimal(12,2), and it is
-    // visible in the result rather than hidden inside a converter.
     assert.equal(page.items[0]?.price, '2499.50');
   });
 

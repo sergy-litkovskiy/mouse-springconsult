@@ -13,12 +13,8 @@ import type { ProductImage } from './ProductImage.ts';
 import type { ProductService } from './ProductService.ts';
 
 /**
- * HTTP layer of the products module: query validation, the session check, mapping into
- * the DTO. No business logic — that lives in the service.
- *
- * The catalogue is admin-only, so the route sits behind the session guard. The guard
- * arrives ready-made from the composition root: how a session is recognised is the
- * business of `modules/auth`, and this module does not even learn the cookie name.
+ * The session guard arrives ready-made from the composition root: how a session is recognised is
+ * the business of `modules/auth`, and this module does not even learn the cookie name.
  */
 export class ProductController {
   constructor(private readonly products: ProductService) {}
@@ -52,7 +48,7 @@ export class ProductController {
     };
   }
 
-  /** The API form of a card: dates as ISO 8601, gallery ordered by position. */
+  /** The gallery reaches the API ordered by position. */
   private toProductResponse(product: Product): ProductResponse {
     return {
       id: product.id,

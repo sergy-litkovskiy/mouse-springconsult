@@ -2,18 +2,13 @@ import { Client } from 'pg';
 import { env } from '../src/config.ts';
 
 /**
- * Idempotent creation of a database on an existing Postgres server.
+ * The same step as `db/init/0001-create-database.sql`, but for the case where Postgres is not
+ * coming up from scratch (a managed database, someone else's server): the initdb hook will not
+ * fire there, because the volume is already initialised.
  *
- * The same step as `db/init/0001-create-database.sql`, but for the case where Postgres
- * is not coming up from scratch (a managed database, someone else's server): the initdb
- * hook will not fire there, because the volume is already initialised.
- *
- * Postgres has no `CREATE DATABASE ... IF NOT EXISTS`, so existence is checked with a
- * query; the database name cannot be passed as a parameter either — it comes from
- * DATABASE_URL and is escaped as an identifier.
- *
- * The work is exported as a function rather than run on import: `db/test-database.ts`
- * calls it for the throwaway `_test` twin, and `import.meta.main` keeps the CLI.
+ * Postgres has no `CREATE DATABASE ... IF NOT EXISTS`, so existence is checked with a query; the
+ * database name cannot be passed as a parameter either — it comes from DATABASE_URL and is
+ * escaped as an identifier.
  */
 
 /** `CREATE DATABASE` needs a connection to another database; `postgres` always exists. */
@@ -39,7 +34,7 @@ function parseTarget(databaseUrl: string): { maintenanceUrl: string; databaseNam
 
 export type EnsureDatabaseResult = {
   readonly databaseName: string;
-  /** False when the database was already there — the call is idempotent either way. */
+  /** False when the database was already there. */
   readonly created: boolean;
 };
 

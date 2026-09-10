@@ -6,10 +6,8 @@ import { ProductRepository, type ProductListCriteria } from './ProductRepository
 import { ProductService } from './ProductService.ts';
 
 /**
- * What the service itself does is one translation: a validated flat query becomes
- * repository criteria. That is what is checked here, and nothing else — how a filter
- * behaves is SQL's answer, and it is checked against a real Postgres in
- * `ProductRepository.spec.ts`.
+ * Only the translation of a validated flat query into repository criteria is checked here — how a
+ * filter behaves is SQL's answer, checked against a real Postgres in `ProductRepository.spec.ts`.
  */
 
 /** The DataSource is never reached: `list` is overridden and nothing else is called. */

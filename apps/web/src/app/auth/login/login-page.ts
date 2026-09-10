@@ -15,12 +15,6 @@ import { apiErrorMessage } from '../../api-error-message';
 import { returnUrlTree } from '../../safe-return-url';
 import { AuthStore } from '../auth-store';
 
-/**
- * Sign-in form. The texts are Ukrainian with no translation layer: the admin panel is
- * monolingual, and i18n infrastructure would cost more here than it is worth.
- *
- * The server response carries only an error code; the human wording is the UI's business.
- */
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.invalidCredentials]: 'Невірний email або пароль.',
   [apiErrorCodes.userDeactivated]: 'Обліковий запис вимкнено. Зверніться до адміністратора.',
@@ -55,9 +49,9 @@ export class LoginPage {
   private readonly formBuilder = inject(FormBuilder);
 
   /**
-   * Where the admin was heading before the guard sent them here. The router fills this in
-   * from the query string (`withComponentInputBinding`), so the deep link a bookmark pointed
-   * at survives the detour instead of being replaced by a fixed landing page.
+   * Where the admin was heading before the guard sent them here: the router fills it in from the
+   * query string (`withComponentInputBinding`), so a deep link survives the detour instead of
+   * being replaced by a fixed landing page.
    */
   readonly returnUrl = input<string>();
 
@@ -68,7 +62,6 @@ export class LoginPage {
   protected readonly passwordMaxLength = authConstraints.passwordMaxLength;
   protected readonly emailMaxLength = authConstraints.emailMaxLength;
 
-  /** The limits are the contract's own, imported rather than restated next to the inputs. */
   protected readonly form = this.formBuilder.nonNullable.group({
     email: [
       '',

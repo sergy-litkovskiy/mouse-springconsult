@@ -52,7 +52,6 @@ describe('product list query contract', () => {
   });
 
   it('keeps the two marketplaces independent of each other', () => {
-    // The card is one and the sites are two: asking about Prom says nothing about OLX.
     const parsed = productListQuerySchema.parse({ publishedProm: 'true', publishedOlx: 'false' });
 
     assert.equal(parsed.publishedProm, true);

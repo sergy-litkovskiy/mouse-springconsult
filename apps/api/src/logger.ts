@@ -1,10 +1,6 @@
 import { pino, type Logger } from 'pino';
 import { env, isProduction } from './config.ts';
 
-/**
- * Technical service: structured JSON logs. Passwords, session tokens and external
- * API keys never reach the log — the redaction list is right below.
- */
 const redactPaths = [
   'req.headers.cookie',
   'req.headers.authorization',
