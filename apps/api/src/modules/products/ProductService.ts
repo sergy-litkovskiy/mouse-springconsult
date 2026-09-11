@@ -23,14 +23,22 @@ export type ProductSaving = ProductReading & {
   readonly discardedKeywordsCount: number;
 };
 
-/**
- * A filter that was not sent does not become a condition: zod leaves an absent `.optional()`
- * field out of the object entirely, so what is left once the four pagination keys are taken out
- * is exactly the set of filters that arrived.
- */
+function capKeywords(keywords: string[]): {
+  seoKeywords: string[];
+  discardedKeywordsCount: number;
+} {
+  const seoKeywords = keywords.slice(0, productConstraints.maxKeywords);
+  return { seoKeywords, discardedKeywordsCount: keywords.length - seoKeywords.length };
+}
+
 export class ProductService {
   constructor(private readonly products: ProductRepository) {}
 
+  /**
+   * A filter that was not sent does not become a condition: zod leaves an absent `.optional()`
+   * field out of the object entirely, so what is left once the four pagination keys are taken
+   * out is exactly the set of filters that arrived.
+   */
   async list(query: ProductListQuery): Promise<ProductPage> {
     const { page, pageSize, sort, direction, ...filters } = query;
     const criteria: ProductListCriteria = { page, pageSize, sort, direction, filters };
@@ -48,34 +56,26 @@ export class ProductService {
   }
 
   async create(input: ProductCreate): Promise<ProductSaving> {
-    const seoKeywords = input.seoKeywords.slice(0, productConstraints.maxKeywords);
+    const { seoKeywords, discardedKeywordsCount } = capKeywords(input.seoKeywords);
     const product = await this.products.create({ ...input, seoKeywords });
 
-    return {
-      product,
-      isReady: this.isReady(product),
-      discardedKeywordsCount: input.seoKeywords.length - seoKeywords.length,
-    };
+    return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
 
   async update(id: string, changes: ProductUpdate): Promise<ProductSaving> {
-    const seoKeywords = changes.seoKeywords?.slice(0, productConstraints.maxKeywords);
+    const { seoKeywords, discardedKeywordsCount } = capKeywords(changes.seoKeywords ?? []);
     // zod leaves an absent `.optional()` field out of the object rather than setting it to
     // `undefined`, so no key here holds `undefined` — its inferred type just cannot say so
     // under `exactOptionalPropertyTypes`.
     const product = await this.products.update(
       id,
-      (seoKeywords === undefined ? changes : { ...changes, seoKeywords }) as ProductChanges,
+      (changes.seoKeywords === undefined ? changes : { ...changes, seoKeywords }) as ProductChanges,
     );
     if (product === null) {
       throw new ProductNotFound(id);
     }
 
-    return {
-      product,
-      isReady: this.isReady(product),
-      discardedKeywordsCount: (changes.seoKeywords?.length ?? 0) - (seoKeywords?.length ?? 0),
-    };
+    return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
 
   /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */
