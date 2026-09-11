@@ -3,8 +3,14 @@ import type {
   ProductListQuery,
   ProductUpdate,
 } from '../../contracts/products.contract.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
 import type { Product, ProductPage } from './Product.ts';
-import type { ProductListCriteria, ProductRepository } from './ProductRepository.ts';
+import { ProductNotFound } from './ProductErrors.ts';
+import type {
+  ProductChanges,
+  ProductListCriteria,
+  ProductRepository,
+} from './ProductRepository.ts';
 
 /** Readiness is derived on read and never stored (ADR 0009). */
 export type ProductReading = {
@@ -33,18 +39,52 @@ export class ProductService {
   }
 
   async getById(id: string): Promise<ProductReading> {
-    throw new Error('Not implemented');
+    const product = await this.products.findById(id);
+    if (product === null) {
+      throw new ProductNotFound(id);
+    }
+
+    return { product, isReady: this.isReady(product) };
   }
 
   async create(input: ProductCreate): Promise<ProductSaving> {
-    throw new Error('Not implemented');
+    const seoKeywords = input.seoKeywords.slice(0, productConstraints.maxKeywords);
+    const product = await this.products.create({ ...input, seoKeywords });
+
+    return {
+      product,
+      isReady: this.isReady(product),
+      discardedKeywordsCount: input.seoKeywords.length - seoKeywords.length,
+    };
   }
 
   async update(id: string, changes: ProductUpdate): Promise<ProductSaving> {
-    throw new Error('Not implemented');
+    const seoKeywords = changes.seoKeywords?.slice(0, productConstraints.maxKeywords);
+    // zod leaves an absent `.optional()` field out of the object rather than setting it to
+    // `undefined`, so no key here holds `undefined` — its inferred type just cannot say so
+    // under `exactOptionalPropertyTypes`.
+    const product = await this.products.update(
+      id,
+      (seoKeywords === undefined ? changes : { ...changes, seoKeywords }) as ProductChanges,
+    );
+    if (product === null) {
+      throw new ProductNotFound(id);
+    }
+
+    return {
+      product,
+      isReady: this.isReady(product),
+      discardedKeywordsCount: (changes.seoKeywords?.length ?? 0) - (seoKeywords?.length ?? 0),
+    };
   }
 
+  /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */
   isReady(product: Product): boolean {
-    throw new Error('Not implemented');
+    return (
+      product.descriptionProm !== '' &&
+      product.descriptionOlx !== '' &&
+      /[1-9]/.test(product.price) &&
+      product.images.length > 0
+    );
   }
 }
