@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1500
 blocked_by: [T25]
 blocks: [T28]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T27 — Адаптер Anthropic і оптимізація кадру через sharp
@@ -53,7 +53,7 @@ updated_at: "2026-09-05"
 ## Acceptance criteria
 
 **AC-08** (US-04) — happy path
-**Given** у картці внесено результат розпізнавання
+**Given** у картці є текст — заголовок чи опис під будь-який майданчик
 **When** `user` запитує ціну
 **Then** модель повертає орієнтовний діапазон «від — до» і посилання на джерела, а не вигадану цифру
 
@@ -69,6 +69,8 @@ updated_at: "2026-09-05"
 3. `src/config.ts` `envSchema` — `ANTHROPIC_API_KEY`; `.env.example`; проброс у сервіс `worker`.
 4. Адаптер у `modules/ai/` — structured outputs (`output_config.format` з JSON-схемою), adaptive thinking без `budget_tokens`, server tool `web_search_20260209` з `user_location` = UA для цін; повертає `usage`.
 5. Оптимізація кадру через sharp перед відправкою.
+6. **Розпізнавання в тому самому виклику.** Метод для `texts`/`both` повертає розпізнаний факт як частину structured-output схеми відповіді (не окремим полем БД) — адаптер його не персистує, лише повертає викликачу ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md)).
+7. **Text-only метод для `scope: field`.** Без зображень: приймає `field` і `draftText`, повертає один рядок/масив (залежно від поля) і `usage`; той самий шлях structured outputs, plain text, без Markdown ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
 
 ## Out of scope
 

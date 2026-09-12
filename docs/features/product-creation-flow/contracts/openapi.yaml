@@ -126,7 +126,7 @@ paths:
 
     patch:
       tags: [products]
-      summary: Зберегти картку (розпізнавання, тексти, ключові слова, ціна, відмітки)
+      summary: Зберегти картку (заголовки, тексти, ключові слова, ціна, відмітки)
       description: >-
         Один маршрут для ручного шляху (US-06, AC-12) і для правки AI-підготовленого
         (US-05, AC-11 — сама звірка "поточне ↔ остання прийнята пропозиція" належить
@@ -283,9 +283,14 @@ paths:
         **Поставка 2 — ендпоінт спроектований, таблиця `product_preparation_runs`
         іще без міграції (data-model.md, розділ Migrations).**
 
-        Гейт AC-06 ("не внесено розпізнавання" = обидва описи порожні) перевіряється
-        синхронно до постановки задачі — перевірка коштує одного читання, запуск
-        коштує грошей (sad.md сценарій 7). Ідемпотентність — **не** заголовок клієнта:
+        Область `texts`/`both` розпізнає товар із головного кадру автоматично, як
+        частину того самого виклику, що готує тексти ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md));
+        область `field` регенерує одне поле з чернетки в тілі запиту, без фото
+        ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
+
+        Гейт AC-06 ("немає жодного кадру") перевіряється синхронно до постановки
+        задачі — перевірка коштує одного читання, запуск коштує грошей (sad.md
+        сценарій 7). Ідемпотентність — **не** заголовок клієнта:
         ключ (картка, область, версія входу) обчислює сервер із `idempotency_key`
         UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом
         повертає наявний запуск (`200`), а не створює новий (`201`). "Версія входу" —
@@ -312,14 +317,14 @@ paths:
         "401": { $ref: "#/components/responses/NotAuthenticated" }
         "404": { $ref: "#/components/responses/ProductNotFound" }
         "409":
-          description: Немає кадру або не внесено розпізнавання (AC-06)
+          description: У галереї немає жодного кадру (AC-06)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               example:
                 error:
                   code: preparation_input_incomplete
-                  message: "Додайте кадр і внесіть розпізнавання перед підготовкою"
+                  message: "Додайте бодай один кадр перед підготовкою"
                   details: { missing: ["gallery"] }
         "429":
           description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
@@ -631,13 +636,29 @@ components:
     PreparationRunCreateRequest:
       type: object
       required: [scope]
+      description: >-
+        `field` і `draftText` обов'язкові лише при `scope: field` ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md));
+        для решти областей вони відсутні. Валідує це `z.discriminatedUnion` на межі
+        контролера, не ця схема.
       properties:
         scope:
           type: string
-          enum: [texts, price, both]
+          enum: [texts, price, both, field]
           description: >-
             "ціна" без перезапуску текстів — AC-10b має предмет саме завдяки цій
-            області (data-model.md, product_preparation_runs.scope).
+            області (data-model.md, product_preparation_runs.scope). "texts"/"both"
+            розпізнають товар із головного кадру автоматично ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md));
+            "field" регенерує одне поле з `draftText`, без фото ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
+        field:
+          type: string
+          enum: [titleProm, titleOlx, descriptionProm, descriptionOlx, seoKeywords]
+          description: "Лише при `scope: field` — яке поле регенерувати."
+        draftText:
+          type: string
+          description: >-
+            Лише при `scope: field` — поточна незбережена чернетка поля, з якої
+            модель готує новий варіант.
+      example: { scope: both }
 
     PreparationRun:
       type: object
@@ -646,7 +667,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         productId: { type: string, format: uuid }
-        scope: { type: string, enum: [texts, price, both] }
+        scope: { type: string, enum: [texts, price, both, field] }
         status: { type: string, enum: [queued, running, succeeded, failed] }
         errorCode:
           type: [string, null]
@@ -672,10 +693,10 @@ components:
         runId: { type: string, format: uuid }
         field:
           type: string
-          enum: [descriptionProm, descriptionOlx, seoKeywords, price]
+          enum: [titleProm, titleOlx, descriptionProm, descriptionOlx, seoKeywords, price]
         value:
           description: >-
-            Рядок для description*, масив рядків для seoKeywords,
+            Рядок для title*/description*, масив рядків для seoKeywords,
             {priceFrom, priceTo} для price (десяткові рядки).
         resolution: { type: [string, null], enum: [accepted, rejected, null] }
         resolvedAt: { type: [string, null], format: date-time }

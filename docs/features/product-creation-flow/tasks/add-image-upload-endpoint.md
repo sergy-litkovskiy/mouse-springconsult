@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T08, T12, T13]
 blocks: [T23]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T14 — Приймання кадру: multipart, межа десяти, запис у R2
@@ -41,7 +41,7 @@ updated_at: "2026-09-05"
 
 | Таблиця | Зміна | Джерело |
 |---|---|---|
-| `product_images` | **+1 рядок на кадр**: `r2_key`, `product_id`, `position`, `is_main` | [data-model.md](../data-model.md) |
+| `product_images` | **+1 рядок на кадр**: `r2_key`, `product_id`, `position`, `is_main` — `true`, коли це перший кадр порожньої галереї, інакше `false` (AC-19, мокап картки 2026-09-12) | [data-model.md](../data-model.md) |
 | `product_images.id` | `UUID default uuidv7()` — генерує база; ключ R2 складається до вставки | те саме |
 | схема | **не змінюється** — колонки вже накочені; `url` знесено в [T12](drop-product-image-url.md) | те саме |
 
@@ -82,10 +82,15 @@ updated_at: "2026-09-05"
 **When** `user` намагається додати ще один
 **Then** система відхиляє додавання і повідомляє, що галерея вміщає щонайбільше десять кадрів
 
+**AC-19** (US-01) — happy path
+**Given** у галереї картки ще немає жодного кадру
+**When** `user` завантажує перший кадр
+**Then** цей кадр автоматично стає головним, без окремої дії `user`-а
+
 ## Checklist
 
 1. `apps/api/package.json` — `@fastify/multipart`; реєстрація плагіна в `src/api.ts` з межею з `products-limits.ts`.
-2. `ProductService.addImage` — рахує кадри картки й відхиляє одинадцятий (`gallery_full`).
+2. `ProductService.addImage` — рахує кадри картки й відхиляє одинадцятий (`gallery_full`); коли кадрів було 0, вставляє з `isMain: true` (AC-19), інакше — `isMain: false`, як і сьогодні.
 3. `MediaService` приходить конструктором: `new ImageStorage(...)` → `new MediaService(...)` → `ProductService` — місце реєстрації №1.
 4. `ProductController` — `POST /:productId/images` під `sessionGuard`.
 5. `ProductService.spec.ts` — межа десяти кадрів і відмова сховища на двійнику.
@@ -99,6 +104,7 @@ updated_at: "2026-09-05"
 
 - [ ] AC-01: кадр зʼявляється в галереї, відповідь містить складену адресу.
 - [ ] AC-02: одинадцятий кадр відхиляється кодом `gallery_full`, десять наявних цілі — звірено запитом до бази.
+- [ ] AC-19: перший кадр порожньої галереї приходить у відповіді з `isMain: true`; другий і наступні — з `isMain: false`, доки їх не призначать явно ([T15](add-set-main-image-endpoint.md)).
 - [ ] Відмова сховища не лишає рядка в `product_images` — перевірено з недосяжним доменом R2 (QG-1).
 - [ ] `MediaService` створюється лише в `src/api.ts`; `deps:check` зелений.
 - [ ] Файл на 10 МБ проходить, на 11 МБ — відхиляється `file_too_large`, а не обривом зʼєднання: перевірено через `caddy`, не лише напряму в `api`.

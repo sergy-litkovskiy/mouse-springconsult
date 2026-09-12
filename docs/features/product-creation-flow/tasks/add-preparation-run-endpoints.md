@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1700
 blocked_by: [T28]
 blocks: [T30, T32]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T29 — Запуск підготовки, гейт AC-06, обмеження частоти, полінг
@@ -28,7 +28,7 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 
 [sad.md §6](../sad.md#6-runtime-view), **сценарій 7** — гейт перед постановкою задачі:
 
-> `api->>pg: перевіряє, що є кадр і внесене розпізнавання (AC-06)`
+> `api->>pg: перевіряє, що є кадр (AC-06)`
 > `api->>pg: ставить задачу підготовки`
 > `api-->>web: задачу прийнято`
 
@@ -48,7 +48,7 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
       operationId: startPreparationRun
       responses:
         "422":
-          description: Немає кадру або не внесено розпізнавання (AC-06)
+          description: У галереї немає жодного кадру (AC-06)
               example:
                 error:
                   code: preparation_input_incomplete
@@ -59,9 +59,9 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 ## Acceptance criteria
 
 **AC-06** (US-03) — cross-context
-**Given** у картці немає жодного кадру або не внесено результат розпізнавання
+**Given** у картці немає жодного кадру
 **When** `user` намагається запустити підготовку текстів
-**Then** система не запускає підготовку і називає, чого бракує — кадру чи відомостей про річ
+**Then** система не запускає підготовку і повідомляє, що бракує хоча б одного кадру
 
 **AC-10b** (US-03, US-04) — часткова відмова
 **Given** тексти вже є, а ціни немає
@@ -70,7 +70,7 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 
 ## Checklist
 
-1. `contracts/ai.contract.ts` — схеми запуску й стану; `scope` = `texts` | `price` | `both`.
+1. `contracts/ai.contract.ts` — схеми запуску й стану; `scope` = `texts` | `price` | `both` | `field`; для `field` — `z.discriminatedUnion` з обов'язковими `field` і `draftText` ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
 2. `contracts/error-codes.ts` — `preparation_input_incomplete`, `preparation_rate_limited`.
 3. `POST /:productId/preparation-runs` і `GET /:productId/preparation-runs/:runId` під `sessionGuard`.
 4. `src/config.ts` — вікно обмеження частоти, число з рішення №3 [T24](close-preparation-open-items.md).
@@ -83,7 +83,8 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 
 ## DoD
 
-- [ ] AC-06: картка без кадру й картка без розпізнавання дають `preparation_input_incomplete` — **двома різними повідомленнями**, не одним.
+- [ ] AC-06: картка без жодного кадру дає `preparation_input_incomplete`.
+- [ ] `scope: field` без `field` або без `draftText` відхиляється валідацією контролера — 400, а не проходить до `worker`.
 - [ ] AC-10b: `scope: price` запускається окремо, не перезапускаючи текстів.
 - [ ] Повторний запуск того самого входу повертає наявний запуск і `200` — перевірено проти унікального індексу, а не логікою в коді.
 - [ ] Вичерпаний ліміт частоти дає `preparation_rate_limited`, а не тишу й не 500.
