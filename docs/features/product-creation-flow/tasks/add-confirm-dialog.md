@@ -1,7 +1,7 @@
 ---
 id: T19
 title: "Спільний app/confirm-dialog.ts"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: [T21, T22, T23]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T19 — Спільний `app/confirm-dialog.ts`

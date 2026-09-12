@@ -1,7 +1,7 @@
 ---
 id: T10
 title: "Сервіс картки: обрізання ключових слів і предикат готовності"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1500
 blocked_by: [T03, T09]
 blocks: [T11]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T10 — Сервіс картки: обрізання ключових слів і предикат готовності

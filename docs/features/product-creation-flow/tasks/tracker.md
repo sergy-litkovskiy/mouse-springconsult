@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-10"
+updated_at: "2026-09-12"
 stage: "13"
 ---
 
@@ -31,8 +31,8 @@ stage: "13"
 | T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Blocked | T06 | S | Serhii | — |
 | T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T04, T07 | S | Serhii | — |
 | T09 | [Репозиторій запису картки](add-product-write-repository.md) | Done | — | S | Serhii | — |
-| T10 | [Сервіс картки](add-product-card-service.md) | Todo | T03, T09 | S | Serhii | — |
-| T11 | [Маршрути картки](add-product-card-routes.md) | Blocked | T05, T10 | S | Serhii | — |
+| T10 | [Сервіс картки](add-product-card-service.md) | Done | T03, T09 | S | Serhii | — |
+| T11 | [Маршрути картки](add-product-card-routes.md) | Todo | T05, T10 | S | Serhii | — |
 | T12 | [Знести `product_images.url`](drop-product-image-url.md) | Blocked | T06, T11 | S | Serhii | — |
 | T13 | [Репозиторій кадрів](add-image-repository.md) | Done | T09 | S | Serhii | — |
 | T14 | [Приймання кадру](add-image-upload-endpoint.md) | Blocked | T08, T12, T13 | S | Serhii | — |
@@ -40,7 +40,7 @@ stage: "13"
 | T16 | [Видалення кадру](add-delete-image-endpoint.md) | Blocked | T08, T11, T13 | S | Serhii | — |
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Blocked | T08, T09, T16 | S | Serhii | — |
 | T18 | [Клієнт API на фронті](extend-products-api-client.md) | Todo | T05 | S | Serhii | — |
-| T19 | [Діалог підтвердження](add-confirm-dialog.md) | Todo | — | XS | Serhii | — |
+| T19 | [Діалог підтвердження](add-confirm-dialog.md) | Done | — | XS | Serhii | — |
 | T20 | [Форма картки](add-product-form-subfeature.md) | Blocked | T18 | S | Serhii | — |
 | T21 | [Діалог галереї](add-gallery-upload-dialog.md) | Blocked | T18, T19 | S | Serhii | — |
 | T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Blocked | T18, T19, T20 | S | Serhii | — |
@@ -63,13 +63,11 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T02, T04, T19, T24 — жодної незакритої залежності: T01 закрито 2026-09-07, і
-блокер T03 та T24 разом з ним знято. T03 закрито 2026-09-07; T24 не залежить від коду
-поставки 1 і може вестись паралельно з усією нею. T05 закрито 2026-09-09, і T18
-знято з блокування; T11 лишається `Blocked`, бо чекає ще й на T10. T09 закрито
-2026-09-09, і T10 лишився без незакритих блокерів. T13 закрито 2026-09-10, але це не
-знімає блокування з T14/T15/T16 — кожен із них чекає ще й на T08, T11 чи T12, жоден з
-яких ще не готовий.
+T06, T11, T18, T24 — жодної незакритої залежності. T24 не залежить від коду поставки 1
+і може вестись паралельно з усією нею. T10 закрито 2026-09-12, і T11 лишився без
+незакритих блокерів — T05 було закрито ще 2026-09-09. T19 закрито 2026-09-12, але це не
+знімає блокування з T21 і T22: обидва чекають ще й на T18, а T22 — і на T20. T13 закрито
+2026-09-10 і так само нічого не розблокувало — T14/T15/T16 чекають ще й на T08, T11 чи T12.
 
 ## Спільний DoD
 
