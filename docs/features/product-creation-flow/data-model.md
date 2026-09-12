@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-09-03"
+updated_at: "2026-09-12"
 feature_size: M
 stage: "08"
 ticket: "TBD"
@@ -43,9 +43,9 @@ erDiagram
     products {
         uuid id PK
         varchar title_prom
-        text description_prom "чорновик людини, потім опис"
+        text description_prom
         varchar title_olx
-        text description_olx "чорновик людини, потім опис"
+        text description_olx
         numeric price
         text_array seo_keywords
         varchar category
@@ -68,7 +68,7 @@ erDiagram
     product_preparation_runs {
         uuid id PK
         uuid product_id FK
-        varchar scope "texts, price, both"
+        varchar scope "texts, price, both, field"
         text idempotency_key
         varchar status
         varchar error_code
@@ -93,25 +93,25 @@ erDiagram
 
 ## Де живе розпізнавання
 
-Власних колонок під розпізнавання (US-02) **немає**. Те, що людина дізналася про річ — що
-це, хто виробник, які базові характеристики — вона вписує в `description_prom` і
-`description_olx`, а підготовка перетворює цей чорновик на опис під кожен майданчик.
-`category` і `condition` вводяться при створенні картки й теж є входом.
+**Ніде — і власних колонок під нього більше не заводимо.** До
+[ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md) розпізнавання було ручним
+входом, який людина вписувала в `description_prom`/`description_olx` перед запуском; тепер
+воркер читає до трьох кадрів галереї напряму й розпізнає товар як частину того самого
+виклику, що готує тексти (`ai/CLAUDE.md`). Розпізнаний факт нікуди не пишеться — ні в
+`products`, ні окремою таблицею: він живе рівно один запит і використовується самою
+моделлю, а результат приходить уже готовими текстами-пропозиціями.
+`category` і `condition` лишаються входом, який вводиться при створенні картки.
 
-Ціна названа тут окремо, бо вона не видима зі схеми: **обидва описи виконують дві ролі
-водночас — вхід підготовки і її ціль**. Три наслідки, і всі три належать етапу 10, не
-цьому:
+Це знімає особливий випадок, який раніше тут описувався: коли розпізнавання жило в
+`description_prom`/`description_olx`, ці поля ніколи не були порожні на момент першого
+запуску, і правило ADR 0006 «порожнє поле застосовує пропозицію само» для описів фактично
+не спрацьовувало. Тепер на новій картці описи справді порожні до першого запуску, і
+правило працює для всіх текстових полів однаково — без винятку.
 
-1. **Гейт AC-06** («не внесено розпізнавання») читається як «обидва описи порожні». Іншої
-   опори в схемі немає.
-2. **Обіцянка ADR 0006 про порожню картку втрачає предмет для описів.** Правило: поки
-   поточне значення поля збігається з останньою прийнятою пропозицією, нова застосовується
-   сама. Картка з внесеним розпізнаванням ніколи не порожня, тож перша ж пропозиція для
-   опису завжди лише пропонується, а не застосовується автоматично. Для `price` і
-   `seo_keywords` правило працює як написано — до першого запуску вони порожні.
-3. **Повторний запуск, якщо пропозицію вже прийнято, спирається на згенерований текст, а
-   не на факти людини** — у полі лежить те, що написала модель минулого разу, і саме воно
-   піде в наступний промпт.
+Область `field` ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) читає вхід
+інакше: не з фото і не з `products`, а з `draftText` у тілі запиту — чернетки, яку людина
+могла ще не зберегти. Тому ідемпотентність цієї області рахує хеш (`field`, `draftText`),
+а не хеш кадрів.
 
 ## Aggregate roots
 
@@ -133,7 +133,7 @@ erDiagram
 |---|---|---|---|
 | `id` | UUID | PK, `default uuidv7()` | Потрібен **до** вставки рядка: ключ R2 — `products/{id}/{кадр}` |
 | `title_prom` | VARCHAR(200) | NOT NULL | `productConstraints.titleMaxLength` |
-| `description_prom` | TEXT | NOT NULL DEFAULT `''` | Вхід підготовки і її ціль водночас — див. розділ вище |
+| `description_prom` | TEXT | NOT NULL DEFAULT `''` | Ціль підготовки; вхід — фото галереї, не це поле ([ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md)) |
 | `title_olx` | VARCHAR(200) | NOT NULL | |
 | `description_olx` | TEXT | NOT NULL DEFAULT `''` | Те саме |
 | `price` | NUMERIC(12,2) | NOT NULL DEFAULT 0, CHECK `>= 0` | Десятковий рядок у коді, без `transformer`. `0` предикат готовності (ADR 0009) читає як «не задано» |
@@ -188,8 +188,8 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 |---|---|---|---|
 | `id` | UUID | PK, `default uuidv7()` | |
 | `product_id` | UUID | NOT NULL, FK → `products(id)` ON DELETE CASCADE | |
-| `scope` | VARCHAR(8) | NOT NULL, CHECK IN (`texts`,`price`,`both`) | Без області AC-10b не має предмета: саму ціну не попросити, не перезапускаючи тексти |
-| `idempotency_key` | TEXT | NOT NULL, UNIQUE | Картка + область + версія входу (sad.md §6, сценарій 7) |
+| `scope` | VARCHAR(8) | NOT NULL, CHECK IN (`texts`,`price`,`both`,`field`) | Без області AC-10b не має предмета: саму ціну не попросити, не перезапускаючи тексти. `field` — регенерація одного поля з чернетки, без фото ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) |
+| `idempotency_key` | TEXT | NOT NULL, UNIQUE | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts`/`both` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `field` — хеш (`field`, `draftText`) |
 | `status` | VARCHAR(16) | NOT NULL, CHECK IN (`queued`,`running`,`succeeded`,`failed`) | Джерело для полінгу (сценарій 7, 8) |
 | `error_code` | VARCHAR(64) | NULL | Доменний код при `failed` — той самий, що фронт мапить у текст (AC-10) |
 | `model` | VARCHAR(64) | NOT NULL | Без нього токени не перевести в гроші, коли зʼявиться стеля вартості (PRD §8) |
@@ -222,8 +222,8 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 |---|---|---|---|
 | `id` | UUID | PK, `default uuidv7()` | |
 | `run_id` | UUID | NOT NULL, FK → `product_preparation_runs(id)` ON DELETE CASCADE | Картка досяжна через запуск — `product_id` тут **не** дублюється |
-| `field` | VARCHAR(32) | NOT NULL, CHECK IN (`description_prom`,`description_olx`,`seo_keywords`,`price`) | |
-| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для описів, масив рядків для ключових слів, діапазон для ціни |
+| `field` | VARCHAR(32) | NOT NULL, CHECK IN (`title_prom`,`title_olx`,`description_prom`,`description_olx`,`seo_keywords`,`price`) | `title_prom`/`title_olx` додані разом з областю `field` ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) — до цього рішення заголовки не мали власної пропозиції |
+| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для заголовків і описів, масив рядків для ключових слів, діапазон для ціни |
 | `resolution` | VARCHAR(16) | NULL, CHECK IN (`accepted`,`rejected`) | **NULL = ще не вирішено.** Третього слова немає: `pending` дублював би те, що вже несе відсутність рішення |
 | `resolved_at` | TIMESTAMPTZ | NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() | |
@@ -291,13 +291,16 @@ B-tree не обслуговує, а 50-100 карток на місяць ро�
 
 ## Open items
 
-- `<!-- TBD -->` **Гейт AC-06 через описи.** «Не внесено розпізнавання» = обидва описи
-  порожні. Формулювання PRD цього прямо не каже — рядок для правки, власник Serhii.
+- [x] **Гейт AC-06 через описи.** Закрито 2026-09-12 разом з [ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md):
+  гейт більше не читає описи взагалі — «не внесено розпізнавання» як причина відмови
+  зникла, лишилось тільки «немає жодного кадру» (PRD AC-06).
 - `<!-- TBD -->` **Форма значення `value` для поля `price`** (`{from, to}` чи інша) —
   імена ключів JSON-обʼєкта фіксує етап 10 разом зі схемою відповіді; на рівні даних
   зафіксовано лише те, що це JSONB.
 - `<!-- TBD -->` **Вікно обмеження частоти запусків** — кількість і період вікна, у
   `src/config.ts`; не впливає на схему, лише на запит з нього.
-- `<!-- TBD -->` **Що таке «версія входу» в ключі ідемпотентності** — хеш входу
-  (`category`, `condition`, обидва описи) чи `updated_at` картки. Впливає на те, чи
-  вважається запуск після правки опису новим входом чи повтором.
+- [x] **Що таке «версія входу» в ключі ідемпотентності.** Закрито 2026-09-12: для областей
+  `texts`/`both` — хеш упорядкованого переліку `r2_key` кадрів, які пішли в запит (до
+  трьох), бо саме фото тепер є входом розпізнавання ([ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md));
+  для `price` лишається попередній підхід (`category`, `condition`, ціна не входить); для
+  нової області `field` — хеш (`field`, `draftText`) ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)).

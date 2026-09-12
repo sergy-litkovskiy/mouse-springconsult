@@ -281,7 +281,7 @@ T24 стоїть на рівні 1, а не 7: він не залежить ві
 | [T18](extend-products-api-client.md) | Методи запису в `products-api.ts` | T05 | S | Serhii |
 | [T19](add-confirm-dialog.md) | Спільний `app/confirm-dialog.ts` | — | XS | Serhii |
 | [T20](add-product-form-subfeature.md) | Підфіча `products/form/` — форма картки | T18 | S | Serhii |
-| [T21](add-gallery-upload-dialog.md) | Діалог галереї: локальне превʼю, вивантаження, головний, видалення | T18, T19 | S | Serhii |
+| [T21](add-gallery-upload-dialog.md) | Секція галереї: локальне превʼю, вивантаження, головний, видалення | T18, T19 | S | Serhii |
 | [T22](integrate-catalog-with-form-and-delete.md) | Каталог: готовність, дві відмітки, перехід у форму, видалення | T18, T19, T20 | S | Serhii |
 
 ### Поставка 1 — приймання

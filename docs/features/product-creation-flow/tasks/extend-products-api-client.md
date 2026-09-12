@@ -1,7 +1,7 @@
 ---
 id: T18
 title: "Методи запису в products-api.ts"
-status: Blocked
+status: Todo
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1400
 blocked_by: [T05]
 blocks: [T20, T21, T22, T23]
-updated_at: "2026-09-05"
+updated_at: "2026-09-12"
 ---
 
 # T18 — Методи запису в `products-api.ts`

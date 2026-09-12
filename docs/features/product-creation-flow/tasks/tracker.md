@@ -41,8 +41,8 @@ stage: "13"
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Blocked | T08, T09, T16 | S | Serhii | — |
 | T18 | [Клієнт API на фронті](extend-products-api-client.md) | Todo | T05 | S | Serhii | — |
 | T19 | [Діалог підтвердження](add-confirm-dialog.md) | Done | — | XS | Serhii | — |
-| T20 | [Форма картки](add-product-form-subfeature.md) | Blocked | T18 | S | Serhii | — |
-| T21 | [Діалог галереї](add-gallery-upload-dialog.md) | Blocked | T18, T19 | S | Serhii | — |
+| T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Blocked | T18 | M | Serhii | — |
+| T21 | [Секція галереї](add-gallery-upload-dialog.md) | Blocked | T18, T19 | S | Serhii | — |
 | T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Blocked | T18, T19, T20 | S | Serhii | — |
 | T23 | [Приймання поставки 1](verify-delivery-1.md) | Blocked | T14–T22 | S | Serhii | — |
 
@@ -50,7 +50,7 @@ stage: "13"
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T24 | [Закрити чотири TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
+| T24 | [Закрити відкриті TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
 | T25 | [Черга і `worker`](add-queue-and-worker.md) | Blocked | T23 | S | Serhii | — |
 | T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Blocked | T24, T25 | S | Serhii | — |
 | T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Blocked | T25 | S | Serhii | — |
@@ -58,7 +58,7 @@ stage: "13"
 | T29 | [Маршрути запусків](add-preparation-run-endpoints.md) | Blocked | T28 | S | Serhii | — |
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Blocked | T29 | S | Serhii | — |
 | T31 | [Вартість картки](add-card-cost-readout.md) | Blocked | T11, T26 | XS | Serhii | — |
-| T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31 | S | Serhii | — |
+| T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31 | M | Serhii | — |
 | T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32 | S | Serhii | — |
 
 ## Готові до старту просто зараз

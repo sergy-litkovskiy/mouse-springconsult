@@ -90,5 +90,5 @@ updated_at: "2026-09-05"
 ## Links
 
 - [openapi.yaml](../contracts/openapi.yaml) — `getProduct`, `createProduct`, `updateProduct`
-- [PRD §5](../PRD.md#5-acceptance-criteria) — AC-04, AC-09, AC-12, AC-13
+- [PRD §5](../PRD.md#5-acceptance-criteria) — AC-09, AC-12, AC-13
 - [CONTEXT.md](../CONTEXT.md) — Org-filter invariant (сесія як єдина межа доступу)
