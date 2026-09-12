@@ -1,6 +1,7 @@
 ---
 name: tdd
-description: Координатор повного циклу Red → Green → Refactor для story mouse-springconsult через три ізольовані агенти (tdd-test-writer → tdd-implementer → tdd-refactorer) з перевірками в терміналі між фазами — тема коміту, код завершення тестів у контейнері, порожній `git diff -- '*.spec.ts'` після RED. Вмикай на "/tdd T10", "/tdd add-product-card-service", "прожени T10 через TDD", "RGR для story X", "запусти TDD-конвеєр". Прапорець --review-tests зупиняє конвеєр після RED для людського перегляду тестів; --from green продовжує з уже закоміченого RED. Лише для story з `gate_profile: implementation`; якісні гейти й оновлення tracker лишаються за feature-ship.
+description: >-
+  Координатор повного циклу Red → Green → Refactor для story mouse-springconsult через три ізольовані агенти (tdd-test-writer → tdd-implementer → tdd-refactorer) з перевірками в терміналі між фазами — тема коміту, код завершення тестів у контейнері, порожній `git diff -- '*.spec.ts'` після RED. Вмикай на "/tdd T10", "/tdd add-product-card-service", "прожени T10 через TDD", "RGR для story X", "запусти TDD-конвеєр". Прапорець --review-tests зупиняє конвеєр після RED для людського перегляду тестів; --from green продовжує з уже закоміченого RED. Лише для story з `gate_profile: implementation`; якісні гейти й оновлення tracker лишаються за feature-ship.
 argument-hint: <story-id|story-slug> [--review-tests] [--from green]
 allowed-tools: Bash, Read, Grep, Glob, Agent, AskUserQuestion
 ---
