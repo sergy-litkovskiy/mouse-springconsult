@@ -6,33 +6,46 @@ delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1700
+context_budget: 2400
 blocked_by: [T28]
 blocks: [T30, T32]
-updated_at: "2026-09-12"
+updated_at: "2026-09-13"
 ---
 
-# T29 — Запуск підготовки, гейт AC-06, обмеження частоти, полінг
+# T29 — Запуск підготовки, гейти AC-06/AC-27, обмеження частоти, полінг
 
 ## Context
 
 HTTP-межа поставки 2. Запит не чекає на модель: він перевіряє вхід, ставить задачу й
 відповідає — генерація триває десятки секунд, тож фронт питає стан у циклі.
 
-Три речі, які цей маршрут тримає й через які його не можна звести до «поставити задачу»:
-гейт AC-06, обмеження частоти (запуски — це прямі гроші,
-[PRD §6.1](../PRD.md#61-security--privacy)) і ідемпотентність, яку **рахує сервер, а не
-заголовок клієнта**.
+Чотири речі, які цей маршрут тримає й через які його не можна звести до «поставити задачу»:
+гейт AC-06 (`texts`/`both` — потрібен хоч один кадр), гейт AC-27 (`price` — потрібен хоч один
+заголовок, `titleProm` або `titleOlx`; опис сам по собі входом не є), обмеження частоти
+(запуски — це прямі гроші, [PRD §6.1](../PRD.md#61-security--privacy)) і ідемпотентність, яку
+**рахує сервер, а не заголовок клієнта**.
+
+**Уточнення 2026-09-13 (AC-27).** Для `scope: price` маршрут лише перевіряє, що заголовок є
+(`titleProm` або `titleOlx`) — сам запит до моделі з заголовка і, якщо він є, опису складає
+`worker` при виконанні задачі ([T28](add-preparation-service.md)), так само як `worker`, а не
+маршрут, читає кадри для `texts`/`both`. Формула — в [sad.md §6](../sad.md#6-runtime-view),
+сценарій 8. Без жодного заголовка запит не має з чого будуватись, і той самий код
+`preparation_input_incomplete`, яким AC-06 відмовляє за порожню галерею, відмовляє тепер і
+тут — лише `details.missing` різний (`["gallery"]` проти `["title"]`).
 
 ## Sequence
 
-[sad.md §6](../sad.md#6-runtime-view), **сценарій 7** — гейт перед постановкою задачі:
+[sad.md §6](../sad.md#6-runtime-view), **сценарій 7** — гейт AC-06 перед постановкою задачі:
 
 > `api->>pg: перевіряє, що є кадр (AC-06)`
 > `api->>pg: ставить задачу підготовки`
 > `api-->>web: задачу прийнято`
 
-та **сценарій 8** — окремий запуск самої лише ціни.
+та **сценарій 8** — окремий запуск самої лише ціни, з дзеркальним гейтом AC-27 (маршрут лише
+перевіряє наявність заголовка — сам запит до моделі складає `worker`, [T28](add-preparation-service.md)):
+
+> `api->>pg: перевіряє titleProm/titleOlx картки`
+> `api-->>web: preparation_input_incomplete, details.missing: [title] (AC-27)`
 
 ## Data delta
 
@@ -45,15 +58,11 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 ## API contract excerpt
 
 ```yaml
-      operationId: startPreparationRun
-      responses:
-        "422":
-          description: У галереї немає жодного кадру (AC-06)
-              example:
-                error:
-                  code: preparation_input_incomplete
-        "429":
-          description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
+        "409":
+          description: >-
+            У галереї немає жодного кадру для scope: texts/both (AC-06), або в
+            картці немає ні titleProm, ні titleOlx для scope: price (AC-27) —
+            два різні missing під тим самим кодом
 ```
 
 ## Acceptance criteria
@@ -62,6 +71,11 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 **Given** у картці немає жодного кадру
 **When** `user` намагається запустити підготовку текстів
 **Then** система не запускає підготовку і повідомляє, що бракує хоча б одного кадру
+
+**AC-27** (US-04) — cross-context
+**Given** у картці немає ні `titleProm`, ні `titleOlx`
+**When** `user` (чи клієнт напряму) намагається запустити `scope: price`
+**Then** система не запускає пошук і відповідає `preparation_input_incomplete`, `details.missing: ["title"]` — тим самим кодом, що й AC-06, з іншим значенням `missing`
 
 **AC-10b** (US-03, US-04) — часткова відмова
 **Given** тексти вже є, а ціни немає
@@ -73,8 +87,9 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 1. `contracts/ai.contract.ts` — схеми запуску й стану; `scope` = `texts` | `price` | `both` | `field`; для `field` — `z.discriminatedUnion` з обов'язковими `field` і `draftText` ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
 2. `contracts/error-codes.ts` — `preparation_input_incomplete`, `preparation_rate_limited`.
 3. `POST /:productId/preparation-runs` і `GET /:productId/preparation-runs/:runId` під `sessionGuard`.
-4. `src/config.ts` — вікно обмеження частоти, число з рішення №3 [T24](close-preparation-open-items.md).
-5. Постановка задачі в чергу; HTTP-відповідь не чекає на модель.
+4. Гейт для `scope: price` (AC-27): дешева перевірка `titleProm ?? titleOlx` — інакше `preparation_input_incomplete` з `details.missing: ["title"]`, без постановки задачі. Сам запит до моделі (title+description) маршрут не складає — це читає й формує `worker` при виконанні ([T28](add-preparation-service.md)), так само як гейт AC-06 лише рахує кадри, а не читає їх байти.
+5. `src/config.ts` — вікно обмеження частоти, число з рішення №3 [T24](close-preparation-open-items.md).
+6. Постановка задачі в чергу; HTTP-відповідь не чекає на модель.
 
 ## Out of scope
 
@@ -83,7 +98,8 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 
 ## DoD
 
-- [ ] AC-06: картка без жодного кадру дає `preparation_input_incomplete`.
+- [ ] AC-06: картка без жодного кадру дає `preparation_input_incomplete`, `details.missing: ["gallery"]`.
+- [ ] AC-27: картка без `titleProm` і без `titleOlx` дає `preparation_input_incomplete`, `details.missing: ["title"]`, для `scope: price` — задача в чергу не ставиться. Опис без заголовка сам по собі гейт не проходить.
 - [ ] `scope: field` без `field` або без `draftText` відхиляється валідацією контролера — 400, а не проходить до `worker`.
 - [ ] AC-10b: `scope: price` запускається окремо, не перезапускаючи текстів.
 - [ ] Повторний запуск того самого входу повертає наявний запуск і `200` — перевірено проти унікального індексу, а не логікою в коді.
@@ -95,5 +111,5 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 ## Links
 
 - [openapi.yaml](../contracts/openapi.yaml) — `startPreparationRun`, `getPreparationRun`
-- [PRD §5](../PRD.md#5-acceptance-criteria) — AC-06, AC-10b · [PRD §6.1](../PRD.md#61-security--privacy)
-- [CONTEXT.md](../CONTEXT.md) — «запуск підготовки», «область підготовки», Sentinel errors
+- [PRD §5](../PRD.md#5-acceptance-criteria) — AC-06, AC-10b, AC-27 · [PRD §6.1](../PRD.md#61-security--privacy)
+- [sad.md §6](../sad.md#6-runtime-view), сценарії 7, 8 · [CONTEXT.md](../CONTEXT.md) — «запуск підготовки», «область підготовки», Sentinel errors

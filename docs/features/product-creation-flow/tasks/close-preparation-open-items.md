@@ -6,10 +6,10 @@ delivery: 2
 gate_profile: decision
 owner: "Serhii"
 estimate: S
-context_budget: 2500
+context_budget: 3100
 blocked_by: [T01]
 blocks: [T26]
-updated_at: "2026-09-12"
+updated_at: "2026-09-13"
 ---
 
 # T24 — Закрити відкриті TBD і статус запуску при частковій відмові
@@ -31,6 +31,17 @@ updated_at: "2026-09-12"
 Ця ж пара ADR додає **шосте питання**, якого раніше не було: форма ідемпотентності й
 валідація тіла запиту для нової області `field` (checklist 6).
 
+**Уточнення 2026-09-13.** Пункт 2 закрито разом із кнопкою ціни в PRD (AC-23–AC-26):
+`{priceFrom, priceTo}`, десяткові рядки — вже в `openapi.yaml` і `data-model.md`.
+Походження, яке звіт позначав **low**, більше не найслабша ланка: форма підтверджена й тим,
+що `acceptFieldSuggestion` фізично не може писати діапазон у скалярну `price` — рішення
+описане в [sad.md §4](../sad.md#4-solution-strategy), уточнення 2026-09-13, і в
+[T30](add-suggestion-resolution-endpoints.md). Той самий прохід уточнив і половину пункту 4:
+вхід пошуку ціни (PRD AC-27) — заголовок і, якщо він є, опис, а не `category`/`condition` —
+тож «версія входу» для `price` в checklist 4 переглянута на хеш (`title`, `description`).
+Новий гейт AC-27 (порожній заголовок для `scope: price`) додається в [T29](add-preparation-run-endpoints.md)
+поруч із наявним AC-06. Пункти 3 і 5 лишаються відкритими без змін.
+
 ## Sequence
 
 [sad.md §6](../sad.md#6-runtime-view), **сценарій 5** — рядок, під яким і ховається пʼяте
@@ -46,8 +57,8 @@ updated_at: "2026-09-12"
 
 | Питання | Що воно змінює в схемі |
 |---|---|
-| форма `value` для `price` | нічого структурно (`JSONB`), але фіксує імена ключів для читачів |
-| «версія входу» в `idempotency_key` | ✅ закрито — хеш `r2_key` кадрів для `texts`/`both`, хеш (`field`, `draftText`) для `field` ([data-model.md](../data-model.md), Open items) |
+| форма `value` для `price` | ✅ закрито 2026-09-13 — нічого структурно (`JSONB`), ключі `{priceFrom, priceTo}` зафіксовано в `openapi.yaml`/`data-model.md` |
+| «версія входу» в `idempotency_key` | ✅ закрито — хеш `r2_key` кадрів для `texts`/`both`, хеш (`field`, `draftText`) для `field`; для `price` **переглянуто 2026-09-13** — хеш (`title`, `description`) за формулою AC-27, а не `category`/`condition` ([data-model.md](../data-model.md), Open items) |
 | `status` при частковій відмові `scope: both` | **може додати колонку або таблицю** — саме тому гейт стоїть перед міграцією |
 | гейт AC-06 | ✅ закрито — «немає жодного кадру», без гілки про розпізнавання |
 | вікно обмеження частоти | нічого: константа `src/config.ts` |
@@ -82,9 +93,9 @@ updated_at: "2026-09-12"
 ## Checklist
 
 1. ✅ **Гейт AC-06.** Закрито: «немає жодного кадру» — правку внесено в [PRD §5](../PRD.md#5-acceptance-criteria) AC-06.
-2. **Форма `value` для `price`** — `{priceFrom, priceTo}` десятковими рядками чи інша → правка [openapi.yaml](../contracts/openapi.yaml) і `data-model.md`. Походження цього поля звіт позначив як **low**.
+2. ✅ **Форма `value` для `price`.** Закрито 2026-09-13: `{priceFrom, priceTo}`, десяткові рядки — [openapi.yaml](../contracts/openapi.yaml) і `data-model.md` правлені; `acceptFieldSuggestion` виключає `field: price` (`price_suggestion_readonly`, [T30](add-suggestion-resolution-endpoints.md)).
 3. **Вікно обмеження частоти запусків** — кількість і період, у `src/config.ts`.
-4. ✅ **«Версія входу».** Закрито: хеш `r2_key` кадрів для `texts`/`both` (бо саме фото тепер вхід розпізнавання, [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md)); хеш (`field`, `draftText`) для `field`.
+4. ✅ **«Версія входу».** Закрито: хеш `r2_key` кадрів для `texts`/`both` (бо саме фото тепер вхід розпізнавання, [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md)); хеш (`field`, `draftText`) для `field`. Для `price` **переглянуто 2026-09-13**: хеш (`title`, `description`) за формулою AC-27 — попередній підхід (`category`, `condition`) не бачив зміни заголовка чи опису й повертав би застарілий діапазон під новим текстом картки.
 5. **`status` при частковій відмові `scope: both`** — статус per-scope (нова колонка чи таблиця) або конвенція «`both` завершується `failed`, а відновлення йде окремим запуском `scope: price`».
 6. **Валідація тіла запиту для `scope: field`.** `field` і `draftText` обов'язкові лише для цієї області — `z.discriminatedUnion('scope', …)` у `contracts/ai.contract.ts`, не окрема `.optional()` пара на плоскій схемі ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
 
@@ -96,8 +107,9 @@ updated_at: "2026-09-12"
 ## DoD
 
 - [x] Рішення №1 (гейт AC-06) і №4 (версія входу) записані й закриті 2026-09-12 — [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md).
-- [ ] Рішення №2, №3, №5, №6 записані — кожне в тому документі, який його виконує.
-- [ ] Жодного `<!-- TBD -->` у розділі Open items [data-model.md](../data-model.md), крім пунктів 2, 3, 5.
+- [x] Рішення №2 (форма `value` для `price`) записане й закрите 2026-09-13 — `openapi.yaml`, `data-model.md`, PRD AC-23–AC-26, [T30](add-suggestion-resolution-endpoints.md).
+- [ ] Рішення №3, №5, №6 записані — кожне в тому документі, який його виконує.
+- [ ] Жодного `<!-- TBD -->` у розділі Open items [data-model.md](../data-model.md), крім пунктів 3, 5.
 - [ ] `unresolved_origins` у [api-sync-report.md](../contracts/api-sync-report.md) порожній, або кожен рядок має названу причину й строк.
 - [ ] Рішення №5, якщо воно вводить колонку, відображене в схемі **до** [T26](add-preparation-tables-migration.md), а не після.
 - [x] Рішення №1/№4 пройшли гейт blast-radius (незворотне, зачіпає кілька модулів, мали живу альтернативу) — заведено [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md) і [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md), наскрізні номери після 0013.

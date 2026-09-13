@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-09-12"
+updated_at: "2026-09-13"
 feature_size: M
 stage: "08"
 ticket: "TBD"
@@ -223,7 +223,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `id` | UUID | PK, `default uuidv7()` | |
 | `run_id` | UUID | NOT NULL, FK → `product_preparation_runs(id)` ON DELETE CASCADE | Картка досяжна через запуск — `product_id` тут **не** дублюється |
 | `field` | VARCHAR(32) | NOT NULL, CHECK IN (`title_prom`,`title_olx`,`description_prom`,`description_olx`,`seo_keywords`,`price`) | `title_prom`/`title_olx` додані разом з областю `field` ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) — до цього рішення заголовки не мали власної пропозиції |
-| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для заголовків і описів, масив рядків для ключових слів, діапазон для ціни |
+| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для заголовків і описів, масив рядків для ключових слів, `{priceFrom, priceTo}` для ціни — саме тому пропозиція з `field: price` не проходить generic `acceptFieldSuggestion` (Open items) |
 | `resolution` | VARCHAR(16) | NULL, CHECK IN (`accepted`,`rejected`) | **NULL = ще не вирішено.** Третього слова немає: `pending` дублював би те, що вже несе відсутність рішення |
 | `resolved_at` | TIMESTAMPTZ | NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() | |
@@ -294,13 +294,21 @@ B-tree не обслуговує, а 50-100 карток на місяць ро�
 - [x] **Гейт AC-06 через описи.** Закрито 2026-09-12 разом з [ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md):
   гейт більше не читає описи взагалі — «не внесено розпізнавання» як причина відмови
   зникла, лишилось тільки «немає жодного кадру» (PRD AC-06).
-- `<!-- TBD -->` **Форма значення `value` для поля `price`** (`{from, to}` чи інша) —
-  імена ключів JSON-обʼєкта фіксує етап 10 разом зі схемою відповіді; на рівні даних
-  зафіксовано лише те, що це JSONB.
+- [x] **Форма значення `value` для поля `price`.** Закрито 2026-09-13: `{priceFrom, priceTo}`,
+  десяткові рядки (`openapi.yaml`, `FieldSuggestion.value`) — той самий формат, що й `price`
+  картки, без float. Побічний наслідок: цей діапазон не сумісний зі скалярною колонкою
+  `products.price`, тож `acceptFieldSuggestion` не приймає пропозиції з `field: price`
+  узагалі — показаний діапазон лишається текстом-довідкою, число в поле вписує user вручну й
+  звичайним збереженням картки, а не через цей ендпоінт ([sad.md §4, §6 сценарій 8](sad.md#4-solution-strategy),
+  PRD AC-25–AC-26, [CONTEXT.md](CONTEXT.md) — `price_suggestion_readonly`).
 - `<!-- TBD -->` **Вікно обмеження частоти запусків** — кількість і період вікна, у
   `src/config.ts`; не впливає на схему, лише на запит з нього.
-- [x] **Що таке «версія входу» в ключі ідемпотентності.** Закрито 2026-09-12: для областей
-  `texts`/`both` — хеш упорядкованого переліку `r2_key` кадрів, які пішли в запит (до
-  трьох), бо саме фото тепер є входом розпізнавання ([ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md));
-  для `price` лишається попередній підхід (`category`, `condition`, ціна не входить); для
+- [x] **Що таке «версія входу» в ключі ідемпотентності.** Закрито 2026-09-12, пункт `price`
+  переглянуто 2026-09-13: для областей `texts`/`both` — хеш упорядкованого переліку `r2_key`
+  кадрів, які пішли в запит (до трьох), бо саме фото тепер є входом розпізнавання
+  ([ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md)); для `price` — хеш
+  (`title`, `description`), де обидва рахуються формулою AC-27 (`titleProm ?? titleOlx`,
+  `descriptionProm ?? descriptionOlx`) — версія входу має змінюватися разом із самим запитом
+  до `web_search`, тож попередній підхід (`category`, `condition`) замінено: він не бачив
+  зміни заголовка чи опису й повертав би застарілий діапазон під новим текстом картки; для
   нової області `field` — хеш (`field`, `draftText`) ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)).

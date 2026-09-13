@@ -1,6 +1,6 @@
 ---
 status: Living
-updated_at: "2026-09-12"
+updated_at: "2026-09-13"
 feature: product-creation-flow
 ---
 
@@ -30,6 +30,13 @@ feature: product-creation-flow
 - **Готовність ніде не зберігається** — рахується при читанні з трьох входів: обидва описи непорожні, ціна більша за нуль, є щонайменше один кадр ([ADR 0009](adr/0009-derive-card-readiness-instead-of-storing-it.md)).
 - **Присутність на кожному майданчику ведеться окремо.** Спільної відмітки публікації не існує.
 - **Модель ніколи не пише в поля картки** ([ADR 0006](adr/0006-store-generated-values-as-separate-suggestions.md)).
+- **Пропозиція ціни (`field: price`) не приймається через `acceptFieldSuggestion`.** Діапазон
+  `{priceFrom, priceTo}` не пишеться в скалярну `price` напряму — показаний діапазон є лише
+  текстом-довідкою, число в поле вписує сам user вручну, тим самим шляхом, що й будь-яке
+  ручне введення ([sad.md §4, §6 сценарій 8](sad.md#4-solution-strategy)).
+- **Вхід пошуку ціни — заголовок плюс необов'язковий опис, ніколи опис сам по собі.**
+  `title = titleProm ?? titleOlx`, `description = descriptionProm ?? descriptionOlx`; без
+  жодного заголовка запуску `scope: price` немає (AC-27) — навіть якщо опис заповнений.
 - **При видаленні: спершу обʼєкт у сховищі, потім рядок обліку** ([ADR 0012](adr/0012-delete-permanently-in-the-same-request.md)).
 - **Ціна проходить систему десятковим рядком і не перетворюється ніде.**
 - **Кадр перевіряється до потрапляння у сховище**, тип — за сигнатурою вмісту ([ADR 0004](adr/0004-validate-uploads-in-api-before-r2.md)).
@@ -48,10 +55,11 @@ feature: product-creation-flow
 | `invalid_file` | `media` | сигнатура вмісту не є зображенням | NOT `file_too_large`: відхилено за змістом |
 | `file_too_large` | `media` | файл більший за межу | NOT обрив зʼєднання: межа доходить кодом |
 | `storage_unavailable` | `media` | сховище не відповіло після повторів | NOT втрата даних: збережене ціле |
-| `preparation_input_incomplete` | `products` (п. 2) | у галереї немає жодного кадру | NOT «модель відмовила»: до моделі не дійшло. До [ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md) код означав ще й «не внесено розпізнавання» — цієї причини більше немає |
+| `preparation_input_incomplete` | `products` (п. 2) | `scope: texts`/`both` — у галереї немає жодного кадру; `scope: price` — немає ні `titleProm`, ні `titleOlx` (AC-27, `details.missing` називає, чого саме бракує) | NOT «модель відмовила»: до моделі не дійшло. До [ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md) код означав ще й «не внесено розпізнавання» — цієї причини більше немає |
 | `preparation_rate_limited` | `products` (п. 2) | вичерпано вікно запусків | NOT ліміт на спроби входу: окремий лічильник |
 | `suggestion_not_found` | `products` (п. 2) | пропозиції немає або вона з іншої картки | — |
 | `suggestion_already_resolved` | `products` (п. 2) | пропозицію вже прийнято чи відхилено | NOT помилка: повторне рішення без предмета |
+| `price_suggestion_readonly` | `products` (п. 2) | `POST .../suggestions/{id}/accept` викликано для пропозиції з `field: price` | NOT `suggestion_already_resolved`: пропозиція не вирішена, її взагалі не можна прийняти цим маршрутом — діапазон не пишеться в скалярну `price` (AC-26) |
 
 Загальні коди рівня системи оголошені в `apps/api/src/contracts/error-codes.ts` і цією
 фічею не змінюються.
