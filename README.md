@@ -180,7 +180,11 @@ cd /opt/mouse
 chmod 600 .env
 ```
 
-Далі деплой виконує GitHub Actions при пуші в `main`:
+Далі деплой виконуватиме GitHub Actions при пуші в `main`.
+
+> **Заплановано, ще не реалізовано.** Workflow деплою в репо поки немає:
+> `.github/workflows/ci.yml` при пуші в `main` лише перевіряє код (джоби `api`, `web`,
+> `migrations`). Кроки нижче — цільовий процес.
 
 1. `lint` + `typecheck` + `test` + `deps:check` — у тих самих образах, що й локально;
 2. збірка образів `api` і `web`, публікація в GitHub Container Registry;
@@ -190,7 +194,9 @@ chmod 600 .env
 5. разовий сервіс `migrate` створює базу (якщо треба) і застосовує міграції до старту `api`;
 6. health-check `/healthz`; при невдачі — відкат на попередній тег образу.
 
-Аварійний ручний деплой тим самим шляхом — коли GitHub Actions недоступні:
+Аварійний ручний деплой тим самим шляхом — коли GitHub Actions недоступні. Він
+запрацює разом із workflow: `docker-compose.prod.yml` тягне образи з GitHub Container
+Registry, а публікувати їх має саме крок 2.
 
 ```bash
 ssh deploy@<server-ip> 'cd /opt/mouse && docker compose pull && docker compose up -d'
