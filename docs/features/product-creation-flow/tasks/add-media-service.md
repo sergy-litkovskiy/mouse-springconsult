@@ -6,10 +6,10 @@ delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1500
-blocked_by: [T04, T07]
+context_budget: 1900
+blocked_by: [T03, T04, T07]
 blocks: [T14, T16, T17]
-updated_at: "2026-09-05"
+updated_at: "2026-09-16"
 ---
 
 # T08 — `MediaService.ts` — перевірка байтів і запис обʼєкта
@@ -20,6 +20,15 @@ updated_at: "2026-09-05"
 розширення чи заявлений `Content-Type`
 ([ADR 0004](../adr/0004-validate-uploads-in-api-before-r2.md)). Заявлений тип надсилає
 браузер, і довіряти йому означає прийняти будь-що під виглядом JPEG.
+
+**Уточнення 2026-09-16 (аудит SDLC).** [T03](add-product-error-codes.md) уже поклала класи
+`InvalidFile`, `FileTooLarge` і `StorageUnavailable` у `modules/products/ProductErrors.ts`.
+Там вони лишитись не можуть. `products` залежить від `media`
+([ADR 0013](../adr/0013-call-media-from-products-as-a-storage-adapter.md)), тож
+`MediaService`, який кидає клас із `products`, замкнув би цикл `media → products → media`, а
+`no-circular` у `.dependency-cruiser.cjs` його не пропустить. Ця задача **переносить** три
+класи в `media`, а не пише їх заново. Коди в `contracts/error-codes.ts` лишаються на місці:
+файл спільний і модулів не знає.
 
 Контролера в `media` немає взагалі: маршрут вивантаження є маршрутом галереї картки
 ([sad.md §5](../sad.md#5-building-block-view)). Модуль закінчується на сервісі.
@@ -67,7 +76,7 @@ updated_at: "2026-09-05"
 
 1. `store(bytes, key)` — сигнатура вмісту проти `allowedImageTypes`, розмір проти `maxImageBytes`, потім `ImageStorage.put`, потім повернути ключ.
 2. `remove(key)` / `removeMany(keys)` — прохід у сховище.
-3. Доменні помилки `invalid_file`, `file_too_large`, `storage_unavailable`.
+3. Перенести `InvalidFile`, `FileTooLarge`, `StorageUnavailable` з `products/ProductErrors.ts` у `media/MediaErrors.ts` разом з їхніми випадками з `ProductErrors.spec.ts` (→ `MediaErrors.spec.ts`); прибрати їх з `products/index.ts`; коментар над трьома кодами в `contracts/error-codes.ts` має називати `media/MediaErrors.ts`.
 4. `media/index.ts` — public API модуля; deep import у `media` заборонено.
 5. `MediaService.spec.ts` — двійники як підкласи `ImageStorage` з `override`, оголошені в самому файлі тесту: правильний JPEG, PNG із підробленим `Content-Type`, файл на межі розміру, файл за межею, недоступне сховище.
 
@@ -82,6 +91,7 @@ updated_at: "2026-09-05"
 - [ ] Жодного звернення до `ImageStorage` до того, як перевірка пройшла — перевірено тестом на двійнику, який рахує виклики.
 - [ ] У логи не потрапляє тіло зображення в жодній гілці.
 - [ ] `MediaService` не згадує ні `fastify`, ні DTO, ні слова «картка» — `deps:check` зелений.
+- [ ] Класи трьох помилок існують рівно в одному місці — `media/MediaErrors.ts`; `git grep "class InvalidFile"` дає один рядок.
 - [ ] Двійники живуть у самому `*.spec.ts`, окремих файлів з фейками не заведено ([CLAUDE.md](../../../../CLAUDE.md), правило 8).
 - [ ] Коміт: `feat(media): add the media service with content-signature checks`.
 

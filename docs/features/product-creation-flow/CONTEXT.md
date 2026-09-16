@@ -1,6 +1,6 @@
 ---
 status: Living
-updated_at: "2026-09-13"
+updated_at: "2026-09-16"
 feature: product-creation-flow
 ---
 
@@ -60,6 +60,10 @@ feature: product-creation-flow
 | `suggestion_not_found` | `products` (п. 2) | пропозиції немає або вона з іншої картки | — |
 | `suggestion_already_resolved` | `products` (п. 2) | пропозицію вже прийнято чи відхилено | NOT помилка: повторне рішення без предмета |
 | `price_suggestion_readonly` | `products` (п. 2) | `POST .../suggestions/{id}/accept` викликано для пропозиції з `field: price` | NOT `suggestion_already_resolved`: пропозиція не вирішена, її взагалі не можна прийняти цим маршрутом — діапазон не пишеться в скалярну `price` (AC-26) |
+
+Класи трьох кодів `media` поки лежать у `modules/products/ProductErrors.ts`: T03 писала їх
+до появи модуля. Переносить їх [T08](tasks/add-media-service.md) — власник у таблиці
+вказаний правильно, у коді застарів.
 
 Загальні коди рівня системи оголошені в `apps/api/src/contracts/error-codes.ts` і цією
 фічею не змінюються.
