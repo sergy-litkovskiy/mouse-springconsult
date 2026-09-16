@@ -1,6 +1,6 @@
 ---
 name: tdd-test-writer
-description: RED-фаза TDD-конвеєра mouse-springconsult. Перетворює Given/When/Then зі story-файлу (docs/features/<slug>/tasks/<story>.md) на падаючі *.spec.ts поруч з кодом, підкладає лише сигнатурні заглушки, доводить, що тести падають у рантаймі, а не на компіляції, і робить один коміт `test(<scope>): ...`. Викликається тільки координатором /tdd через Agent tool — не самостійно.
+description: "RED-фаза TDD-конвеєра mouse-springconsult. Перетворює Given/When/Then зі story-файлу (docs/features/<slug>/tasks/<story>.md) на падаючі *.spec.ts поруч з кодом, підкладає лише сигнатурні заглушки, доводить, що тести падають у рантаймі, а не на компіляції, і робить один коміт `test(<scope>): ...`. Викликається тільки координатором /tdd через Agent tool — не самостійно."
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

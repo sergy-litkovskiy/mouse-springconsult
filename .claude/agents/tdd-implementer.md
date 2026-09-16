@@ -1,6 +1,6 @@
 ---
 name: tdd-implementer
-description: GREEN-фаза TDD-конвеєра mouse-springconsult. Бачить падаючі *.spec.ts як незмінний контракт і заглушки з RED-коміту, пише мінімальну реалізацію в межах шарів з CLAUDE.md, доводить `npm run test` до зеленого і робить один коміт `feat(<scope>): ...` (тема — зі story). Файли *.spec.ts тільки читає. Викликається тільки координатором /tdd через Agent tool — не самостійно.
+description: "GREEN-фаза TDD-конвеєра mouse-springconsult. Бачить падаючі *.spec.ts як незмінний контракт і заглушки з RED-коміту, пише мінімальну реалізацію в межах шарів з CLAUDE.md, доводить `npm run test` до зеленого і робить один коміт `feat(<scope>): ...` (тема — зі story). Файли *.spec.ts тільки читає. Викликається тільки координатором /tdd через Agent tool — не самостійно."
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
