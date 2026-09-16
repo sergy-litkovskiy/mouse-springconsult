@@ -6,10 +6,10 @@ delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1600
+context_budget: 1900
 blocked_by: [T01]
-blocks: [T10]
-updated_at: "2026-09-07"
+blocks: [T08, T10]
+updated_at: "2026-09-16"
 ---
 
 # T03 — Доменні коди помилок картки і `ProductErrors.ts`
@@ -66,6 +66,11 @@ components:
 **Given** `user` вписує ціну картки сам
 **When** значення не є невідʼємним числом із щонайбільше двома знаками після коми
 **Then** система не зберігає значення й показує, якою має бути ціна
+
+**Уточнення 2026-09-16 (аудит SDLC).** Три з семи класів — `InvalidFile`, `FileTooLarge`,
+`StorageUnavailable` — належать `media` ([CONTEXT.md](../CONTEXT.md), Sentinel errors), а не
+картці. Задача поклала їх у `ProductErrors.ts`, бо модуля `media` тоді ще не було.
+Переносить їх [T08](add-media-service.md); історія цієї задачі не переписується.
 
 ## Checklist
 

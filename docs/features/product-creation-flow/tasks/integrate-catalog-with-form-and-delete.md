@@ -6,10 +6,10 @@ delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2000
-blocked_by: [T18, T19, T20]
+context_budget: 2100
+blocked_by: [T18, T19, T20, T34]
 blocks: [T23]
-updated_at: "2026-09-13"
+updated_at: "2026-09-16"
 ---
 
 # T22 — Каталог: готовність, дві відмітки, перехід у форму, видалення
@@ -34,6 +34,10 @@ updated_at: "2026-09-13"
 (`titleProm`, `descriptionProm`, `titleOlx`, `descriptionOlx`, `price`, `images`), окремого
 поля відповіді під перелік прогалин задача не додає ([sad.md §6](../sad.md#6-runtime-view),
 «Маркування в таблиці каталогу»).
+
+**Уточнення 2026-09-16 (звірка).** `isReady` у рядках `GET /products` вимагає контракт, але
+контролер списку його не віддає. Поле додає [T34](add-readiness-list-filter.md), тому T22
+чекає і на неї. Фільтр «Картка готова» — не ця задача, а [T35](add-catalog-readiness-filter.md).
 
 ## Sequence
 

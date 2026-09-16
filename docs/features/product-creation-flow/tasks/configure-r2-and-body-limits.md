@@ -1,7 +1,7 @@
 ---
 id: T06
 title: "Креденшели R2, домен бакета, парні ліміти тіла"
-status: Blocked
+status: Todo
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"

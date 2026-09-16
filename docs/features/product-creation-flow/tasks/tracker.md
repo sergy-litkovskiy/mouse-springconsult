@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-13"
+updated_at: "2026-09-16"
 stage: "13"
 ---
 
@@ -29,7 +29,7 @@ stage: "13"
 | T05 | [Схеми запису картки](add-product-write-contracts.md) | Done | T04 | S | Serhii | — |
 | T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Todo | T04 | S | Serhii | — |
 | T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Blocked | T06 | S | Serhii | — |
-| T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T04, T07 | S | Serhii | — |
+| T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T03, T04, T07 | S | Serhii | — |
 | T09 | [Репозиторій запису картки](add-product-write-repository.md) | Done | — | S | Serhii | — |
 | T10 | [Сервіс картки](add-product-card-service.md) | Done | T03, T09 | S | Serhii | — |
 | T11 | [Маршрути картки](add-product-card-routes.md) | Todo | T05, T10 | S | Serhii | — |
@@ -43,8 +43,17 @@ stage: "13"
 | T19 | [Діалог підтвердження](add-confirm-dialog.md) | Done | — | XS | Serhii | — |
 | T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Blocked | T18 | M | Serhii | — |
 | T21 | [Секція галереї](add-gallery-upload-dialog.md) | Blocked | T18, T19 | S | Serhii | — |
-| T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Blocked | T18, T19, T20 | S | Serhii | — |
+| T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Blocked | T18, T19, T20, T34 | S | Serhii | — |
 | T23 | [Приймання поставки 1](verify-delivery-1.md) | Blocked | T14–T22 | S | Serhii | — |
+
+## Поставка 1 — доопрацювання каталогу
+
+| ID | Задача | Статус | blocked_by | Est | Owner | PR |
+|----|--------|--------|------|-----|-------|-----|
+| T34 | [Фільтр готовності в `api`](add-readiness-list-filter.md) | Todo | — | S | Serhii | — |
+| T35 | [Фільтр «Картка готова»](add-catalog-readiness-filter.md) | Blocked | T34, T36 | XS | Serhii | — |
+| T36 | [Варіанти «Всі / Так / Ні»](relabel-published-filter-options.md) | Todo | — | XS | Serhii | — |
+| T37 | [Ширина фільтрів](resize-catalog-filter-fields.md) | Blocked | T35 | XS | Serhii | — |
 
 ## Поставка 2 — модель
 
@@ -63,7 +72,8 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T06, T11, T18, T24 — жодної незакритої залежності. T24 не залежить від коду поставки 1
+T06, T11, T18, T24, T34, T36 — жодної незакритої залежності. T34 і T36 — доопрацювання
+каталогу з запиту 2026-09-16; T23 вони не блокують, але T22 тепер чекає й на T34. T24 не залежить від коду поставки 1
 і може вестись паралельно з усією нею. T10 закрито 2026-09-12, і T11 лишився без
 незакритих блокерів — T05 було закрито ще 2026-09-09. T19 закрито 2026-09-12, але це не
 знімає блокування з T21 і T22: обидва чекають ще й на T18, а T22 — і на T20. T13 закрито
