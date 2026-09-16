@@ -1,7 +1,7 @@
 ---
 id: T11
 title: "Маршрути GET /{id}, POST, PATCH і реєстрація в api.ts"
-status: Blocked
+status: Todo
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
