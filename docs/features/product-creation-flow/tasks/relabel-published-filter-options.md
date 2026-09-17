@@ -1,7 +1,7 @@
 ---
 id: T36
 title: "Варіанти «Всі / Так / Ні» у фільтрах публікації"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: [T35]
-updated_at: "2026-09-16"
+updated_at: "2026-09-17"
 ---
 
 # T36 — Варіанти «Всі / Так / Ні» у фільтрах публікації
@@ -77,10 +77,10 @@ updated_at: "2026-09-16"
 
 ## DoD
 
-- [ ] AC-32: обидва select мають варіанти «Всі», «Так», «Ні» саме в цьому порядку.
-- [ ] AC-13: збережена адреса з `publishedProm` / `publishedOlx` відкривається з правильними підписами; значення в запиті не змінились.
-- [ ] Наявні тести `product-catalog.spec.ts` лишаються зеленими.
-- [ ] Коміт: `fix(web): answer the published filters with all, yes and no`.
+- [x] AC-32: обидва select мають варіанти «Всі», «Так», «Ні» саме в цьому порядку.
+- [x] AC-13: збережена адреса з `publishedProm` / `publishedOlx` відкривається з правильними підписами; значення в запиті не змінились.
+- [x] Наявні тести `product-catalog.spec.ts` лишаються зеленими.
+- [x] Коміт: `fix(web): answer the published filters with all, yes and no`.
 
 ## Links
 

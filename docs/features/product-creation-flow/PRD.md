@@ -292,6 +292,14 @@ Traceability з прочитаних каналів (контекст для §1
 **When** список читається з `ready=true` і з `ready=false`
 **Then** належність кожної картки до результату збігається з `isReady` для неї ж, а `isReady` у рядку відповіді має те саме значення
 
+### AC-32 (US-07) — happy path
+
+Запит 2026-09-16, [T36](tasks/relabel-published-filter-options.md).
+
+**Given** `user` відкриває список варіантів «Публікація Prom» або «Публікація OLX»
+**When** список розгорнуто
+**Then** він бачить рівно три варіанти в порядку «Всі», «Так», «Ні», і «Всі» обрано, поки фільтр не задано
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
