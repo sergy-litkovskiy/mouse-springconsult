@@ -62,6 +62,7 @@ paths:
         - { $ref: "#/components/parameters/CategoryFilter" }
         - { $ref: "#/components/parameters/PublishedProm" }
         - { $ref: "#/components/parameters/PublishedOlx" }
+        - { $ref: "#/components/parameters/ReadyFilter" }
         - { $ref: "#/components/parameters/Sort" }
         - { $ref: "#/components/parameters/Direction" }
       responses:
@@ -498,6 +499,14 @@ components:
     PublishedOlx:
       name: publishedOlx
       in: query
+      schema: { type: boolean }
+    ReadyFilter:
+      name: ready
+      in: query
+      description: >-
+        Похідна готовність картки (AC-29, AC-30): той самий предикат, що й `Product.isReady`,
+        обчислений у запиті, а не збережений ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
+        Комбінується з `publishedProm`/`publishedOlx` через AND.
       schema: { type: boolean }
     Sort:
       name: sort
