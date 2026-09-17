@@ -1,5 +1,5 @@
-import type { HttpResourceRequest } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { HttpClient, type HttpResourceRequest } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import type {
   Product,
@@ -18,6 +18,7 @@ import { environment } from '@environments/environment';
  */
 @Injectable({ providedIn: 'root' })
 export class ProductsApi {
+  private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/products`;
 
   listRequest(query: ProductListQuery): HttpResourceRequest {
@@ -25,31 +26,43 @@ export class ProductsApi {
   }
 
   getById(productId: string): Observable<Product> {
-    throw new Error('Not implemented');
+    return this.http.get<Product>(`${this.baseUrl}/${productId}`, { withCredentials: true });
   }
 
   create(request: ProductCreate): Observable<Product> {
-    throw new Error('Not implemented');
+    return this.http.post<Product>(this.baseUrl, request, { withCredentials: true });
   }
 
   update(productId: string, request: ProductUpdate): Observable<ProductUpdateResponse> {
-    throw new Error('Not implemented');
+    return this.http.patch<ProductUpdateResponse>(`${this.baseUrl}/${productId}`, request, {
+      withCredentials: true,
+    });
   }
 
   delete(productId: string): Observable<null> {
-    throw new Error('Not implemented');
+    return this.http.delete<null>(`${this.baseUrl}/${productId}`, { withCredentials: true });
   }
 
   uploadImage(productId: string, file: File): Observable<ProductImage> {
-    throw new Error('Not implemented');
+    const body = new FormData();
+    body.append('file', file);
+    return this.http.post<ProductImage>(`${this.baseUrl}/${productId}/images`, body, {
+      withCredentials: true,
+    });
   }
 
   setMainImage(productId: string, imageId: string): Observable<ProductImage[]> {
-    throw new Error('Not implemented');
+    return this.http.put<ProductImage[]>(
+      `${this.baseUrl}/${productId}/images/${imageId}/main`,
+      null,
+      { withCredentials: true },
+    );
   }
 
   deleteImage(productId: string, imageId: string): Observable<null> {
-    throw new Error('Not implemented');
+    return this.http.delete<null>(`${this.baseUrl}/${productId}/images/${imageId}`, {
+      withCredentials: true,
+    });
   }
 }
 
