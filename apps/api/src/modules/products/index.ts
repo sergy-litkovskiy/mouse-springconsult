@@ -13,12 +13,4 @@ export type {
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
 
-export {
-  FileTooLarge,
-  GalleryFull,
-  ImageNotFound,
-  InvalidFile,
-  InvalidPrice,
-  ProductNotFound,
-  StorageUnavailable,
-} from './ProductErrors.ts';
+export { GalleryFull, ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
