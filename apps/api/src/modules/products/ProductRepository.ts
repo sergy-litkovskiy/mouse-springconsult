@@ -23,12 +23,11 @@ export type ProductFilters = {
 type ProductWritable = Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'images'>;
 
 /**
- * Only `title_prom`, `title_olx` and `category` have no column default, and that is what
- * lets a card exist before its texts, price and frames do — the R2 key of a frame is
- * `products/{id}/…`, so the id has to come first.
+ * Every writable column has a default, and that is what lets a card exist before its titles,
+ * texts, price and frames do — the R2 key of a frame is `products/{id}/…`, so the id has to come
+ * first.
  */
-export type ProductDraft = Pick<ProductWritable, 'titleProm' | 'titleOlx' | 'category'> &
-  Partial<ProductWritable>;
+export type ProductDraft = Partial<ProductWritable>;
 
 export type ProductChanges = Partial<ProductWritable>;
 
@@ -65,7 +64,8 @@ function toLikePattern(value: string): string {
  * selects exactly the cards that are not ready.
  */
 const READINESS_EXPRESSION =
-  `product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
+  `product.titleProm <> '' and product.titleOlx <> '' and` +
+  ` product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
   ` and exists (select 1 from product_images image where image.product_id = product.id)`;
 
 function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilters): void {

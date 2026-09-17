@@ -167,6 +167,8 @@ export class ProductService {
   /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */
   isReady(product: Product): boolean {
     return (
+      product.titleProm !== '' &&
+      product.titleOlx !== '' &&
       product.descriptionProm !== '' &&
       product.descriptionOlx !== '' &&
       /[1-9]/.test(product.price) &&

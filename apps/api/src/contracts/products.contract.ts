@@ -93,8 +93,8 @@ export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 
 /**
  * The bounds are the ones the column already declares, so a value the schema lets through
- * is a value the table can hold: required here is exactly what `products` declares NOT NULL
- * without a default, and a default here is the same default there.
+ * is a value the table can hold, and a default here is the same default there. A default skips
+ * the bounds, so an absent title stays empty while a blank one sent on purpose is refused.
  */
 const cardTitle = z.string().trim().min(1).max(productConstraints.titleMaxLength);
 const cardDescription = z.string().max(productConstraints.descriptionMaxLength);
@@ -108,9 +108,9 @@ const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMax
 const cardKeywords = z.array(z.string().trim().min(1).max(productConstraints.keywordMaxLength));
 
 export const productCreateSchema = z.object({
-  titleProm: cardTitle,
-  titleOlx: cardTitle,
-  category: cardCategory,
+  titleProm: cardTitle.default(''),
+  titleOlx: cardTitle.default(''),
+  category: cardCategory.default(''),
   descriptionProm: cardDescription.default(''),
   descriptionOlx: cardDescription.default(''),
   /** `NUMERIC(12,2) DEFAULT 0` gives back "0.00", and the predicate of readiness reads it as "not priced yet". */
@@ -142,8 +142,8 @@ export type ProductUpdate = z.infer<typeof productUpdateSchema>;
 
 export const productCardSchema = productSchema.extend({
   /**
-   * Derived, not a column: both descriptions non-empty, a price above zero and at least one
-   * frame in the gallery, computed on read (ADR 0009).
+   * Derived, not a column: both titles and both descriptions non-empty, a price above zero and at
+   * least one frame in the gallery, computed on read (ADR 0009).
    */
   isReady: z.boolean(),
 });
