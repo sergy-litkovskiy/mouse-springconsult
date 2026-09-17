@@ -44,7 +44,7 @@ stage: "13"
 | T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Done | T18, T38 | M | Serhii | — |
 | T21 | [Секція галереї](add-gallery-upload-dialog.md) | Done | T18, T19 | S | Serhii | — |
 | T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Done | T18, T19, T20, T34 | S | Serhii | — |
-| T23 | [Приймання поставки 1](verify-delivery-1.md) | Todo | T14–T22, T37 | S | Serhii | — |
+| T23 | [Приймання поставки 1](verify-delivery-1.md) | Done | T14–T22, T37 | S | Serhii | — |
 
 ## Поставка 1 — доопрацювання каталогу
 
@@ -55,13 +55,14 @@ stage: "13"
 | T36 | [Варіанти «Всі / Так / Ні»](relabel-published-filter-options.md) | Done | — | XS | Serhii | — |
 | T37 | [Ширина фільтрів](resize-catalog-filter-fields.md) | Done | T35 | XS | Serhii | — |
 | T38 | [Порожня картка](allow-empty-product-card.md) | Done | — | S | Serhii | — |
+| T39 | [Прогалини у відкритій картці](name-missing-fields-in-product-form.md) | Todo | — | XS | Serhii | — |
 
 ## Поставка 2 — модель
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
 | T24 | [Закрити відкриті TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
-| T25 | [Черга і `worker`](add-queue-and-worker.md) | Blocked | T23 | S | Serhii | — |
+| T25 | [Черга і `worker`](add-queue-and-worker.md) | Todo | T23 | S | Serhii | — |
 | T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Blocked | T24, T25 | S | Serhii | — |
 | T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Blocked | T25 | S | Serhii | — |
 | T28 | [Сервіс підготовки](add-preparation-service.md) | Blocked | T26, T27 | S | Serhii | — |
@@ -73,7 +74,7 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T23, T24 — жодної незакритої залежності. T24 не залежить від коду поставки 1 і може
+T24, T25, T39 — жодної незакритої залежності. T24 не залежить від коду поставки 1 і може
 вестись паралельно з усією нею.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
@@ -100,6 +101,10 @@ T22 чекає ще й на T20.
 **2026-09-17 закрито T21.** Нічого не розблокувала: T23 чекає ще й на T22.
 
 **2026-09-17 закрито T22** і з нею веб-доріжку поставки 1. Вона розблокувала T23 (приймання, Plan mode).
+
+**2026-09-17 закрито T23** і з нею поставку 1: закрито T23 — розблокувала T25. Протокол —
+[_audit/delivery-1-acceptance-2026-09-17.md](../_audit/delivery-1-acceptance-2026-09-17.md). Приймання
+знайшло один дефект: форма не називає, чого бракує до готовності (AC-15). Його заведено як T39, і він нічого не блокує.
 
 Раніше: T13 закрито 2026-09-10, T10 і T19 — 2026-09-12. T21 і T22 чекають ще й на T18,
 а T22 — і на T20.

@@ -1,7 +1,7 @@
 ---
 id: T25
 title: "queue.ts, worker.ts, pg-boss, сервіс worker у compose"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
