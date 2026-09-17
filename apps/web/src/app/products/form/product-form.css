@@ -49,6 +49,10 @@
   min-width: 0;
 }
 
+.card-form__row {
+  align-items: flex-start;
+}
+
 .card-form__row > mat-form-field {
   flex: 1 1 10rem;
   min-width: 0;
