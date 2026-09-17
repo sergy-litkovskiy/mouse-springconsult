@@ -1,0 +1,78 @@
+<section class="gallery-section" aria-label="Фото товару">
+  <header class="gallery-section__header">
+    <span class="gallery-section__count" data-testid="frame-count">
+      {{ count() }} з {{ maxImages }}
+    </span>
+    @if (full()) {
+      <span class="gallery-section__reason" role="status">
+        Галерея вміщає щонайбільше десять кадрів.
+      </span>
+    }
+  </header>
+
+  <ul class="gallery">
+    @for (image of ordered(); track image.id) {
+      <li class="gallery__item" data-testid="frame">
+        <img class="gallery__image" [ngSrc]="image.url" fill alt="Фото товару" />
+        @if (image.isMain) {
+          <span class="gallery__badge">
+            <mat-icon aria-hidden="true">star</mat-icon>
+            Головне
+          </span>
+        } @else {
+          <button
+            matIconButton
+            type="button"
+            class="gallery__action gallery__action--main"
+            matTooltip="Зробити головним"
+            aria-label="Зробити головним"
+            [disabled]="busy()"
+            (click)="makeMain(image)"
+          >
+            <mat-icon>star_outline</mat-icon>
+          </button>
+        }
+        <button
+          matIconButton
+          type="button"
+          class="gallery__action gallery__action--delete"
+          matTooltip="Видалити фото"
+          aria-label="Видалити фото"
+          [disabled]="busy()"
+          (click)="remove(image)"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </li>
+    }
+
+    <!-- Drawn from the local file before the server answers (QG-2). -->
+    @for (frame of pending(); track frame.key) {
+      <li class="gallery__item gallery__item--pending" data-testid="pending-frame">
+        <img class="gallery__preview" [src]="frame.previewUrl" [alt]="frame.name" />
+        <mat-spinner class="gallery__spinner" [diameter]="32" />
+      </li>
+    }
+
+    @if (!full()) {
+      <li class="gallery__item gallery__item--add">
+        <label class="gallery__add">
+          <mat-icon aria-hidden="true">add_photo_alternate</mat-icon>
+          <span>Додати фото</span>
+          <input
+            class="gallery__picker"
+            type="file"
+            multiple
+            [accept]="accept"
+            data-testid="frame-picker"
+            (change)="choose($event)"
+          />
+        </label>
+      </li>
+    }
+  </ul>
+
+  @if (message(); as text) {
+    <p class="gallery-section__message" role="alert">{{ text }}</p>
+  }
+</section>

@@ -20,6 +20,7 @@ import { map } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
   Product,
+  ProductCard,
   ProductImage,
   ProductList,
   ProductListQuery,
@@ -46,7 +47,7 @@ import {
   toSortDirection,
   toSortField,
 } from './product-catalog-query';
-import { ProductGalleryDialog, type ProductGalleryData } from '../gallery/product-gallery-dialog';
+import { ProductForm, type ProductFormData } from '../form/product-form';
 import { ProductsApi } from '../products-api';
 import { itemsPaginatorIntl } from './items-paginator-intl';
 
@@ -324,8 +325,10 @@ export class ProductCatalog {
     return CONDITION_LABELS[condition];
   }
 
-  protected openGallery(product: Product): void {
-    const data: ProductGalleryData = { title: product.titleProm, images: product.images };
-    this.dialog.open(ProductGalleryDialog, { data, width: 'min(92vw, 60rem)' });
+  /** The gallery lives at the top of the card dialog (mockup 2026-09-12), so the card opens. */
+  protected openGallery(product: ProductCard): void {
+    const data: ProductFormData = { product };
+    // Material 3 caps a dialog at 560px unless maxWidth says otherwise.
+    this.dialog.open(ProductForm, { data, width: '64rem', maxWidth: '92vw' });
   }
 }

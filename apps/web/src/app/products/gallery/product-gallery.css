@@ -1,0 +1,129 @@
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * The square is reserved by the container, not by the image: with `fill` the frame has no
+ * intrinsic size of its own, so the row keeps its height while the photograph is still on
+ * its way from R2 instead of collapsing and jumping.
+ */
+.gallery__item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--mat-sys-surface-container-high);
+}
+
+.gallery__image {
+  object-fit: cover;
+}
+
+.gallery__badge {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 4px;
+  border-radius: 999px;
+  background-color: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-small);
+}
+
+.gallery__badge mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.gallery-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.gallery-section__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  font: var(--mat-sys-body-medium);
+}
+
+.gallery-section__count {
+  font: var(--mat-sys-title-small);
+}
+
+.gallery-section__reason,
+.gallery-section__message {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+}
+
+.gallery__action {
+  position: absolute;
+  inset-block-start: 4px;
+  background-color: color-mix(in srgb, var(--mat-sys-surface) 80%, transparent);
+}
+
+.gallery__action--main {
+  inset-inline-start: 4px;
+}
+
+.gallery__action--delete {
+  inset-inline-end: 4px;
+}
+
+/* A local preview is a blob URL, which NgOptimizedImage does not take. */
+.gallery__preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+}
+
+.gallery__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.gallery__item--add {
+  border: 2px dashed var(--mat-sys-outline-variant);
+  background-color: transparent;
+}
+
+.gallery__add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  cursor: pointer;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.gallery__add:focus-within {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
+}
+
+/* Visually hidden but still focusable and reachable by a screen reader. */
+.gallery__picker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}

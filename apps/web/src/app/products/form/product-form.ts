@@ -33,6 +33,7 @@ import type {
 import { productConstraints, type ProductCondition } from '@contracts/products-limits';
 import { apiErrorMessage } from '../../api-error-message';
 import { priceBound } from '../catalog/product-catalog-query';
+import { ProductGallery } from '../gallery/product-gallery';
 import { ProductsApi } from '../products-api';
 
 /** `null` opens an empty dialog: the card itself is created once the first frame is chosen. */
@@ -87,6 +88,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatProgressBarModule,
     MatSelectModule,
     MatSlideToggleModule,
+    ProductGallery,
   ],
   templateUrl: './product-form.html',
   styleUrl: './product-form.css',
@@ -98,7 +100,7 @@ export class ProductForm {
   private readonly data = inject<ProductFormData>(MAT_DIALOG_DATA);
 
   private readonly productId = signal<string | null>(this.data.product?.id ?? null);
-  private readonly images = signal<readonly ProductImage[]>(this.data.product?.images ?? []);
+  protected readonly images = signal<readonly ProductImage[]>(this.data.product?.images ?? []);
 
   /** Every field waits for the first frame (AC-20): the texts are written about the photos. */
   protected readonly hasFrames = computed(() => this.images().length > 0);
@@ -139,6 +141,9 @@ export class ProductForm {
   protected readonly formInvalid = toSignal(this.form.events.pipe(map(() => this.form.invalid)), {
     initialValue: this.form.invalid,
   });
+
+  /** Handed to the gallery section, which needs the card to exist before its first upload. */
+  protected readonly ensureProductForGallery = (): Observable<string> => this.ensureProduct();
 
   protected readonly canSave = computed(
     () => this.hasFrames() && !this.formInvalid() && !this.saving(),

@@ -11,6 +11,7 @@ import { MatSelectHarness } from '@angular/material/select/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { ProductCard, ProductList } from '@contracts/products.contract';
+import { ProductForm } from '../form/product-form';
 import { ProductCatalog } from './product-catalog';
 
 function makeImage(id: string, position: number, isMain: boolean) {
@@ -270,7 +271,7 @@ describe('ProductCatalog', () => {
     expect(counters[1]?.disabled).toBe(true);
   });
 
-  it('opens the gallery dialog when the image count is clicked', async () => {
+  it('opens the card, with its gallery on top, when the image count is clicked', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -278,7 +279,9 @@ describe('ProductCatalog', () => {
     element.querySelector<HTMLButtonElement>('.gallery-cell__count')?.click();
     await settle();
 
-    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
+    const dialogs = TestBed.inject(MatDialog).openDialogs;
+    expect(dialogs.length).toBe(1);
+    expect(dialogs[0]?.componentInstance).toBeInstanceOf(ProductForm);
     TestBed.inject(MatDialog).closeAll();
     await settle();
   });
