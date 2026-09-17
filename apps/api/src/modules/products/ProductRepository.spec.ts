@@ -9,6 +9,7 @@ import {
   type ProductChanges,
   type ProductListCriteria,
 } from './ProductRepository.ts';
+import { ProductService } from './ProductService.ts';
 
 /**
  * Against a real Postgres, because everything checked here is what a stub cannot answer: LIKE
@@ -225,6 +226,101 @@ describe('product repository (postgres)', () => {
 
     assert.equal(page.total, 3);
     assert.equal(page.items.length, 2);
+  });
+
+  it('lists only the ready cards and counts only them (AC-29)', async () => {
+    const readyIds: string[] = [];
+    for (const index of [0, 1, 2]) {
+      const id = await seedProduct({ titleProm: `Готова ${String(index)}` });
+      await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+      readyIds.push(id);
+    }
+    await seedProduct({ titleProm: 'Без кадрів' });
+    await seedProduct({ titleProm: 'Без ціни', price: '0.00' });
+
+    const firstPage = await products.list({
+      ...BASE_CRITERIA,
+      pageSize: 2,
+      filters: { ready: true },
+    });
+    const all = await products.list({ ...BASE_CRITERIA, filters: { ready: true } });
+
+    assert.equal(firstPage.total, 3);
+    assert.equal(firstPage.items.length, 2);
+    assert.deepEqual(all.items.map((product) => product.id).sort(), [...readyIds].sort());
+  });
+
+  it('lists only the cards that are not ready and counts only them (AC-29)', async () => {
+    const ready = await seedProduct({ titleProm: 'Готова' });
+    await seedImage(ready, { position: 0, r2Key: `products/${ready}/first.jpg`, isMain: true });
+    const withoutFrames = await seedProduct({ titleProm: 'Без кадрів' });
+    const withoutPrice = await seedProduct({ titleProm: 'Без ціни', price: '0.00' });
+
+    const page = await products.list({ ...BASE_CRITERIA, filters: { ready: false } });
+
+    assert.equal(page.total, 2);
+    assert.deepEqual(
+      page.items.map((product) => product.id).sort(),
+      [withoutFrames, withoutPrice].sort(),
+    );
+  });
+
+  it('combines readiness with a publication mark through AND (AC-29)', async () => {
+    const readyOnProm = await seedProduct({ titleProm: 'Готова на Prom', publishedProm: true });
+    await seedImage(readyOnProm, { position: 0, r2Key: `products/${readyOnProm}/a.jpg` });
+    const readyOffProm = await seedProduct({
+      titleProm: 'Готова не на Prom',
+      publishedProm: false,
+    });
+    await seedImage(readyOffProm, { position: 0, r2Key: `products/${readyOffProm}/a.jpg` });
+    await seedProduct({ titleProm: 'Неготова на Prom', publishedProm: true });
+
+    const page = await products.list({
+      ...BASE_CRITERIA,
+      filters: { ready: true, publishedProm: true },
+    });
+
+    assert.equal(page.total, 1);
+    assert.equal(page.items[0]?.id, readyOnProm);
+  });
+
+  it('selects by readiness exactly as ProductService.isReady judges each card (AC-30)', async () => {
+    // One complete card and one for each missing input: the SQL expression and the in-memory
+    // predicate are two sources of one rule, and only a card-by-card comparison keeps them equal.
+    const seeds: readonly {
+      readonly name: string;
+      readonly seed: ProductSeed;
+      readonly frame: boolean;
+    }[] = [
+      { name: 'повна', seed: {}, frame: true },
+      { name: 'без опису Prom', seed: { descriptionProm: '' }, frame: true },
+      { name: 'без опису OLX', seed: { descriptionOlx: '' }, frame: true },
+      { name: 'без ціни', seed: { price: '0.00' }, frame: true },
+      { name: 'без кадру', seed: {}, frame: false },
+    ];
+    const ids = new Map<string, string>();
+    for (const { name, seed, frame } of seeds) {
+      const id = await seedProduct({ ...seed, titleProm: name });
+      if (frame) {
+        await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+      }
+      ids.set(name, id);
+    }
+
+    const readyIds = new Set(
+      (await products.list({ ...BASE_CRITERIA, filters: { ready: true } })).items.map((p) => p.id),
+    );
+    const notReadyIds = new Set(
+      (await products.list({ ...BASE_CRITERIA, filters: { ready: false } })).items.map((p) => p.id),
+    );
+    const service = new ProductService(products);
+
+    assert.equal(readyIds.size, 1);
+    for (const [name, id] of ids) {
+      const expected = service.isReady(must(await products.findById(id), name));
+      assert.equal(readyIds.has(id), expected, `${name}: ready=true must agree with isReady`);
+      assert.equal(notReadyIds.has(id), !expected, `${name}: ready=false must agree with isReady`);
+    }
   });
 
   it('creates a card the database can identify before it has texts, price or frames', async () => {

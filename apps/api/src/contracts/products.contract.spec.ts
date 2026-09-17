@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   productCreateSchema,
   productListQuerySchema,
+  productListSchema,
   productUpdateResponseSchema,
   productUpdateSchema,
 } from './products.contract.ts';
@@ -61,6 +62,20 @@ describe('product list query contract', () => {
     assert.equal(Object.hasOwn(promOnly, 'publishedOlx'), false);
   });
 
+  it('reads ready=false as false and ready=true as true (AC-29)', () => {
+    // Read through a record: the field is what this test asks the contract to grow.
+    const notReady: Record<string, unknown> = productListQuerySchema.parse({ ready: 'false' });
+    const ready: Record<string, unknown> = productListQuerySchema.parse({ ready: 'true' });
+
+    assert.equal(notReady['ready'], false);
+    assert.equal(ready['ready'], true);
+  });
+
+  it('rejects ready=yes just as it rejects publishedProm=yes', () => {
+    assert.equal(productListQuerySchema.safeParse({ publishedProm: 'yes' }).success, false);
+    assert.equal(productListQuerySchema.safeParse({ ready: 'yes' }).success, false);
+  });
+
   it('refuses a page size above the ceiling instead of silently clamping it', () => {
     const result = productListQuerySchema.safeParse({
       pageSize: String(productPagination.maxPageSize + 1),
@@ -85,6 +100,34 @@ describe('product list query contract', () => {
 
     assert.equal(Object.hasOwn(parsed, 'title'), false);
     assert.equal(Object.hasOwn(parsed, 'publishedProm'), false);
+  });
+});
+
+describe('product list response contract', () => {
+  it('requires isReady in every row of the list', () => {
+    const row = {
+      id: '0199c0de-0000-7000-8000-000000000001',
+      titleProm: 'Миша',
+      descriptionProm: 'Опис',
+      titleOlx: 'Миша',
+      descriptionOlx: 'Опис',
+      price: '2499.00',
+      seoKeywords: ['миша'],
+      category: 'Периферія',
+      publishedProm: false,
+      publishedOlx: false,
+      condition: 'used',
+      images: [],
+      createdAt: '2026-09-09T10:00:00.000Z',
+      updatedAt: '2026-09-09T10:00:00.000Z',
+    };
+    const page = { total: 1, page: 1, pageSize: 20 };
+
+    assert.equal(
+      productListSchema.safeParse({ ...page, items: [{ ...row, isReady: true }] }).success,
+      true,
+    );
+    assert.equal(productListSchema.safeParse({ ...page, items: [row] }).success, false);
   });
 });
 

@@ -8,7 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { Product, ProductList } from '@contracts/products.contract';
+import type { ProductCard, ProductList } from '@contracts/products.contract';
 import { ProductCatalog } from './product-catalog';
 
 function makeImage(id: string, position: number, isMain: boolean) {
@@ -21,7 +21,7 @@ function makeImage(id: string, position: number, isMain: boolean) {
   };
 }
 
-const MOUSE: Product = {
+const MOUSE: ProductCard = {
   id: '11111111-1111-4111-8111-111111111111',
   titleProm: 'Миша Logitech MX Master 3',
   descriptionProm: 'Бездротова миша у відмінному стані.',
@@ -38,11 +38,12 @@ const MOUSE: Product = {
     makeImage('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 1, true),
     makeImage('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 2, false),
   ],
+  isReady: true,
   createdAt: '2026-08-01T09:00:00.000Z',
   updatedAt: '2026-08-01T09:00:00.000Z',
 };
 
-const KEYBOARD: Product = {
+const KEYBOARD: ProductCard = {
   ...MOUSE,
   id: '22222222-2222-4222-8222-222222222222',
   titleProm: 'Клавіатура Keychron K2',
@@ -52,6 +53,7 @@ const KEYBOARD: Product = {
   publishedOlx: false,
   condition: 'new',
   images: [],
+  isReady: false,
 };
 
 const PAGE: ProductList = { items: [MOUSE, KEYBOARD], total: 2, page: 1, pageSize: 20 };

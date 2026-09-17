@@ -16,6 +16,7 @@ export type ProductFilters = {
   readonly category?: string | undefined;
   readonly publishedProm?: boolean | undefined;
   readonly publishedOlx?: boolean | undefined;
+  readonly ready?: boolean | undefined;
 };
 
 /** `id` comes from `uuidv7()` in the database and the timestamps from TypeORM — none of the three is a caller's to set. */
