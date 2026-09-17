@@ -58,6 +58,16 @@ function toLikePattern(value: string): string {
   return `%${escaped}%`;
 }
 
+/**
+ * The SQL twin of `ProductService.isReady` (ADR 0009): readiness is derived, never stored, so the
+ * list filters by recomputing it. Change both together — the repository spec compares them card
+ * by card. Every input is NOT NULL, so the expression is never null and comparing it with `false`
+ * selects exactly the cards that are not ready.
+ */
+const READINESS_EXPRESSION =
+  `product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
+  ` and exists (select 1 from product_images image where image.product_id = product.id)`;
+
 function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilters): void {
   if (filters.title !== undefined) {
     query.andWhere('(product.titleProm ilike :title or product.titleOlx ilike :title)', {
@@ -89,15 +99,8 @@ function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilter
   if (filters.publishedOlx !== undefined) {
     query.andWhere('product.publishedOlx = :publishedOlx', { publishedOlx: filters.publishedOlx });
   }
-  // The SQL twin of ProductService.isReady (ADR 0009): every input is NOT NULL, so the
-  // expression is never null and comparing it with false selects exactly the cards not ready.
   if (filters.ready !== undefined) {
-    query.andWhere(
-      `(product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
-        ` and exists (select 1 from product_images image where image.product_id = product.id))` +
-        ` = :ready`,
-      { ready: filters.ready },
-    );
+    query.andWhere(`(${READINESS_EXPRESSION}) = :ready`, { ready: filters.ready });
   }
 }
 
