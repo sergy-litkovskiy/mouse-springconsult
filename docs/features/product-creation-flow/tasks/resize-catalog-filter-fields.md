@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: XS
 context_budget: 2000
 blocked_by: [T35]
-blocks: []
-updated_at: "2026-09-16"
+blocks: [T23]
+updated_at: "2026-09-17"
 ---
 
 # T37 — Ширина полів у панелі фільтрів каталогу

@@ -28,6 +28,10 @@
 **Між кроками:** `pw` означає перевірку AC через `playwright-cli` на живому стеку, до
 `feature-ship`, бо той ставить `Done`. Гейт Playwright ще не спроєктований, тож поки це
 ручний прохід за AC story.
+`+обв'язка` означає пункти Checklist без поведінки (маршрут, `index.ts`, composition root):
+`/tdd` їх не робить — test-writer пише лише специфікацію й заглушки, implementer нових
+файлів не створює. Дописуєш їх окремим комітом до `feature-ship`. Тесту на «401 без
+сесії» для такого маршруту агенти не напишуть, тож перевір його смоуком.
 **Після кроку Б:** `cpr` означає `critical-path-review`, обов'язково перед мержем; `cpr?` —
 бажано.
 
@@ -44,6 +48,8 @@
    підходить. `.env.example` оновлює сама T27.
 4. **Ralph не використовуємо** (плейбук §2): неархівовані `ralph.sh` і
    `.claude/skills/ralph-prep/` у цьому плані не беруть участі.
+5. **T24 — першою.** Рішення людини, коду не чекає; веди його паралельно з T06, щоб
+   можлива нова колонка з рішення №5 потрапила в story T26 до старту поставки 2.
 
 ## Поставка 1 — картка й галерея
 
@@ -59,14 +65,14 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 |---|----|--------|--------|-----|-------|---------------|
 | 1 | T06 | Конфіг R2 і парні ліміти | `goal` | — | — | `envSchema`, compose, `Caddyfile`: поведінки під unit-тест немає. «Падає без змінної» перевір руками по одній змінній до кроку Б |
 | 2 | T07 | `ImageStorage.ts` | `goal` | смоук на живому бакеті | — | Тонкий адаптер SDK: тест на двійнику S3 перевірив би двійник. DoD прямо вимагає живий бакет |
-| 3 | T08 | `MediaService.ts` | `tdd·r` | — | — | Перевірка сигнатури вмісту є межею безпеки з ADR 0004. Story вже перелічує п'ять тест-кейсів. Крок 3 **переносить** `InvalidFile`, `FileTooLarge` і `StorageUnavailable` з `products/ProductErrors.ts` у `media/MediaErrors.ts` (аудит 2026-09-16), а не пише їх заново. Перевір, що RED не створив дублікатів |
+| 3 | T08 | `MediaService.ts` | `tdd·r` | `+обв'язка`: `media/index.ts` | — | Перевірка сигнатури вмісту є межею безпеки з ADR 0004. Story вже перелічує п'ять тест-кейсів. Крок 3 **переносить** `InvalidFile`, `FileTooLarge` і `StorageUnavailable` з `products/ProductErrors.ts` у `media/MediaErrors.ts` (аудит 2026-09-16). Перенесення тестів — робота RED: після нього implementer `*.spec.ts` не чіпає (Gate 2). Заглушка `MediaErrors.ts` поруч зі старими класами після RED — очікуваний тимчасовий дубль. На паузі `--review-tests` перевір, що випадки **перенесено**, а не скопійовано: у `ProductErrors.spec.ts` їх більше немає. Після GREEN трьох класів немає ні в `products/ProductErrors.ts`, ні в `products/index.ts`. Простіша альтернатива — перенести класи окремим комітом `refactor(media)` до `/tdd T08`, щоб RED покривав лише `MediaService` |
 | 4 | T11 | Маршрути картки | `scaf` | — | — | Обв'язка: контролер, `sessionGuard`, DTO, composition root |
 | 5 | T12 | Знести `product_images.url` | `scaf` | — | — | Міграція разом із мапінгом адреси; зачіпає й `apps/web`, тож іде **до** веб-задач, щоб не правити ті самі файли двічі |
 | 6 | T34 | Фільтр готовності в `api` | `tdd` | — | — | Поведінка під тест на реальній базі: AC-29 і таблиця узгодженості SQL-виразу з `isReady` (AC-30). Правки `openapi.yaml` і `PRD.md §5` (кроки 6–7) агенти `/tdd` не зроблять, бо правлять лише код. Внеси їх руками до кроку Б. Критичним шляхом задача не є: немає ні сесії, ні грошей, ні транзакції |
-| 7 | T15 | Головний кадр | `tdd` | — | — | XS: `image_not_found`, ідемпотентний `PUT` |
-| 8 | T14 | Приймання кадру | `tdd` | ліміт 10/11 МБ через `caddy` | `cpr?` | Поведінка в `ProductService.addImage`. Реєстрацію multipart і маршрут `/tdd` перелічить у звіті як пункти Checklist без поведінки: їх доробляєш окремим комітом до `feature-ship`. QG-1: жодного рядка без об'єкта |
-| 9 | T16 | Видалення кадру | `tdd·r` | смоук з недосяжним R2 | `cpr` | Порядок «об'єкт → рядок» тримає цілісність даних |
-| 10 | T17 | Видалення картки | `tdd·r` | — | `cpr` | Каскад і пакетне прибирання, незворотна дія |
+| 7 | T15 | Головний кадр | `tdd` | `+обв'язка`: `PUT …/main` | — | XS: `image_not_found`, ідемпотентний `PUT` |
+| 8 | T14 | Приймання кадру | `tdd` | `+обв'язка`: multipart, `POST …/images`, composition root; ліміт 10/11 МБ через `caddy` | `cpr` | Поведінка в `ProductService.addImage`. QG-1 «жодного рядка без об'єкта» — інваріант цілісності того самого класу, що й у T16, а приймання файлу — межа з ADR 0004 |
+| 9 | T16 | Видалення кадру | `tdd·r` | `+обв'язка`: `DELETE …/images/:imageId`; смоук з недосяжним R2 | `cpr` | Порядок «об'єкт → рядок» тримає цілісність даних |
+| 10 | T17 | Видалення картки | `tdd·r` | `+обв'язка`: `DELETE /:productId`, composition root | `cpr` | Каскад і пакетне прибирання, незворотна дія |
 | 11 | T18 | Клієнт API на фронті | `tdd` | — | — | Приклад із плейбука. Контроль рантаймових імпортів з `*.contract.ts` |
 | 12 | T36 | Варіанти «Всі / Так / Ні» | `tdd` | `pw` | — | XS, лише підписи `mat-option`. Тест через `MatSelectHarness` на текст і порядок. Значення не змінюються, тому збережені адреси мають відкриватись як раніше. Крок 3 (`PRD.md §5`) — руками |
 | 13 | T35 | Фільтр «Картка готова» | `tdd` | `pw` | — | Правка наявних `product-catalog.*` за взірцем `publishedProm`, нових файлів немає. `products-api.ts` не змінюється. Крок 5 (`PRD.md §5`) — руками |
@@ -74,7 +80,7 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 | 15 | T20 | Форма картки | `scaf` | `pw` | — | Нова підфіча `products/form/` з `.html`/`.css`. Zoneless-тести на AC-13 і AC-20 — у DoD, їх перевіряє `feature-ship` |
 | 16 | T21 | Секція галереї | `scaf` | `pw` із дроселем мережі | — | Нові файли секції. QG-2 (прев'ю до відповіді) видно лише на живому стеку |
 | 17 | T22 | Каталог | `tdd` | `pw` | — | Правка наявного `product-catalog` з наявним spec; 4 комбінації фільтрів. Бейдж бере `isReady` з рядка списку, тож без T34 RED впаде не на тій причині |
-| 18 | T23 | Приймання поставки 1 | `plan` | `pw` | — | `verification`: протокол у `_audit/`, дефекти оформлюються новими задачами |
+| 18 | T23 | Приймання поставки 1 | `plan` | `pw` | — | `verification`: протокол у `_audit/`, дефекти оформлюються новими задачами. Чекає й на T37 і перевіряє AC-29…AC-34 доопрацювання каталогу |
 
 **Паралельність.** Після T12 доріжки `apps/api` (T34, T15, T14, T16, T17) і `apps/web`
 (T18, T36, T35, T37, T20, T21, T22) записують різні файли. Виняток: T35 чекає на T34, тож веб-доріжка
@@ -86,9 +92,9 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 
 | # | ID | Задача | Крок А | Між | Після | Обґрунтування |
 |---|----|--------|--------|-----|-------|---------------|
-| 19 | T24 | Закрити відкриті TBD | `plan` | — | — | `decision`: вікно ліміту, статус при частковій відмові `both`, `discriminatedUnion`. **Можна будь-коли раніше**, але обов'язково до T26: рішення №5 може додати колонку |
+| 0 | T24 | Закрити відкриті TBD | `plan` | — | — | `decision`: вікно ліміту, статус при частковій відмові `both`, `discriminatedUnion`. **Робити першою**, паралельно з T06 (див. «Перш ніж почати»): рішення №5 може додати колонку, і тоді story T26 доведеться переписати — краще дізнатися це до поставки 1, а не після |
 | 20 | T25 | Черга і `worker` | `goal` | `docker compose logs -f worker`, зупинка worker не валить api | — | Інфраструктура: pg-boss, другий composition root, сервіс у compose |
-| 21 | T26 | Таблиці підготовки | `scaf` | down/up міграції | `cpr?` | Плагін знає точки реєстрації (`ENTITIES` у dependency-cruiser, `createDataSource` в обох roots). UNIQUE `idempotency_key` захищає від подвійної оплати |
+| 21 | T26 | Таблиці підготовки | `scaf` | down/up міграції | `cpr` | Плагін знає точки реєстрації (`ENTITIES` у dependency-cruiser, `createDataSource` в обох roots). UNIQUE `idempotency_key` захищає від подвійної оплати |
 | 22 | T27 | Адаптер Anthropic | `goal` **у головній сесії після скіла `claude-api`** | один живий виклик з реальним ключем | — | Правильність тут — це актуальна форма API: `output_config.format`, `web_search_20260209`, adaptive thinking. Агенти `/tdd` не мають ні `Skill`, ні `WebFetch` і писали б з пам'яті. Тести на sharp і межу в 3 кадри входять в умову `/goal` |
 | 23 | T31 | Вартість картки | `tdd` | — | — | XS: сума одним запитом, нулі замість `null` |
 | 24 | T28 | Сервіс підготовки | `tdd·r` | — | `cpr` | Серцевина фічі: AC-28 (одна транзакція), модель не пише в `products`, облік `usage` |
@@ -102,26 +108,32 @@ T26 і T27 після T25 незалежні, тож їхній порядок �
 ## Готові умови `/goal`
 
 Умова має три частини: вимірюваний стан, вивід раннера й обмеження. `node --test` друкує
-`ℹ fail N`, а не імена файлів.
+`ℹ fail N` і назви `describe`, а не імена файлів, тож на конкретний тест посилаємось
+назвою `describe`, яку умова й задає. Обмеження `git diff --stat -- '*.spec.ts'` не
+пускає цикл «лагодити» наявні тести під свій код.
+
+T07, T25 і T27 додають npm-пакети, а `node_modules` живуть в образі контейнера. Без
+перебудови образу цикл упреться в «Cannot find module» і може спробувати `npm install`
+на хості, тож порядок установки — частина умови.
 
 ```
-/goal docs/features/product-creation-flow/tasks/configure-r2-and-body-limits.md: every Checklist item is done, `docker compose run --rm api npm run test` prints "ℹ fail 0", `docker compose run --rm --no-deps api npm run typecheck` exits 0; do not commit and do not edit tracker.md
-```
-
-```
-/goal docs/features/product-creation-flow/tasks/add-image-storage-adapter.md: every Checklist item is done, `docker compose run --rm --no-deps api npm run deps:check` exits 0, `docker compose run --rm api npm run test` prints "ℹ fail 0"; do not commit and do not edit tracker.md
-```
-
-```
-/goal docs/features/product-creation-flow/tasks/add-queue-and-worker.md: every Checklist item is done, `docker compose logs worker` shows the handler subscribed, `docker compose run --rm --no-deps api npm run deps:check` exits 0, `docker compose run --rm api npm run test` prints "ℹ fail 0"; do not commit and do not edit tracker.md
-```
-
-```
-/goal docs/features/product-creation-flow/tasks/add-anthropic-adapter.md: every Checklist item is done, a test proves at most 3 frames per request and a smaller byte size after sharp, `docker compose run --rm api npm run test` prints "ℹ fail 0", `docker compose run --rm --no-deps api npm run deps:check` exits 0; do not commit and do not edit tracker.md
+/goal docs/features/product-creation-flow/tasks/configure-r2-and-body-limits.md: every Checklist item is done, `docker compose run --rm api npm run test` prints "ℹ fail 0", `docker compose run --rm --no-deps api npm run typecheck` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 ```
-/goal docs/features/product-creation-flow/tasks/resize-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved and at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0; do not commit and do not edit tracker.md
+/goal docs/features/product-creation-flow/tasks/add-image-storage-adapter.md: every Checklist item is done, `docker compose run --rm --no-deps api npm run deps:check` exits 0, `docker compose run --rm api npm run test` prints "ℹ fail 0", `git diff --stat -- '*.spec.ts'` prints nothing; install packages only with `docker compose run --rm --no-deps api npm install <pkg>` followed by `docker compose build api`, never on the host; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/add-queue-and-worker.md: every Checklist item is done, `docker compose logs worker` contains the line "worker subscribed" logged by src/worker.ts after pg-boss subscribes, `docker compose run --rm --no-deps api npm run deps:check` exits 0, `docker compose run --rm api npm run test` prints "ℹ fail 0", `git diff --stat -- '*.spec.ts'` prints nothing; install packages only with `docker compose run --rm --no-deps api npm install <pkg>` followed by `docker compose build api`, never on the host; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/add-anthropic-adapter.md: every Checklist item is done, `docker compose run --rm api npm run test` prints "ℹ fail 0" and lists passing describes "frame limit" (at most 3 frames per request) and "frame optimization" (smaller byte size after sharp), `docker compose run --rm --no-deps api npm run deps:check` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; install packages only with `docker compose run --rm --no-deps api npm install <pkg>` followed by `docker compose build api`, never on the host; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/resize-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved and at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 Хвіст `or stop after N turns` ненадійний, тож межу витрат став окремо.
@@ -136,6 +148,7 @@ T26 і T27 після T25 незалежні, тож їхній порядок �
 | `/goal` | T06, T07, T37, T25, T27 (з `claude-api`) |
 | Plan mode | T24, T23, T33 |
 | `playwright-cli` | T36, T35, T37, T20, T21, T22, T32, T23, T33 |
-| `critical-path-review` | обов'язково: T16, T17, T28, T29, T30 · бажано: T14, T26 |
+| `critical-path-review` | обов'язково: T14, T16, T17, T26, T28, T29, T30 |
+| Обв'язка окремим комітом після `/tdd` | T08, T14, T15, T16, T17 |
 | `feature-ship` | усі, крім T23, T24, T33 |
 | Ручні правки документів до кроку Б | T34 (`openapi.yaml`, `PRD.md`), T35, T36, T37 (`PRD.md`) |

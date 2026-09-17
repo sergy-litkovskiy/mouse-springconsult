@@ -7,9 +7,9 @@ gate_profile: verification
 owner: "Serhii"
 estimate: S
 context_budget: 1700
-blocked_by: [T14, T15, T16, T17, T18, T19, T20, T21, T22]
+blocked_by: [T14, T15, T16, T17, T18, T19, T20, T21, T22, T37]
 blocks: [T25]
-updated_at: "2026-09-05"
+updated_at: "2026-09-17"
 ---
 
 # T23 — Приймання поставки 1
@@ -74,7 +74,7 @@ updated_at: "2026-09-05"
 2. **QG-2.** На дроселі мережі перевірити, що превʼю зʼявляється до відповіді і форма не блокується.
 3. **Межі вводу.** Одинадцятий кадр відхиляється; файл 10 МБ проходить, 11 МБ — кодом, а не обривом. Обидва боки пари лімітів: через `api` напряму й через `caddy`.
 4. **Міграція.** `db:migrate` вниз і вгору на копії бази **з даними**.
-5. **Наскрізний прохід AC** поставки 1: AC-01, AC-02, AC-03, AC-07, AC-09, AC-12, AC-13, AC-15, AC-19, AC-20 плюс AC-16, AC-17, AC-18 з [T01](align-prd-with-architecture.md).
+5. **Наскрізний прохід AC** поставки 1: AC-01, AC-02, AC-03, AC-07, AC-09, AC-12, AC-13, AC-15, AC-19, AC-20 плюс AC-16, AC-17, AC-18 з [T01](align-prd-with-architecture.md) і AC-29…AC-34 доопрацювання каталогу з [T34](add-readiness-list-filter.md)–[T37](resize-catalog-filter-fields.md).
 6. **Каталог, p95 ≤ 500 ms** — двадцять карток, 20 повторів, тривалість запиту з pino-логів.
 
 ## Out of scope
