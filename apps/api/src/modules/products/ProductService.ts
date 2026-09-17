@@ -86,7 +86,14 @@ export class ProductService {
 
   /** The object goes to storage before the row is written: a failed upload leaves no frame without a file. */
   async addImage(productId: string, bytes: Uint8Array): Promise<ProductImage> {
-    const count = await this.products.countImages(productId);
+    // Looked up before storage is touched: a card that does not exist would otherwise leave an
+    // object behind in R2 and fail on the foreign key only after that.
+    const product = await this.products.findById(productId);
+    if (product === null) {
+      throw new ProductNotFound(productId);
+    }
+
+    const count = product.images.length;
     if (count >= productConstraints.maxImagesPerProduct) {
       throw new GalleryFull();
     }
