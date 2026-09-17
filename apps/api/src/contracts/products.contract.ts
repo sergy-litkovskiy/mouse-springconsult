@@ -82,22 +82,14 @@ export const productListQuerySchema = z.object({
   category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
   publishedProm: booleanFlag.optional(),
   publishedOlx: booleanFlag.optional(),
+  /** The derived readiness of the card, the same predicate as `isReady` (ADR 0009). */
+  ready: booleanFlag.optional(),
 
   sort: z.enum(productSortFields).default(productSortDefaults.field),
   direction: z.enum(productSortDirections).default(productSortDefaults.direction),
 });
 
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
-
-export const productListSchema = z.object({
-  items: z.array(productSchema),
-  /** Total number of rows matching the filters, not the size of the page. */
-  total: z.int().nonnegative(),
-  page: z.int().positive(),
-  pageSize: z.int().positive(),
-});
-
-export type ProductList = z.infer<typeof productListSchema>;
 
 /**
  * The bounds are the ones the column already declares, so a value the schema lets through
@@ -157,6 +149,16 @@ export const productCardSchema = productSchema.extend({
 });
 
 export type ProductCard = z.infer<typeof productCardSchema>;
+
+export const productListSchema = z.object({
+  items: z.array(productCardSchema),
+  /** Total number of rows matching the filters, not the size of the page. */
+  total: z.int().nonnegative(),
+  page: z.int().positive(),
+  pageSize: z.int().positive(),
+});
+
+export type ProductList = z.infer<typeof productListSchema>;
 
 export const productUpdateResponseSchema = productCardSchema.extend({
   /**

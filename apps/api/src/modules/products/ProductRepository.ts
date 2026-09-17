@@ -89,6 +89,16 @@ function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilter
   if (filters.publishedOlx !== undefined) {
     query.andWhere('product.publishedOlx = :publishedOlx', { publishedOlx: filters.publishedOlx });
   }
+  // The SQL twin of ProductService.isReady (ADR 0009): every input is NOT NULL, so the
+  // expression is never null and comparing it with false selects exactly the cards not ready.
+  if (filters.ready !== undefined) {
+    query.andWhere(
+      `(product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
+        ` and exists (select 1 from product_images image where image.product_id = product.id))` +
+        ` = :ready`,
+      { ready: filters.ready },
+    );
+  }
 }
 
 export class ProductRepository {
