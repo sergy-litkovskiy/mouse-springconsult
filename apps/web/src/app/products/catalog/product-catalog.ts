@@ -138,6 +138,9 @@ export class ProductCatalog {
   readonly publishedOlx = input<boolean | undefined, string | undefined>(undefined, {
     transform: toPublishedFilter,
   });
+  readonly ready = input<boolean | undefined, string | undefined>(undefined, {
+    transform: toPublishedFilter,
+  });
 
   /**
    * Apart from paging and ordering, because the form mirrors these and only these: a click on
@@ -152,6 +155,7 @@ export class ProductCatalog {
     category: this.category(),
     publishedProm: this.publishedProm(),
     publishedOlx: this.publishedOlx(),
+    ready: this.ready(),
   }));
 
   private readonly query = computed<ProductListQuery>(() => ({
@@ -207,6 +211,7 @@ export class ProductCatalog {
       // '' means "not asked about", which is not the same as "not published there".
       publishedProm: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
       publishedOlx: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
+      ready: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
     },
     // The bounds are wrong as a pair, not one at a time, so the rule belongs to the group.
     { validators: [priceRange] },
@@ -237,6 +242,7 @@ export class ProductCatalog {
         category: applied.category ?? '',
         publishedProm: publishedControlValue(applied.publishedProm),
         publishedOlx: publishedControlValue(applied.publishedOlx),
+        ready: publishedControlValue(applied.ready),
       });
     });
   }
@@ -261,6 +267,7 @@ export class ProductCatalog {
         category: asQueryParam(value.category),
         publishedProm: value.publishedProm === '' ? null : value.publishedProm,
         publishedOlx: value.publishedOlx === '' ? null : value.publishedOlx,
+        ready: value.ready === '' ? null : value.ready,
       },
     });
   }

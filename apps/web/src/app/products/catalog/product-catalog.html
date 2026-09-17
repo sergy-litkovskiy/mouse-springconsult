@@ -64,6 +64,15 @@
         </mat-select>
       </mat-form-field>
 
+      <mat-form-field appearance="outline">
+        <mat-label>Картка готова</mat-label>
+        <mat-select formControlName="ready">
+          <mat-option value="">Всі</mat-option>
+          <mat-option value="true">Так</mat-option>
+          <mat-option value="false">Ні</mat-option>
+        </mat-select>
+      </mat-form-field>
+
       <div class="filters__actions">
         <button matButton="filled" type="submit" [disabled]="loading()">Застосувати</button>
         <button matButton type="button" (click)="resetFilters()" [disabled]="loading()">
