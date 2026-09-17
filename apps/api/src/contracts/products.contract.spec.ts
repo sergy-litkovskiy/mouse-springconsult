@@ -134,9 +134,8 @@ describe('product list response contract', () => {
 describe('product write contracts', () => {
   const newCard = { titleProm: 'Миша', titleOlx: 'Миша', category: 'Периферія' };
 
-  it('requires of a new card exactly the columns that have no default', () => {
-    // title_prom, title_olx and category are NOT NULL without a default; everything else
-    // the table fills in, so the schema fills it in the same way.
+  it('fills in a new card the way the column defaults do', () => {
+    // Every column of `products` has a default, so the schema fills in each field the same way.
     const parsed = productCreateSchema.parse(newCard);
 
     assert.equal(parsed.descriptionProm, '');
@@ -146,11 +145,22 @@ describe('product write contracts', () => {
     assert.equal(parsed.condition, 'used');
   });
 
-  it('refuses a card without a title or with one that is only whitespace', () => {
-    assert.equal(
-      productCreateSchema.safeParse({ ...newCard, titleProm: undefined }).success,
-      false,
-    );
+  it('accepts an empty body for a new card and leaves its titles and category empty (AC-35)', () => {
+    const parsed = productCreateSchema.parse({});
+
+    assert.deepEqual(parsed, {
+      titleProm: '',
+      titleOlx: '',
+      category: '',
+      descriptionProm: '',
+      descriptionOlx: '',
+      price: '0.00',
+      seoKeywords: [],
+      condition: 'used',
+    });
+  });
+
+  it('refuses a title or category that is given but blank', () => {
     assert.equal(productCreateSchema.safeParse({ ...newCard, titleProm: '   ' }).success, false);
     assert.equal(productCreateSchema.safeParse({ ...newCard, category: '' }).success, false);
     assert.equal(productUpdateSchema.safeParse({ titleOlx: '  ' }).success, false);

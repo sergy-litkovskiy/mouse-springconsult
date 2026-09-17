@@ -5,6 +5,7 @@ import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import type {
   ProductList,
   ProductImage as ProductImageResponse,
+  ProductUpdateResponse,
 } from '../../contracts/products.contract.ts';
 import multipart from '@fastify/multipart';
 import { config } from '../../config.ts';
@@ -13,7 +14,11 @@ import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.t
 import type { Product, ProductPage } from './Product.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
-import { ProductRepository, type ProductListCriteria } from './ProductRepository.ts';
+import {
+  ProductRepository,
+  type ProductDraft,
+  type ProductListCriteria,
+} from './ProductRepository.ts';
 import { ProductService } from './ProductService.ts';
 
 /** The DataSource is never reached: every repository method the routes call is overridden. */
@@ -244,6 +249,81 @@ describe('product controller: main frame without a session', () => {
     const response = await app.inject({ method: 'PUT', url: mainUrl(READY_ID, frame) });
 
     assert.equal(response.statusCode, 401);
+  });
+});
+
+const CREATED_ID = '01931f2a-3333-7000-8000-000000000003';
+
+/** What `products` declares as column defaults: the row an insert of nothing produces. */
+const EMPTY_CARD: Product = {
+  id: CREATED_ID,
+  titleProm: '',
+  descriptionProm: '',
+  titleOlx: '',
+  descriptionOlx: '',
+  price: '0.00',
+  seoKeywords: [],
+  category: '',
+  publishedProm: false,
+  publishedOlx: false,
+  condition: 'used',
+  createdAt: new Date('2026-09-17T10:00:00.000Z'),
+  updatedAt: new Date('2026-09-17T10:00:00.000Z'),
+  images: [],
+};
+
+class CreateRepository extends StubProductRepository {
+  override async create(draft: ProductDraft): Promise<Product> {
+    const created: Product = { ...EMPTY_CARD, ...draft };
+    this.cards.push(created);
+    return created;
+  }
+}
+
+describe('product controller: create', () => {
+  let app: FastifyInstance;
+
+  before(async () => {
+    const service = new ProductService(new CreateRepository(), NO_MEDIA);
+    app = Fastify();
+    new ProductController(service, 'https://images.example.com').register(app, async () => {
+      // Lets every request through: the session is not what this spec is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  it('answers 201 with an empty card for an empty body, ready to take a frame (AC-35)', async () => {
+    const response = await app.inject({ method: 'POST', url: '/', payload: {} });
+    const body = response.json<ProductUpdateResponse>();
+
+    assert.equal(response.statusCode, 201);
+    assert.equal(body.id, CREATED_ID);
+    assert.deepEqual(
+      {
+        titleProm: body.titleProm,
+        titleOlx: body.titleOlx,
+        descriptionProm: body.descriptionProm,
+        descriptionOlx: body.descriptionOlx,
+        category: body.category,
+        price: body.price,
+        images: body.images,
+        isReady: body.isReady,
+      },
+      {
+        titleProm: '',
+        titleOlx: '',
+        descriptionProm: '',
+        descriptionOlx: '',
+        category: '',
+        price: '0.00',
+        images: [],
+        isReady: false,
+      },
+    );
   });
 });
 

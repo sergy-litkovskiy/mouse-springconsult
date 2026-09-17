@@ -328,9 +328,31 @@ describe('product repository (postgres)', () => {
     }
   });
 
+  it('leaves a card without a title out of the ready ones, as isReady does (AC-36)', async () => {
+    const withoutPromTitle = await seedProduct({ titleProm: '' });
+    const withoutOlxTitle = await seedProduct({ titleOlx: '' });
+    const service = new ProductService(products, NO_MEDIA);
+    for (const id of [withoutPromTitle, withoutOlxTitle]) {
+      await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+    }
+
+    const readyIds = (
+      await products.list({ ...BASE_CRITERIA, filters: { ready: true } })
+    ).items.map((p) => p.id);
+    const notReadyIds = (
+      await products.list({ ...BASE_CRITERIA, filters: { ready: false } })
+    ).items.map((p) => p.id);
+
+    assert.deepEqual(readyIds, []);
+    assert.deepEqual(notReadyIds.sort(), [withoutPromTitle, withoutOlxTitle].sort());
+    for (const id of [withoutPromTitle, withoutOlxTitle]) {
+      assert.equal(service.isReady(must(await products.findById(id), id)), false, id);
+    }
+  });
+
   it('creates a card the database can identify before it has texts, price or frames', async () => {
-    // The three columns without a default are the whole of what a caller must supply:
-    // an R2 key is products/{id}/…, so the id has to exist before a frame does.
+    // Everything a caller leaves out the table fills in: an R2 key is products/{id}/…, so the id
+    // has to exist before a frame does.
     const created = await products.create({
       titleProm: 'Порожня картка',
       titleOlx: 'Порожня картка',

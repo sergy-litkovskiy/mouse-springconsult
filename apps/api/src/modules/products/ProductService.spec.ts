@@ -384,6 +384,18 @@ describe('product service: readiness', () => {
     assert.equal(service.isReady(readyCard({ images: [] })), false);
   });
 
+  it('does not treat a card without a Prom title as ready (AC-36)', () => {
+    const { service } = setup();
+
+    assert.equal(service.isReady(readyCard({ titleProm: '' })), false);
+  });
+
+  it('does not treat a card without an OLX title as ready (AC-36)', () => {
+    const { service } = setup();
+
+    assert.equal(service.isReady(readyCard({ titleOlx: '' })), false);
+  });
+
   it('reads a card together with its derived readiness (AC-15)', async () => {
     const { service, repository } = setup();
 
