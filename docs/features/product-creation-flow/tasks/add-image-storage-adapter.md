@@ -1,15 +1,15 @@
 ---
 id: T07
 title: "ImageStorage.ts — адаптер R2 через S3 API"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1400
+context_budget: 1700
 blocked_by: [T06]
 blocks: [T08]
-updated_at: "2026-09-05"
+updated_at: "2026-09-17"
 ---
 
 # T07 — `ImageStorage.ts` — адаптер R2 через S3 API
@@ -78,13 +78,20 @@ updated_at: "2026-09-05"
 - Складання публічної адреси з ключа — [T12](drop-product-image-url.md): це мапінг у DTO, не робота сховища.
 - Власний цикл повторів — свідомо немає ([sad.md §9](../sad.md#9-architecture-decisions), «Рішення, свідомо лишені inline»).
 
+Уточнення 2026-09-17: `StorageUnavailable`, який кидає адаптер, перенесено з `products` у
+`media/MediaErrors.ts` окремим комітом `refactor(media)` до цієї задачі. Це простіша
+альтернатива з плану виконання для кроку 3 [T08](add-media-service.md): без неї `media`
+імпортував би `products`, і замкнувся б цикл.
+
 ## DoD
 
-- [ ] `@aws-sdk/client-s3` не згадується в жодному файлі, крім `ImageStorage.ts` — перевірено `deps:check`.
-- [ ] `media` не імпортує `products` у жодному напрямку — `deps:check` зелений.
-- [ ] Повторне видалення того самого ключа не кидає — перевірено проти живого бакета, не на двійнику.
-- [ ] Ключі R2 не потрапляють у лог у жодній гілці ([CLAUDE.md](../../../../CLAUDE.md), «Логи»).
-- [ ] Коміт: `feat(media): add the R2 image storage adapter`.
+- [x] `@aws-sdk/client-s3` не згадується в жодному файлі, крім `ImageStorage.ts` — перевірено `deps:check`: правило `s3-sdk-stays-in-image-storage` у `.dependency-cruiser.cjs` відхиляє імпорт SDK з будь-якого іншого файлу (перевірено навмисним порушенням).
+- [x] `media` не імпортує `products` у жодному напрямку — `deps:check` зелений.
+- [x] Повторне видалення того самого ключа не кидає — перевірено проти живого бакета, не на двійнику.
+  Смоук 2026-09-17: `put` → публічне читання 200 → `delete` двічі → `deleteMany` двічі → 404;
+  недосяжний хост і хибні ключі дають `StorageUnavailable`.
+- [x] Ключі R2 не потрапляють у лог у жодній гілці ([CLAUDE.md](../../../../CLAUDE.md), «Логи»).
+- [x] Коміт: `feat(media): add the R2 image storage adapter`.
 
 ## Links
 

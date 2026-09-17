@@ -28,8 +28,8 @@ stage: "13"
 | T04 | [Межа розміру кадру й типи](add-upload-limits-contract.md) | Done | — | XS | Serhii | — |
 | T05 | [Схеми запису картки](add-product-write-contracts.md) | Done | T04 | S | Serhii | — |
 | T06 | [Конфіг R2 і парні ліміти тіла](configure-r2-and-body-limits.md) | Done | T04 | S | Serhii | — |
-| T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Todo | T06 | S | Serhii | — |
-| T08 | [`MediaService.ts`](add-media-service.md) | Blocked | T03, T04, T07 | S | Serhii | — |
+| T07 | [`ImageStorage.ts`](add-image-storage-adapter.md) | Done | T06 | S | Serhii | — |
+| T08 | [`MediaService.ts`](add-media-service.md) | Todo | T03, T04, T07 | S | Serhii | — |
 | T09 | [Репозиторій запису картки](add-product-write-repository.md) | Done | — | S | Serhii | — |
 | T10 | [Сервіс картки](add-product-card-service.md) | Done | T03, T09 | S | Serhii | — |
 | T11 | [Маршрути картки](add-product-card-routes.md) | Todo | T05, T10 | S | Serhii | — |
@@ -72,8 +72,9 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T07, T11, T18, T24, T34, T36 — жодної незакритої залежності. T06 закрито 2026-09-17: вона
-розблокувала T07, а T12 чекає ще й на T11. T34 і T36 — доопрацювання
+T08, T11, T18, T24, T34, T36 — жодної незакритої залежності. T06 закрито 2026-09-17: вона
+розблокувала T07, а T12 чекає ще й на T11. T07 закрито того ж дня й розблокувала T08; T16 і T17
+чекають ще й на T08. T34 і T36 — доопрацювання
 каталогу з запиту 2026-09-16; T23 тепер чекає й на T37, бо перевіряє AC-29…AC-34, а T22 — на T34. T24 не залежить від коду поставки 1
 і може вестись паралельно з усією нею. T10 закрито 2026-09-12, і T11 лишився без
 незакритих блокерів — T05 було закрито ще 2026-09-09. T19 закрито 2026-09-12, але це не

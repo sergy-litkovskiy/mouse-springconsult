@@ -48,6 +48,18 @@ export const config = {
     global: { max: 300, timeWindowMs: 60 * 1000 },
   },
 
+  storage: {
+    /**
+     * The S3 client's own retries are the only ones (sad.md §9): the attempts and the per-attempt
+     * timeout together have to fit inside `http.requestTimeoutMs`.
+     */
+    maxAttempts: 3,
+    connectionTimeoutMs: 2_000,
+    requestTimeoutMs: 4_000,
+    /** DeleteObjects accepts at most this many keys per call. */
+    deleteBatchSize: 1_000,
+  },
+
   db: {
     poolSize: 10,
     connectTimeoutMs: 10_000,
