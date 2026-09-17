@@ -6,6 +6,7 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ProductNotFound } from './ProductErrors.ts';
+import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
   ProductListCriteria,
@@ -76,6 +77,10 @@ export class ProductService {
     }
 
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
+  }
+
+  async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
+    throw new Error('Not implemented');
   }
 
   /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ProductNotFound } from './ProductErrors.ts';
+import { ImageNotFound, ProductNotFound } from './ProductErrors.ts';
+import type { ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
   type ProductChanges,
@@ -94,6 +95,25 @@ class StubProductRepository extends ProductRepository {
   override async update(id: string, changes: ProductChanges): Promise<Product | null> {
     this.lastChanges = changes;
     return this.stored?.id === id ? this.stored : null;
+  }
+
+  override async findImage(productId: string, imageId: string): Promise<ProductImage | null> {
+    return this.galleryOf(productId).find((image) => image.id === imageId) ?? null;
+  }
+
+  override async setMainImage(productId: string, imageId: string): Promise<boolean> {
+    const gallery = this.galleryOf(productId);
+    if (!gallery.some((image) => image.id === imageId)) {
+      return false;
+    }
+    for (const image of gallery) {
+      image.isMain = image.id === imageId;
+    }
+    return true;
+  }
+
+  private galleryOf(productId: string): ProductImage[] {
+    return this.stored?.id === productId ? this.stored.images : [];
   }
 }
 
@@ -264,5 +284,65 @@ describe('product service: readiness', () => {
 
     assert.deepEqual(saved.product, readyCard({ price: '0.00' }));
     assert.equal(saved.isReady, false);
+  });
+});
+
+const FRONT_ID = '01931f2a-2222-7000-8000-000000000001';
+const BACK_ID = '01931f2a-2222-7000-8000-000000000002';
+const FOREIGN_IMAGE_ID = '01931f2a-2222-7000-8000-000000000099';
+
+/** Two frames, the front one main: the state AC-03 starts from. */
+function twoFrameCard(): Product {
+  return readyCard({
+    images: [
+      {
+        id: FRONT_ID,
+        productId: CARD_ID,
+        r2Key: `products/${CARD_ID}/front.jpg`,
+        position: 0,
+        isMain: true,
+      },
+      {
+        id: BACK_ID,
+        productId: CARD_ID,
+        r2Key: `products/${CARD_ID}/back.jpg`,
+        position: 1,
+        isMain: false,
+      },
+    ],
+  });
+}
+
+function mainFlags(gallery: readonly ProductImage[]): Record<string, boolean> {
+  return Object.fromEntries(gallery.map((image) => [image.id, image.isMain]));
+}
+
+describe('product service: main frame', () => {
+  it('makes the chosen frame the only main one and returns the whole gallery (AC-03)', async () => {
+    const { service, repository } = setup();
+    repository.stored = twoFrameCard();
+
+    const gallery = await service.setMainImage(CARD_ID, BACK_ID);
+
+    assert.deepEqual(mainFlags(gallery), { [FRONT_ID]: false, [BACK_ID]: true });
+  });
+
+  it('gives the same gallery when the frame that is already main is chosen again', async () => {
+    const { service, repository } = setup();
+    repository.stored = twoFrameCard();
+
+    const first = await service.setMainImage(CARD_ID, FRONT_ID);
+    const second = await service.setMainImage(CARD_ID, FRONT_ID);
+
+    assert.deepEqual(mainFlags(first), { [FRONT_ID]: true, [BACK_ID]: false });
+    assert.deepEqual(second, first);
+  });
+
+  it('refuses a frame that does not belong to the card', async () => {
+    const { service, repository } = setup();
+    repository.stored = twoFrameCard();
+
+    await assert.rejects(service.setMainImage(CARD_ID, FOREIGN_IMAGE_ID), ImageNotFound);
+    assert.deepEqual(mainFlags(repository.stored.images), { [FRONT_ID]: true, [BACK_ID]: false });
   });
 });

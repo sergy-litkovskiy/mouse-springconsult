@@ -9,6 +9,7 @@ import {
   type ProductChanges,
   type ProductListCriteria,
 } from './ProductRepository.ts';
+import { ImageNotFound } from './ProductErrors.ts';
 import { ProductService } from './ProductService.ts';
 
 /**
@@ -569,5 +570,51 @@ describe('product repository (postgres)', () => {
     assert.equal(await products.deleteImage(imageId), true);
     assert.equal(await products.findImage(id, imageId), null);
     assert.equal(await products.deleteImage(imageId), false);
+  });
+
+  async function mainFramesOf(productId: string): Promise<string[]> {
+    const rows = await dataSource.getRepository(ProductImage).findBy({ productId, isMain: true });
+    return rows.map((row) => row.id);
+  }
+
+  it('leaves exactly one main frame in the database, the chosen one (AC-03)', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    const chosen = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    await new ProductService(products).setMainImage(id, chosen);
+
+    assert.deepEqual(await mainFramesOf(id), [chosen]);
+  });
+
+  it('keeps the same single main frame when it is chosen again', async () => {
+    const id = await seedProduct();
+    const main = await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+    const service = new ProductService(products);
+
+    const first = await service.setMainImage(id, main);
+    const second = await service.setMainImage(id, main);
+
+    assert.deepEqual(second, first);
+    assert.deepEqual(await mainFramesOf(id), [main]);
+  });
+
+  it('refuses a frame of another card and leaves both galleries as they were', async () => {
+    const id = await seedProduct();
+    const other = await seedProduct({ titleProm: 'Інша картка' });
+    const main = await seedImage(id, { position: 0, isMain: true });
+    const foreignImage = await seedImage(other, {
+      position: 0,
+      r2Key: `products/${other}/first.jpg`,
+    });
+
+    await assert.rejects(
+      new ProductService(products).setMainImage(id, foreignImage),
+      ImageNotFound,
+    );
+
+    assert.deepEqual(await mainFramesOf(id), [main]);
+    assert.deepEqual(await mainFramesOf(other), []);
   });
 });
