@@ -408,6 +408,73 @@ describe('product repository (postgres)', () => {
     assert.equal(await products.findById(id), null);
   });
 
+  it('removes the objects under the card lock, then the card with its frames', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+    const removed: string[][] = [];
+
+    const deleted = await products.deleteWithObjects(id, async (keys) => {
+      removed.push([...keys].sort());
+    });
+
+    assert.equal(deleted, true);
+    assert.deepEqual(removed, [[`products/${id}/original.jpg`, `products/${id}/second.jpg`]]);
+    assert.equal(await dataSource.getRepository(ProductImage).countBy({ productId: id }), 0);
+    assert.equal(await products.findById(id), null);
+  });
+
+  it('keeps the card and its frames when removing the objects fails', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    const failure = new Error('storage is down');
+
+    await assert.rejects(
+      products.deleteWithObjects(id, async () => {
+        throw failure;
+      }),
+      (error) => error === failure,
+    );
+
+    assert.equal((await products.findById(id))?.images.length, 1);
+  });
+
+  it('reports a missing card without asking to remove any object', async () => {
+    let called = false;
+
+    const deleted = await products.deleteWithObjects(MISSING_ID, async () => {
+      called = true;
+    });
+
+    assert.equal(deleted, false);
+    assert.equal(called, false);
+  });
+
+  it('makes a frame added during the deletion wait, so no row outlives its listed object', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    let release: () => void = () => undefined;
+    const removalHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let adding: Promise<unknown> | undefined;
+
+    const deleting = products.deleteWithObjects(id, async () => {
+      adding = products.addImage(id, `products/${id}/late.jpg`, 10).then(
+        () => 'added',
+        () => 'refused',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      release();
+      await removalHeld;
+    });
+
+    assert.equal(await deleting, true);
+    // The addition waited for the lock and found the card gone: its object is the caller's to discard.
+    assert.equal(await adding, 'refused');
+    assert.equal(await dataSource.getRepository(ProductImage).countBy({ productId: id }), 0);
+  });
+
   it('reports a missing card on delete instead of pretending it removed one', async () => {
     assert.equal(await products.delete(MISSING_ID), false);
   });

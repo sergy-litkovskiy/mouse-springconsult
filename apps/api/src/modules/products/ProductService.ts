@@ -142,14 +142,12 @@ export class ProductService {
     await this.products.deleteImage(imageId);
   }
 
-  /**
-   * The objects go before the row (ADR 0012): if storage fails, the card and its frames stay. A card
-   * that does not exist has no keys, so the batch is empty and the missing row is what reports it.
-   */
+  /** The objects go before the row (ADR 0012): if storage fails, the card and its frames stay. */
   async deleteProduct(productId: string): Promise<void> {
-    const keys = await this.products.findImageKeys(productId);
-    await this.media.removeMany(keys);
-    if (!(await this.products.delete(productId))) {
+    const deleted = await this.products.deleteWithObjects(productId, (keys) =>
+      this.media.removeMany(keys),
+    );
+    if (!deleted) {
       throw new ProductNotFound(productId);
     }
   }

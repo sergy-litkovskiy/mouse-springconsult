@@ -212,6 +212,36 @@ export class ProductRepository {
     });
   }
 
+  /**
+   * Takes the same lock on the card row as `addImage`: without it a frame added between reading the
+   * keys and deleting the card would lose its row to the cascade while its object stays in R2.
+   * `removeObjects` runs under that lock and before the row goes (ADR 0012), so a failure there
+   * rolls nothing back because nothing was deleted yet. `false` means there is no such card.
+   */
+  async deleteWithObjects(
+    id: string,
+    removeObjects: (keys: string[]) => Promise<void>,
+  ): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const card = await manager
+        .getRepository(Product)
+        .createQueryBuilder('product')
+        .setLock('pessimistic_write')
+        .where('product.id = :id', { id })
+        .getOne();
+      if (card === null) {
+        return false;
+      }
+
+      const images = await manager
+        .getRepository(ProductImage)
+        .find({ where: { productId: id }, select: { r2Key: true } });
+      await removeObjects(images.map((image) => image.r2Key));
+      await manager.getRepository(Product).delete({ id });
+      return true;
+    });
+  }
+
   async countImages(productId: string): Promise<number> {
     return this.dataSource.getRepository(ProductImage).countBy({ productId });
   }

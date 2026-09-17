@@ -178,6 +178,18 @@ class StubProductRepository extends ProductRepository {
     return true;
   }
 
+  /** Mirrors the repository: the keys, then the removal, then the card — nothing after a failure. */
+  override async deleteWithObjects(
+    id: string,
+    removeObjects: (keys: string[]) => Promise<void>,
+  ): Promise<boolean> {
+    if (!(await this.findById(id).then((product) => product !== null))) {
+      return false;
+    }
+    await removeObjects(await this.findImageKeys(id));
+    return this.delete(id);
+  }
+
   private galleryOf(productId: string): ProductImage[] {
     return this.stored?.id === productId ? this.stored.images : [];
   }
