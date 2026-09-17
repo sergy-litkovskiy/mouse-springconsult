@@ -84,7 +84,10 @@ export class ProductService {
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
 
-  /** The object goes to storage before the row is written: a failed upload leaves no frame without a file. */
+  /**
+   * The object goes to storage before the row is written: a failed upload leaves no frame without
+   * a file. The reverse — a file without a frame — is cleaned up here when the row cannot be written.
+   */
   async addImage(productId: string, bytes: Uint8Array): Promise<ProductImage> {
     // Looked up before storage is touched: a card that does not exist would otherwise leave an
     // object behind in R2 and fail on the foreign key only after that.
@@ -93,13 +96,36 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    const count = product.images.length;
-    if (count >= productConstraints.maxImagesPerProduct) {
+    // Spares the upload for a gallery that is plainly full; the repository decides for real.
+    if (product.images.length >= productConstraints.maxImagesPerProduct) {
       throw new GalleryFull();
     }
 
     const key = await this.media.store(bytes, `products/${productId}/${randomUUID()}`);
-    return this.products.addImage(productId, key, count, count === 0);
+    let image: ProductImage | null;
+    try {
+      image = await this.products.addImage(productId, key, productConstraints.maxImagesPerProduct);
+    } catch (error) {
+      await this.discardObject(key);
+      throw error;
+    }
+    if (image === null) {
+      await this.discardObject(key);
+      throw new GalleryFull();
+    }
+    return image;
+  }
+
+  /**
+   * Best effort: the failure that led here is the one the caller has to hear about, and an object
+   * nobody references costs storage, not correctness.
+   */
+  private async discardObject(key: string): Promise<void> {
+    try {
+      await this.media.remove(key);
+    } catch {
+      // Deliberately swallowed — see above.
+    }
   }
 
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {

@@ -179,14 +179,37 @@ export class ProductRepository {
     return (result.affected ?? 0) > 0;
   }
 
+  /**
+   * The ceiling, the position and the main flag are all read from the gallery, so they are decided
+   * under a lock on the card row: two uploads at once would otherwise read the same gallery, and
+   * the second would break `product_images_position_key` or `product_images_main_key`, or slip past
+   * the ceiling. The position follows the highest one rather than the count — a deleted frame
+   * leaves a gap. `null` means the gallery is already full.
+   */
   async addImage(
     productId: string,
     r2Key: string,
-    position: number,
-    isMain = false,
-  ): Promise<ProductImage> {
-    const repository = this.dataSource.getRepository(ProductImage);
-    return repository.save(repository.create({ productId, r2Key, position, isMain }));
+    maxImages: number,
+  ): Promise<ProductImage | null> {
+    return this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(Product)
+        .createQueryBuilder('product')
+        .setLock('pessimistic_write')
+        .where('product.id = :productId', { productId })
+        .getOne();
+
+      const images = manager.getRepository(ProductImage);
+      const gallery = await images.find({ where: { productId }, select: { position: true } });
+      if (gallery.length >= maxImages) {
+        return null;
+      }
+
+      const position = gallery.reduce((next, image) => Math.max(next, image.position + 1), 0);
+      return images.save(
+        images.create({ productId, r2Key, position, isMain: gallery.length === 0 }),
+      );
+    });
   }
 
   async countImages(productId: string): Promise<number> {

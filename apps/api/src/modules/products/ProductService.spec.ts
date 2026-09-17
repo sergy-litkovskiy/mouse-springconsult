@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
@@ -118,18 +119,31 @@ class StubProductRepository extends ProductRepository {
     return this.galleryOf(productId).length;
   }
 
+  lastMaxImages: number | undefined;
+  /** Stands for a gallery that another request filled between the service's check and the insert. */
+  fullOnInsert = false;
+  insertFailure: Error | undefined;
+
+  /** Mirrors the repository's rules; the real ones run against Postgres in its own spec. */
   override async addImage(
     productId: string,
     r2Key: string,
-    position: number,
-    isMain?: boolean,
-  ): Promise<ProductImage> {
+    maxImages: number,
+  ): Promise<ProductImage | null> {
+    this.lastMaxImages = maxImages;
+    if (this.insertFailure !== undefined) {
+      throw this.insertFailure;
+    }
+    const gallery = this.galleryOf(productId);
+    if (this.fullOnInsert || gallery.length >= maxImages) {
+      return null;
+    }
     const image: ProductImage = {
       id: `01931f2a-2222-7000-8000-${String(this.addedImages.length + 100).padStart(12, '0')}`,
       productId,
       r2Key,
-      position,
-      isMain: isMain ?? false,
+      position: gallery.reduce((next, frame) => Math.max(next, frame.position + 1), 0),
+      isMain: gallery.length === 0,
     };
     this.addedImages.push(image);
     this.galleryOf(productId).push(image);
@@ -146,6 +160,7 @@ const NO_STORAGE = undefined as unknown as ImageStorage;
 
 class RecordingMediaService extends MediaService {
   readonly stored: { bytes: Uint8Array; key: string }[] = [];
+  readonly removed: string[] = [];
   failure: Error | undefined;
 
   constructor() {
@@ -158,6 +173,10 @@ class RecordingMediaService extends MediaService {
     }
     this.stored.push({ bytes, key });
     return key;
+  }
+
+  override async remove(key: string): Promise<void> {
+    this.removed.push(key);
   }
 }
 
@@ -484,6 +503,34 @@ describe('product service: adding a frame', () => {
     assert.equal(media.stored.length, 0);
     assert.equal(repository.addedImages.length, 0);
     assert.deepEqual(repository.stored.images, cardWithFrames(10).images);
+  });
+
+  it('hands the gallery ceiling to the repository, which decides under a lock (AC-02)', async () => {
+    const { service, repository } = setup();
+    repository.stored = twoFrameCard();
+
+    await service.addImage(CARD_ID, JPEG);
+
+    assert.equal(repository.lastMaxImages, productConstraints.maxImagesPerProduct);
+  });
+
+  it('removes the stored object when the gallery filled up meanwhile (AC-02)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+    repository.fullOnInsert = true;
+
+    await assert.rejects(service.addImage(CARD_ID, JPEG), GalleryFull);
+    assert.deepEqual(media.removed, [media.stored[0]?.key]);
+  });
+
+  it('removes the stored object and reports the original failure when the row cannot be written', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+    const failure = new Error('connection terminated');
+    repository.insertFailure = failure;
+
+    await assert.rejects(service.addImage(CARD_ID, JPEG), (error) => error === failure);
+    assert.deepEqual(media.removed, [media.stored[0]?.key]);
   });
 
   it('writes no frame row when storage is unavailable (DoD, QG-1)', async () => {

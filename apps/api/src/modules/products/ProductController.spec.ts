@@ -267,18 +267,14 @@ class RecordingImageStorage extends ImageStorage {
 }
 
 class UploadRepository extends StubProductRepository {
-  override async addImage(
-    productId: string,
-    r2Key: string,
-    position: number,
-    isMain = false,
-  ): Promise<ProductImage> {
+  override async addImage(productId: string, r2Key: string): Promise<ProductImage> {
+    const gallery = this.cards.find((product) => product.id === productId)?.images ?? [];
     const image = {
       id: '01931f2a-4444-7000-8000-000000000001',
       productId,
       r2Key,
-      position,
-      isMain,
+      position: gallery.length,
+      isMain: gallery.length === 0,
     };
     this.cards.find((product) => product.id === productId)?.images.push(image);
     return image;

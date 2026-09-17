@@ -444,23 +444,69 @@ describe('product repository (postgres)', () => {
     assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
   });
 
-  it('adds a frame with the fields it was given, not main by default', async () => {
+  it('adds the first frame of an empty gallery as the main one at position 0 (AC-19)', async () => {
     const id = await seedProduct();
 
-    const image = await products.addImage(id, `products/${id}/first.jpg`, 0);
+    const image = await products.addImage(id, `products/${id}/first.jpg`, 10);
 
+    assert.ok(image !== null);
     assert.equal(image.productId, id);
     assert.equal(image.r2Key, `products/${id}/first.jpg`);
+    assert.equal(image.position, 0);
+    assert.equal((await products.findImage(id, image.id))?.isMain, true);
+  });
+
+  it('adds a later frame after the highest position, even past a gap, and not as main', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 2, r2Key: `products/${id}/third.jpg` });
+
+    const image = await products.addImage(id, `products/${id}/fourth.jpg`, 10);
+
+    assert.ok(image !== null);
+    assert.equal(image.position, 3);
     assert.equal(image.isMain, false);
   });
 
-  it('adds a frame marked main when asked to (AC-19)', async () => {
+  it('refuses a frame once the gallery holds the ceiling and writes nothing (AC-02)', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const image = await products.addImage(id, `products/${id}/third.jpg`, 2);
+
+    assert.equal(image, null);
+    assert.equal(await products.countImages(id), 2);
+  });
+
+  it('keeps positions unique and the ceiling intact under concurrent additions (AC-02)', async () => {
+    const id = await seedProduct();
+    for (let position = 0; position < 8; position += 1) {
+      await seedImage(id, { position, r2Key: `products/${id}/seed-${String(position)}.jpg` });
+    }
+
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        products.addImage(id, `products/${id}/race-${String(index)}.jpg`, 10),
+      ),
+    );
+
+    assert.equal(results.filter((image) => image !== null).length, 2);
+    const positions = (await products.findById(id))?.images.map((image) => image.position);
+    assert.deepEqual(positions, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('makes exactly one of two concurrent first frames the main one (AC-19)', async () => {
     const id = await seedProduct();
 
-    const image = await products.addImage(id, `products/${id}/first.jpg`, 0, true);
+    const results = await Promise.all([
+      products.addImage(id, `products/${id}/left.jpg`, 10),
+      products.addImage(id, `products/${id}/right.jpg`, 10),
+    ]);
 
-    assert.equal(image.isMain, true);
-    assert.equal((await products.findImage(id, image.id))?.isMain, true);
+    assert.equal(results.filter((image) => image?.isMain === true).length, 1);
+    const gallery = (await products.findById(id))?.images ?? [];
+    assert.equal(gallery.filter((image) => image.isMain).length, 1);
   });
 
   it('counts only the frames of the card that was asked about', async () => {

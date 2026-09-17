@@ -5,7 +5,6 @@ import { productConstraints } from './contracts/products-limits.ts';
 
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * HOUR_SECONDS;
-const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 export const config = {
   http: {
@@ -21,11 +20,12 @@ export const config = {
       maxFileBytes: productConstraints.maxImageBytes,
       maxFiles: 1,
       /**
-       * The largest request the route has to let through: the largest accepted frame plus room
-       * for the multipart wrapper. Paired with `request_body max_size` in infra/caddy/Caddyfile —
-       * if the proxy stops first, it answers with its own bare 413 and `file_too_large` never runs.
+       * The largest request the proxy lets through to the route. Paired with `request_body
+       * max_size` in infra/caddy/Caddyfile — if the proxy stops first, it answers with its own bare
+       * 413 and `file_too_large` never runs. Twice the frame rather than the frame plus the
+       * multipart wrapper: a file just over the limit has to reach the api to be named as such.
        */
-      bodyLimitBytes: productConstraints.maxImageBytes + MULTIPART_OVERHEAD_BYTES,
+      bodyLimitBytes: 2 * productConstraints.maxImageBytes,
     },
     requestTimeoutMs: 15_000,
   },
