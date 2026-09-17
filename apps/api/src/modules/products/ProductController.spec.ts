@@ -398,3 +398,114 @@ describe('product controller: upload', () => {
     }
   });
 });
+
+/** Never talks to R2: the one method a deletion reaches is overridden. */
+class DeletingImageStorage extends RecordingImageStorage {
+  readonly deleted: string[] = [];
+  failure: Error | undefined;
+
+  override async delete(key: string): Promise<void> {
+    if (this.failure !== undefined) {
+      throw this.failure;
+    }
+    this.deleted.push(key);
+  }
+}
+
+class DeletionRepository extends StubProductRepository {
+  override async deleteImage(imageId: string): Promise<boolean> {
+    for (const product of this.cards) {
+      const index = product.images.findIndex((image) => image.id === imageId);
+      if (index !== -1) {
+        product.images.splice(index, 1);
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+function imageUrl(productId: string, imageId: string): string {
+  return `/${productId}/images/${imageId}`;
+}
+
+describe('product controller: delete frame', () => {
+  let repository: DeletionRepository;
+  let storage: DeletingImageStorage;
+  let app: FastifyInstance;
+  let allowed = true;
+
+  before(async () => {
+    repository = new DeletionRepository();
+    storage = new DeletingImageStorage();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, new MediaService(storage)),
+      'https://images.example.com',
+    ).register(app, async (_request, reply) => {
+      if (!allowed) {
+        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
+      }
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  it('answers 204 with no body once the object and the frame are gone (AC-16)', async () => {
+    repository.cards[0] = twoFrameCard();
+
+    const response = await app.inject({ method: 'DELETE', url: imageUrl(READY_ID, BACK_ID) });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(response.body, '');
+    assert.equal(storage.deleted.at(-1), `products/${READY_ID}/back.jpg`);
+    assert.deepEqual(
+      repository.cards[0].images.map((image) => image.id),
+      [FRONT_ID],
+    );
+  });
+
+  it('answers storage_unavailable and keeps the frame when storage is down (AC-17)', async () => {
+    repository.cards[0] = twoFrameCard();
+    storage.failure = new Error('getaddrinfo ENOTFOUND');
+    try {
+      const response = await app.inject({ method: 'DELETE', url: imageUrl(READY_ID, BACK_ID) });
+
+      assert.equal(response.statusCode, 502);
+      assert.equal(response.json<{ code: string }>().code, apiErrorCodes.storageUnavailable);
+      assert.equal(repository.cards[0].images.length, 2);
+    } finally {
+      storage.failure = undefined;
+    }
+  });
+
+  it('answers image_not_found for a frame of another card', async () => {
+    repository.cards[0] = twoFrameCard();
+    const foreignImage = repository.cards[1]?.images[0]?.id ?? '';
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: imageUrl(READY_ID, foreignImage),
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.imageNotFound);
+    assert.equal(repository.cards[1]?.images.length, 1);
+  });
+
+  it('puts the delete-frame route behind the session guard', async () => {
+    repository.cards[0] = twoFrameCard();
+    allowed = false;
+    try {
+      const response = await app.inject({ method: 'DELETE', url: imageUrl(READY_ID, BACK_ID) });
+
+      assert.equal(response.statusCode, 401);
+      assert.equal(repository.cards[0].images.length, 2);
+    } finally {
+      allowed = true;
+    }
+  });
+});

@@ -128,6 +128,10 @@ export class ProductService {
     }
   }
 
+  async deleteImage(productId: string, imageId: string): Promise<void> {
+    throw new Error('Not implemented');
+  }
+
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
     if (!(await this.products.setMainImage(productId, imageId))) {
       throw new ImageNotFound(imageId);

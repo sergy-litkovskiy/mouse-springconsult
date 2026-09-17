@@ -150,12 +150,27 @@ class StubProductRepository extends ProductRepository {
     return image;
   }
 
+  deleteFailure: Error | undefined;
+
+  override async deleteImage(imageId: string): Promise<boolean> {
+    if (this.deleteFailure !== undefined) {
+      throw this.deleteFailure;
+    }
+    const gallery = this.stored?.images ?? [];
+    const index = gallery.findIndex((image) => image.id === imageId);
+    if (index === -1) {
+      return false;
+    }
+    gallery.splice(index, 1);
+    return true;
+  }
+
   private galleryOf(productId: string): ProductImage[] {
     return this.stored?.id === productId ? this.stored.images : [];
   }
 }
 
-/** The storage is never reached: `store` is overridden, and nothing else is called. */
+/** The storage is never reached: `store` and `remove` are overridden, and nothing else is called. */
 const NO_STORAGE = undefined as unknown as ImageStorage;
 
 class RecordingMediaService extends MediaService {
@@ -175,7 +190,15 @@ class RecordingMediaService extends MediaService {
     return key;
   }
 
+  removeFailure: Error | undefined;
+  /** Called at the moment of removal, before the key is recorded. */
+  onRemove: (() => void) | undefined;
+
   override async remove(key: string): Promise<void> {
+    this.onRemove?.();
+    if (this.removeFailure !== undefined) {
+      throw this.removeFailure;
+    }
     this.removed.push(key);
   }
 }
@@ -540,6 +563,75 @@ describe('product service: adding a frame', () => {
 
     await assert.rejects(service.addImage(CARD_ID, JPEG), StorageUnavailable);
     assert.equal(repository.addedImages.length, 0);
+    assert.equal(repository.stored.images.length, 2);
+  });
+});
+
+describe('product service: deleting a frame', () => {
+  it('removes the object of the frame and then its row, leaving the rest of the gallery (AC-16)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+
+    await service.deleteImage(CARD_ID, BACK_ID);
+
+    assert.deepEqual(media.removed, [`products/${CARD_ID}/back.jpg`]);
+    assert.deepEqual(
+      repository.stored.images.map((image) => image.id),
+      [FRONT_ID],
+    );
+  });
+
+  it('removes the object while the row of the frame is still in place (AC-16)', async () => {
+    const { service, repository, media } = setup();
+    const stored = twoFrameCard();
+    repository.stored = stored;
+    let rowPresentAtRemoval: boolean | undefined;
+    media.onRemove = () => {
+      rowPresentAtRemoval = stored.images.some((image) => image.id === BACK_ID);
+    };
+
+    await service.deleteImage(CARD_ID, BACK_ID);
+
+    assert.equal(rowPresentAtRemoval, true);
+  });
+
+  it('keeps the row when storage is unavailable and reports storage_unavailable (AC-17)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+    media.removeFailure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
+
+    await assert.rejects(service.deleteImage(CARD_ID, BACK_ID), StorageUnavailable);
+    assert.deepEqual(repository.stored.images, twoFrameCard().images);
+  });
+
+  it('deletes the frame on a repeat once its object is already gone', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+    const failure = new Error('connection terminated');
+    repository.deleteFailure = failure;
+
+    await assert.rejects(service.deleteImage(CARD_ID, BACK_ID), (error) => error === failure);
+    assert.equal(repository.stored.images.length, 2);
+
+    repository.deleteFailure = undefined;
+    await service.deleteImage(CARD_ID, BACK_ID);
+
+    assert.deepEqual(media.removed, [
+      `products/${CARD_ID}/back.jpg`,
+      `products/${CARD_ID}/back.jpg`,
+    ]);
+    assert.deepEqual(
+      repository.stored.images.map((image) => image.id),
+      [FRONT_ID],
+    );
+  });
+
+  it('refuses a frame that does not belong to the card without touching storage', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+
+    await assert.rejects(service.deleteImage(CARD_ID, FOREIGN_IMAGE_ID), ImageNotFound);
+    assert.deepEqual(media.removed, []);
     assert.equal(repository.stored.images.length, 2);
   });
 });
