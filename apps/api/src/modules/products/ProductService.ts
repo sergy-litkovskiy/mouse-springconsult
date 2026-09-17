@@ -5,7 +5,7 @@ import type {
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ProductNotFound } from './ProductErrors.ts';
+import { ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
@@ -80,7 +80,15 @@ export class ProductService {
   }
 
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
-    throw new Error('Not implemented');
+    if (!(await this.products.setMainImage(productId, imageId))) {
+      throw new ImageNotFound(imageId);
+    }
+    const product = await this.products.findById(productId);
+    if (product === null) {
+      throw new ProductNotFound(productId);
+    }
+
+    return product.images;
   }
 
   /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */

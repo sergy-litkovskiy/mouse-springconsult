@@ -18,7 +18,7 @@ import {
 } from '../../contracts/products.contract.ts';
 import { AppError } from '../../errors.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { InvalidPrice, ProductNotFound } from './ProductErrors.ts';
+import { ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import type { ProductReading, ProductSaving, ProductService } from './ProductService.ts';
 
@@ -40,6 +40,7 @@ export class ProductController {
     app.post('/', { preHandler: sessionGuard }, this.create);
     app.get('/:productId', { preHandler: sessionGuard }, this.getById);
     app.patch('/:productId', { preHandler: sessionGuard }, this.update);
+    app.put('/:productId/images/:imageId/main', { preHandler: sessionGuard }, this.setMainImage);
   }
 
   // An arrow field rather than a method: Fastify calls the handler on its own, and a
@@ -75,6 +76,22 @@ export class ProductController {
     const productId = this.readProductId(request);
     const changes = parseBody(productUpdateSchema, request.body);
     return this.toSavingResponse(await this.products.update(productId, changes));
+  };
+
+  /** A malformed frame identifier names no frame, so it is answered as one that does not exist. */
+  private readonly setMainImage = async (
+    request: FastifyRequest,
+  ): Promise<ProductImageResponse[]> => {
+    const productId = this.readProductId(request);
+    const rawImageId = (request.params as { imageId?: unknown }).imageId;
+    const parsed = z.uuid().safeParse(rawImageId);
+    if (!parsed.success) {
+      throw new ImageNotFound(String(rawImageId));
+    }
+    const gallery = await this.products.setMainImage(productId, parsed.data);
+    return [...gallery]
+      .sort((left, right) => left.position - right.position)
+      .map((image) => this.toImageResponse(image));
   };
 
   /**
