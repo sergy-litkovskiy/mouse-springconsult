@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ProductCreate,
   ProductListQuery,
@@ -6,7 +7,7 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ImageNotFound, ProductNotFound } from './ProductErrors.ts';
+import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
@@ -83,8 +84,15 @@ export class ProductService {
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
 
+  /** The object goes to storage before the row is written: a failed upload leaves no frame without a file. */
   async addImage(productId: string, bytes: Uint8Array): Promise<ProductImage> {
-    throw new Error('Not implemented');
+    const count = await this.products.countImages(productId);
+    if (count >= productConstraints.maxImagesPerProduct) {
+      throw new GalleryFull();
+    }
+
+    const key = await this.media.store(bytes, `products/${productId}/${randomUUID()}`);
+    return this.products.addImage(productId, key, count, count === 0);
   }
 
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
