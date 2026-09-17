@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
-import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.ts';
+import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -412,6 +412,17 @@ function cardWithFrames(count: number): Product {
 }
 
 describe('product service: adding a frame', () => {
+  it('refuses a frame for a card that does not exist, before touching storage', async () => {
+    const { service, repository, media } = setup();
+
+    await assert.rejects(
+      service.addImage('01931f2a-1111-7000-8000-000000000999', JPEG),
+      ProductNotFound,
+    );
+    assert.equal(media.stored.length, 0);
+    assert.equal(repository.addedImages.length, 0);
+  });
+
   it('stores the file under a key of the card and adds the frame after the last one (AC-01)', async () => {
     const { service, repository, media } = setup();
     repository.stored = twoFrameCard();
@@ -420,7 +431,7 @@ describe('product service: adding a frame', () => {
 
     assert.equal(media.stored.length, 1);
     assert.equal(media.stored[0]?.bytes, JPEG);
-    const key = media.stored[0]?.key ?? '';
+    const key = media.stored[0].key;
     assert.match(key, new RegExp(`^products/${CARD_ID}/[^/]+$`));
     assert.equal(image.productId, CARD_ID);
     assert.equal(image.r2Key, key);
