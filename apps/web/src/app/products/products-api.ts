@@ -1,6 +1,14 @@
 import type { HttpResourceRequest } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import type { ProductListQuery } from '@contracts/products.contract';
+import type { Observable } from 'rxjs';
+import type {
+  Product,
+  ProductCreate,
+  ProductImage,
+  ProductListQuery,
+  ProductUpdate,
+  ProductUpdateResponse,
+} from '@contracts/products.contract';
 import { environment } from '@environments/environment';
 
 /**
@@ -14,6 +22,34 @@ export class ProductsApi {
 
   listRequest(query: ProductListQuery): HttpResourceRequest {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
+  }
+
+  getById(productId: string): Observable<Product> {
+    throw new Error('Not implemented');
+  }
+
+  create(request: ProductCreate): Observable<Product> {
+    throw new Error('Not implemented');
+  }
+
+  update(productId: string, request: ProductUpdate): Observable<ProductUpdateResponse> {
+    throw new Error('Not implemented');
+  }
+
+  delete(productId: string): Observable<null> {
+    throw new Error('Not implemented');
+  }
+
+  uploadImage(productId: string, file: File): Observable<ProductImage> {
+    throw new Error('Not implemented');
+  }
+
+  setMainImage(productId: string, imageId: string): Observable<ProductImage[]> {
+    throw new Error('Not implemented');
+  }
+
+  deleteImage(productId: string, imageId: string): Observable<null> {
+    throw new Error('Not implemented');
   }
 }
 
