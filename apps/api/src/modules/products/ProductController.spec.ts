@@ -65,7 +65,9 @@ describe('product controller: list', () => {
 
   before(async () => {
     app = Fastify();
-    new ProductController(service, 'https://images.example.com').register(app, async () => {});
+    new ProductController(service, 'https://images.example.com').register(app, async () => {
+      // Lets every request through: the session is not what this spec is about.
+    });
     await app.ready();
   });
 
