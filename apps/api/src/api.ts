@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { ApiError } from './contracts/error.contract.ts';
@@ -127,6 +128,12 @@ export async function buildServer(): Promise<ApiServer> {
 
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
+  await app.register(multipart, {
+    limits: {
+      fileSize: config.http.imageUpload.maxFileBytes,
+      files: config.http.imageUpload.maxFiles,
+    },
+  });
   await app.register(rateLimit, {
     max: config.rateLimit.global.max,
     timeWindow: config.rateLimit.global.timeWindowMs,

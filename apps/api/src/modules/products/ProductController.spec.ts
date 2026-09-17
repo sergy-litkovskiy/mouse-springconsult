@@ -6,7 +6,10 @@ import type {
   ProductList,
   ProductImage as ProductImageResponse,
 } from '../../contracts/products.contract.ts';
-import type { MediaService } from '../media/index.ts';
+import multipart from '@fastify/multipart';
+import { config } from '../../config.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
+import { ImageStorage, MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -16,7 +19,7 @@ import { ProductService } from './ProductService.ts';
 /** The DataSource is never reached: every repository method the routes call is overridden. */
 const NO_DATA_SOURCE = undefined as unknown as ConstructorParameters<typeof ProductRepository>[0];
 
-/** No route in this spec uploads a frame, so the media service is never reached. */
+/** Only the upload suite reaches media, and it builds its own. */
 const NO_MEDIA = undefined as unknown as MediaService;
 
 const READY_ID = '01931f2a-3333-7000-8000-000000000001';
@@ -241,5 +244,161 @@ describe('product controller: main frame without a session', () => {
     const response = await app.inject({ method: 'PUT', url: mainUrl(READY_ID, frame) });
 
     assert.equal(response.statusCode, 401);
+  });
+});
+
+/** Never talks to R2: the one method an upload reaches is overridden. */
+class RecordingImageStorage extends ImageStorage {
+  readonly keys: string[] = [];
+
+  constructor() {
+    super({
+      accountId: 'test-account',
+      accessKeyId: 'test-key',
+      secretAccessKey: 'test-secret',
+      bucket: 'test-bucket',
+      ...config.storage,
+    });
+  }
+
+  override async put(key: string): Promise<void> {
+    this.keys.push(key);
+  }
+}
+
+class UploadRepository extends StubProductRepository {
+  override async addImage(
+    productId: string,
+    r2Key: string,
+    position: number,
+    isMain = false,
+  ): Promise<ProductImage> {
+    const image = {
+      id: '01931f2a-4444-7000-8000-000000000001',
+      productId,
+      r2Key,
+      position,
+      isMain,
+    };
+    this.cards.find((product) => product.id === productId)?.images.push(image);
+    return image;
+  }
+}
+
+const JPEG_BYTES = [0xff, 0xd8, 0xff, 0xe0];
+
+function upload(bytes: Uint8Array<ArrayBuffer>, field = 'file'): { payload: FormData } {
+  const payload = new FormData();
+  payload.append(field, new Blob([bytes], { type: 'image/jpeg' }), 'photo.jpg');
+  return { payload };
+}
+
+function jpegOfLength(length: number): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(length);
+  bytes.set(JPEG_BYTES);
+  return bytes;
+}
+
+describe('product controller: upload', () => {
+  let repository: UploadRepository;
+  let storage: RecordingImageStorage;
+  let app: FastifyInstance;
+  let allowed = true;
+
+  before(async () => {
+    repository = new UploadRepository();
+    storage = new RecordingImageStorage();
+    app = Fastify();
+    await app.register(multipart, {
+      limits: {
+        fileSize: config.http.imageUpload.maxFileBytes,
+        files: config.http.imageUpload.maxFiles,
+      },
+    });
+    new ProductController(
+      new ProductService(repository, new MediaService(storage)),
+      'https://images.example.com',
+    ).register(app, async (_request, reply) => {
+      if (!allowed) {
+        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
+      }
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  function post(productId: string, body: { payload: FormData }) {
+    return app.inject({ method: 'POST', url: `/${productId}/images`, ...body });
+  }
+
+  it('answers 201 with the new frame and its composed address (AC-01)', async () => {
+    repository.cards[1] = card(UNPRICED_ID, { images: [] });
+
+    const response = await post(UNPRICED_ID, upload(jpegOfLength(64)));
+
+    assert.equal(response.statusCode, 201);
+    const image = response.json<ProductImageResponse>();
+    assert.equal(image.r2Key, storage.keys.at(-1));
+    assert.equal(image.url, `https://images.example.com/${image.r2Key}`);
+    assert.equal(image.isMain, true);
+  });
+
+  it('accepts a file exactly at the size limit', async () => {
+    repository.cards[1] = card(UNPRICED_ID, { images: [] });
+
+    const response = await post(
+      UNPRICED_ID,
+      upload(jpegOfLength(productConstraints.maxImageBytes)),
+    );
+
+    assert.equal(response.statusCode, 201);
+  });
+
+  it('answers file_too_large for a file one byte over the limit, storing nothing', async () => {
+    const before = storage.keys.length;
+
+    const response = await post(
+      UNPRICED_ID,
+      upload(jpegOfLength(productConstraints.maxImageBytes + 1)),
+    );
+
+    assert.equal(response.statusCode, 413);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.fileTooLarge);
+    assert.equal(storage.keys.length, before);
+  });
+
+  it('answers invalid_file for content that is not an image, whatever the declared type', async () => {
+    const response = await post(UNPRICED_ID, upload(new TextEncoder().encode('%PDF-1.7')));
+
+    assert.equal(response.statusCode, 422);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.invalidFile);
+  });
+
+  it('answers validation_failed when the file field is missing', async () => {
+    const response = await post(UNPRICED_ID, upload(jpegOfLength(64), 'photo'));
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.validationFailed);
+  });
+
+  it('answers product_not_found for a card that does not exist', async () => {
+    const response = await post('01931f2a-3333-7000-8000-000000000404', upload(jpegOfLength(64)));
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.productNotFound);
+  });
+
+  it('puts the upload route behind the session guard', async () => {
+    allowed = false;
+    try {
+      const response = await post(UNPRICED_ID, upload(jpegOfLength(64)));
+
+      assert.equal(response.statusCode, 401);
+    } finally {
+      allowed = true;
+    }
   });
 });

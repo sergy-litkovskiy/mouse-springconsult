@@ -13,12 +13,20 @@ export const config = {
     port: 3000,
     /** Auth request bodies are tiny; large files go through the separate media route. */
     bodyLimitBytes: 256 * 1024,
-    /**
-     * The image upload route's own ceiling: the largest accepted frame plus room for the
-     * multipart wrapper. Paired with `request_body max_size` in infra/caddy/Caddyfile — if the
-     * proxy stops first, it answers with its own bare 413 and `file_too_large` never runs.
-     */
-    imageUploadBodyLimitBytes: productConstraints.maxImageBytes + MULTIPART_OVERHEAD_BYTES,
+    imageUpload: {
+      /**
+       * busboy stops reading a file past this many bytes and the route answers `file_too_large`;
+       * `MediaService` checks the same number once more on the bytes it is handed.
+       */
+      maxFileBytes: productConstraints.maxImageBytes,
+      maxFiles: 1,
+      /**
+       * The largest request the route has to let through: the largest accepted frame plus room
+       * for the multipart wrapper. Paired with `request_body max_size` in infra/caddy/Caddyfile —
+       * if the proxy stops first, it answers with its own bare 413 and `file_too_large` never runs.
+       */
+      bodyLimitBytes: productConstraints.maxImageBytes + MULTIPART_OVERHEAD_BYTES,
+    },
     requestTimeoutMs: 15_000,
   },
 

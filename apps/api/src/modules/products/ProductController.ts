@@ -1,3 +1,4 @@
+import type {} from '@fastify/multipart';
 import type {
   FastifyInstance,
   FastifyReply,
@@ -16,7 +17,10 @@ import {
   type Product as ProductResponse,
   type ProductUpdateResponse,
 } from '../../contracts/products.contract.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
+import { config } from '../../config.ts';
 import { AppError } from '../../errors.ts';
+import { FileTooLarge } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -40,6 +44,11 @@ export class ProductController {
     app.post('/', { preHandler: sessionGuard }, this.create);
     app.get('/:productId', { preHandler: sessionGuard }, this.getById);
     app.patch('/:productId', { preHandler: sessionGuard }, this.update);
+    app.post(
+      '/:productId/images',
+      { preHandler: sessionGuard, bodyLimit: config.http.imageUpload.bodyLimitBytes },
+      this.uploadImage,
+    );
     app.put('/:productId/images/:imageId/main', { preHandler: sessionGuard }, this.setMainImage);
   }
 
@@ -76,6 +85,17 @@ export class ProductController {
     const productId = this.readProductId(request);
     const changes = parseBody(productUpdateSchema, request.body);
     return this.toSavingResponse(await this.products.update(productId, changes));
+  };
+
+  private readonly uploadImage = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<ProductImageResponse> => {
+    const productId = this.readProductId(request);
+    const bytes = await readUploadedFile(request);
+    const image = await this.products.addImage(productId, bytes);
+    reply.code(201);
+    return this.toImageResponse(image);
   };
 
   private readonly setMainImage = async (
@@ -191,4 +211,38 @@ function parseBody<Schema extends z.ZodType>(schema: Schema, body: unknown): z.o
     message: 'Request body is invalid',
     details: { fields },
   });
+}
+
+function missingFile(): AppError {
+  return new AppError({
+    code: apiErrorCodes.validationFailed,
+    statusCode: 400,
+    message: 'Request body is invalid',
+    details: { fields: { file: ['A single file in the "file" field is required'] } },
+  });
+}
+
+/**
+ * The declared type is not read here at all: `MediaService` decides by the content (ADR 0004).
+ * busboy truncates a file at `maxFileBytes`, and the plugin reports that with its own error,
+ * which the error handler would otherwise answer as a generic 4xx.
+ */
+async function readUploadedFile(request: FastifyRequest): Promise<Uint8Array> {
+  if (!request.isMultipart()) {
+    throw missingFile();
+  }
+
+  const part = await request.file();
+  if (part?.fieldname !== 'file') {
+    throw missingFile();
+  }
+
+  try {
+    return await part.toBuffer();
+  } catch (error) {
+    if (error instanceof request.server.multipartErrors.RequestFileTooLargeError) {
+      throw new FileTooLarge(productConstraints.maxImageBytes);
+    }
+    throw error;
+  }
 }

@@ -10,7 +10,7 @@ export const productConstraints = {
   maxKeywords: 30,
   maxImagesPerProduct: 10,
   /**
-   * `config.http.imageUploadBodyLimitBytes` derives the upload route's ceiling from this number;
+   * `config.http.imageUpload` derives the upload route's ceiling from this number;
    * `request_body max_size` in `infra/caddy/Caddyfile` cannot import it and carries a literal.
    * They drift silently: a proxy rejecting at 8 MB answers with its own 413, and the domain
    * error never runs.
