@@ -5,7 +5,7 @@ import type {
   ProductUpdate,
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
-import type { MediaService } from '../media/index.ts';
+import { StorageUnavailable, type MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -128,8 +128,22 @@ export class ProductService {
     }
   }
 
+  /**
+   * The object goes before the row (ADR 0012): a failure in between leaves a frame whose object is
+   * already gone, and a repeat finishes the job because deleting a missing key succeeds.
+   */
   async deleteImage(productId: string, imageId: string): Promise<void> {
-    throw new Error('Not implemented');
+    const image = await this.products.findImage(productId, imageId);
+    if (image === null) {
+      throw new ImageNotFound(imageId);
+    }
+
+    try {
+      await this.media.remove(image.r2Key);
+    } catch (error) {
+      throw error instanceof StorageUnavailable ? error : new StorageUnavailable(error);
+    }
+    await this.products.deleteImage(imageId);
   }
 
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {

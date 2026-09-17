@@ -49,6 +49,7 @@ export class ProductController {
       { preHandler: sessionGuard, bodyLimit: config.http.imageUpload.bodyLimitBytes },
       this.uploadImage,
     );
+    app.delete('/:productId/images/:imageId', { preHandler: sessionGuard }, this.deleteImage);
     app.put('/:productId/images/:imageId/main', { preHandler: sessionGuard }, this.setMainImage);
   }
 
@@ -96,6 +97,16 @@ export class ProductController {
     const image = await this.products.addImage(productId, bytes);
     reply.code(201);
     return this.toImageResponse(image);
+  };
+
+  private readonly deleteImage = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FastifyReply> => {
+    const productId = this.readProductId(request);
+    const imageId = this.readImageId(request);
+    await this.products.deleteImage(productId, imageId);
+    return reply.code(204).send();
   };
 
   private readonly setMainImage = async (
