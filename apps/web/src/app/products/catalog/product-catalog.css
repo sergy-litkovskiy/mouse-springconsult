@@ -24,21 +24,42 @@
 }
 
 .filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 8px 16px;
   padding: 16px;
 }
 
+/* A grid with `span` would add implicit tracks on a narrow screen and scroll sideways. */
+.filters__field {
+  flex: 1 1 13rem;
+  min-width: 0;
+}
+
+.filters__field--wide {
+  flex: 2 1 17rem;
+}
+
+/*
+ * Half of 13rem was the ask, but at 6.5rem the floated «Публікація Prom» is cut off, so the
+ * longest label sets the width. `min-width: max-content` does not help here: the Material infix
+ * declares a fixed width and would make the field wider than before.
+ */
+.filters__field--narrow {
+  flex: 0 1 10.5rem;
+}
+
 .filters__actions {
   display: flex;
+  align-self: stretch;
   align-items: center;
   gap: 8px;
   padding-bottom: 22px;
 }
 
 .filters__error {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   margin: 0 0 8px;
   color: var(--mat-sys-error);
   font: var(--mat-sys-body-small);

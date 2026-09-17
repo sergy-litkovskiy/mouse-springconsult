@@ -6,7 +6,7 @@
 
   <mat-card class="catalog__filters" appearance="outlined">
     <form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--wide" appearance="outline">
         <mat-label>Назва</mat-label>
         <input matInput formControlName="title" placeholder="Prom або OLX" />
         @if (filters.controls.title.hasError('maxlength')) {
@@ -14,7 +14,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--wide" appearance="outline">
         <mat-label>Опис</mat-label>
         <input matInput formControlName="description" placeholder="Prom або OLX" />
         @if (filters.controls.description.hasError('maxlength')) {
@@ -22,7 +22,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field
+        class="filters__field filters__field--narrow"
+        appearance="outline"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Ціна від, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMin" placeholder="1000.00" />
         @if (filters.controls.priceMin.hasError('price')) {
@@ -30,7 +34,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field
+        class="filters__field filters__field--narrow"
+        appearance="outline"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Ціна до, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMax" placeholder="5000.00" />
         @if (filters.controls.priceMax.hasError('price')) {
@@ -38,7 +46,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field" appearance="outline">
         <mat-label>Категорія</mat-label>
         <input matInput formControlName="category" />
         @if (filters.controls.category.hasError('maxlength')) {
@@ -46,7 +54,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
         <mat-label>Публікація Prom</mat-label>
         <mat-select formControlName="publishedProm">
           <mat-option value="">Всі</mat-option>
@@ -55,7 +63,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
         <mat-label>Публікація OLX</mat-label>
         <mat-select formControlName="publishedOlx">
           <mat-option value="">Всі</mat-option>
@@ -64,7 +72,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
         <mat-label>Картка готова</mat-label>
         <mat-select formControlName="ready">
           <mat-option value="">Всі</mat-option>
