@@ -215,7 +215,7 @@ export class ProductForm {
           ? `Картку збережено. Понад ліміт відкинуто ключових слів: ${String(discarded)}.`
           : 'Картку збережено.',
         undefined,
-        { duration: 4000, panelClass: 'snack-bar--success' },
+        { duration: 4000, panelClass: 'snack-bar--success', verticalPosition: 'top' },
       );
       this.dialogRef.close(true);
     } catch (error: unknown) {
