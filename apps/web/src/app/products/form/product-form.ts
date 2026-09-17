@@ -110,14 +110,13 @@ export class ProductForm {
 
   /** Every field waits for the first frame (AC-20): the texts are written about the photos. */
   protected readonly hasFrames = computed(() => this.images().length > 0);
-  /** The card as the server last answered it: the gaps describe the saved state, not the fields. */
-  private readonly savedCard = signal<ProductCard | null>(this.data.product);
-  /** Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". */
-  protected readonly ready = computed(() => this.savedCard()?.isReady ?? false);
-  protected readonly missingFields = computed(() => {
-    const product = this.savedCard();
-    return product === null ? '' : missingFieldsHint(product);
-  });
+  /**
+   * Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". The badge
+   * describes the card as it was opened, not the fields being edited.
+   */
+  protected readonly ready = this.data.product?.isReady ?? false;
+  protected readonly missingFields =
+    this.data.product === null ? '' : missingFieldsHint(this.data.product);
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
   /** The catalogue re-reads its page only when the dialog changed something. */
@@ -213,7 +212,7 @@ export class ProductForm {
       const discarded = response.discardedKeywordsCount;
       this.snackBar.open(
         discarded > 0
-          ? `Картку збережено. Понад ліміт відкинуто ключових слів: ${discarded}.`
+          ? `Картку збережено. Понад ліміт відкинуто ключових слів: ${String(discarded)}.`
           : 'Картку збережено.',
         undefined,
         { duration: 4000, panelClass: 'snack-bar--success' },

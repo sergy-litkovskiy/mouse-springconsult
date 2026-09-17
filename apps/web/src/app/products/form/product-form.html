@@ -2,13 +2,13 @@
   Картка товару
   <span
     class="readiness"
-    [class.readiness--ready]="ready()"
-    [class.readiness--not-ready]="!ready()"
-    [matTooltip]="missingFields()"
+    [class.readiness--ready]="ready"
+    [class.readiness--not-ready]="!ready"
+    [matTooltip]="missingFields"
     data-testid="readiness"
   >
-    <mat-icon aria-hidden="true">{{ ready() ? 'check_circle' : 'pending' }}</mat-icon>
-    {{ ready() ? 'Готово' : 'Неготово' }}
+    <mat-icon aria-hidden="true">{{ ready ? 'check_circle' : 'pending' }}</mat-icon>
+    {{ ready ? 'Готово' : 'Неготово' }}
   </span>
 </h2>
 
