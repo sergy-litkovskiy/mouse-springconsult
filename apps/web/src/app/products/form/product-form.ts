@@ -73,6 +73,19 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
   return tooLong ? { keywordLength: true } : null;
 }
 
+/** Names what `ProductService.isReady` on the server finds lacking; empty for a ready card. */
+function missingFieldsHint(product: ProductCard): string {
+  const missing = [
+    product.titleProm === '' ? 'заголовок Prom' : null,
+    product.descriptionProm === '' ? 'опис Prom' : null,
+    product.titleOlx === '' ? 'заголовок OLX' : null,
+    product.descriptionOlx === '' ? 'опис OLX' : null,
+    /[1-9]/.test(product.price) ? null : 'ціна',
+    product.images.length === 0 ? 'галерея' : null,
+  ].filter((gap) => gap !== null);
+  return missing.length === 0 ? '' : `Бракує: ${missing.join(', ')}`;
+}
+
 /**
  * One dialog for both a new card and an existing one (mockup 2026-09-12). The manual path has no
  * route of its own: saving is the same `PATCH` that accepting a suggestion will use (AC-12).
@@ -106,24 +119,13 @@ export class ProductForm {
 
   /** Every field waits for the first frame (AC-20): the texts are written about the photos. */
   protected readonly hasFrames = computed(() => this.images().length > 0);
-  /** Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". */
-  protected readonly ready = signal(this.data.product?.isReady ?? false);
   /** The card as the server last answered it: the gaps describe the saved state, not the fields. */
   private readonly savedCard = signal<ProductCard | null>(this.data.product);
+  /** Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". */
+  protected readonly ready = computed(() => this.savedCard()?.isReady ?? false);
   protected readonly missingFields = computed(() => {
     const product = this.savedCard();
-    if (product === null) {
-      return '';
-    }
-    const missing = [
-      product.titleProm === '' ? 'заголовок Prom' : null,
-      product.descriptionProm === '' ? 'опис Prom' : null,
-      product.titleOlx === '' ? 'заголовок OLX' : null,
-      product.descriptionOlx === '' ? 'опис OLX' : null,
-      /[1-9]/.test(product.price) ? null : 'ціна',
-      product.images.length === 0 ? 'галерея' : null,
-    ].filter((gap) => gap !== null);
-    return missing.length === 0 ? '' : `Бракує: ${missing.join(', ')}`;
+    return product === null ? '' : missingFieldsHint(product);
   });
   protected readonly saving = signal(false);
   protected readonly saved = signal(false);
@@ -226,7 +228,6 @@ export class ProductForm {
       const response = await firstValueFrom(this.api.update(id, this.changes()));
       this.fill(response);
       this.images.set(response.images);
-      this.ready.set(response.isReady);
       this.savedCard.set(response);
       this.discardedKeywords.set(response.discardedKeywordsCount);
       this.saved.set(true);
