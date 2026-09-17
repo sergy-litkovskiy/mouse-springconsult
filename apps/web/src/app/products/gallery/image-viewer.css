@@ -1,0 +1,75 @@
+.viewer-title {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.viewer-title__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewer-title__count {
+  flex: none;
+  margin-left: auto;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.viewer__stage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.viewer__frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: min(48vh, 28rem);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--mat-sys-surface-container-high);
+}
+
+/* NgOptimizedImage in `fill` mode stretches the frame; the whole photo must stay visible. */
+.viewer__frame img {
+  object-fit: contain;
+}
+
+.viewer__strip {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 4px;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.viewer__thumb {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--mat-sys-surface-container-high);
+  cursor: pointer;
+}
+
+.viewer__thumb img {
+  object-fit: cover;
+}
+
+.viewer__thumb--active {
+  border-color: var(--mat-sys-primary);
+}

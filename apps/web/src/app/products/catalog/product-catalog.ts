@@ -56,6 +56,7 @@ import {
   toSortField,
 } from './product-catalog-query';
 import { ProductForm, type ProductFormData } from '../form/product-form';
+import { ImageViewer, type ImageViewerData } from '../gallery/image-viewer';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
 import { itemsPaginatorIntl } from './items-paginator-intl';
@@ -354,10 +355,16 @@ export class ProductCatalog {
     return CONDITION_LABELS[condition];
   }
 
-  /**
-   * The gallery lives at the top of the card dialog (mockup 2026-09-12), so the gallery counter
-   * opens the same form as the row. `null` is a new card.
-   */
+  protected openViewer(product: ProductCard): void {
+    const data: ImageViewerData = { title: product.titleProm, images: product.images };
+    this.dialog.open<ImageViewer, ImageViewerData>(ImageViewer, {
+      data,
+      width: '56rem',
+      maxWidth: '92vw',
+    });
+  }
+
+  /** `null` is a new card. */
   protected openForm(product: ProductCard | null): void {
     const data: ProductFormData = { product };
     // Material 3 caps a dialog at 560px unless maxWidth says otherwise.

@@ -370,6 +370,22 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `user` порівнює бейдж у рядку таблиці з бейджем у заголовку відкритої картки
 **Then** «Неготово» в обох місцях сірий (`surface-container-high` / `on-surface-variant`), а «Готово» — `primary-container` / `on-primary-container`
 
+### AC-40 (US-07) — happy path
+
+Запит 2026-09-17, [T43](tasks/add-catalog-image-viewer.md).
+
+**Given** у каталозі картка з кількома кадрами
+**When** `user` клікає мініатюру або лічильник кадрів у колонці «Фото»
+**Then** відкривається перегляд фото з головного кадру й лічильником «1 / N», форма картки не відкривається, а кнопки й клавіші ← → гортають решту кадрів за `position`, не виходячи за перший і останній
+
+### AC-41 (US-07) — edge case
+
+Запит 2026-09-17, [T43](tasks/add-catalog-image-viewer.md).
+
+**Given** картка без жодного кадру
+**When** `user` клікає заглушку мініатюри або рядок
+**Then** перегляд не відкривається: лічильник вимкнений, а клік відкриває форму картки
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

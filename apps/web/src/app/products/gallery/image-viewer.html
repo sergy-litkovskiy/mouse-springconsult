@@ -1,0 +1,67 @@
+<h2 mat-dialog-title class="viewer-title">
+  <span class="viewer-title__name">{{ data.title || 'Фото товару' }}</span>
+  <span class="viewer-title__count" data-testid="viewer-position">
+    {{ index() + 1 }} / {{ frames.length }}
+  </span>
+</h2>
+
+<mat-dialog-content class="viewer">
+  <div class="viewer__stage">
+    <button
+      matIconButton
+      type="button"
+      class="viewer__nav"
+      aria-label="Попереднє фото"
+      [disabled]="isFirst()"
+      (click)="previous()"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+
+    @if (current(); as frame) {
+      <div class="viewer__frame">
+        <img
+          data-testid="viewer-frame"
+          [ngSrc]="frame.url"
+          fill
+          [alt]="'Фото ' + (index() + 1) + ' з ' + frames.length"
+        />
+      </div>
+    }
+
+    <button
+      matIconButton
+      type="button"
+      class="viewer__nav"
+      aria-label="Наступне фото"
+      [disabled]="isLast()"
+      (click)="next()"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+
+  @if (frames.length > 1) {
+    <ul class="viewer__strip">
+      @for (frame of frames; track frame.id; let position = $index) {
+        <li>
+          <button
+            type="button"
+            class="viewer__thumb"
+            data-testid="viewer-thumb"
+            [class.viewer__thumb--active]="position === index()"
+            [attr.aria-current]="position === index()"
+            [attr.aria-label]="'Показати фото ' + (position + 1)"
+            (click)="show(position)"
+          >
+            <img [ngSrc]="frame.url" fill alt="" />
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>Закрити</button>
+</mat-dialog-actions>

@@ -106,6 +106,12 @@
   object-fit: cover;
 }
 
+.gallery-cell__thumb--button {
+  padding: 0;
+  border: none;
+  cursor: zoom-in;
+}
+
 .gallery-cell__thumb--empty {
   display: flex;
   align-items: center;

@@ -66,14 +66,14 @@ stage: "13"
 | T40 | [Компактні фільтри й мітки](compact-catalog-filter-fields.md) | Done | — | XS | Serhii | — |
 | T41 | [Висота ціни у формі](fix-product-form-field-sizing.md) | Done | T40 | XS | Serhii | — |
 | T42 | [Кольори бейджа готовності](unify-readiness-badge-colors.md) | Done | T41 | XS | Serhii | — |
-| T43 | [Перегляд фото з каталогу](add-catalog-image-viewer.md) | Todo | — | S | Serhii | — |
+| T43 | [Перегляд фото з каталогу](add-catalog-image-viewer.md) | Done | — | S | Serhii | — |
 
 ## Поставка 2 — модель
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
 | T24 | [Закрити відкриті TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
-| T25 | [Черга і `worker`](add-queue-and-worker.md) | Blocked | T23, T42, T43 | S | Serhii | — |
+| T25 | [Черга і `worker`](add-queue-and-worker.md) | Todo | T23, T42, T43 | S | Serhii | — |
 | T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Blocked | T24, T25 | S | Serhii | — |
 | T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Blocked | T25 | S | Serhii | — |
 | T28 | [Сервіс підготовки](add-preparation-service.md) | Blocked | T26, T27 | S | Serhii | — |
@@ -85,8 +85,8 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T24, T43 — жодної незакритої залежності. T24 не залежить від коду й може вестись
-паралельно з UI-доопрацюванням. T25 чекає на T42 і T43.
+T24, T25 — жодної незакритої залежності. UI-доопрацювання закрито, тож поставку 2 можна
+починати; T24 не залежить від коду й може вестись паралельно з T25.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
 Розблоковано: T07 (після T06), T08 (після T07), T12, T15 і T16 (після T11), T14 (після T12), T17
@@ -127,6 +127,8 @@ T25 знову Blocked, тепер до T42 і T43.
 **2026-09-17 закрито T41.** Вона розблокувала T42.
 
 **2026-09-17 закрито T42.** Нічого не розблокувала: T25 чекає ще й на T43.
+
+**2026-09-17 закрито T43** і з нею UI-доопрацювання. Вона розблокувала T25, тож поставку 2 можна починати.
 
 Раніше: T13 закрито 2026-09-10, T10 і T19 — 2026-09-12. T21 і T22 чекають ще й на T18,
 а T22 — і на T20.

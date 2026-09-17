@@ -15,6 +15,7 @@ import type { ProductCard, ProductList } from '@contracts/products.contract';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm } from '../form/product-form';
+import { ImageViewer } from '../gallery/image-viewer';
 import { ProductCatalog } from './product-catalog';
 
 function makeImage(id: string, position: number, isMain: boolean) {
@@ -301,12 +302,44 @@ describe('ProductCatalog', () => {
     expect(counters[1]?.disabled).toBe(true);
   });
 
-  it('opens the card, with its gallery on top, when the image count is clicked', async () => {
+  it('opens the photo viewer, not the card, when the image count is clicked (AC-40)', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
 
     element.querySelector<HTMLButtonElement>('.gallery-cell__count')?.click();
+    await settle();
+
+    const dialogs = TestBed.inject(MatDialog).openDialogs;
+    expect(dialogs.length).toBe(1);
+    expect(dialogs[0]?.componentInstance).toBeInstanceOf(ImageViewer);
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
+  it('opens the photo viewer, not the card, when the thumbnail is clicked (AC-40)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    element.querySelector<HTMLButtonElement>('button.gallery-cell__thumb')?.click();
+    await settle();
+
+    const dialogs = TestBed.inject(MatDialog).openDialogs;
+    expect(dialogs.length).toBe(1);
+    expect(dialogs[0]?.componentInstance).toBeInstanceOf(ImageViewer);
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
+  it('offers no viewer for a card without photos, only its form (AC-41)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    const keyboardRow = element.querySelectorAll('tr[mat-row]')[1];
+    expect(keyboardRow?.querySelector('button.gallery-cell__thumb')).toBeNull();
+    keyboardRow?.querySelector<HTMLElement>('.gallery-cell__thumb--empty')?.click();
     await settle();
 
     const dialogs = TestBed.inject(MatDialog).openDialogs;
