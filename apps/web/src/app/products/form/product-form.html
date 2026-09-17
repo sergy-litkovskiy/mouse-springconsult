@@ -1,0 +1,118 @@
+<h2 mat-dialog-title class="card-title">
+  Картка товару
+  <span class="readiness" [class.readiness--ready]="ready()" data-testid="readiness">
+    <mat-icon aria-hidden="true">{{ ready() ? 'check_circle' : 'pending' }}</mat-icon>
+    {{ ready() ? 'Готово' : 'Неготово' }}
+  </span>
+</h2>
+
+<mat-dialog-content>
+  @if (saving()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (!hasFrames()) {
+    <p class="card-hint" role="status">
+      Спершу додайте хоча б одне фото: поля картки стануть доступні після першого кадру.
+    </p>
+  }
+
+  <form class="card-form" id="product-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="card-form__pair">
+      <mat-form-field appearance="outline">
+        <mat-label>Назва для Prom</mat-label>
+        <input matInput formControlName="titleProm" />
+        @if (form.controls.titleProm.hasError('maxlength')) {
+          <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Назва для OLX</mat-label>
+        <input matInput formControlName="titleOlx" />
+        @if (form.controls.titleOlx.hasError('maxlength')) {
+          <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <div class="card-form__pair">
+      <mat-form-field appearance="outline">
+        <mat-label>Опис для Prom</mat-label>
+        <textarea matInput formControlName="descriptionProm" rows="6"></textarea>
+        @if (form.controls.descriptionProm.hasError('maxlength')) {
+          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Опис для OLX</mat-label>
+        <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
+        @if (form.controls.descriptionOlx.hasError('maxlength')) {
+          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Ключові слова</mat-label>
+      <input matInput formControlName="seoKeywords" placeholder="миша, logitech, бездротова" />
+      <mat-hint>Через кому. Зберігаються перші {{ maxKeywords }}.</mat-hint>
+      @if (form.controls.seoKeywords.hasError('keywordLength')) {
+        <mat-error>Кожне слово — до {{ keywordMaxLength }} символів.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="card-form__row">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Ціна, ₴</mat-label>
+        <input matInput inputmode="decimal" formControlName="price" placeholder="2499.00" />
+        @if (form.controls.price.hasError('price')) {
+          <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Категорія</mat-label>
+        <input matInput formControlName="category" />
+        @if (form.controls.category.hasError('maxlength')) {
+          <mat-error>Довше за {{ categoryMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Стан</mat-label>
+        <mat-select formControlName="condition">
+          @for (option of conditionOptions; track option.value) {
+            <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Two separate marks, not one "published": a card can be on either marketplace alone (AC-13). -->
+    <div class="card-form__marks">
+      <mat-slide-toggle formControlName="publishedProm">Опубліковано на Prom</mat-slide-toggle>
+      <mat-slide-toggle formControlName="publishedOlx">Опубліковано на OLX</mat-slide-toggle>
+    </div>
+  </form>
+
+  @if (formError(); as message) {
+    <p class="card-message card-message--error" role="alert">{{ message }}</p>
+  }
+  @if (saved()) {
+    <p class="card-message" role="status">
+      Збережено.
+      @if (discardedKeywords() > 0) {
+        Понад ліміт відкинуто ключових слів: {{ discardedKeywords() }}.
+      }
+    </p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" [mat-dialog-close]="changed()">Скасувати</button>
+  <button matButton="filled" type="submit" form="product-form" [disabled]="!canSave()">
+    Зберегти
+  </button>
+</mat-dialog-actions>

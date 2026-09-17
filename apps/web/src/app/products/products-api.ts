@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import type {
   Product,
-  ProductCreate,
+  ProductCreateRequest,
   ProductImage,
   ProductListQuery,
   ProductUpdate,
@@ -29,7 +29,7 @@ export class ProductsApi {
     return this.http.get<Product>(`${this.baseUrl}/${productId}`, { withCredentials: true });
   }
 
-  create(request: ProductCreate): Observable<Product> {
+  create(request: ProductCreateRequest): Observable<Product> {
     return this.http.post<Product>(this.baseUrl, request, { withCredentials: true });
   }
 

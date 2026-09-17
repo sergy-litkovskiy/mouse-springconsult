@@ -121,6 +121,9 @@ export const productCreateSchema = z.object({
 
 export type ProductCreate = z.infer<typeof productCreateSchema>;
 
+/** What a caller may send: every field has a default, so the body of a new card can be `{}`. */
+export type ProductCreateRequest = z.input<typeof productCreateSchema>;
+
 /**
  * No field here carries a default, unlike the create schema: a default on a PATCH would
  * silently rewrite a column the admin never touched.
