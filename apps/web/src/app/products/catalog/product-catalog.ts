@@ -37,11 +37,11 @@ import {
   asQueryParam,
   priceBound,
   priceRange,
-  publishedControlValue,
+  flagControlValue,
   toPage,
   toPageSize,
   toPriceFilter,
-  toPublishedFilter,
+  toFlagFilter,
   textFilter,
   toSortDirection,
   toSortField,
@@ -133,13 +133,13 @@ export class ProductCatalog {
     transform: textFilter(productConstraints.categoryMaxLength),
   });
   readonly publishedProm = input<boolean | undefined, string | undefined>(undefined, {
-    transform: toPublishedFilter,
+    transform: toFlagFilter,
   });
   readonly publishedOlx = input<boolean | undefined, string | undefined>(undefined, {
-    transform: toPublishedFilter,
+    transform: toFlagFilter,
   });
   readonly ready = input<boolean | undefined, string | undefined>(undefined, {
-    transform: toPublishedFilter,
+    transform: toFlagFilter,
   });
 
   /**
@@ -208,7 +208,7 @@ export class ProductCatalog {
       priceMin: ['', [priceBound]],
       priceMax: ['', [priceBound]],
       category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
-      // '' means "not asked about", which is not the same as "not published there".
+      // '' means "not asked about", which is not the same as "no" (not published, not ready).
       publishedProm: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
       publishedOlx: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
       ready: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
@@ -240,9 +240,9 @@ export class ProductCatalog {
         priceMin: applied.priceMin ?? '',
         priceMax: applied.priceMax ?? '',
         category: applied.category ?? '',
-        publishedProm: publishedControlValue(applied.publishedProm),
-        publishedOlx: publishedControlValue(applied.publishedOlx),
-        ready: publishedControlValue(applied.ready),
+        publishedProm: flagControlValue(applied.publishedProm),
+        publishedOlx: flagControlValue(applied.publishedOlx),
+        ready: flagControlValue(applied.ready),
       });
     });
   }
