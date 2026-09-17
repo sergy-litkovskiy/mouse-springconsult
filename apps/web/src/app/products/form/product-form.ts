@@ -35,6 +35,7 @@ import { productConstraints, type ProductCondition } from '@contracts/products-l
 import { apiErrorMessage } from '../../api-error-message';
 import { priceBound } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
+import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
 
 /** `null` opens an empty dialog: the card itself is created once the first frame is chosen. */
@@ -71,19 +72,6 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     (keyword) => keyword.length > productConstraints.keywordMaxLength,
   );
   return tooLong ? { keywordLength: true } : null;
-}
-
-/** Names what `ProductService.isReady` on the server finds lacking; empty for a ready card. */
-function missingFieldsHint(product: ProductCard): string {
-  const missing = [
-    product.titleProm === '' ? 'заголовок Prom' : null,
-    product.descriptionProm === '' ? 'опис Prom' : null,
-    product.titleOlx === '' ? 'заголовок OLX' : null,
-    product.descriptionOlx === '' ? 'опис OLX' : null,
-    /[1-9]/.test(product.price) ? null : 'ціна',
-    product.images.length === 0 ? 'галерея' : null,
-  ].filter((gap) => gap !== null);
-  return missing.length === 0 ? '' : `Бракує: ${missing.join(', ')}`;
 }
 
 /**
