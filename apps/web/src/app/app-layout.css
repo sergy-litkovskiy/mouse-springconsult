@@ -3,6 +3,9 @@
 }
 
 .app-bar__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font: var(--mat-sys-title-medium);
 }
 
