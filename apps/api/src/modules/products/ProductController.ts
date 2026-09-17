@@ -102,10 +102,9 @@ export class ProductController {
 
   private toListResponse(page: ProductPage): ProductList {
     return {
-      items: page.items.map((product) => ({
-        ...this.toProductResponse(product),
-        isReady: this.products.isReady(product),
-      })),
+      items: page.items.map((product) =>
+        this.toCardResponse({ product, isReady: this.products.isReady(product) }),
+      ),
       total: page.total,
       page: page.page,
       pageSize: page.pageSize,
