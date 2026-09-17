@@ -265,9 +265,9 @@ export class ProductCatalog {
         priceMin: asQueryParam(value.priceMin),
         priceMax: asQueryParam(value.priceMax),
         category: asQueryParam(value.category),
-        publishedProm: value.publishedProm === '' ? null : value.publishedProm,
-        publishedOlx: value.publishedOlx === '' ? null : value.publishedOlx,
-        ready: value.ready === '' ? null : value.ready,
+        publishedProm: asQueryParam(value.publishedProm),
+        publishedOlx: asQueryParam(value.publishedOlx),
+        ready: asQueryParam(value.ready),
       },
     });
   }
