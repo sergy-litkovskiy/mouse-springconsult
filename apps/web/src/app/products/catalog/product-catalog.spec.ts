@@ -8,9 +8,12 @@ import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSelectHarness } from '@angular/material/select/testing';
+import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { ProductCard, ProductList } from '@contracts/products.contract';
+import { firstValueFrom } from 'rxjs';
+import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm } from '../form/product-form';
 import { ProductCatalog } from './product-catalog';
 
@@ -60,6 +63,34 @@ const KEYBOARD: ProductCard = {
 };
 
 const PAGE: ProductList = { items: [MOUSE, KEYBOARD], total: 2, page: 1, pageSize: 20 };
+
+const EMPTY_CARD: ProductCard = {
+  ...MOUSE,
+  id: '33333333-3333-4333-8333-333333333333',
+  titleProm: '',
+  descriptionProm: '',
+  titleOlx: '',
+  descriptionOlx: '',
+  price: '0.00',
+  seoKeywords: [],
+  category: '',
+  images: [],
+  isReady: false,
+};
+
+const UNPRICED: ProductCard = {
+  ...MOUSE,
+  id: '44444444-4444-4444-8444-444444444444',
+  price: '0.00',
+  isReady: false,
+};
+
+const WITHOUT_OLX_DESCRIPTION: ProductCard = {
+  ...MOUSE,
+  id: '55555555-5555-4555-8555-555555555555',
+  descriptionOlx: '',
+  isReady: false,
+};
 
 describe('ProductCatalog', () => {
   let harness: RouterTestingHarness;
@@ -535,5 +566,280 @@ describe('ProductCatalog', () => {
     await settle();
 
     expect(await (await readySelect()).getValueText()).toBe('Всі');
+  });
+  function dialogs() {
+    return TestBed.inject(MatDialog).openDialogs;
+  }
+
+  /** The overlay lives on the body, outside the routed fixture. */
+  function dialogField(name: string): HTMLInputElement | null {
+    return document.querySelector<HTMLInputElement>(
+      `mat-dialog-container [formcontrolname="${name}"]`,
+    );
+  }
+
+  async function closeDialog(result: boolean | undefined): Promise<void> {
+    const ref = dialogs()[0];
+    if (ref === undefined) {
+      throw new Error('no dialog is open');
+    }
+    const closed = firstValueFrom(ref.afterClosed());
+    ref.close(result);
+    await closed;
+    await tick();
+  }
+
+  function createButton(): HTMLButtonElement | undefined {
+    return [...element.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === 'Нова картка',
+    );
+  }
+
+  function rows(): HTMLTableRowElement[] {
+    return [...element.querySelectorAll<HTMLTableRowElement>('tr[mat-row]')];
+  }
+
+  function badge(row: number): HTMLElement | null {
+    return rows()[row]?.querySelector<HTMLElement>('[data-testid="readiness"]') ?? null;
+  }
+
+  async function missingHint(row: number): Promise<string> {
+    const tooltips = await TestbedHarnessEnvironment.loader(harness.fixture).getAllHarnesses(
+      MatTooltipHarness.with({ selector: '[data-testid="readiness"]' }),
+    );
+    const tooltip = tooltips[row];
+    if (tooltip === undefined) {
+      throw new Error(`no readiness badge in row ${String(row)}`);
+    }
+    await tooltip.show();
+    const text = await tooltip.getTooltipText();
+    await tooltip.hide();
+    return text.toLowerCase();
+  }
+
+  function deleteButton(row: number): HTMLButtonElement | null {
+    return rows()[row]?.querySelector<HTMLButtonElement>('button[aria-label^="Видалити"]') ?? null;
+  }
+
+  it('opens an empty card form from the create button', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    const create = createButton();
+    expect(create).toBeDefined();
+    create?.click();
+    await settle();
+
+    expect(dialogs().length).toBe(1);
+    expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ProductForm);
+    expect(dialogField('titleProm')?.value).toBe('');
+    expect(dialogField('descriptionOlx')?.value).toBe('');
+
+    await closeDialog(false);
+  });
+
+  it('opens the form of the card whose row is clicked', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    rows()[1]?.click();
+    await settle();
+
+    expect(dialogs().length).toBe(1);
+    expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ProductForm);
+    expect(dialogField('titleProm')?.value).toBe('Клавіатура Keychron K2');
+    expect(dialogField('price')?.value).toBe('3200.00');
+
+    await closeDialog(false);
+  });
+
+  it('re-reads the page when the form closes having changed something', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    rows()[0]?.click();
+    await settle();
+    await closeDialog(true);
+
+    const request = expectRequest();
+    expect(request.request.params.get('page')).toBe('1');
+    request.flush({ ...PAGE, items: [MOUSE, KEYBOARD, EMPTY_CARD], total: 3 });
+    await settle();
+
+    expect(rows().length).toBe(3);
+  });
+
+  it('re-reads the page after a new card was created in the form', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    createButton()?.click();
+    await settle();
+    await closeDialog(true);
+
+    expectRequest().flush({ ...PAGE, items: [MOUSE, KEYBOARD, EMPTY_CARD], total: 3 });
+    await settle();
+
+    expect(element.textContent).toContain('Знайдено: 3');
+  });
+
+  it('keeps the page as it is when the form closes without changes', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    rows()[0]?.click();
+    await settle();
+    expect(dialogs().length).toBe(1);
+    await closeDialog(false);
+
+    http.expectNone((request) => request.url === '/api/products');
+  });
+
+  it('marks each row ready or not ready from isReady with no way to switch it (AC-15)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    expect(badge(0)).not.toBeNull();
+    expect(badge(0)?.textContent.trim()).toContain('Готово');
+    expect(badge(0)?.textContent).not.toContain('Неготово');
+    expect(badge(1)?.textContent.trim()).toContain('Неготово');
+    // The colour follows the state, so the two badges cannot look alike.
+    expect(badge(0)?.className).not.toBe(badge(1)?.className);
+
+    // Readiness is derived on read (ADR 0009): nothing in the row can set it.
+    for (const row of rows()) {
+      expect(
+        row.querySelector('mat-slide-toggle, mat-checkbox, input[type="checkbox"]'),
+      ).toBeNull();
+    }
+    expect(badge(1)?.closest('button, a')).toBeNull();
+    expect(element.textContent).not.toContain('Позначити готовою');
+  });
+
+  it('shows the readiness the server reported rather than recomputing it (AC-15)', async () => {
+    await open();
+    // Every field is filled, yet the server says no: the badge believes the server.
+    expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, isReady: false }], total: 1 });
+    await settle();
+
+    expect(badge(0)).not.toBeNull();
+    expect(badge(0)?.textContent.trim()).toContain('Неготово');
+  });
+
+  it('names the missing gallery on a card without frames (AC-15)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, items: [KEYBOARD], total: 1 });
+    await settle();
+
+    const hint = await missingHint(0);
+    expect(hint).toContain('галерея');
+    expect(hint).not.toContain('ціна');
+    expect(hint).not.toContain('опис');
+    expect(hint).not.toContain('заголовок');
+  });
+
+  it('names the missing price on a card priced at zero (AC-15)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, items: [UNPRICED], total: 1 });
+    await settle();
+
+    const hint = await missingHint(0);
+    expect(hint).toContain('ціна');
+    expect(hint).not.toContain('галерея');
+    expect(hint).not.toContain('опис');
+    expect(hint).not.toContain('заголовок');
+  });
+
+  it('names the one missing text on a card that lacks it (AC-15)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, items: [WITHOUT_OLX_DESCRIPTION], total: 1 });
+    await settle();
+
+    const hint = await missingHint(0);
+    expect(hint).toContain('опис olx');
+    expect(hint).not.toContain('опис prom');
+    expect(hint).not.toContain('заголовок');
+    expect(hint).not.toContain('ціна');
+    expect(hint).not.toContain('галерея');
+  });
+
+  it('names every gap of an empty card (AC-15)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, items: [EMPTY_CARD], total: 1 });
+    await settle();
+
+    const hint = await missingHint(0);
+    for (const gap of [
+      'заголовок prom',
+      'опис prom',
+      'заголовок olx',
+      'опис olx',
+      'ціна',
+      'галерея',
+    ]) {
+      expect(hint).toContain(gap);
+    }
+  });
+
+  it('gives a ready card no list of gaps (AC-15)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
+    await settle();
+
+    expect(badge(0)).not.toBeNull();
+    expect(await missingHint(0)).toBe('');
+  });
+
+  it('asks before deleting a card and re-reads the page once it is gone', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    const remove = deleteButton(0);
+    expect(remove).not.toBeNull();
+    remove?.click();
+    await settle();
+
+    // The row underneath must not take the click and open the form as well.
+    expect(dialogs().length).toBe(1);
+    expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ConfirmDialog);
+    http.expectNone(`/api/products/${MOUSE.id}`);
+
+    await closeDialog(true);
+
+    const deletion = http.expectOne(`/api/products/${MOUSE.id}`);
+    expect(deletion.request.method).toBe('DELETE');
+    deletion.flush(null);
+    await tick();
+
+    expectRequest().flush({ ...PAGE, items: [KEYBOARD], total: 1 });
+    await settle();
+
+    expect(rows().length).toBe(1);
+    expect(element.textContent).not.toContain('Миша Logitech MX Master 3');
+  });
+
+  it('deletes nothing and keeps the page when the admin cancels', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    const remove = deleteButton(1);
+    expect(remove).not.toBeNull();
+    remove?.click();
+    await settle();
+
+    expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ConfirmDialog);
+    await closeDialog(false);
+
+    http.expectNone(`/api/products/${KEYBOARD.id}`);
+    http.expectNone((request) => request.url === '/api/products');
+    expect(rows().length).toBe(2);
   });
 });
