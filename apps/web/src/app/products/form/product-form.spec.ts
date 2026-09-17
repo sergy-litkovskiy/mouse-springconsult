@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  type TestRequest,
+} from '@angular/common/http/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -74,16 +78,18 @@ describe('ProductForm', () => {
   let fixture: ComponentFixture<ProductForm>;
   let http: HttpTestingController;
   let element: HTMLElement;
+  let close: ReturnType<typeof vi.fn>;
 
   function open(product: ProductCard | null): void {
     const data: ProductFormData = { product };
+    close = vi.fn();
     TestBed.configureTestingModule({
       imports: [ProductForm],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: MatDialogRef, useValue: { close } },
       ],
     });
     fixture = TestBed.createComponent(ProductForm);
@@ -150,6 +156,15 @@ describe('ProductForm', () => {
     const text = await tooltip.getTooltipText();
     await tooltip.hide();
     return text;
+  }
+
+  /** The snack bar lives in the overlay, outside the dialog's own element. */
+  function successNotice(): Element | null {
+    return document.querySelector('.snack-bar--success');
+  }
+
+  function actionsAlert(): string {
+    return element.querySelector('mat-dialog-actions [role="alert"]')?.textContent.trim() ?? '';
   }
 
   function readiness(): string {
@@ -253,8 +268,7 @@ describe('ProductForm', () => {
     request.flush(answer({ ...PUBLISHED_ON_PROM, publishedProm: false }));
     await settle();
 
-    expect(element.textContent).toContain('Збережено.');
-    expect(element.querySelector('[data-testid="readiness"]')?.textContent).toContain('Готово');
+    expect(close).toHaveBeenCalledWith(true);
   });
 
   it('leaves blank titles and category out, since a PATCH refuses them', async () => {
@@ -345,7 +359,7 @@ describe('ProductForm', () => {
     }
   });
 
-  it('reports the keywords past the ceiling that the server threw away (AC-07)', async () => {
+  it('reports the keywords past the ceiling that the server threw away in the notice (AC-07, AC-43)', async () => {
     open(PUBLISHED_ON_PROM);
     await settle();
 
@@ -354,10 +368,126 @@ describe('ProductForm', () => {
     submit();
     await settle();
 
-    http.expectOne(`/api/products/${CARD_ID}`).flush(answer(PUBLISHED_ON_PROM, 3));
+    http.expectOne(`/api/products/${CARD_ID}`).flush(answer(PUBLISHED_ON_PROM, 2));
     await settle();
 
-    expect(element.textContent).toContain('Понад ліміт відкинуто ключових слів: 3.');
+    expect(close).toHaveBeenCalledWith(true);
+    expect(successNotice()?.textContent).toContain(
+      'Картку збережено. Понад ліміт відкинуто ключових слів: 2.',
+    );
+  });
+
+  describe('a successful save (AC-43)', () => {
+    async function saveAccepted(): Promise<void> {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      type('descriptionOlx', 'Новий опис');
+      await settle();
+      submit();
+      await settle();
+
+      http.expectOne(`/api/products/${CARD_ID}`).flush(answer(PUBLISHED_ON_PROM));
+      await settle();
+    }
+
+    it('closes the dialog with true so the catalogue re-reads its page (AC-43)', async () => {
+      await saveAccepted();
+
+      expect(close).toHaveBeenCalledWith(true);
+    });
+
+    it('confirms the save with a green notice (AC-43)', async () => {
+      await saveAccepted();
+
+      const notice = successNotice();
+      expect(notice, 'no success notice').not.toBeNull();
+      expect(notice?.textContent).toContain('Картку збережено');
+      expect(notice?.textContent).not.toContain('Понад ліміт');
+    });
+
+    it('lets the notice go away by itself within a few seconds (AC-43)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        await saveAccepted();
+        expect(successNotice(), 'no success notice').not.toBeNull();
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        await settle();
+
+        expect(successNotice()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe('a failed save (AC-44)', () => {
+    const failures: readonly {
+      readonly name: string;
+      readonly fail: (request: TestRequest) => void;
+      readonly message: string;
+    }[] = [
+      {
+        name: 'a known code',
+        fail: (request) => {
+          const body: ApiError = {
+            error: { code: 'invalid_price', message: 'Price has an invalid format' },
+          };
+          request.flush(body, { status: 400, statusText: 'Bad Request' });
+        },
+        message: 'Ціна виглядає як 2499 або 2499.00.',
+      },
+      {
+        name: 'a missing card',
+        fail: (request) => {
+          const body: ApiError = {
+            error: { code: 'product_not_found', message: 'Product not found' },
+          };
+          request.flush(body, { status: 404, statusText: 'Not Found' });
+        },
+        message: 'Картку вже видалено.',
+      },
+      {
+        name: 'an unknown code',
+        fail: (request) => {
+          const body: ApiError = {
+            error: { code: 'something_new', message: 'Something went wrong' },
+          };
+          request.flush(body, { status: 500, statusText: 'Internal Server Error' });
+        },
+        message: 'Не вдалося зберегти картку. Спробуйте ще раз.',
+      },
+      {
+        name: 'no network',
+        fail: (request) => {
+          request.error(new ProgressEvent('error'), { status: 0 });
+        },
+        message: 'Немає зв’язку із сервером. Перевірте мережу і спробуйте ще раз.',
+      },
+    ];
+
+    for (const { name, fail, message } of failures) {
+      it(`keeps the dialog open and shows the message next to the buttons on ${name} (AC-44)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        type('price', '3100');
+        type('descriptionOlx', 'Новий опис');
+        await settle();
+        submit();
+        await settle();
+
+        fail(http.expectOne(`/api/products/${CARD_ID}`));
+        await settle();
+
+        expect(close).not.toHaveBeenCalled();
+        expect(actionsAlert()).toContain(message);
+        expect(field('price').value).toBe('3100');
+        expect(field('descriptionOlx').value).toBe('Новий опис');
+        expect(successNotice()).toBeNull();
+      });
+    }
   });
 
   it('shows readiness as a derived mark with nothing to switch it', async () => {
@@ -394,7 +524,8 @@ describe('ProductForm', () => {
       expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
 
-    it('shows a ready badge with no hint once the saved card comes back ready (AC-15)', async () => {
+    // The dialog closes on save (T45), so the fresh readiness is the catalogue's to show.
+    it('leaves the readiness of a card that came back ready to the catalogue (AC-15, AC-43)', async () => {
       open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
       await settle();
 
@@ -407,9 +538,7 @@ describe('ProductForm', () => {
       http.expectOne(`/api/products/${CARD_ID}`).flush(answer(PUBLISHED_ON_PROM));
       await settle();
 
-      expect(readiness()).toContain('Готово');
-      expect(readiness()).not.toContain('Неготово');
-      expect(await readinessHint()).toBe('');
+      expect(close).toHaveBeenCalledWith(true);
     });
 
     it('lists the gaps of the last server answer, not of unsaved fields (AC-15)', async () => {
@@ -422,16 +551,17 @@ describe('ProductForm', () => {
 
       submit();
       await settle();
-      http.expectOne(`/api/products/${CARD_ID}`).flush(
-        answer({
-          ...WITHOUT_OLX_DESCRIPTION_AND_PRICE,
-          descriptionOlx: 'Продам мишу, повний комплект.',
-        }),
-      );
+      const refusal: ApiError = {
+        error: { code: 'validation_failed', message: 'Request body is invalid' },
+      };
+      http
+        .expectOne(`/api/products/${CARD_ID}`)
+        .flush(refusal, { status: 400, statusText: 'Bad Request' });
       await settle();
 
+      expect(close).not.toHaveBeenCalled();
       expect(readiness()).toContain('Неготово');
-      expect(await readinessHint()).toBe('Бракує: ціна');
+      expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
   });
 });
