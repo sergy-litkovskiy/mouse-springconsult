@@ -10,10 +10,10 @@ export const productConstraints = {
   maxKeywords: 30,
   maxImagesPerProduct: 10,
   /**
-   * Two more places carry this number and none of them can see this one — `config.http` (the
-   * media route's own `bodyLimitBytes`, not the 256 KB default) and `infra/caddy/Caddyfile`
-   * (`request_body max_size`). They drift silently: a proxy rejecting at 8 MB answers with its
-   * own 413, and the domain error never runs.
+   * `config.http.imageUploadBodyLimitBytes` derives the upload route's ceiling from this number;
+   * `request_body max_size` in `infra/caddy/Caddyfile` cannot import it and carries a literal.
+   * They drift silently: a proxy rejecting at 8 MB answers with its own 413, and the domain
+   * error never runs.
    */
   maxImageBytes: 10 * 1024 * 1024,
   /**

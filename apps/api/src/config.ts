@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { productConstraints } from './contracts/products-limits.ts';
 
 /** A value that is the same on every machine belongs in `config`; `env` takes only the rest. */
 
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * HOUR_SECONDS;
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
 export const config = {
   http: {
@@ -11,6 +13,12 @@ export const config = {
     port: 3000,
     /** Auth request bodies are tiny; large files go through the separate media route. */
     bodyLimitBytes: 256 * 1024,
+    /**
+     * The image upload route's own ceiling: the largest accepted frame plus room for the
+     * multipart wrapper. Paired with `request_body max_size` in infra/caddy/Caddyfile — if the
+     * proxy stops first, it answers with its own bare 413 and `file_too_large` never runs.
+     */
+    imageUploadBodyLimitBytes: productConstraints.maxImageBytes + MULTIPART_OVERHEAD_BYTES,
     requestTimeoutMs: 15_000,
   },
 
@@ -63,6 +71,25 @@ const envSchema = z.object({
     .default('admin@mouse.springconsult.com.ua'),
   ADMIN_BOOTSTRAP_NAME: z.string().trim().min(1).default('Адміністратор'),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).optional(),
+
+  R2_ACCOUNT_ID: z.string().min(1, 'R2_ACCOUNT_ID is required'),
+  /** The S3 key pair from the token page, not the `cfut_…` token value itself. */
+  R2_ACCESS_KEY_ID: z.string().min(1, 'R2_ACCESS_KEY_ID is required'),
+  R2_SECRET_ACCESS_KEY: z.string().min(1, 'R2_SECRET_ACCESS_KEY is required'),
+  R2_BUCKET: z.string().min(1, 'R2_BUCKET is required'),
+  /**
+   * Lives next to the credentials rather than in `config`: one bucket is described in one place,
+   * otherwise writes and reads could end up pointing at different buckets (ADR 0007).
+   */
+  R2_PUBLIC_BASE_URL: z
+    .url('R2_PUBLIC_BASE_URL must be the public address of the bucket')
+    .refine((value) => !value.endsWith('/'), 'R2_PUBLIC_BASE_URL must not end with a slash')
+    .refine(
+      // Zod 4 still runs refinements after a failed `url` check, so the parse is guarded.
+      (value) =>
+        !URL.canParse(value) || !new URL(value).hostname.endsWith('.r2.cloudflarestorage.com'),
+      'R2_PUBLIC_BASE_URL must be the public bucket address, not the S3 endpoint',
+    ),
 });
 
 export type Env = z.infer<typeof envSchema>;

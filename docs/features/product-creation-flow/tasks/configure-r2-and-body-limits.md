@@ -1,7 +1,7 @@
 ---
 id: T06
 title: "Креденшели R2, домен бакета, парні ліміти тіла"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1500
 blocked_by: [T04]
 blocks: [T07, T12]
-updated_at: "2026-09-05"
+updated_at: "2026-09-17"
 ---
 
 # T06 — Креденшели R2, домен бакета, парні ліміти тіла
@@ -77,11 +77,17 @@ servers:
 
 ## DoD
 
-- [ ] `docker compose up api` падає з внятним повідомленням, якщо прибрати будь-яку з пʼяти змінних — перевірено вручну на кожній.
-- [ ] Домен бакета лежить поруч із креденшелами в `process.env`, а не в `config.ts`: один бакет описується в одному місці, інакше запис і читання розходяться по різних бакетах.
-- [ ] `bodyLimitBytes` і `max_size` у `Caddyfile` виведені з одного числа, і обидва мають коментар про парність.
-- [ ] `.env` у git не потрапив; `.env.example` оновлено.
-- [ ] Коміт: `feat(api): configure R2 credentials and paired body limits`.
+- [x] `docker compose up api` падає з внятним повідомленням, якщо прибрати будь-яку з пʼяти змінних — перевірено вручну на кожній.
+- [x] Домен бакета лежить поруч із креденшелами в `process.env`, а не в `config.ts`: один бакет описується в одному місці, інакше запис і читання розходяться по різних бакетах.
+- [x] `bodyLimitBytes` і `max_size` у `Caddyfile` виведені з одного числа, і обидва мають коментар про парність.
+  Уточнення 2026-09-17: пару з `max_size` утворює окремий `config.http.imageUploadBodyLimitBytes`
+  (`maxImageBytes` + 1 МіБ на обгортку multipart), а не загальний `bodyLimitBytes`. Так вимагає
+  коментар у `products-limits.ts` з T04: JSON-маршрути лишаються з межею 256 КіБ, а межу кадру
+  отримує лише маршрут вивантаження ([T14](add-image-upload-endpoint.md)).
+- [x] `.env` у git не потрапив; `.env.example` оновлено. Заглушки R2 додано й у `CI_ENV_FILE`
+  (`.github/workflows/ci.yml`): інакше CI падав би на старті. Пункт 4 Checklist не потребував
+  правок: обидва compose-файли передають у `api` весь `.env` через `env_file`.
+- [x] Коміт: `feat(api): configure R2 credentials and paired body limits`.
 
 ## Links
 
