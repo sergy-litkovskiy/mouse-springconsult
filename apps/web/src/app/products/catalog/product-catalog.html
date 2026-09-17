@@ -2,6 +2,9 @@
   <header class="catalog__header">
     <h1>Каталог товарів</h1>
     <p class="catalog__count">Знайдено: {{ total() }}</p>
+    <button matButton="filled" type="button" class="catalog__create" (click)="openForm(null)">
+      Нова картка
+    </button>
   </header>
 
   <mat-card class="catalog__filters" appearance="outlined">
@@ -138,7 +141,7 @@
                 matButton
                 type="button"
                 class="gallery-cell__count"
-                (click)="openGallery(product)"
+                (click)="$event.stopPropagation(); openForm(product)"
                 [disabled]="product.images.length === 0"
                 [matTooltip]="'Переглянути всі фото товару'"
                 [attr.aria-label]="'Фотографії товару ' + product.titleProm"
@@ -190,8 +193,44 @@
           </td>
         </ng-container>
 
+        <ng-container matColumnDef="readiness">
+          <th mat-header-cell *matHeaderCellDef scope="col">Готовність</th>
+          <td mat-cell *matCellDef="let product">
+            <span
+              data-testid="readiness"
+              class="readiness"
+              [class.readiness--ready]="product.isReady"
+              [class.readiness--not-ready]="!product.isReady"
+              [matTooltip]="missingFields(product)"
+            >
+              {{ product.isReady ? 'Готово' : 'Неготово' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef scope="col">
+            <span class="cdk-visually-hidden">Дії</span>
+          </th>
+          <td mat-cell *matCellDef="let product">
+            <button
+              matIconButton
+              type="button"
+              (click)="$event.stopPropagation(); deleteProduct(product)"
+              [attr.aria-label]="'Видалити ' + product.titleProm"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
-        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: columns"
+          class="catalog__row"
+          (click)="openForm(row)"
+        ></tr>
       </table>
     </div>
 

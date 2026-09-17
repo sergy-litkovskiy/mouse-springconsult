@@ -16,10 +16,9 @@ import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
-  Product,
   ProductCard,
   ProductImage,
   ProductList,
@@ -34,6 +33,7 @@ import {
   type ProductSortField,
 } from '@contracts/products-limits';
 import { apiErrorMessage } from '../../api-error-message';
+import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
   priceBound,
@@ -169,7 +169,7 @@ export class ProductCatalog {
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
 
-  protected readonly products = computed<readonly Product[]>(() =>
+  protected readonly products = computed<readonly ProductCard[]>(() =>
     this.catalogue.hasValue() ? this.catalogue.value().items : [],
   );
   protected readonly total = computed(() =>
@@ -187,8 +187,11 @@ export class ProductCatalog {
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
+  // The two publication columns stay last, side by side, so they read as a pair.
   protected readonly columns = [
+    'actions',
     'gallery',
+    'readiness',
     'titleProm',
     'titleOlx',
     'price',
@@ -312,7 +315,7 @@ export class ProductCatalog {
     this.catalogue.reload();
   }
 
-  protected mainImage(product: Product): ProductImage | null {
+  protected mainImage(product: ProductCard): ProductImage | null {
     return product.images.find((image) => image.isMain) ?? product.images[0] ?? null;
   }
 
@@ -325,10 +328,58 @@ export class ProductCatalog {
     return CONDITION_LABELS[condition];
   }
 
-  /** The gallery lives at the top of the card dialog (mockup 2026-09-12), so the card opens. */
-  protected openGallery(product: ProductCard): void {
+  /**
+   * The gallery lives at the top of the card dialog (mockup 2026-09-12), so the gallery counter
+   * opens the same form as the row. `null` is a new card.
+   */
+  protected openForm(product: ProductCard | null): void {
     const data: ProductFormData = { product };
     // Material 3 caps a dialog at 560px unless maxWidth says otherwise.
-    this.dialog.open(ProductForm, { data, width: '64rem', maxWidth: '92vw' });
+    this.dialog
+      .open<ProductForm, ProductFormData, boolean>(ProductForm, {
+        data,
+        width: '64rem',
+        maxWidth: '92vw',
+      })
+      .afterClosed()
+      .subscribe((changed) => {
+        if (changed === true) {
+          this.catalogue.reload();
+        }
+      });
+  }
+
+  /**
+   * Only the list of gaps is worked out here; whether the card is ready is the server's answer
+   * (ADR 0009), and the badge shows that answer.
+   */
+  protected missingFields(product: ProductCard): string {
+    const missing = [
+      product.titleProm === '' ? 'заголовок Prom' : null,
+      product.descriptionProm === '' ? 'опис Prom' : null,
+      product.titleOlx === '' ? 'заголовок OLX' : null,
+      product.descriptionOlx === '' ? 'опис OLX' : null,
+      /[1-9]/.test(product.price) ? null : 'ціна',
+      product.images.length === 0 ? 'галерея' : null,
+    ].filter((gap) => gap !== null);
+    return missing.length === 0 ? '' : `Бракує: ${missing.join(', ')}`;
+  }
+
+  protected async deleteProduct(product: ProductCard): Promise<void> {
+    const question: ConfirmDialogData = {
+      title: 'Видалити картку?',
+      message: `Картку «${product.titleProm}» разом з її фото буде видалено назавжди.`,
+      confirmLabel: 'Видалити',
+    };
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, { data: question })
+        .afterClosed(),
+    );
+    if (confirmed !== true) {
+      return;
+    }
+    await firstValueFrom(this.api.delete(product.id));
+    this.catalogue.reload();
   }
 }

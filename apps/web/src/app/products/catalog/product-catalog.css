@@ -134,3 +134,29 @@
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
 }
+
+.catalog__create {
+  margin-left: auto;
+}
+
+.catalog__row {
+  cursor: pointer;
+}
+
+.readiness {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font: var(--mat-sys-label-medium);
+}
+
+.readiness--ready {
+  background-color: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
+.readiness--not-ready {
+  background-color: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
