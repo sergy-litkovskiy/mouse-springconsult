@@ -39,7 +39,7 @@ stage: "13"
 | T15 | [Головний кадр](add-set-main-image-endpoint.md) | Done | T11, T13 | XS | Serhii | — |
 | T16 | [Видалення кадру](add-delete-image-endpoint.md) | Done | T08, T11, T13 | S | Serhii | — |
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Done | T08, T09, T16 | S | Serhii | — |
-| T18 | [Клієнт API на фронті](extend-products-api-client.md) | Todo | T05 | S | Serhii | — |
+| T18 | [Клієнт API на фронті](extend-products-api-client.md) | Done | T05 | S | Serhii | — |
 | T19 | [Діалог підтвердження](add-confirm-dialog.md) | Done | — | XS | Serhii | — |
 | T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Done | T18, T38 | M | Serhii | — |
 | T21 | [Секція галереї](add-gallery-upload-dialog.md) | Done | T18, T19 | S | Serhii | — |
