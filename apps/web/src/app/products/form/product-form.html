@@ -1,6 +1,11 @@
 <h2 mat-dialog-title class="card-title">
   Картка товару
-  <span class="readiness" [class.readiness--ready]="ready()" data-testid="readiness">
+  <span
+    class="readiness"
+    [class.readiness--ready]="ready()"
+    [matTooltip]="missingFields()"
+    data-testid="readiness"
+  >
     <mat-icon aria-hidden="true">{{ ready() ? 'check_circle' : 'pending' }}</mat-icon>
     {{ ready() ? 'Готово' : 'Неготово' }}
   </span>

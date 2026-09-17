@@ -22,6 +22,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
@@ -88,6 +89,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatProgressBarModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatTooltipModule,
     ProductGallery,
   ],
   templateUrl: './product-form.html',
@@ -106,6 +108,23 @@ export class ProductForm {
   protected readonly hasFrames = computed(() => this.images().length > 0);
   /** Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". */
   protected readonly ready = signal(this.data.product?.isReady ?? false);
+  /** The card as the server last answered it: the gaps describe the saved state, not the fields. */
+  private readonly savedCard = signal<ProductCard | null>(this.data.product);
+  protected readonly missingFields = computed(() => {
+    const product = this.savedCard();
+    if (product === null) {
+      return '';
+    }
+    const missing = [
+      product.titleProm === '' ? 'заголовок Prom' : null,
+      product.descriptionProm === '' ? 'опис Prom' : null,
+      product.titleOlx === '' ? 'заголовок OLX' : null,
+      product.descriptionOlx === '' ? 'опис OLX' : null,
+      /[1-9]/.test(product.price) ? null : 'ціна',
+      product.images.length === 0 ? 'галерея' : null,
+    ].filter((gap) => gap !== null);
+    return missing.length === 0 ? '' : `Бракує: ${missing.join(', ')}`;
+  });
   protected readonly saving = signal(false);
   protected readonly saved = signal(false);
   protected readonly discardedKeywords = signal(0);
@@ -208,6 +227,7 @@ export class ProductForm {
       this.fill(response);
       this.images.set(response.images);
       this.ready.set(response.isReady);
+      this.savedCard.set(response);
       this.discardedKeywords.set(response.discardedKeywordsCount);
       this.saved.set(true);
       this.changed.set(true);
