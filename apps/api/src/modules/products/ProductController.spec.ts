@@ -255,26 +255,29 @@ describe('product controller: main frame without a session', () => {
 const CREATED_ID = '01931f2a-3333-7000-8000-000000000003';
 
 /** What `products` declares as column defaults: the row an insert of nothing produces. */
-const EMPTY_CARD: Product = {
-  id: CREATED_ID,
-  titleProm: '',
-  descriptionProm: '',
-  titleOlx: '',
-  descriptionOlx: '',
-  price: '0.00',
-  seoKeywords: [],
-  category: '',
-  publishedProm: false,
-  publishedOlx: false,
-  condition: 'used',
-  createdAt: new Date('2026-09-17T10:00:00.000Z'),
-  updatedAt: new Date('2026-09-17T10:00:00.000Z'),
-  images: [],
-};
+function emptyCard(draft: ProductDraft): Product {
+  return {
+    id: CREATED_ID,
+    titleProm: '',
+    descriptionProm: '',
+    titleOlx: '',
+    descriptionOlx: '',
+    price: '0.00',
+    seoKeywords: [],
+    category: '',
+    publishedProm: false,
+    publishedOlx: false,
+    condition: 'used',
+    createdAt: new Date('2026-09-17T10:00:00.000Z'),
+    updatedAt: new Date('2026-09-17T10:00:00.000Z'),
+    images: [],
+    ...draft,
+  };
+}
 
 class CreateRepository extends StubProductRepository {
   override async create(draft: ProductDraft): Promise<Product> {
-    const created: Product = { ...EMPTY_CARD, ...draft };
+    const created = emptyCard(draft);
     this.cards.push(created);
     return created;
   }
