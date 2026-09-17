@@ -113,6 +113,13 @@
       </p>
     }
 
+    @if (deleteError(); as message) {
+      <p class="catalog__error" role="alert" data-testid="delete-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </p>
+    }
+
     <div class="catalog__scroll">
       <table
         mat-table

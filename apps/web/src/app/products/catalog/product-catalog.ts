@@ -1,6 +1,14 @@
 import { NgOptimizedImage } from '@angular/common';
-import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,6 +66,22 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося завантажити каталог. Спробуйте ще раз.';
+
+const DELETE_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
+  [apiErrorCodes.storageUnavailable]:
+    'Сховище фото недоступне, картку не видалено. Спробуйте за хвилину.',
+};
+
+const UNKNOWN_DELETE_MESSAGE = 'Не вдалося видалити картку. Спробуйте ще раз.';
+
+function isProductNotFound(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    (error.error as { error?: { code?: string } } | null)?.error?.code ===
+      apiErrorCodes.productNotFound
+  );
+}
 
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
   new: 'Новий',
@@ -183,13 +207,13 @@ export class ProductCatalog {
       : apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE);
   });
 
+  protected readonly deleteError = signal<string | null>(null);
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
-  // The two publication columns stay last, side by side, so they read as a pair.
+  // The two publication columns stay side by side, so they read as a pair; the action goes last.
   protected readonly columns = [
-    'actions',
     'gallery',
     'readiness',
     'titleProm',
@@ -199,6 +223,7 @@ export class ProductCatalog {
     'condition',
     'publishedProm',
     'publishedOlx',
+    'actions',
   ];
 
   /**
@@ -381,7 +406,16 @@ export class ProductCatalog {
     if (confirmed !== true) {
       return;
     }
-    await firstValueFrom(this.api.delete(product.id));
+    this.deleteError.set(null);
+    try {
+      await firstValueFrom(this.api.delete(product.id));
+    } catch (error: unknown) {
+      // A card someone else already deleted is the outcome that was asked for.
+      if (!isProductNotFound(error)) {
+        this.deleteError.set(apiErrorMessage(error, DELETE_ERROR_MESSAGES, UNKNOWN_DELETE_MESSAGE));
+        return;
+      }
+    }
     this.catalogue.reload();
   }
 }

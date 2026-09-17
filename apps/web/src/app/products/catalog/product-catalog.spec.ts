@@ -279,11 +279,10 @@ describe('ProductCatalog', () => {
     // MOUSE is up on Prom and not on OLX: the two columns say different things about the
     // same card, which is the whole point of there being two of them.
     const firstRow = element.querySelector('tr[mat-row]');
-    const cells = [...(firstRow?.querySelectorAll('td') ?? [])].map((cell) =>
-      cell.textContent.trim(),
-    );
-    expect(cells.at(-2)).toBe('Опубліковано');
-    expect(cells.at(-1)).toBe('Ні');
+    const cell = (column: string): string | undefined =>
+      firstRow?.querySelector(`td.mat-column-${column}`)?.textContent.trim();
+    expect(cell('publishedProm')).toBe('Опубліковано');
+    expect(cell('publishedOlx')).toBe('Ні');
   });
 
   it('shows the main frame as the thumbnail and the total number of images beside it', async () => {
@@ -841,5 +840,88 @@ describe('ProductCatalog', () => {
     http.expectNone(`/api/products/${KEYBOARD.id}`);
     http.expectNone((request) => request.url === '/api/products');
     expect(rows().length).toBe(2);
+  });
+
+  for (const [prom, olx] of [
+    ['true', 'true'],
+    ['true', 'false'],
+    ['false', 'true'],
+    ['false', 'false'],
+  ] as const) {
+    it(`sends publishedProm=${prom} and publishedOlx=${olx} as two separate filters (AC-13)`, async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      const label = (value: 'true' | 'false'): string => (value === 'true' ? 'Так' : 'Ні');
+      await (await publishedSelect('publishedProm')).clickOptions({ text: label(prom) });
+      await (await publishedSelect('publishedOlx')).clickOptions({ text: label(olx) });
+      submitFilters();
+      await tick();
+
+      const request = expectRequest();
+      expect(request.request.params.get('publishedProm')).toBe(prom);
+      expect(request.request.params.get('publishedOlx')).toBe(olx);
+
+      request.flush(PAGE);
+      await settle();
+    });
+  }
+
+  it('shows the main frame lazily, since only full-size originals are stored', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    const thumbnail = element.querySelector<HTMLImageElement>('.gallery-cell__thumb img');
+    expect(thumbnail?.getAttribute('loading')).toBe('lazy');
+  });
+
+  it('keeps the card and explains why when storage refuses the deletion', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    deleteButton(0)?.click();
+    await settle();
+    await closeDialog(true);
+
+    http
+      .expectOne(`/api/products/${MOUSE.id}`)
+      .flush(
+        { error: { code: 'storage_unavailable', message: 'Storage is unavailable' } },
+        { status: 502, statusText: 'Bad Gateway' },
+      );
+    await settle();
+
+    http.expectNone((request) => request.url === '/api/products');
+    expect(rows().length).toBe(2);
+    expect(element.querySelector('[data-testid="delete-error"]')?.textContent).toContain(
+      'Сховище фото недоступне, картку не видалено.',
+    );
+  });
+
+  it('re-reads the page without an error when the card was already deleted', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    deleteButton(0)?.click();
+    await settle();
+    await closeDialog(true);
+
+    http
+      .expectOne(`/api/products/${MOUSE.id}`)
+      .flush(
+        { error: { code: 'product_not_found', message: 'Product not found' } },
+        { status: 404, statusText: 'Not Found' },
+      );
+    await tick();
+
+    expectRequest().flush({ ...PAGE, items: [KEYBOARD], total: 1 });
+    await settle();
+
+    expect(rows().length).toBe(1);
+    expect(element.querySelector('[data-testid="delete-error"]')).toBeNull();
   });
 });
