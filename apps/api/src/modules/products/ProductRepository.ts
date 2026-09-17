@@ -183,12 +183,10 @@ export class ProductRepository {
     productId: string,
     r2Key: string,
     position: number,
-    isMain?: boolean,
+    isMain = false,
   ): Promise<ProductImage> {
     const repository = this.dataSource.getRepository(ProductImage);
-    return repository.save(
-      repository.create({ productId, r2Key, position, isMain: isMain ?? false }),
-    );
+    return repository.save(repository.create({ productId, r2Key, position, isMain }));
   }
 
   async countImages(productId: string): Promise<number> {
