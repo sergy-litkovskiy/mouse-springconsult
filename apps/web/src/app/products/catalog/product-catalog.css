@@ -29,6 +29,8 @@
   align-items: flex-start;
   gap: 8px 16px;
   padding: 16px;
+  --mat-form-field-container-height: 46px;
+  --mat-form-field-container-vertical-padding: 11px;
 }
 
 /* A grid with `span` would add implicit tracks on a narrow screen and scroll sideways. */

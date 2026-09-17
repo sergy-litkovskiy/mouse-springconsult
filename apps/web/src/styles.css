@@ -14,3 +14,23 @@ body {
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
 }
+
+.mat-mdc-form-field {
+  --mat-form-field-outlined-label-text-size: var(--mat-sys-body-medium-size);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--mat-sys-outline);
+  --mat-select-placeholder-text-color: var(--mat-sys-outline);
+}
+
+.mat-mdc-form-field .mdc-text-field__input::placeholder {
+  font-size: var(--mat-sys-body-medium-size);
+}
+
+/*
+ * The label color token also paints a filled field's floated label; only the empty,
+ * unfocused one is muted. `outline` is the lightest system grey that stays readable as text.
+ */
+.mat-mdc-form-field
+  .mdc-text-field--outlined:not(.mdc-text-field--invalid, .mdc-text-field--disabled)
+  .mdc-floating-label:not(.mdc-floating-label--float-above) {
+  color: var(--mat-sys-outline);
+}

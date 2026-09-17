@@ -1,12 +1,12 @@
 ---
 id: T40
 title: "Компактні поля фільтрів і світлосірі мітки"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: XS
-context_budget: 1700
+context_budget: 2000
 blocked_by: []
 blocks: [T41]
 updated_at: "2026-09-17"
@@ -91,9 +91,15 @@ updated_at: "2026-09-17"
 
 ## DoD
 
-- [ ] AC-37: висота поля 45–48 px на знімку, мітки дрібніші й світлосірі, поки поле порожнє й без фокусу.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): compact the catalog filters and mute empty labels`.
+- [x] AC-37: висота поля 45–48 px на знімку, мітки дрібніші й світлосірі, поки поле порожнє й без фокусу.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): compact the catalog filters and mute empty labels`.
+
+Результат 2026-09-17 (для опису PR):
+- Токени звірено з установленим `@angular/material` 22.1. Висота поля — 46 px (−18 %): `--mat-form-field-container-height` і `--mat-form-field-container-vertical-padding: 11px` на `.filters`.
+- Мітка в спокої — 14 px (`body-medium`), плейсхолдер теж 14 px. Плаваюча мітка лишилась 12 px: зменшувати її далі означало б нечитабельні 10.5 px.
+- Токен `--mat-form-field-outlined-label-text-color` фарбує й заповнену мітку, тож сірий колір (`--mat-sys-outline`, `#74777f`) задає точкове правило лише для мітки без `float-above`. У фокусі мітка primary, з помилкою — error; виміряно на живому стеку.
+- `pw`: висота всіх восьми полів — 46 px; на 360 px `scrollWidth` = `clientWidth` = 360; помилка ціни видна повністю.
 
 ## Links
 
