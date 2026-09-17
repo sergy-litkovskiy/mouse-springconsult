@@ -41,7 +41,7 @@ stage: "13"
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Done | T08, T09, T16 | S | Serhii | — |
 | T18 | [Клієнт API на фронті](extend-products-api-client.md) | Todo | T05 | S | Serhii | — |
 | T19 | [Діалог підтвердження](add-confirm-dialog.md) | Done | — | XS | Serhii | — |
-| T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Blocked | T18, T38 | M | Serhii | — |
+| T20 | [Форма картки (MatDialog)](add-product-form-subfeature.md) | Todo | T18, T38 | M | Serhii | — |
 | T21 | [Секція галереї](add-gallery-upload-dialog.md) | Todo | T18, T19 | S | Serhii | — |
 | T22 | [Каталог](integrate-catalog-with-form-and-delete.md) | Blocked | T18, T19, T20, T34 | S | Serhii | — |
 | T23 | [Приймання поставки 1](verify-delivery-1.md) | Blocked | T14–T22, T37 | S | Serhii | — |
@@ -54,7 +54,7 @@ stage: "13"
 | T35 | [Фільтр «Картка готова»](add-catalog-readiness-filter.md) | Done | T34, T36 | XS | Serhii | — |
 | T36 | [Варіанти «Всі / Так / Ні»](relabel-published-filter-options.md) | Done | — | XS | Serhii | — |
 | T37 | [Ширина фільтрів](resize-catalog-filter-fields.md) | Done | T35 | XS | Serhii | — |
-| T38 | [Порожня картка](allow-empty-product-card.md) | Todo | — | S | Serhii | — |
+| T38 | [Порожня картка](allow-empty-product-card.md) | Done | — | S | Serhii | — |
 
 ## Поставка 2 — модель
 
@@ -73,7 +73,7 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T21, T24, T38 — жодної незакритої залежності. T24 не залежить від коду поставки 1 і може
+T20, T21, T24 — жодної незакритої залежності. T24 не залежить від коду поставки 1 і може
 вестись паралельно з усією нею.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
@@ -92,6 +92,8 @@ T22 чекає ще й на T20.
 
 **2026-09-17 додано T38.** Без порожньої картки діалог T20 не може створити нову: кадр
 вантажиться лише в наявну картку, а поля до першого кадру вимкнені (AC-20). T20 знову Blocked до T38.
+
+**2026-09-17 закрито T38.** Вона розблокувала T20.
 
 Раніше: T13 закрито 2026-09-10, T10 і T19 — 2026-09-12. T21 і T22 чекають ще й на T18,
 а T22 — і на T20.

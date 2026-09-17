@@ -1,7 +1,7 @@
 ---
 id: T38
 title: "Порожня картка: створення без полів і заголовки в предикаті готовності"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -106,11 +106,16 @@ AC-15 («бракує … одного з текстів»).
 
 ## DoD
 
-- [ ] AC-35: `POST /products` з `{}` створює порожню картку — перевірено тестом контролера і смоуком.
-- [ ] AC-36: без заголовка картка неготова і в `isReady`, і у фільтрі `ready` — перевірено на реальній базі.
-- [ ] Міграція проходить `down` і `up`; наявні картки не змінюються.
-- [ ] `openapi.yaml` і `products.contract.ts` описують одне й те саме тіло створення.
-- [ ] Коміт: `feat(products): create an empty card before its first frame`.
+- [x] AC-35: `POST /products` з `{}` створює порожню картку — перевірено тестом контролера і смоуком.
+- [x] AC-36: без заголовка картка неготова і в `isReady`, і у фільтрі `ready` — перевірено на реальній базі.
+- [x] Міграція проходить `down` і `up`; наявні картки не змінюються.
+- [x] `openapi.yaml` і `products.contract.ts` описують одне й те саме тіло створення.
+- [x] Коміт: `feat(products): create an empty card before its first frame`.
+
+Результат 2026-09-17:
+- Пункт 4 виконано окремим тестом `leaves a card without a title out of the ready ones, as isReady does (AC-36)`, а не новими рядками таблиці AC-30: правка наявного `it` не є роботою RED.
+- На паузі перегляду тестів з RED прибрано перевірку «без `titleProm` створення відхиляється», яку story скасовує.
+- Смоук: без сесії — 401, `titleProm: "  "` — 400, `{}` — 201 з `isReady: false`.
 
 ## Links
 
