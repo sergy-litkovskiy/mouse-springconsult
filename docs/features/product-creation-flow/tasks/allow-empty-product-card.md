@@ -48,7 +48,7 @@ AC-15 («бракує … одного з текстів»).
 
 ## Data delta
 
-Нова міграція `…-default-empty-product-titles.ts`:
+Нова міграція `1789651109349-default-empty-product-card-fields.ts`:
 
 | Колонка | Було | Стало |
 |---|---|---|
@@ -90,7 +90,7 @@ AC-15 («бракує … одного з текстів»).
 
 ## Checklist
 
-1. Міграція: `DEFAULT ''` для `title_prom`, `title_olx` і `category`; `down` знімає default. Entity `Product.ts` — ті самі default у колонках.
+1. Міграція: `DEFAULT ''` для `title_prom`, `title_olx` і `category`; `down` знімає default. Entity `Product.ts` не змінюється: default описів теж живе лише в міграції. Зроблено окремим комітом до `/tdd`, бо implementer нових файлів не створює.
 2. `contracts/products.contract.ts`: `titleProm`, `titleOlx`, `category` у `productCreateSchema` необовʼязкові з default `''`. Порожній рядок, переданий явно, і далі відхиляється.
 3. `ProductRepository.ts`: `ProductDraft` — усі поля необовʼязкові; коментар над ним більше не називає три колонки без default.
 4. `ProductService.isReady` і `READINESS_EXPRESSION`: обидва заголовки непорожні. Таблиця узгодженості AC-30 у `ProductRepository.spec.ts` отримує дві картки, де бракує лише заголовка.
