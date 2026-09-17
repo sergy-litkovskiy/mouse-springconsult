@@ -108,6 +108,7 @@ export async function buildServer(): Promise<ApiServer> {
 
   const productController = new ProductController(
     new ProductService(new ProductRepository(dataSource)),
+    env.R2_PUBLIC_BASE_URL,
   );
 
   const app = createApp();

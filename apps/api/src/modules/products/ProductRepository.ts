@@ -165,20 +165,9 @@ export class ProductRepository {
     return (result.affected ?? 0) > 0;
   }
 
-  /**
-   * `url` is still a stored, `NOT NULL` column: ADR 0007 removes it, but only once `config`
-   * carries the R2 bucket domain (T06) and the controller learns to compose the address from
-   * `r2Key` itself (T12) — until then this repository keeps taking it as an argument, same as
-   * the column requires (data-model.md, `product_images`).
-   */
-  async addImage(
-    productId: string,
-    r2Key: string,
-    url: string,
-    position: number,
-  ): Promise<ProductImage> {
+  async addImage(productId: string, r2Key: string, position: number): Promise<ProductImage> {
     const repository = this.dataSource.getRepository(ProductImage);
-    return repository.save(repository.create({ productId, r2Key, url, position, isMain: false }));
+    return repository.save(repository.create({ productId, r2Key, position, isMain: false }));
   }
 
   async countImages(productId: string): Promise<number> {

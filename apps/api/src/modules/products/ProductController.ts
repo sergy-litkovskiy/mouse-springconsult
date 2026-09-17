@@ -29,7 +29,11 @@ const productParamsSchema = z.object({ productId: z.uuid() });
  * the business of `modules/auth`, and this module does not even learn the cookie name.
  */
 export class ProductController {
-  constructor(private readonly products: ProductService) {}
+  /** `imagePublicBaseUrl` is the bucket's public address, validated without a trailing slash. */
+  constructor(
+    private readonly products: ProductService,
+    private readonly imagePublicBaseUrl: string,
+  ) {}
 
   register(app: FastifyInstance, sessionGuard: preHandlerAsyncHookHandler): void {
     app.get('/', { preHandler: sessionGuard }, this.list);
@@ -131,7 +135,8 @@ export class ProductController {
     return {
       id: image.id,
       r2Key: image.r2Key,
-      url: image.url,
+      // The only place a frame's address is composed (ADR 0007).
+      url: `${this.imagePublicBaseUrl}/${image.r2Key}`,
       position: image.position,
       isMain: image.isMain,
     };

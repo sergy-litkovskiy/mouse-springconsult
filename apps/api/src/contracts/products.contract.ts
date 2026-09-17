@@ -11,6 +11,10 @@ import {
 export const productImageSchema = z.object({
   id: z.uuid(),
   r2Key: z.string(),
+  /**
+   * Derived, not a column: composed from `r2Key` and the bucket's public domain when the frame is
+   * mapped into this DTO (ADR 0007), so moving the bucket rewrites no rows.
+   */
   url: z.url(),
   /** Position in the gallery, 0-based; the main frame is not required to be first. */
   position: z.int().nonnegative(),

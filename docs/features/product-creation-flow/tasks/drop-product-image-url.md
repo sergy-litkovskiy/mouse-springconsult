@@ -1,7 +1,7 @@
 ---
 id: T12
 title: "Знести product_images.url і складати адресу з ключа"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1700
 blocked_by: [T06, T11]
 blocks: [T14]
-updated_at: "2026-09-05"
+updated_at: "2026-09-17"
 ---
 
 # T12 — Знести `product_images.url` і складати адресу з ключа
@@ -89,12 +89,12 @@ updated_at: "2026-09-05"
 
 ## DoD
 
-- [ ] `db:migrate` вниз і вгору проходить на тестовій базі — обидва напрямки перевірені, не лише `up`.
-- [ ] У жодному файлі, крім міграції `down`, слова `url` як колонки `product_images` не лишилось — перевірено `grep`.
-- [ ] Адреса кадру складається рівно в одному місці, і це видно з коду.
-- [ ] Кадр відкривається в браузері за складеною адресою — смоук проти живого бакета.
-- [ ] `npm run test` в `api` і `web` зелений.
-- [ ] Коміт: `feat(products): derive the image URL from its storage key`.
+- [x] `db:migrate` вниз і вгору проходить на тестовій базі — обидва напрямки перевірені, не лише `up`: `down` повертає `url text not null` без дефолту, повторний `up` знову його прибирає (2026-09-17, робоча база стека).
+- [x] У жодному файлі, крім міграції `down`, слова `url` як колонки `product_images` не лишилось — перевірено `grep`. Лишається лише історична міграція `create-products-tables`, яка колонку створила. `url` у `productImageSchema` — тепер похідне поле відповіді, а не колонка.
+- [x] Адреса кадру складається рівно в одному місці, і це видно з коду.
+- [x] Кадр відкривається в браузері за складеною адресою — смоук проти живого бакета: публічна адреса з відповіді `GET /products/{id}` віддала 200 `image/png`.
+- [x] `npm run test` в `api` і `web` зелений. Пункт 5 Checklist правок у `web` не потребував: шаблони вже читали `image.url` з відповіді.
+- [x] Коміт: `feat(products): derive the image URL from its storage key`.
 
 ## Links
 

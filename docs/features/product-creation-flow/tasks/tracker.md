@@ -33,9 +33,9 @@ stage: "13"
 | T09 | [Репозиторій запису картки](add-product-write-repository.md) | Done | — | S | Serhii | — |
 | T10 | [Сервіс картки](add-product-card-service.md) | Done | T03, T09 | S | Serhii | — |
 | T11 | [Маршрути картки](add-product-card-routes.md) | Done | T05, T10 | S | Serhii | — |
-| T12 | [Знести `product_images.url`](drop-product-image-url.md) | Todo | T06, T11 | S | Serhii | — |
+| T12 | [Знести `product_images.url`](drop-product-image-url.md) | Done | T06, T11 | S | Serhii | — |
 | T13 | [Репозиторій кадрів](add-image-repository.md) | Done | T09 | S | Serhii | — |
-| T14 | [Приймання кадру](add-image-upload-endpoint.md) | Blocked | T08, T12, T13 | S | Serhii | — |
+| T14 | [Приймання кадру](add-image-upload-endpoint.md) | Todo | T08, T12, T13 | S | Serhii | — |
 | T15 | [Головний кадр](add-set-main-image-endpoint.md) | Todo | T11, T13 | XS | Serhii | — |
 | T16 | [Видалення кадру](add-delete-image-endpoint.md) | Todo | T08, T11, T13 | S | Serhii | — |
 | T17 | [Видалення картки](add-delete-product-endpoint.md) | Blocked | T08, T09, T16 | S | Serhii | — |
@@ -72,8 +72,8 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T12, T15, T16, T18, T24, T34, T36 — жодної незакритої залежності. T11 закрито 2026-09-17: вона
-розблокувала T12, T15 і T16. T06 закрито 2026-09-17: вона
+T14, T15, T16, T18, T24, T34, T36 — жодної незакритої залежності. T11 закрито 2026-09-17: вона
+розблокувала T12, T15 і T16. T12 закрито того ж дня й розблокувала T14. T06 закрито 2026-09-17: вона
 розблокувала T07, а T12 чекає ще й на T11. T07 закрито того ж дня й розблокувала T08. T08 закрито того ж дня, але нічого не розблокувала: T14 чекає ще й на T12,
 T16 — на T11, T17 — на T16. T34 і T36 — доопрацювання
 каталогу з запиту 2026-09-16; T23 тепер чекає й на T37, бо перевіряє AC-29…AC-34, а T22 — на T34. T24 не залежить від коду поставки 1

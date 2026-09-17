@@ -17,9 +17,6 @@ export class ProductImage {
   @Column({ name: 'r2_key', type: 'text' })
   r2Key!: string;
 
-  @Column({ name: 'url', type: 'text' })
-  url!: string;
-
   @Column({ name: 'position', type: 'int' })
   position!: number;
 

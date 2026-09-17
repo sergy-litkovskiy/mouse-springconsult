@@ -98,7 +98,6 @@ async function seedImage(productId: string, seed: ImageSeed = {}): Promise<strin
   const row: Omit<ProductImage, 'id'> = {
     productId,
     r2Key: `products/${productId}/original.jpg`,
-    url: `https://r2.example.com/products/${productId}/original.jpg`,
     position: 0,
     isMain: false,
     ...seed,
@@ -347,12 +346,7 @@ describe('product repository (postgres)', () => {
   it('adds a frame with the fields it was given, not main by default', async () => {
     const id = await seedProduct();
 
-    const image = await products.addImage(
-      id,
-      `products/${id}/first.jpg`,
-      'https://r2.example.com/first.jpg',
-      0,
-    );
+    const image = await products.addImage(id, `products/${id}/first.jpg`, 0);
 
     assert.equal(image.productId, id);
     assert.equal(image.r2Key, `products/${id}/first.jpg`);

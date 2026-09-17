@@ -31,9 +31,9 @@ async function insertImage(
   isMain = false,
 ): Promise<void> {
   await dataSource.query(
-    `insert into "product_images" ("product_id", "r2_key", "url", "position", "is_main")
-     values ($1, $2, $3, $4, $5)`,
-    [productId, r2Key, `https://r2.example.com/${r2Key}`, position, isMain],
+    `insert into "product_images" ("product_id", "r2_key", "position", "is_main")
+     values ($1, $2, $3, $4)`,
+    [productId, r2Key, position, isMain],
   );
 }
 

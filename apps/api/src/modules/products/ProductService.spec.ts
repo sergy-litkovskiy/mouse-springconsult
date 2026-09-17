@@ -43,7 +43,6 @@ function readyCard(overrides: Partial<Product> = {}): Product {
         id: '01931f2a-2222-7000-8000-000000000001',
         productId: CARD_ID,
         r2Key: `products/${CARD_ID}/front.jpg`,
-        url: `https://img.mouse.springconsult.com.ua/products/${CARD_ID}/front.jpg`,
         position: 0,
         isMain: true,
       },
