@@ -1,15 +1,15 @@
 ---
 id: T25
 title: "queue.ts, worker.ts, pg-boss, сервіс worker у compose"
-status: Todo
+status: Blocked
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 1500
-blocked_by: [T23]
+blocked_by: [T23, T42, T43]
 blocks: [T26, T27]
-updated_at: "2026-09-05"
+updated_at: "2026-09-17"
 ---
 
 # T25 — `queue.ts`, `worker.ts`, pg-boss, сервіс `worker` у compose

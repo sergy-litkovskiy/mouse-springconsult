@@ -86,6 +86,21 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 явного рішення: він коштує приблизно 15× токенів, а `tracker.md` оновлюється після
 обох доріжок. Для одного розробника послідовний порядок дешевший.
 
+## Поставка 1 — UI-доопрацювання
+
+Запит 2026-09-17. Задачі треба закрити **до старту поставки 2**: T25 чекає на T42 і T43.
+T24 рішення, тож його можна вести паралельно. T40 → T41 → T42 ідуть по черзі, бо правлять
+ті самі файли (`styles.css`, `product-form.css`). T43 торкається `product-catalog.*` і
+нового компонента, тож може йти паралельно з цим ланцюжком. Щоб не розв'язувати конфлікти
+в `product-catalog.css`, краще почати її після T40.
+
+| # | ID | Задача | Крок А | Між | Після | Обґрунтування |
+|---|----|--------|--------|-----|-------|---------------|
+| 19a | T40 | Компактні фільтри й мітки | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний (висота поля 45–48 px). Назви токенів `--mat-form-field-*` звір із документацією Material до старту `/goal`, бо цикл писатиме їх з пам'яті. Сірість мітки у фокусі та з помилкою оцінюєш сам на знімках |
+| 19b | T41 | Висота ціни у формі | `goal` | `pw`: з хибною ціною і без неї | — | Одна правка вирівнювання з вимірюваним DoD (різниця висоти ≤ 1 px). Спершу виміряй висоту трьох полів, щоб підтвердити причину |
+| 19c | T42 | Кольори бейджа | `goal` | `pw`: обчислені кольори в каталозі й у формі | — | Перенесення CSS у `styles.css`; наявні тести на класи `readiness*` мають лишитися зеленими без правок |
+| 19d | T43 | Перегляд фото | `scaf` | `pw` | — | Новий компонент `products/gallery/image-viewer.*` з `.html`/`.css`, тож `tdd` тут упреться в Gate 2. Задача змінює рішення T22 (лічильник відкривав форму), тож наявний тест каталогу переписується, а не «лагодиться». Кроки 6 (`PRD.md`, `sad.md`) — руками |
+
 ## Поставка 2 — модель
 
 | # | ID | Задача | Крок А | Між | Після | Обґрунтування |
@@ -134,6 +149,18 @@ T07, T25 і T27 додають npm-пакети, а `node_modules` живуть 
 /goal docs/features/product-creation-flow/tasks/resize-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved and at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
+```
+/goal docs/features/product-creation-flow/tasks/compact-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved, every `.filters .mat-mdc-text-field-wrapper` has `getBoundingClientRect().height` between 44.8 and 47.6, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/fix-product-form-field-sizing.md: every Checklist item is done, in the open card dialog at 1280 px the `.mat-mdc-text-field-wrapper` heights of the price, category and condition fields differ by at most 1 px both with and without the price error shown, playwright-cli screenshots at 1280 and 360 px are saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/unify-readiness-badge-colors.md: every Checklist item is done, `rg -n "readiness--" apps/web/src/app --glob '*.css'` prints nothing, the computed `background-color` and `color` of `[data-testid="readiness"]` are equal in the catalogue row and in the open card dialog for both a ready and a not-ready card (checked with playwright-cli), `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
 Хвіст `or stop after N turns` ненадійний, тож межу витрат став окремо.
 
 ## Зведення за інструментами
@@ -142,11 +169,11 @@ T07, T25 і T27 додають npm-пакети, а `node_modules` живуть 
 |---|---|
 | `/tdd` | T34, T15, T14, T18, T36, T35, T22, T31 |
 | `/tdd --review-tests` | T08, T16, T17, T38, T28, T29, T30, T32 |
-| `feature-scaffold` | T11, T12, T20, T21, T26 |
-| `/goal` | T06, T07, T37, T25, T27 (з `claude-api`) |
+| `feature-scaffold` | T11, T12, T20, T21, T43, T26 |
+| `/goal` | T06, T07, T37, T40, T41, T42, T25, T27 (з `claude-api`) |
 | Plan mode | T24, T23, T33 |
-| `playwright-cli` | T36, T35, T37, T20, T21, T22, T32, T23, T33 |
+| `playwright-cli` | T36, T35, T37, T20, T21, T22, T40, T41, T42, T43, T32, T23, T33 |
 | `critical-path-review` | обов'язково: T14, T16, T17, T26, T28, T29, T30 |
 | Обв'язка окремим комітом після `/tdd` | T08, T14, T15, T16, T17 |
 | `feature-ship` | усі, крім T23, T24, T33 |
-| Ручні правки документів до кроку Б | T34 (`openapi.yaml`, `PRD.md`), T35, T36, T37 (`PRD.md`) |
+| Ручні правки документів до кроку Б | T34 (`openapi.yaml`, `PRD.md`), T35, T36, T37, T40, T41, T42 (`PRD.md`), T43 (`PRD.md`, `sad.md`) |
