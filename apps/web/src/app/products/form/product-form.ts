@@ -6,7 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   type AbstractControl,
   FormBuilder,
@@ -15,13 +15,14 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
@@ -101,6 +102,8 @@ export class ProductForm {
   private readonly api = inject(ProductsApi);
   private readonly formBuilder = inject(FormBuilder);
   private readonly data = inject<ProductFormData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject<MatDialogRef<ProductForm, boolean>>(MatDialogRef);
+  private readonly snackBar = inject(MatSnackBar);
 
   private readonly productId = signal<string | null>(this.data.product?.id ?? null);
   protected readonly images = signal<readonly ProductImage[]>(this.data.product?.images ?? []);
@@ -116,8 +119,6 @@ export class ProductForm {
     return product === null ? '' : missingFieldsHint(product);
   });
   protected readonly saving = signal(false);
-  protected readonly saved = signal(false);
-  protected readonly discardedKeywords = signal(0);
   protected readonly formError = signal<string | null>(null);
   /** The catalogue re-reads its page only when the dialog changed something. */
   protected readonly changed = signal(false);
@@ -170,11 +171,6 @@ export class ProductForm {
         this.form.disable();
       }
     });
-
-    // A message about the last save no longer describes fields the admin has since edited.
-    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      this.saved.set(false);
-    });
   }
 
   /**
@@ -214,12 +210,15 @@ export class ProductForm {
     this.formError.set(null);
     try {
       const response = await firstValueFrom(this.api.update(id, this.changes()));
-      this.fill(response);
-      this.images.set(response.images);
-      this.savedCard.set(response);
-      this.discardedKeywords.set(response.discardedKeywordsCount);
-      this.saved.set(true);
-      this.changed.set(true);
+      const discarded = response.discardedKeywordsCount;
+      this.snackBar.open(
+        discarded > 0
+          ? `Картку збережено. Понад ліміт відкинуто ключових слів: ${discarded}.`
+          : 'Картку збережено.',
+        undefined,
+        { duration: 4000, panelClass: 'snack-bar--success' },
+      );
+      this.dialogRef.close(true);
     } catch (error: unknown) {
       // What the admin typed stays in the fields (AC-09): only the message changes.
       this.formError.set(apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE));

@@ -108,21 +108,12 @@
       <mat-slide-toggle formControlName="publishedOlx">Опубліковано на OLX</mat-slide-toggle>
     </div>
   </form>
-
-  @if (formError(); as message) {
-    <p class="card-message card-message--error" role="alert">{{ message }}</p>
-  }
-  @if (saved()) {
-    <p class="card-message" role="status">
-      Збережено.
-      @if (discardedKeywords() > 0) {
-        Понад ліміт відкинуто ключових слів: {{ discardedKeywords() }}.
-      }
-    </p>
-  }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end" class="card-actions">
+  @if (formError(); as message) {
+    <p class="card-message card-message--error" role="alert">{{ message }}</p>
+  }
   <button matButton type="button" [mat-dialog-close]="changed()">Скасувати</button>
   <button matButton="filled" type="submit" form="product-form" [disabled]="!canSave()">
     Зберегти
