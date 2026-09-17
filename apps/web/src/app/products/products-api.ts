@@ -11,16 +11,16 @@ import type {
 } from '@contracts/products.contract';
 import { environment } from '@environments/environment';
 
-/**
- * What is returned is a request, not a subscription: `httpResource` owns the lifecycle and
- * cancels the previous request the moment the query changes, so two pages in flight can no
- * longer resolve out of order and paint the wrong one.
- */
 @Injectable({ providedIn: 'root' })
 export class ProductsApi {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/products`;
 
+  /**
+   * What is returned is a request, not a subscription: `httpResource` owns the lifecycle and
+   * cancels the previous request the moment the query changes, so two pages in flight can no
+   * longer resolve out of order and paint the wrong one.
+   */
   listRequest(query: ProductListQuery): HttpResourceRequest {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
   }
