@@ -1,7 +1,7 @@
 ---
 id: T18
 title: "Методи запису в products-api.ts"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1400
 blocked_by: [T05]
 blocks: [T20, T21, T22, T23]
-updated_at: "2026-09-12"
+updated_at: "2026-09-17"
 ---
 
 # T18 — Методи запису в `products-api.ts`
@@ -81,11 +81,11 @@ zod-файлу затягнув би всю бібліотеку валідац�
 
 ## DoD
 
-- [ ] Жодного локального інтерфейсу DTO: усе через `import type` з `@contracts`.
-- [ ] Жодного рантаймового імпорту з `*.contract.ts` — перевірено `grep`, бо ціна помилки ~55 КБ gzip.
-- [ ] Усі вісім операцій контракту покриті; жодного методу, якого в контракті немає.
-- [ ] `npm run lint` в `web` зелений — межі між фічами не порушені.
-- [ ] Коміт: `feat(web): add product write methods to the api client`.
+- [x] Жодного локального інтерфейсу DTO: усе через `import type` з `@contracts`.
+- [x] Жодного рантаймового імпорту з `*.contract.ts` — перевірено `grep`, бо ціна помилки ~55 КБ gzip.
+- [x] Усі вісім операцій контракту покриті; жодного методу, якого в контракті немає.
+- [x] `npm run lint` в `web` зелений — межі між фічами не порушені.
+- [x] Коміт: `feat(web): add product write methods to the api client`.
 
 ## Links
 
