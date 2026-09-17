@@ -45,3 +45,26 @@ body {
   background-color: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
 }
+
+/* Material 3 has no success role, so the green is ours: white on #2e7d32 is about 5:1. */
+.snack-bar--success {
+  --mat-snack-bar-container-color: #2e7d32;
+  --mat-snack-bar-supporting-text-color: #fff;
+}
+
+.snack-bar--success .mdc-snackbar__surface > .mat-mdc-snack-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/*
+ * An icon element would add its ligature to the announced text; a pseudo-element does not.
+ * The label class is on two nested elements, so only the container's own one gets the icon.
+ */
+.snack-bar--success .mdc-snackbar__surface > .mat-mdc-snack-bar-label::before {
+  content: 'check_circle';
+  font-family: 'Material Icons';
+  font-size: 22px;
+  line-height: 1;
+}
