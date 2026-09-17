@@ -1,7 +1,7 @@
 ---
 id: T44
 title: "Розділювачі заголовка й дій у діалозі картки"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -74,9 +74,11 @@ updated_at: "2026-09-17"
 
 ## DoD
 
-- [ ] AC-42: лінії видно на знімках, кольори збігаються з токеном.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): divide the card dialog header and actions`.
+- [x] AC-42: лінії видно на знімках, кольори збігаються з токеном.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): divide the card dialog header and actions`.
+
+Результат 2026-09-17: `pw` на 1280 і 360 px — обидві лінії `1px solid rgb(196, 198, 208)`, що дорівнює `--mat-sys-outline-variant`, ширина збігається з поверхнею діалогу, горизонтального скролу немає. У діалозі підтвердження `mat-dialog-actions` має лише штатну прозору рамку Material.
 
 ## Links
 

@@ -386,6 +386,14 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `user` клікає заглушку мініатюри або рядок
 **Then** перегляд не відкривається: лічильник вимкнений, а клік відкриває форму картки
 
+### AC-42 (US-06) — happy path
+
+Запит 2026-09-17, [T44](tasks/divide-product-form-dialog.md).
+
+**Given** `user` відкрив діалог картки
+**When** діалог відмальовано
+**Then** під заголовком і над кнопками є світлосіра лінія (`outline-variant`) на всю ширину діалогу, а інші діалоги ліній не мають
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
