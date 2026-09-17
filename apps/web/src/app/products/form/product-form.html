@@ -3,6 +3,7 @@
   <span
     class="readiness"
     [class.readiness--ready]="ready()"
+    [class.readiness--not-ready]="!ready()"
     [matTooltip]="missingFields()"
     data-testid="readiness"
   >

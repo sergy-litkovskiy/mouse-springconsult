@@ -34,3 +34,14 @@ body {
   .mdc-floating-label:not(.mdc-floating-label--float-above) {
   color: var(--mat-sys-outline);
 }
+
+/* One palette for the readiness badge in the catalogue and in the open card. */
+.readiness--not-ready {
+  background-color: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.readiness--ready {
+  background-color: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}

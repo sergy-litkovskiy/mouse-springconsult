@@ -362,6 +362,14 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** форма відмальована, з помилкою ціни або без неї
 **Then** рамки полів «Ціна, ₴», «Категорія» і «Стан» однакової висоти, а мітки й плейсхолдери форми дрібніші й світлосірі, поки поле порожнє й без фокусу
 
+### AC-39 (US-07) — happy path
+
+Запит 2026-09-17, [T42](tasks/unify-readiness-badge-colors.md).
+
+**Given** у каталозі є готова й неготова картки
+**When** `user` порівнює бейдж у рядку таблиці з бейджем у заголовку відкритої картки
+**Then** «Неготово» в обох місцях сірий (`surface-container-high` / `on-surface-variant`), а «Готово» — `primary-container` / `on-primary-container`
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

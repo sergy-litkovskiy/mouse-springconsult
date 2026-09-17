@@ -152,13 +152,3 @@
   white-space: nowrap;
   font: var(--mat-sys-label-medium);
 }
-
-.readiness--ready {
-  background-color: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
-}
-
-.readiness--not-ready {
-  background-color: var(--mat-sys-error-container);
-  color: var(--mat-sys-on-error-container);
-}
