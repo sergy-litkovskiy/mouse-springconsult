@@ -9,7 +9,7 @@ import type {
 import multipart from '@fastify/multipart';
 import { config } from '../../config.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
-import { ImageStorage, MediaService } from '../media/index.ts';
+import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -470,7 +470,8 @@ describe('product controller: delete frame', () => {
 
   it('answers storage_unavailable and keeps the frame when storage is down (AC-17)', async () => {
     repository.cards[0] = twoFrameCard();
-    storage.failure = new Error('getaddrinfo ENOTFOUND');
+    // The real ImageStorage turns every SDK failure into this; the double does the same.
+    storage.failure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
     try {
       const response = await app.inject({ method: 'DELETE', url: imageUrl(READY_ID, BACK_ID) });
 
