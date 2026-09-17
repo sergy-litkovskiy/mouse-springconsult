@@ -165,12 +165,25 @@ class StubProductRepository extends ProductRepository {
     return true;
   }
 
+  override async findImageKeys(productId: string): Promise<string[]> {
+    return this.galleryOf(productId).map((image) => image.r2Key);
+  }
+
+  /** The frames go with the card, as `on delete cascade` takes them in Postgres. */
+  override async delete(id: string): Promise<boolean> {
+    if (this.stored?.id !== id) {
+      return false;
+    }
+    this.stored = null;
+    return true;
+  }
+
   private galleryOf(productId: string): ProductImage[] {
     return this.stored?.id === productId ? this.stored.images : [];
   }
 }
 
-/** The storage is never reached: `store` and `remove` are overridden, and nothing else is called. */
+/** The storage is never reached: every media method the service calls is overridden. */
 const NO_STORAGE = undefined as unknown as ImageStorage;
 
 class RecordingMediaService extends MediaService {
@@ -200,6 +213,17 @@ class RecordingMediaService extends MediaService {
       throw this.removeFailure;
     }
     this.removed.push(key);
+  }
+
+  /** One entry per call, so a test can tell one batch from many single removals. */
+  readonly removedBatches: string[][] = [];
+
+  override async removeMany(keys: readonly string[]): Promise<void> {
+    this.onRemove?.();
+    if (this.removeFailure !== undefined) {
+      throw this.removeFailure;
+    }
+    this.removedBatches.push([...keys]);
   }
 }
 
@@ -633,5 +657,58 @@ describe('product service: deleting a frame', () => {
     await assert.rejects(service.deleteImage(CARD_ID, FOREIGN_IMAGE_ID), ImageNotFound);
     assert.deepEqual(media.removed, []);
     assert.equal(repository.stored.images.length, 2);
+  });
+});
+
+describe('product service: deleting a card', () => {
+  it('removes every object of a ten-frame card in a single batch and then the card (AC-18)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = cardWithFrames(10);
+
+    await service.deleteProduct(CARD_ID);
+
+    assert.deepEqual(media.removedBatches, [cardWithFrames(10).images.map((image) => image.r2Key)]);
+    assert.deepEqual(media.removed, []);
+    assert.equal(await repository.findById(CARD_ID), null);
+  });
+
+  it('removes the objects while the card row is still in place (AC-18)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = cardWithFrames(10);
+    let cardPresentAtRemoval: boolean | undefined;
+    media.onRemove = () => {
+      cardPresentAtRemoval = repository.stored !== null;
+    };
+
+    await service.deleteProduct(CARD_ID);
+
+    assert.equal(cardPresentAtRemoval, true);
+  });
+
+  it('deletes a card that has no frames without removing any object (AC-18)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = readyCard({ images: [] });
+
+    await service.deleteProduct(CARD_ID);
+
+    assert.equal(await repository.findById(CARD_ID), null);
+    assert.deepEqual(media.removedBatches.flat(), []);
+    assert.deepEqual(media.removed, []);
+  });
+
+  it('deletes nothing when storage is unavailable and reports storage_unavailable (AC-17)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = cardWithFrames(10);
+    media.removeFailure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
+
+    await assert.rejects(service.deleteProduct(CARD_ID), StorageUnavailable);
+    assert.deepEqual(repository.stored, cardWithFrames(10));
+  });
+
+  it('refuses to delete a card that does not exist', async () => {
+    const { service, repository } = setup();
+    repository.stored = null;
+
+    await assert.rejects(service.deleteProduct(CARD_ID), ProductNotFound);
   });
 });

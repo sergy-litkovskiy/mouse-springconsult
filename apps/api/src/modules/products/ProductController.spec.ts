@@ -410,6 +410,16 @@ class DeletingImageStorage extends RecordingImageStorage {
     }
     this.deleted.push(key);
   }
+
+  /** One entry per call, so a test can tell one batch from many single removals. */
+  readonly deletedBatches: string[][] = [];
+
+  override async deleteMany(keys: readonly string[]): Promise<void> {
+    if (this.failure !== undefined) {
+      throw this.failure;
+    }
+    this.deletedBatches.push([...keys]);
+  }
 }
 
 class DeletionRepository extends StubProductRepository {
@@ -505,6 +515,108 @@ describe('product controller: delete frame', () => {
 
       assert.equal(response.statusCode, 401);
       assert.equal(repository.cards[0].images.length, 2);
+    } finally {
+      allowed = true;
+    }
+  });
+});
+
+class CardDeletionRepository extends StubProductRepository {
+  override async findImageKeys(productId: string): Promise<string[]> {
+    const product = this.cards.find((candidate) => candidate.id === productId);
+    return product?.images.map((image) => image.r2Key) ?? [];
+  }
+
+  /** The frames go with the card, as `on delete cascade` takes them in Postgres. */
+  override async delete(id: string): Promise<boolean> {
+    const index = this.cards.findIndex((product) => product.id === id);
+    if (index === -1) {
+      return false;
+    }
+    this.cards.splice(index, 1);
+    return true;
+  }
+
+  reset(): void {
+    this.cards.splice(0, this.cards.length, twoFrameCard(), card(UNPRICED_ID, { price: '0.00' }));
+  }
+}
+
+describe('product controller: delete card', () => {
+  let repository: CardDeletionRepository;
+  let storage: DeletingImageStorage;
+  let app: FastifyInstance;
+  let allowed = true;
+
+  before(async () => {
+    repository = new CardDeletionRepository();
+    storage = new DeletingImageStorage();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, new MediaService(storage)),
+      'https://images.example.com',
+    ).register(app, async (_request, reply) => {
+      if (!allowed) {
+        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
+      }
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  it('answers 204 with no body once the objects and the card are gone (AC-18)', async () => {
+    repository.reset();
+
+    const response = await app.inject({ method: 'DELETE', url: `/${READY_ID}` });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(response.body, '');
+    assert.deepEqual(storage.deletedBatches.at(-1)?.toSorted(), [
+      `products/${READY_ID}/back.jpg`,
+      `products/${READY_ID}/front.jpg`,
+    ]);
+    assert.equal(await repository.findById(READY_ID), null);
+  });
+
+  it('answers storage_unavailable and keeps the card with its frames when storage is down (AC-17)', async () => {
+    repository.reset();
+    // The real ImageStorage turns every SDK failure into this; the double does the same.
+    storage.failure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
+    try {
+      const response = await app.inject({ method: 'DELETE', url: `/${READY_ID}` });
+
+      assert.equal(response.statusCode, 502);
+      assert.equal(response.json<{ code: string }>().code, apiErrorCodes.storageUnavailable);
+      assert.equal((await repository.findById(READY_ID))?.images.length, 2);
+    } finally {
+      storage.failure = undefined;
+    }
+  });
+
+  it('answers product_not_found for a card that does not exist', async () => {
+    repository.reset();
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/01931f2a-3333-7000-8000-000000000404',
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.productNotFound);
+    assert.equal(repository.cards.length, 2);
+  });
+
+  it('puts the delete-card route behind the session guard', async () => {
+    repository.reset();
+    allowed = false;
+    try {
+      const response = await app.inject({ method: 'DELETE', url: `/${READY_ID}` });
+
+      assert.equal(response.statusCode, 401);
+      assert.notEqual(await repository.findById(READY_ID), null);
     } finally {
       allowed = true;
     }
