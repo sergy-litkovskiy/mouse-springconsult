@@ -4,6 +4,7 @@ import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
+import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { firstValueFrom } from 'rxjs';
 import type { ApiError } from '@contracts/error.contract';
 import type {
@@ -57,6 +58,13 @@ const PUBLISHED_ON_PROM: ProductCard = {
 };
 
 const WITHOUT_FRAMES: ProductCard = { ...EMPTY_WITH_FRAME, images: [] };
+
+const WITHOUT_OLX_DESCRIPTION_AND_PRICE: ProductCard = {
+  ...PUBLISHED_ON_PROM,
+  descriptionOlx: '',
+  price: '0.00',
+  isReady: false,
+};
 
 function answer(card: ProductCard, discardedKeywordsCount = 0): ProductUpdateResponse {
   return { ...card, discardedKeywordsCount };
@@ -128,6 +136,24 @@ describe('ProductForm', () => {
   async function toggle(label: string): Promise<MatSlideToggleHarness> {
     const loader = TestbedHarnessEnvironment.loader(fixture);
     return loader.getHarness(MatSlideToggleHarness.with({ label }));
+  }
+
+  async function readinessHint(): Promise<string> {
+    const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarnessOrNull(
+      MatTooltipHarness.with({ selector: '[data-testid="readiness"]' }),
+    );
+    expect(tooltip, 'the readiness badge carries no tooltip').not.toBeNull();
+    if (tooltip === null) {
+      return '';
+    }
+    await tooltip.show();
+    const text = await tooltip.getTooltipText();
+    await tooltip.hide();
+    return text;
+  }
+
+  function readiness(): string {
+    return element.querySelector('[data-testid="readiness"]')?.textContent ?? '';
   }
 
   afterEach(() => {
@@ -357,5 +383,55 @@ describe('ProductForm', () => {
     type('seoKeywords', 'миша');
     await settle();
     expect(saveButton().disabled).toBe(false);
+  });
+
+  describe('the gaps behind the readiness badge (AC-15)', () => {
+    it('names what the open card lacks in the words and order of the catalogue (AC-15)', async () => {
+      open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
+      await settle();
+
+      expect(readiness()).toContain('Неготово');
+      expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
+    });
+
+    it('shows a ready badge with no hint once the saved card comes back ready (AC-15)', async () => {
+      open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
+      await settle();
+
+      type('descriptionOlx', 'Продам мишу, повний комплект.');
+      type('price', '2499.00');
+      await settle();
+      submit();
+      await settle();
+
+      http.expectOne(`/api/products/${CARD_ID}`).flush(answer(PUBLISHED_ON_PROM));
+      await settle();
+
+      expect(readiness()).toContain('Готово');
+      expect(readiness()).not.toContain('Неготово');
+      expect(await readinessHint()).toBe('');
+    });
+
+    it('lists the gaps of the last server answer, not of unsaved fields (AC-15)', async () => {
+      open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
+      await settle();
+
+      type('descriptionOlx', 'Продам мишу, повний комплект.');
+      await settle();
+      expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
+
+      submit();
+      await settle();
+      http.expectOne(`/api/products/${CARD_ID}`).flush(
+        answer({
+          ...WITHOUT_OLX_DESCRIPTION_AND_PRICE,
+          descriptionOlx: 'Продам мишу, повний комплект.',
+        }),
+      );
+      await settle();
+
+      expect(readiness()).toContain('Неготово');
+      expect(await readinessHint()).toBe('Бракує: ціна');
+    });
   });
 });
