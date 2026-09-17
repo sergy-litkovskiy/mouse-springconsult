@@ -1,7 +1,7 @@
 ---
 id: T35
 title: "Фільтр «Картка готова» в каталозі"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1900
 blocked_by: [T34, T36]
 blocks: [T37]
-updated_at: "2026-09-16"
+updated_at: "2026-09-17"
 ---
 
 # T35 — Фільтр «Картка готова» в каталозі
@@ -91,11 +91,11 @@ AC-31 вносить ця story, кроком 5 чекліста.
 
 ## DoD
 
-- [ ] AC-29 (UI): «Так» і «Ні» доходять до запиту як `ready=true|false`; сторінка скидається на першу.
-- [ ] AC-31: без `ready` в адресі — «Всі» і жодного параметра в запиті; «Скинути» прибирає `ready`.
-- [ ] F5 і «Назад» відновлюють вибране значення з адреси.
-- [ ] Наявні тести `product-catalog.spec.ts` лишаються зеленими; нові випадки додано до них.
-- [ ] Коміт: `feat(web): filter the catalog by card readiness`.
+- [x] AC-29 (UI): «Так» і «Ні» доходять до запиту як `ready=true|false`; сторінка скидається на першу.
+- [x] AC-31: без `ready` в адресі — «Всі» і жодного параметра в запиті; «Скинути» прибирає `ready`.
+- [x] F5 і «Назад» відновлюють вибране значення з адреси.
+- [x] Наявні тести `product-catalog.spec.ts` лишаються зеленими; нові випадки додано до них.
+- [x] Коміт: `feat(web): filter the catalog by card readiness`.
 
 ## Links
 

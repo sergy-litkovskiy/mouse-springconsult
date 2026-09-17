@@ -11,6 +11,10 @@ import {
 export const productImageSchema = z.object({
   id: z.uuid(),
   r2Key: z.string(),
+  /**
+   * Derived, not a column: composed from `r2Key` and the bucket's public domain when the frame is
+   * mapped into this DTO (ADR 0007), so moving the bucket rewrites no rows.
+   */
   url: z.url(),
   /** Position in the gallery, 0-based; the main frame is not required to be first. */
   position: z.int().nonnegative(),
@@ -78,6 +82,8 @@ export const productListQuerySchema = z.object({
   category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
   publishedProm: booleanFlag.optional(),
   publishedOlx: booleanFlag.optional(),
+  /** The derived readiness of the card, the same predicate as `isReady` (ADR 0009). */
+  ready: booleanFlag.optional(),
 
   sort: z.enum(productSortFields).default(productSortDefaults.field),
   direction: z.enum(productSortDirections).default(productSortDefaults.direction),
@@ -85,20 +91,10 @@ export const productListQuerySchema = z.object({
 
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 
-export const productListSchema = z.object({
-  items: z.array(productSchema),
-  /** Total number of rows matching the filters, not the size of the page. */
-  total: z.int().nonnegative(),
-  page: z.int().positive(),
-  pageSize: z.int().positive(),
-});
-
-export type ProductList = z.infer<typeof productListSchema>;
-
 /**
  * The bounds are the ones the column already declares, so a value the schema lets through
- * is a value the table can hold: required here is exactly what `products` declares NOT NULL
- * without a default, and a default here is the same default there.
+ * is a value the table can hold, and a default here is the same default there. A default skips
+ * the bounds, so an absent title stays empty while a blank one sent on purpose is refused.
  */
 const cardTitle = z.string().trim().min(1).max(productConstraints.titleMaxLength);
 const cardDescription = z.string().max(productConstraints.descriptionMaxLength);
@@ -112,9 +108,9 @@ const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMax
 const cardKeywords = z.array(z.string().trim().min(1).max(productConstraints.keywordMaxLength));
 
 export const productCreateSchema = z.object({
-  titleProm: cardTitle,
-  titleOlx: cardTitle,
-  category: cardCategory,
+  titleProm: cardTitle.default(''),
+  titleOlx: cardTitle.default(''),
+  category: cardCategory.default(''),
   descriptionProm: cardDescription.default(''),
   descriptionOlx: cardDescription.default(''),
   /** `NUMERIC(12,2) DEFAULT 0` gives back "0.00", and the predicate of readiness reads it as "not priced yet". */
@@ -124,6 +120,9 @@ export const productCreateSchema = z.object({
 });
 
 export type ProductCreate = z.infer<typeof productCreateSchema>;
+
+/** What a caller may send: every field has a default, so the body of a new card can be `{}`. */
+export type ProductCreateRequest = z.input<typeof productCreateSchema>;
 
 /**
  * No field here carries a default, unlike the create schema: a default on a PATCH would
@@ -146,13 +145,23 @@ export type ProductUpdate = z.infer<typeof productUpdateSchema>;
 
 export const productCardSchema = productSchema.extend({
   /**
-   * Derived, not a column: both descriptions non-empty, a price above zero and at least one
-   * frame in the gallery, computed on read (ADR 0009).
+   * Derived, not a column: both titles and both descriptions non-empty, a price above zero and at
+   * least one frame in the gallery, computed on read (ADR 0009).
    */
   isReady: z.boolean(),
 });
 
 export type ProductCard = z.infer<typeof productCardSchema>;
+
+export const productListSchema = z.object({
+  items: z.array(productCardSchema),
+  /** Total number of rows matching the filters, not the size of the page. */
+  total: z.int().nonnegative(),
+  page: z.int().positive(),
+  pageSize: z.int().positive(),
+});
+
+export type ProductList = z.infer<typeof productListSchema>;
 
 export const productUpdateResponseSchema = productCardSchema.extend({
   /**

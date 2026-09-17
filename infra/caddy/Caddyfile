@@ -9,6 +9,13 @@
 	# The ng serve proxy performs the same rewrite in dev (apps/web/proxy.conf.json),
 	# so apiBaseUrl equals /api in both environments, the origin is one and CORS is never needed.
 	handle_path /api/* {
+		# Paired with config.http.imageUpload.bodyLimitBytes in apps/api/src/config.ts: twice the
+		# 10 MiB maxImageBytes, so a file just over the limit still reaches the api. Change both
+		# together — a proxy that stops first answers with its own bare 413, and the api never
+		# says file_too_large.
+		request_body {
+			max_size 20MiB
+		}
 		reverse_proxy api:3000
 	}
 

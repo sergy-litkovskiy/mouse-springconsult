@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
 import { createDataSource } from '../../db.ts';
+import type { MediaService } from '../media/index.ts';
 import { PRODUCTS_TABLE, Product } from './Product.ts';
 import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
 import {
@@ -9,6 +10,8 @@ import {
   type ProductChanges,
   type ProductListCriteria,
 } from './ProductRepository.ts';
+import { ImageNotFound } from './ProductErrors.ts';
+import { ProductService } from './ProductService.ts';
 
 /**
  * Against a real Postgres, because everything checked here is what a stub cannot answer: LIKE
@@ -65,6 +68,9 @@ const dataSource = createDataSource({
 
 let products: ProductRepository;
 
+/** The service is used here only for what never touches storage. */
+const NO_MEDIA = undefined as unknown as MediaService;
+
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
 const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
 
@@ -98,7 +104,6 @@ async function seedImage(productId: string, seed: ImageSeed = {}): Promise<strin
   const row: Omit<ProductImage, 'id'> = {
     productId,
     r2Key: `products/${productId}/original.jpg`,
-    url: `https://r2.example.com/products/${productId}/original.jpg`,
     position: 0,
     isMain: false,
     ...seed,
@@ -228,9 +233,126 @@ describe('product repository (postgres)', () => {
     assert.equal(page.items.length, 2);
   });
 
+  it('lists only the ready cards and counts only them (AC-29)', async () => {
+    const readyIds: string[] = [];
+    for (const index of [0, 1, 2]) {
+      const id = await seedProduct({ titleProm: `Готова ${String(index)}` });
+      await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+      readyIds.push(id);
+    }
+    await seedProduct({ titleProm: 'Без кадрів' });
+    await seedProduct({ titleProm: 'Без ціни', price: '0.00' });
+
+    const firstPage = await products.list({
+      ...BASE_CRITERIA,
+      pageSize: 2,
+      filters: { ready: true },
+    });
+    const all = await products.list({ ...BASE_CRITERIA, filters: { ready: true } });
+
+    assert.equal(firstPage.total, 3);
+    assert.equal(firstPage.items.length, 2);
+    assert.deepEqual(all.items.map((product) => product.id).sort(), [...readyIds].sort());
+  });
+
+  it('lists only the cards that are not ready and counts only them (AC-29)', async () => {
+    const ready = await seedProduct({ titleProm: 'Готова' });
+    await seedImage(ready, { position: 0, r2Key: `products/${ready}/first.jpg`, isMain: true });
+    const withoutFrames = await seedProduct({ titleProm: 'Без кадрів' });
+    const withoutPrice = await seedProduct({ titleProm: 'Без ціни', price: '0.00' });
+
+    const page = await products.list({ ...BASE_CRITERIA, filters: { ready: false } });
+
+    assert.equal(page.total, 2);
+    assert.deepEqual(
+      page.items.map((product) => product.id).sort(),
+      [withoutFrames, withoutPrice].sort(),
+    );
+  });
+
+  it('combines readiness with a publication mark through AND (AC-29)', async () => {
+    const readyOnProm = await seedProduct({ titleProm: 'Готова на Prom', publishedProm: true });
+    await seedImage(readyOnProm, { position: 0, r2Key: `products/${readyOnProm}/a.jpg` });
+    const readyOffProm = await seedProduct({
+      titleProm: 'Готова не на Prom',
+      publishedProm: false,
+    });
+    await seedImage(readyOffProm, { position: 0, r2Key: `products/${readyOffProm}/a.jpg` });
+    await seedProduct({ titleProm: 'Неготова на Prom', publishedProm: true });
+
+    const page = await products.list({
+      ...BASE_CRITERIA,
+      filters: { ready: true, publishedProm: true },
+    });
+
+    assert.equal(page.total, 1);
+    assert.equal(page.items[0]?.id, readyOnProm);
+  });
+
+  it('selects by readiness exactly as ProductService.isReady judges each card (AC-30)', async () => {
+    // One complete card and one for each missing input: the SQL expression and the in-memory
+    // predicate are two sources of one rule, and only a card-by-card comparison keeps them equal.
+    const seeds: readonly {
+      readonly name: string;
+      readonly seed: ProductSeed;
+      readonly frame: boolean;
+    }[] = [
+      { name: 'повна', seed: {}, frame: true },
+      { name: 'без опису Prom', seed: { descriptionProm: '' }, frame: true },
+      { name: 'без опису OLX', seed: { descriptionOlx: '' }, frame: true },
+      { name: 'без ціни', seed: { price: '0.00' }, frame: true },
+      { name: 'без кадру', seed: {}, frame: false },
+    ];
+    const ids = new Map<string, string>();
+    for (const { name, seed, frame } of seeds) {
+      const id = await seedProduct({ ...seed, titleProm: name });
+      if (frame) {
+        await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+      }
+      ids.set(name, id);
+    }
+
+    const readyIds = new Set(
+      (await products.list({ ...BASE_CRITERIA, filters: { ready: true } })).items.map((p) => p.id),
+    );
+    const notReadyIds = new Set(
+      (await products.list({ ...BASE_CRITERIA, filters: { ready: false } })).items.map((p) => p.id),
+    );
+    const service = new ProductService(products, NO_MEDIA);
+
+    assert.equal(readyIds.size, 1);
+    for (const [name, id] of ids) {
+      const expected = service.isReady(must(await products.findById(id), name));
+      assert.equal(readyIds.has(id), expected, `${name}: ready=true must agree with isReady`);
+      assert.equal(notReadyIds.has(id), !expected, `${name}: ready=false must agree with isReady`);
+    }
+  });
+
+  it('leaves a card without a title out of the ready ones, as isReady does (AC-36)', async () => {
+    const withoutPromTitle = await seedProduct({ titleProm: '' });
+    const withoutOlxTitle = await seedProduct({ titleOlx: '' });
+    const service = new ProductService(products, NO_MEDIA);
+    for (const id of [withoutPromTitle, withoutOlxTitle]) {
+      await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
+    }
+
+    const readyIds = (
+      await products.list({ ...BASE_CRITERIA, filters: { ready: true } })
+    ).items.map((p) => p.id);
+    const notReadyIds = (
+      await products.list({ ...BASE_CRITERIA, filters: { ready: false } })
+    ).items.map((p) => p.id);
+
+    assert.deepEqual(readyIds, []);
+    assert.deepEqual(notReadyIds.sort(), [withoutPromTitle, withoutOlxTitle].sort());
+    for (const id of [withoutPromTitle, withoutOlxTitle]) {
+      assert.equal(service.isReady(must(await products.findById(id), id)), false, id);
+    }
+  });
+
   it('creates a card the database can identify before it has texts, price or frames', async () => {
-    // The three columns without a default are the whole of what a caller must supply:
-    // an R2 key is products/{id}/…, so the id has to exist before a frame does.
+    // Everything a caller leaves out the table fills in: an R2 key is products/{id}/…, so the id
+    // has to exist before a frame does.
     const created = await products.create({
       titleProm: 'Порожня картка',
       titleOlx: 'Порожня картка',
@@ -308,6 +430,73 @@ describe('product repository (postgres)', () => {
     assert.equal(await products.findById(id), null);
   });
 
+  it('removes the objects under the card lock, then the card with its frames', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+    const removed: string[][] = [];
+
+    const deleted = await products.deleteWithObjects(id, async (keys) => {
+      removed.push([...keys].sort());
+    });
+
+    assert.equal(deleted, true);
+    assert.deepEqual(removed, [[`products/${id}/original.jpg`, `products/${id}/second.jpg`]]);
+    assert.equal(await dataSource.getRepository(ProductImage).countBy({ productId: id }), 0);
+    assert.equal(await products.findById(id), null);
+  });
+
+  it('keeps the card and its frames when removing the objects fails', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    const failure = new Error('storage is down');
+
+    await assert.rejects(
+      products.deleteWithObjects(id, async () => {
+        throw failure;
+      }),
+      (error) => error === failure,
+    );
+
+    assert.equal((await products.findById(id))?.images.length, 1);
+  });
+
+  it('reports a missing card without asking to remove any object', async () => {
+    let called = false;
+
+    const deleted = await products.deleteWithObjects(MISSING_ID, async () => {
+      called = true;
+    });
+
+    assert.equal(deleted, false);
+    assert.equal(called, false);
+  });
+
+  it('makes a frame added during the deletion wait, so no row outlives its listed object', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    let release: () => void = () => undefined;
+    const removalHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let adding: Promise<unknown> | undefined;
+
+    const deleting = products.deleteWithObjects(id, async () => {
+      adding = products.addImage(id, `products/${id}/late.jpg`, 10).then(
+        () => 'added',
+        () => 'refused',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      release();
+      await removalHeld;
+    });
+
+    assert.equal(await deleting, true);
+    // The addition waited for the lock and found the card gone: its object is the caller's to discard.
+    assert.equal(await adding, 'refused');
+    assert.equal(await dataSource.getRepository(ProductImage).countBy({ productId: id }), 0);
+  });
+
   it('reports a missing card on delete instead of pretending it removed one', async () => {
     assert.equal(await products.delete(MISSING_ID), false);
   });
@@ -344,19 +533,69 @@ describe('product repository (postgres)', () => {
     assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
   });
 
-  it('adds a frame with the fields it was given, not main by default', async () => {
+  it('adds the first frame of an empty gallery as the main one at position 0 (AC-19)', async () => {
     const id = await seedProduct();
 
-    const image = await products.addImage(
-      id,
-      `products/${id}/first.jpg`,
-      'https://r2.example.com/first.jpg',
-      0,
-    );
+    const image = await products.addImage(id, `products/${id}/first.jpg`, 10);
 
+    assert.ok(image !== null);
     assert.equal(image.productId, id);
     assert.equal(image.r2Key, `products/${id}/first.jpg`);
+    assert.equal(image.position, 0);
+    assert.equal((await products.findImage(id, image.id))?.isMain, true);
+  });
+
+  it('adds a later frame after the highest position, even past a gap, and not as main', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 2, r2Key: `products/${id}/third.jpg` });
+
+    const image = await products.addImage(id, `products/${id}/fourth.jpg`, 10);
+
+    assert.ok(image !== null);
+    assert.equal(image.position, 3);
     assert.equal(image.isMain, false);
+  });
+
+  it('refuses a frame once the gallery holds the ceiling and writes nothing (AC-02)', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0 });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    const image = await products.addImage(id, `products/${id}/third.jpg`, 2);
+
+    assert.equal(image, null);
+    assert.equal(await products.countImages(id), 2);
+  });
+
+  it('keeps positions unique and the ceiling intact under concurrent additions (AC-02)', async () => {
+    const id = await seedProduct();
+    for (let position = 0; position < 8; position += 1) {
+      await seedImage(id, { position, r2Key: `products/${id}/seed-${String(position)}.jpg` });
+    }
+
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        products.addImage(id, `products/${id}/race-${String(index)}.jpg`, 10),
+      ),
+    );
+
+    assert.equal(results.filter((image) => image !== null).length, 2);
+    const positions = (await products.findById(id))?.images.map((image) => image.position);
+    assert.deepEqual(positions, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('makes exactly one of two concurrent first frames the main one (AC-19)', async () => {
+    const id = await seedProduct();
+
+    const results = await Promise.all([
+      products.addImage(id, `products/${id}/left.jpg`, 10),
+      products.addImage(id, `products/${id}/right.jpg`, 10),
+    ]);
+
+    assert.equal(results.filter((image) => image?.isMain === true).length, 1);
+    const gallery = (await products.findById(id))?.images ?? [];
+    assert.equal(gallery.filter((image) => image.isMain).length, 1);
   });
 
   it('counts only the frames of the card that was asked about', async () => {
@@ -479,5 +718,51 @@ describe('product repository (postgres)', () => {
     assert.equal(await products.deleteImage(imageId), true);
     assert.equal(await products.findImage(id, imageId), null);
     assert.equal(await products.deleteImage(imageId), false);
+  });
+
+  async function mainFramesOf(productId: string): Promise<string[]> {
+    const rows = await dataSource.getRepository(ProductImage).findBy({ productId, isMain: true });
+    return rows.map((row) => row.id);
+  }
+
+  it('leaves exactly one main frame in the database, the chosen one (AC-03)', async () => {
+    const id = await seedProduct();
+    await seedImage(id, { position: 0, isMain: true });
+    const chosen = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+
+    await new ProductService(products, NO_MEDIA).setMainImage(id, chosen);
+
+    assert.deepEqual(await mainFramesOf(id), [chosen]);
+  });
+
+  it('keeps the same single main frame when it is chosen again', async () => {
+    const id = await seedProduct();
+    const main = await seedImage(id, { position: 0, isMain: true });
+    await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
+    const service = new ProductService(products, NO_MEDIA);
+
+    const first = await service.setMainImage(id, main);
+    const second = await service.setMainImage(id, main);
+
+    assert.deepEqual(second, first);
+    assert.deepEqual(await mainFramesOf(id), [main]);
+  });
+
+  it('refuses a frame of another card and leaves both galleries as they were', async () => {
+    const id = await seedProduct();
+    const other = await seedProduct({ titleProm: 'Інша картка' });
+    const main = await seedImage(id, { position: 0, isMain: true });
+    const foreignImage = await seedImage(other, {
+      position: 0,
+      r2Key: `products/${other}/first.jpg`,
+    });
+
+    await assert.rejects(
+      new ProductService(products, NO_MEDIA).setMainImage(id, foreignImage),
+      ImageNotFound,
+    );
+
+    assert.deepEqual(await mainFramesOf(id), [main]);
+    assert.deepEqual(await mainFramesOf(other), []);
   });
 });

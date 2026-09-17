@@ -1,7 +1,7 @@
 ---
 id: T34
 title: "Фільтр списку за готовністю і `isReady` у рядках списку"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2900
 blocked_by: []
 blocks: [T22, T35]
-updated_at: "2026-09-16"
+updated_at: "2026-09-17"
 ---
 
 # T34 — Фільтр списку за готовністю і `isReady` у рядках списку
@@ -89,7 +89,7 @@ SQL замість порівняння з колонкою». Колонка т
         isReady:
           type: boolean
           description: >-
-            Похідне поле, не колонка: обидва описи непорожні, price > 0, є хоча б один
+            Похідне поле, не колонка: обидва заголовки й обидва описи непорожні, price > 0,
 ```
 
 ## Acceptance criteria
@@ -129,12 +129,15 @@ SQL замість порівняння з колонкою». Колонка т
 
 ## DoD
 
-- [ ] AC-29: `ready=true` і `ready=false` повертають відповідно готові й неготові картки; `total` рахує саме їх.
-- [ ] AC-30: на кожній з п'яти карток фільтр SQL і `isReady` відповідають однаково — перевірено тестом на реальній базі.
-- [ ] Кожен рядок `GET /products` несе `isReady` — відповідь збігається з `openapi.yaml` поле в поле.
-- [ ] `ready=yes` відхиляється як `validation_failed`, так само як `publishedProm=yes`.
-- [ ] Міграцій у PR немає; QueryBuilder лише в `ProductRepository.ts` — `deps:check` зелений.
-- [ ] Коміт: `feat(products): filter the list by derived readiness`.
+- [x] AC-29: `ready=true` і `ready=false` повертають відповідно готові й неготові картки; `total` рахує саме їх.
+- [x] AC-30: на кожній з п'яти карток фільтр SQL і `isReady` відповідають однаково — перевірено тестом на реальній базі.
+- [x] Кожен рядок `GET /products` несе `isReady` — відповідь збігається з `openapi.yaml` поле в поле.
+  Уточнення 2026-09-17: RED-коміт доповнено фікстурою `isReady` у `apps/web/.../product-catalog.spec.ts`.
+  Обов'язкове поле в рядку `ProductList` інакше ламало збірку web-тестів, а GREEN не має права правити spec.
+  Смоук: 4 картки = 1 готова (`ready=true`) + 3 неготові (`ready=false`); з `publishedProm=true` — AND.
+- [x] `ready=yes` відхиляється як `validation_failed`, так само як `publishedProm=yes`.
+- [x] Міграцій у PR немає; QueryBuilder лише в `ProductRepository.ts` — `deps:check` зелений.
+- [x] Коміт: `feat(products): filter the list by derived readiness`.
 
 ## Links
 

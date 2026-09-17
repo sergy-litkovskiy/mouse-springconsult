@@ -5,25 +5,14 @@ import { describe, it } from 'node:test';
 import { AppError } from '../../errors.ts';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
-import {
-  FileTooLarge,
-  GalleryFull,
-  ImageNotFound,
-  InvalidFile,
-  InvalidPrice,
-  ProductNotFound,
-  StorageUnavailable,
-} from './ProductErrors.ts';
+import { GalleryFull, ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
 
-/** Every delivery-1 domain code, the class that carries it, and the status openapi.yaml promises. */
+/** Every card domain code, the class that carries it, and the status openapi.yaml promises. */
 const domainErrors = [
   { error: new ProductNotFound('p-1'), code: apiErrorCodes.productNotFound, statusCode: 404 },
   { error: new ImageNotFound('i-1'), code: apiErrorCodes.imageNotFound, statusCode: 404 },
   { error: new GalleryFull(), code: apiErrorCodes.galleryFull, statusCode: 409 },
-  { error: new FileTooLarge(10_485_760), code: apiErrorCodes.fileTooLarge, statusCode: 413 },
-  { error: new InvalidFile(), code: apiErrorCodes.invalidFile, statusCode: 422 },
   { error: new InvalidPrice(), code: apiErrorCodes.invalidPrice, statusCode: 422 },
-  { error: new StorageUnavailable(), code: apiErrorCodes.storageUnavailable, statusCode: 502 },
 ] as const;
 
 describe('product domain errors', () => {
@@ -43,20 +32,17 @@ describe('product domain errors', () => {
     }
   });
 
-  it('covers every delivery-1 domain code declared in the contract', () => {
-    const deliveryOneCodes = [
+  it('covers every card domain code declared in the contract', () => {
+    const cardCodes = [
       apiErrorCodes.productNotFound,
       apiErrorCodes.imageNotFound,
       apiErrorCodes.galleryFull,
-      apiErrorCodes.invalidFile,
-      apiErrorCodes.fileTooLarge,
-      apiErrorCodes.storageUnavailable,
       apiErrorCodes.invalidPrice,
     ];
 
     assert.deepEqual(
       [...domainErrors.map(({ code }) => code)].sort(),
-      [...deliveryOneCodes].sort(),
+      [...cardCodes].sort(),
       'a code without a class is a string nothing throws',
     );
   });
@@ -70,12 +56,6 @@ describe('product domain errors', () => {
   it('keeps the identifier that was not found in details', () => {
     assert.deepEqual(new ProductNotFound('p-7').details, { productId: 'p-7' });
     assert.deepEqual(new ImageNotFound('i-7').details, { imageId: 'i-7' });
-  });
-
-  it('keeps the upstream failure as the cause of StorageUnavailable', () => {
-    const upstream = new Error('connection reset by peer');
-
-    assert.equal(new StorageUnavailable(upstream).cause, upstream);
   });
 
   it('leaves error-codes.ts without a single import', () => {

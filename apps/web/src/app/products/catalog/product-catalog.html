@@ -2,11 +2,14 @@
   <header class="catalog__header">
     <h1>Каталог товарів</h1>
     <p class="catalog__count">Знайдено: {{ total() }}</p>
+    <button matButton="filled" type="button" class="catalog__create" (click)="openForm(null)">
+      Нова картка
+    </button>
   </header>
 
   <mat-card class="catalog__filters" appearance="outlined">
     <form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--wide" appearance="outline">
         <mat-label>Назва</mat-label>
         <input matInput formControlName="title" placeholder="Prom або OLX" />
         @if (filters.controls.title.hasError('maxlength')) {
@@ -14,7 +17,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field filters__field--wide" appearance="outline">
         <mat-label>Опис</mat-label>
         <input matInput formControlName="description" placeholder="Prom або OLX" />
         @if (filters.controls.description.hasError('maxlength')) {
@@ -22,7 +25,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field
+        class="filters__field filters__field--narrow"
+        appearance="outline"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Ціна від, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMin" placeholder="1000.00" />
         @if (filters.controls.priceMin.hasError('price')) {
@@ -30,7 +37,11 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field
+        class="filters__field filters__field--narrow"
+        appearance="outline"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Ціна до, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMax" placeholder="5000.00" />
         @if (filters.controls.priceMax.hasError('price')) {
@@ -38,7 +49,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field class="filters__field" appearance="outline">
         <mat-label>Категорія</mat-label>
         <input matInput formControlName="category" />
         @if (filters.controls.category.hasError('maxlength')) {
@@ -46,21 +57,30 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Публікація Prom</mat-label>
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
+        <mat-label>Опубл. на Prom</mat-label>
         <mat-select formControlName="publishedProm">
-          <mat-option value="">Будь-яка</mat-option>
-          <mat-option value="true">Опубліковані</mat-option>
-          <mat-option value="false">Не опубліковані</mat-option>
+          <mat-option value="">Всі</mat-option>
+          <mat-option value="true">Так</mat-option>
+          <mat-option value="false">Ні</mat-option>
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Публікація OLX</mat-label>
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
+        <mat-label>Опубл. на OLX</mat-label>
         <mat-select formControlName="publishedOlx">
-          <mat-option value="">Будь-яка</mat-option>
-          <mat-option value="true">Опубліковані</mat-option>
-          <mat-option value="false">Не опубліковані</mat-option>
+          <mat-option value="">Всі</mat-option>
+          <mat-option value="true">Так</mat-option>
+          <mat-option value="false">Ні</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field class="filters__field filters__field--narrow" appearance="outline">
+        <mat-label>Картка готова</mat-label>
+        <mat-select formControlName="ready">
+          <mat-option value="">Всі</mat-option>
+          <mat-option value="true">Так</mat-option>
+          <mat-option value="false">Ні</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -93,6 +113,13 @@
       </p>
     }
 
+    @if (deleteError(); as message) {
+      <p class="catalog__error" role="alert" data-testid="delete-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </p>
+    }
+
     <div class="catalog__scroll">
       <table
         mat-table
@@ -108,9 +135,14 @@
           <td mat-cell *matCellDef="let product">
             <div class="gallery-cell">
               @if (mainImage(product); as image) {
-                <span class="gallery-cell__thumb">
+                <button
+                  type="button"
+                  class="gallery-cell__thumb gallery-cell__thumb--button"
+                  (click)="$event.stopPropagation(); openViewer(product)"
+                  [attr.aria-label]="'Переглянути фото товару ' + product.titleProm"
+                >
                   <img [ngSrc]="image.url" fill [alt]="product.titleProm" />
-                </span>
+                </button>
               } @else {
                 <span class="gallery-cell__thumb gallery-cell__thumb--empty" aria-hidden="true">
                   <mat-icon>image_not_supported</mat-icon>
@@ -121,7 +153,7 @@
                 matButton
                 type="button"
                 class="gallery-cell__count"
-                (click)="openGallery(product)"
+                (click)="$event.stopPropagation(); openViewer(product)"
                 [disabled]="product.images.length === 0"
                 [matTooltip]="'Переглянути всі фото товару'"
                 [attr.aria-label]="'Фотографії товару ' + product.titleProm"
@@ -173,8 +205,44 @@
           </td>
         </ng-container>
 
+        <ng-container matColumnDef="readiness">
+          <th mat-header-cell *matHeaderCellDef scope="col">Готовність</th>
+          <td mat-cell *matCellDef="let product">
+            <span
+              data-testid="readiness"
+              class="readiness"
+              [class.readiness--ready]="product.isReady"
+              [class.readiness--not-ready]="!product.isReady"
+              [matTooltip]="missingFields(product)"
+            >
+              {{ product.isReady ? 'Готово' : 'Неготово' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef scope="col">
+            <span class="cdk-visually-hidden">Дії</span>
+          </th>
+          <td mat-cell *matCellDef="let product">
+            <button
+              matIconButton
+              type="button"
+              (click)="$event.stopPropagation(); deleteProduct(product)"
+              [attr.aria-label]="'Видалити ' + product.titleProm"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
-        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: columns"
+          class="catalog__row"
+          (click)="openForm(row)"
+        ></tr>
       </table>
     </div>
 

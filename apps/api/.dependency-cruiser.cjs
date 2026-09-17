@@ -97,6 +97,16 @@ module.exports = {
     },
 
     {
+      name: 's3-sdk-stays-in-image-storage',
+      severity: 'error',
+      comment:
+        'ImageStorage.ts is the storage boundary (ADR 0013). An SDK import anywhere else ' +
+        'makes replacing the storage a change across modules instead of one file.',
+      from: { pathNot: ['^src/modules/media/ImageStorage\\.ts$'] },
+      to: { dependencyTypes: ['npm'], path: '^node_modules/@aws-sdk/' },
+    },
+
+    {
       name: 'no-deep-import-between-modules',
       severity: 'error',
       comment: 'A module sees another module only through its index.ts.',

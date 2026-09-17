@@ -62,6 +62,7 @@ paths:
         - { $ref: "#/components/parameters/CategoryFilter" }
         - { $ref: "#/components/parameters/PublishedProm" }
         - { $ref: "#/components/parameters/PublishedOlx" }
+        - { $ref: "#/components/parameters/ReadyFilter" }
         - { $ref: "#/components/parameters/Sort" }
         - { $ref: "#/components/parameters/Direction" }
       responses:
@@ -92,7 +93,7 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/ProductCreateRequest" }
-            example: { category: "Побутова техніка", condition: "used" }
+            example: {}
       responses:
         "201":
           description: Картку створено
@@ -499,6 +500,14 @@ components:
       name: publishedOlx
       in: query
       schema: { type: boolean }
+    ReadyFilter:
+      name: ready
+      in: query
+      description: >-
+        Похідна готовність картки (AC-29, AC-30): той самий предикат, що й `Product.isReady`,
+        обчислений у запиті, а не збережений ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
+        Комбінується з `publishedProm`/`publishedOlx` через AND.
+      schema: { type: boolean }
     Sort:
       name: sort
       in: query
@@ -585,8 +594,8 @@ components:
         isReady:
           type: boolean
           description: >-
-            Похідне поле, не колонка: обидва описи непорожні, price > 0, є хоча б один
-            кадр ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
+            Похідне поле, не колонка: обидва заголовки й обидва описи непорожні, price > 0,
+            є хоча б один кадр ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
         pendingSuggestions:
           type: array
           description: >-
@@ -618,9 +627,24 @@ components:
 
     ProductCreateRequest:
       type: object
-      required: [category]
+      description: >-
+        Жодне поле не обовʼязкове: картка зʼявляється до першого кадру, коли всі поля форми ще
+        вимкнені (AC-20, AC-35). Пропущене поле отримує default колонки; передане порожнім
+        заголовок чи категорія відхиляються.
       properties:
-        category: { type: string, maxLength: 120 }
+        titleProm: { type: string, minLength: 1, maxLength: 200, default: "" }
+        titleOlx: { type: string, minLength: 1, maxLength: 200, default: "" }
+        category: { type: string, minLength: 1, maxLength: 120, default: "" }
+        descriptionProm: { type: string, maxLength: 8000, default: "" }
+        descriptionOlx: { type: string, maxLength: 8000, default: "" }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          default: "0.00"
+        seoKeywords:
+          type: array
+          items: { type: string, maxLength: 60 }
+          default: []
         condition: { type: string, enum: [new, used], default: used }
 
     ProductUpdateRequest:

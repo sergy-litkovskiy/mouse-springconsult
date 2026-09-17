@@ -16,10 +16,13 @@ export const apiErrorCodes = {
   productNotFound: 'product_not_found',
   imageNotFound: 'image_not_found',
   galleryFull: 'gallery_full',
+  invalidPrice: 'invalid_price',
+
+  // These three belong to modules/media/MediaErrors.ts: `products` depends on `media`
+  // (ADR 0013), so a class kept in `products` would close a cycle.
   invalidFile: 'invalid_file',
   fileTooLarge: 'file_too_large',
   storageUnavailable: 'storage_unavailable',
-  invalidPrice: 'invalid_price',
 } as const;
 
 export type ApiErrorCode = (typeof apiErrorCodes)[keyof typeof apiErrorCodes];

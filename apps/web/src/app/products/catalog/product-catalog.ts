@@ -1,6 +1,14 @@
 import { NgOptimizedImage } from '@angular/common';
-import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { HttpErrorResponse, httpResource } from '@angular/common/http';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,10 +24,10 @@ import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
-  Product,
+  ProductCard,
   ProductImage,
   ProductList,
   ProductListQuery,
@@ -33,20 +41,23 @@ import {
   type ProductSortField,
 } from '@contracts/products-limits';
 import { apiErrorMessage } from '../../api-error-message';
+import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
   priceBound,
   priceRange,
-  publishedControlValue,
+  flagControlValue,
   toPage,
   toPageSize,
   toPriceFilter,
-  toPublishedFilter,
+  toFlagFilter,
   textFilter,
   toSortDirection,
   toSortField,
 } from './product-catalog-query';
-import { ProductGalleryDialog, type ProductGalleryData } from '../gallery/product-gallery-dialog';
+import { ProductForm, type ProductFormData } from '../form/product-form';
+import { ImageViewer, type ImageViewerData } from '../gallery/image-viewer';
+import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
 import { itemsPaginatorIntl } from './items-paginator-intl';
 
@@ -57,6 +68,22 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося завантажити каталог. Спробуйте ще раз.';
+
+const DELETE_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
+  [apiErrorCodes.storageUnavailable]:
+    'Сховище фото недоступне, картку не видалено. Спробуйте за хвилину.',
+};
+
+const UNKNOWN_DELETE_MESSAGE = 'Не вдалося видалити картку. Спробуйте ще раз.';
+
+function isProductNotFound(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    (error.error as { error?: { code?: string } } | null)?.error?.code ===
+      apiErrorCodes.productNotFound
+  );
+}
 
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
   new: 'Новий',
@@ -133,10 +160,13 @@ export class ProductCatalog {
     transform: textFilter(productConstraints.categoryMaxLength),
   });
   readonly publishedProm = input<boolean | undefined, string | undefined>(undefined, {
-    transform: toPublishedFilter,
+    transform: toFlagFilter,
   });
   readonly publishedOlx = input<boolean | undefined, string | undefined>(undefined, {
-    transform: toPublishedFilter,
+    transform: toFlagFilter,
+  });
+  readonly ready = input<boolean | undefined, string | undefined>(undefined, {
+    transform: toFlagFilter,
   });
 
   /**
@@ -152,6 +182,7 @@ export class ProductCatalog {
     category: this.category(),
     publishedProm: this.publishedProm(),
     publishedOlx: this.publishedOlx(),
+    ready: this.ready(),
   }));
 
   private readonly query = computed<ProductListQuery>(() => ({
@@ -164,7 +195,7 @@ export class ProductCatalog {
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
 
-  protected readonly products = computed<readonly Product[]>(() =>
+  protected readonly products = computed<readonly ProductCard[]>(() =>
     this.catalogue.hasValue() ? this.catalogue.value().items : [],
   );
   protected readonly total = computed(() =>
@@ -178,12 +209,15 @@ export class ProductCatalog {
       : apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE);
   });
 
+  protected readonly deleteError = signal<string | null>(null);
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
+  // The two publication columns stay side by side, so they read as a pair; the action goes last.
   protected readonly columns = [
     'gallery',
+    'readiness',
     'titleProm',
     'titleOlx',
     'price',
@@ -191,6 +225,7 @@ export class ProductCatalog {
     'condition',
     'publishedProm',
     'publishedOlx',
+    'actions',
   ];
 
   /**
@@ -204,9 +239,10 @@ export class ProductCatalog {
       priceMin: ['', [priceBound]],
       priceMax: ['', [priceBound]],
       category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
-      // '' means "not asked about", which is not the same as "not published there".
+      // '' means "not asked about", which is not the same as "no" (not published, not ready).
       publishedProm: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
       publishedOlx: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
+      ready: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
     },
     // The bounds are wrong as a pair, not one at a time, so the rule belongs to the group.
     { validators: [priceRange] },
@@ -235,8 +271,9 @@ export class ProductCatalog {
         priceMin: applied.priceMin ?? '',
         priceMax: applied.priceMax ?? '',
         category: applied.category ?? '',
-        publishedProm: publishedControlValue(applied.publishedProm),
-        publishedOlx: publishedControlValue(applied.publishedOlx),
+        publishedProm: flagControlValue(applied.publishedProm),
+        publishedOlx: flagControlValue(applied.publishedOlx),
+        ready: flagControlValue(applied.ready),
       });
     });
   }
@@ -259,8 +296,9 @@ export class ProductCatalog {
         priceMin: asQueryParam(value.priceMin),
         priceMax: asQueryParam(value.priceMax),
         category: asQueryParam(value.category),
-        publishedProm: value.publishedProm === '' ? null : value.publishedProm,
-        publishedOlx: value.publishedOlx === '' ? null : value.publishedOlx,
+        publishedProm: asQueryParam(value.publishedProm),
+        publishedOlx: asQueryParam(value.publishedOlx),
+        ready: asQueryParam(value.ready),
       },
     });
   }
@@ -304,7 +342,7 @@ export class ProductCatalog {
     this.catalogue.reload();
   }
 
-  protected mainImage(product: Product): ProductImage | null {
+  protected mainImage(product: ProductCard): ProductImage | null {
     return product.images.find((image) => image.isMain) ?? product.images[0] ?? null;
   }
 
@@ -317,8 +355,59 @@ export class ProductCatalog {
     return CONDITION_LABELS[condition];
   }
 
-  protected openGallery(product: Product): void {
-    const data: ProductGalleryData = { title: product.titleProm, images: product.images };
-    this.dialog.open(ProductGalleryDialog, { data, width: 'min(92vw, 60rem)' });
+  protected openViewer(product: ProductCard): void {
+    const data: ImageViewerData = { title: product.titleProm, images: product.images };
+    this.dialog.open<ImageViewer, ImageViewerData>(ImageViewer, {
+      data,
+      width: '56rem',
+      maxWidth: '92vw',
+    });
+  }
+
+  /** `null` is a new card. */
+  protected openForm(product: ProductCard | null): void {
+    const data: ProductFormData = { product };
+    // Material 3 caps a dialog at 560px unless maxWidth says otherwise.
+    this.dialog
+      .open<ProductForm, ProductFormData, boolean>(ProductForm, {
+        data,
+        width: '64rem',
+        maxWidth: '92vw',
+      })
+      .afterClosed()
+      .subscribe((changed) => {
+        if (changed === true) {
+          this.catalogue.reload();
+        }
+      });
+  }
+
+  protected readonly missingFields = missingFieldsHint;
+
+  protected async deleteProduct(product: ProductCard): Promise<void> {
+    const question: ConfirmDialogData = {
+      title: 'Видалити картку?',
+      message: `Картку «${product.titleProm}» разом з її фото буде видалено назавжди.`,
+      confirmLabel: 'Видалити',
+    };
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, { data: question })
+        .afterClosed(),
+    );
+    if (confirmed !== true) {
+      return;
+    }
+    this.deleteError.set(null);
+    try {
+      await firstValueFrom(this.api.delete(product.id));
+    } catch (error: unknown) {
+      // A card someone else already deleted is the outcome that was asked for.
+      if (!isProductNotFound(error)) {
+        this.deleteError.set(apiErrorMessage(error, DELETE_ERROR_MESSAGES, UNKNOWN_DELETE_MESSAGE));
+        return;
+      }
+    }
+    this.catalogue.reload();
   }
 }

@@ -74,6 +74,7 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 | 12 | T36 | Варіанти «Всі / Так / Ні» | `tdd` | `pw` | — | XS, лише підписи `mat-option`. Тест через `MatSelectHarness` на текст і порядок. Значення не змінюються, тому збережені адреси мають відкриватись як раніше. Крок 3 (`PRD.md §5`) — руками |
 | 13 | T35 | Фільтр «Картка готова» | `tdd` | `pw` | — | Правка наявних `product-catalog.*` за взірцем `publishedProm`, нових файлів немає. `products-api.ts` не змінюється. Крок 5 (`PRD.md §5`) — руками |
 | 14 | T37 | Ширина фільтрів | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний (див. умову `/goal` нижче). Обрізані мітки й перенос помилки ціни оцінюєш сам на знімках до кроку Б |
+| 14a | T38 | Порожня картка | `tdd·r` | міграція окремим комітом до `/tdd` | — | Додано 2026-09-17: без порожньої картки діалог T20 не створює нову (кадр вантажиться лише в наявну, поля до першого кадру вимкнені). Предикат готовності отримує заголовки: доменний інваріант. Правки `openapi.yaml`, `PRD.md`, ADR 0009 — руками |
 | 15 | T20 | Форма картки | `scaf` | `pw` | — | Нова підфіча `products/form/` з `.html`/`.css`. Zoneless-тести на AC-13 і AC-20 — у DoD, їх перевіряє `feature-ship` |
 | 16 | T21 | Секція галереї | `scaf` | `pw` із дроселем мережі | — | Нові файли секції. QG-2 (прев'ю до відповіді) видно лише на живому стеку |
 | 17 | T22 | Каталог | `tdd` | `pw` | — | Правка наявного `product-catalog` з наявним spec; 4 комбінації фільтрів. Бейдж бере `isReady` з рядка списку, тож без T34 RED впаде не на тій причині |
@@ -84,6 +85,29 @@ T14 перевіряти нема на чому. Задачі сховища (T0
 не дійде до T35 раніше, ніж бекенд закриє T34. Workflow тут можливий, але лише за
 явного рішення: він коштує приблизно 15× токенів, а `tracker.md` оновлюється після
 обох доріжок. Для одного розробника послідовний порядок дешевший.
+
+## Поставка 1 — UI-доопрацювання
+
+Запит 2026-09-17. Задачі треба закрити **до старту поставки 2**: T25 чекає на T42 і T43.
+T24 рішення, тож його можна вести паралельно. T40 → T41 → T42 ідуть по черзі, бо правлять
+ті самі файли (`styles.css`, `product-form.css`). T43 торкається `product-catalog.*` і
+нового компонента, тож може йти паралельно з цим ланцюжком. Щоб не розв'язувати конфлікти
+в `product-catalog.css`, краще почати її після T40.
+
+| # | ID | Задача | Крок А | Між | Після | Обґрунтування |
+|---|----|--------|--------|-----|-------|---------------|
+| 19a | T40 | Компактні фільтри й мітки | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний (висота поля 45–48 px). Назви токенів `--mat-form-field-*` звір із документацією Material до старту `/goal`, бо цикл писатиме їх з пам'яті. Сірість мітки у фокусі та з помилкою оцінюєш сам на знімках |
+| 19b | T41 | Висота ціни у формі | `goal` | `pw`: з хибною ціною і без неї | — | Одна правка вирівнювання з вимірюваним DoD (різниця висоти ≤ 1 px). Спершу виміряй висоту трьох полів, щоб підтвердити причину |
+| 19c | T42 | Кольори бейджа | `goal` | `pw`: обчислені кольори в каталозі й у формі | — | Перенесення CSS у `styles.css`; наявні тести на класи `readiness*` мають лишитися зеленими без правок |
+| 19d | T43 | Перегляд фото | `scaf` | `pw` | — | Новий компонент `products/gallery/image-viewer.*` з `.html`/`.css`, тож `tdd` тут упреться в Gate 2. Задача змінює рішення T22 (лічильник відкривав форму), тож наявний тест каталогу переписується, а не «лагодиться». Кроки 6 (`PRD.md`, `sad.md`) — руками |
+
+**Друга хвиля (запит 2026-09-17).** T44 → T45 правлять ті самі `product-form.*`, тож ідуть
+по черзі. Старт поставки 2 вони не тримають.
+
+| # | ID | Задача | Крок А | Між | Після | Обґрунтування |
+|---|----|--------|--------|-----|-------|---------------|
+| 19e | T44 | Лінії в діалозі картки | `goal` | `pw`: обчислені кольори ліній, діалог підтвердження без них | — | Два правила CSS без поведінки під unit-тест |
+| 19f | T45 | Результат збереження | `tdd` | `pw`: успіх зі сповіщенням і помилка з `route` 422 | — | Поведінка під тест: закриття з `true`, текст сповіщення, помилка в рядку дій. Нових файлів немає, тож `tdd` не впреться в Gate 2. RED переписує тести, що перевіряли стару поведінку: тест T39 про бейдж після збереження, а також тести AC-12 і AC-07, які чекали «Збережено.» у діалозі. Це зміна вимоги, а не «лагодження» тестів, тож Gate 1 покаже `pass` на 3 менше за базову лінію, і це очікувано. Стилі сповіщення й помилки (кроки 3–4) тести не бачать, тож їх робить окремий коміт `style(web)` до кроку Б. Крок 7 (`PRD.md`, примітка в T39) — руками |
 
 ## Поставка 2 — модель
 
@@ -133,19 +157,31 @@ T07, T25 і T27 додають npm-пакети, а `node_modules` живуть 
 /goal docs/features/product-creation-flow/tasks/resize-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved and at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
+```
+/goal docs/features/product-creation-flow/tasks/compact-catalog-filter-fields.md: every Checklist item is done, playwright-cli screenshots of /products at 1280 and 360 px width are saved, every `.filters .mat-mdc-text-field-wrapper` has `getBoundingClientRect().height` between 44.8 and 47.6, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/fix-product-form-field-sizing.md: every Checklist item is done, in the open card dialog at 1280 px the `.mat-mdc-text-field-wrapper` heights of the price, category and condition fields differ by at most 1 px both with and without the price error shown, playwright-cli screenshots at 1280 and 360 px are saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/unify-readiness-badge-colors.md: every Checklist item is done, `rg -n "readiness--" apps/web/src/app --glob '*.css'` prints nothing, the computed `background-color` and `color` of `[data-testid="readiness"]` are equal in the catalogue row and in the open card dialog for both a ready and a not-ready card (checked with playwright-cli), `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
 Хвіст `or stop after N turns` ненадійний, тож межу витрат став окремо.
 
 ## Зведення за інструментами
 
 | Інструмент | Задачі |
 |---|---|
-| `/tdd` | T34, T15, T14, T18, T36, T35, T22, T31 |
-| `/tdd --review-tests` | T08, T16, T17, T28, T29, T30, T32 |
-| `feature-scaffold` | T11, T12, T20, T21, T26 |
-| `/goal` | T06, T07, T37, T25, T27 (з `claude-api`) |
+| `/tdd` | T34, T15, T14, T18, T36, T35, T22, T45, T31 |
+| `/tdd --review-tests` | T08, T16, T17, T38, T28, T29, T30, T32 |
+| `feature-scaffold` | T11, T12, T20, T21, T43, T26 |
+| `/goal` | T06, T07, T37, T40, T41, T42, T44, T25, T27 (з `claude-api`) |
 | Plan mode | T24, T23, T33 |
-| `playwright-cli` | T36, T35, T37, T20, T21, T22, T32, T23, T33 |
+| `playwright-cli` | T36, T35, T37, T20, T21, T22, T40, T41, T42, T43, T44, T45, T32, T23, T33 |
 | `critical-path-review` | обов'язково: T14, T16, T17, T26, T28, T29, T30 |
 | Обв'язка окремим комітом після `/tdd` | T08, T14, T15, T16, T17 |
 | `feature-ship` | усі, крім T23, T24, T33 |
-| Ручні правки документів до кроку Б | T34 (`openapi.yaml`, `PRD.md`), T35, T36, T37 (`PRD.md`) |
+| Ручні правки документів до кроку Б | T34 (`openapi.yaml`, `PRD.md`), T35, T36, T37, T40, T41, T42 (`PRD.md`), T43 (`PRD.md`, `sad.md`), T44, T45 (`PRD.md`) |

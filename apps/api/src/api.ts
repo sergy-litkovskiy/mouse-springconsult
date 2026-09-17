@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { ApiError } from './contracts/error.contract.ts';
@@ -17,6 +18,7 @@ import {
   User,
   UserRepository,
 } from './modules/auth/index.ts';
+import { ImageStorage, MediaService } from './modules/media/index.ts';
 import {
   Product,
   ProductController,
@@ -107,13 +109,31 @@ export async function buildServer(): Promise<ApiServer> {
   );
 
   const productController = new ProductController(
-    new ProductService(new ProductRepository(dataSource)),
+    new ProductService(
+      new ProductRepository(dataSource),
+      new MediaService(
+        new ImageStorage({
+          accountId: env.R2_ACCOUNT_ID,
+          accessKeyId: env.R2_ACCESS_KEY_ID,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+          bucket: env.R2_BUCKET,
+          ...config.storage,
+        }),
+      ),
+    ),
+    env.R2_PUBLIC_BASE_URL,
   );
 
   const app = createApp();
 
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
+  await app.register(multipart, {
+    limits: {
+      fileSize: config.http.imageUpload.maxFileBytes,
+      files: config.http.imageUpload.maxFiles,
+    },
+  });
   await app.register(rateLimit, {
     max: config.rateLimit.global.max,
     timeWindow: config.rateLimit.global.timeWindowMs,

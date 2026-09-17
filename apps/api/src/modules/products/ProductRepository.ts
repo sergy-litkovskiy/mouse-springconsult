@@ -16,18 +16,18 @@ export type ProductFilters = {
   readonly category?: string | undefined;
   readonly publishedProm?: boolean | undefined;
   readonly publishedOlx?: boolean | undefined;
+  readonly ready?: boolean | undefined;
 };
 
 /** `id` comes from `uuidv7()` in the database and the timestamps from TypeORM — none of the three is a caller's to set. */
 type ProductWritable = Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'images'>;
 
 /**
- * Only `title_prom`, `title_olx` and `category` have no column default, and that is what
- * lets a card exist before its texts, price and frames do — the R2 key of a frame is
- * `products/{id}/…`, so the id has to come first.
+ * Every writable column has a default, and that is what lets a card exist before its titles,
+ * texts, price and frames do — the R2 key of a frame is `products/{id}/…`, so the id has to come
+ * first.
  */
-export type ProductDraft = Pick<ProductWritable, 'titleProm' | 'titleOlx' | 'category'> &
-  Partial<ProductWritable>;
+export type ProductDraft = Partial<ProductWritable>;
 
 export type ProductChanges = Partial<ProductWritable>;
 
@@ -56,6 +56,17 @@ function toLikePattern(value: string): string {
   const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
   return `%${escaped}%`;
 }
+
+/**
+ * The SQL twin of `ProductService.isReady` (ADR 0009): readiness is derived, never stored, so the
+ * list filters by recomputing it. Change both together — the repository spec compares them card
+ * by card. Every input is NOT NULL, so the expression is never null and comparing it with `false`
+ * selects exactly the cards that are not ready.
+ */
+const READINESS_EXPRESSION =
+  `product.titleProm <> '' and product.titleOlx <> '' and` +
+  ` product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
+  ` and exists (select 1 from product_images image where image.product_id = product.id)`;
 
 function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilters): void {
   if (filters.title !== undefined) {
@@ -87,6 +98,9 @@ function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilter
   }
   if (filters.publishedOlx !== undefined) {
     query.andWhere('product.publishedOlx = :publishedOlx', { publishedOlx: filters.publishedOlx });
+  }
+  if (filters.ready !== undefined) {
+    query.andWhere(`(${READINESS_EXPRESSION}) = :ready`, { ready: filters.ready });
   }
 }
 
@@ -166,19 +180,66 @@ export class ProductRepository {
   }
 
   /**
-   * `url` is still a stored, `NOT NULL` column: ADR 0007 removes it, but only once `config`
-   * carries the R2 bucket domain (T06) and the controller learns to compose the address from
-   * `r2Key` itself (T12) — until then this repository keeps taking it as an argument, same as
-   * the column requires (data-model.md, `product_images`).
+   * The ceiling, the position and the main flag are all read from the gallery, so they are decided
+   * under a lock on the card row: two uploads at once would otherwise read the same gallery, and
+   * the second would break `product_images_position_key` or `product_images_main_key`, or slip past
+   * the ceiling. The position follows the highest one rather than the count — a deleted frame
+   * leaves a gap. `null` means the gallery is already full.
    */
   async addImage(
     productId: string,
     r2Key: string,
-    url: string,
-    position: number,
-  ): Promise<ProductImage> {
-    const repository = this.dataSource.getRepository(ProductImage);
-    return repository.save(repository.create({ productId, r2Key, url, position, isMain: false }));
+    maxImages: number,
+  ): Promise<ProductImage | null> {
+    return this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(Product)
+        .createQueryBuilder('product')
+        .setLock('pessimistic_write')
+        .where('product.id = :productId', { productId })
+        .getOne();
+
+      const images = manager.getRepository(ProductImage);
+      const gallery = await images.find({ where: { productId }, select: { position: true } });
+      if (gallery.length >= maxImages) {
+        return null;
+      }
+
+      const position = gallery.reduce((next, image) => Math.max(next, image.position + 1), 0);
+      return images.save(
+        images.create({ productId, r2Key, position, isMain: gallery.length === 0 }),
+      );
+    });
+  }
+
+  /**
+   * Takes the same lock on the card row as `addImage`: without it a frame added between reading the
+   * keys and deleting the card would lose its row to the cascade while its object stays in R2.
+   * `removeObjects` runs under that lock and before the row goes (ADR 0012), so a failure there
+   * rolls nothing back because nothing was deleted yet. `false` means there is no such card.
+   */
+  async deleteWithObjects(
+    id: string,
+    removeObjects: (keys: string[]) => Promise<void>,
+  ): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const card = await manager
+        .getRepository(Product)
+        .createQueryBuilder('product')
+        .setLock('pessimistic_write')
+        .where('product.id = :id', { id })
+        .getOne();
+      if (card === null) {
+        return false;
+      }
+
+      const images = await manager
+        .getRepository(ProductImage)
+        .find({ where: { productId: id }, select: { r2Key: true } });
+      await removeObjects(images.map((image) => image.r2Key));
+      await manager.getRepository(Product).delete({ id });
+      return true;
+    });
   }
 
   async countImages(productId: string): Promise<number> {

@@ -57,7 +57,7 @@ export function toPriceFilter(value: string | undefined): string | undefined {
   return productConstraints.pricePattern.test(cleaned) ? cleaned : undefined;
 }
 
-export function toPublishedFilter(value: string | undefined): boolean | undefined {
+export function toFlagFilter(value: string | undefined): boolean | undefined {
   if (value === 'true') {
     return true;
   }
@@ -70,11 +70,11 @@ export function asQueryParam(value: string): string | null {
   return cleaned === '' ? null : cleaned;
 }
 
-export function publishedControlValue(published: boolean | undefined): '' | 'true' | 'false' {
-  if (published === undefined) {
+export function flagControlValue(flag: boolean | undefined): '' | 'true' | 'false' {
+  if (flag === undefined) {
     return '';
   }
-  return published ? 'true' : 'false';
+  return flag ? 'true' : 'false';
 }
 
 export function priceBound(control: AbstractControl): ValidationErrors | null {

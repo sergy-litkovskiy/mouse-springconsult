@@ -1,11 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import type {
   ProductCreate,
   ProductListQuery,
   ProductUpdate,
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
+import type { MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ProductNotFound } from './ProductErrors.ts';
+import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
+import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
   ProductListCriteria,
@@ -32,7 +35,10 @@ function capKeywords(keywords: string[]): {
 }
 
 export class ProductService {
-  constructor(private readonly products: ProductRepository) {}
+  constructor(
+    private readonly products: ProductRepository,
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * A filter that was not sent does not become a condition: zod leaves an absent `.optional()`
@@ -78,9 +84,91 @@ export class ProductService {
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
 
+  /**
+   * The object goes to storage before the row is written: a failed upload leaves no frame without
+   * a file. The reverse — a file without a frame — is cleaned up here when the row cannot be written.
+   */
+  async addImage(productId: string, bytes: Uint8Array): Promise<ProductImage> {
+    // Looked up before storage is touched: a card that does not exist would otherwise leave an
+    // object behind in R2 and fail on the foreign key only after that.
+    const product = await this.products.findById(productId);
+    if (product === null) {
+      throw new ProductNotFound(productId);
+    }
+
+    // Spares the upload for a gallery that is plainly full; the repository decides for real.
+    if (product.images.length >= productConstraints.maxImagesPerProduct) {
+      throw new GalleryFull();
+    }
+
+    const key = await this.media.store(bytes, `products/${productId}/${randomUUID()}`);
+    let image: ProductImage | null;
+    try {
+      image = await this.products.addImage(productId, key, productConstraints.maxImagesPerProduct);
+    } catch (error) {
+      await this.discardObject(key);
+      throw error;
+    }
+    if (image === null) {
+      await this.discardObject(key);
+      throw new GalleryFull();
+    }
+    return image;
+  }
+
+  /**
+   * Best effort: the failure that led here is the one the caller has to hear about, and an object
+   * nobody references costs storage, not correctness.
+   */
+  private async discardObject(key: string): Promise<void> {
+    try {
+      await this.media.remove(key);
+    } catch {
+      // Deliberately swallowed — see above.
+    }
+  }
+
+  /**
+   * The object goes before the row (ADR 0012): a failure in between leaves a frame whose object is
+   * already gone, and a repeat finishes the job because deleting a missing key succeeds.
+   */
+  async deleteImage(productId: string, imageId: string): Promise<void> {
+    const image = await this.products.findImage(productId, imageId);
+    if (image === null) {
+      throw new ImageNotFound(imageId);
+    }
+
+    await this.media.remove(image.r2Key);
+    await this.products.deleteImage(imageId);
+  }
+
+  /** The objects go before the row (ADR 0012): if storage fails, the card and its frames stay. */
+  async deleteProduct(productId: string): Promise<void> {
+    const deleted = await this.products.deleteWithObjects(productId, (keys) =>
+      this.media.removeMany(keys),
+    );
+    if (!deleted) {
+      throw new ProductNotFound(productId);
+    }
+  }
+
+  async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
+    if (!(await this.products.setMainImage(productId, imageId))) {
+      throw new ImageNotFound(imageId);
+    }
+    const product = await this.products.findById(productId);
+    if (product === null) {
+      throw new ProductNotFound(productId);
+    }
+
+    return product.images;
+  }
+
   /** The price is a decimal string and never becomes a number: any non-zero digit means above zero. */
   isReady(product: Product): boolean {
     return (
+      product.titleProm !== '' &&
+      product.titleOlx !== '' &&
       product.descriptionProm !== '' &&
       product.descriptionOlx !== '' &&
       /[1-9]/.test(product.price) &&

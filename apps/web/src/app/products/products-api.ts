@@ -1,19 +1,68 @@
-import type { HttpResourceRequest } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import type { ProductListQuery } from '@contracts/products.contract';
+import { HttpClient, type HttpResourceRequest } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import type {
+  Product,
+  ProductCreateRequest,
+  ProductImage,
+  ProductListQuery,
+  ProductUpdate,
+  ProductUpdateResponse,
+} from '@contracts/products.contract';
 import { environment } from '@environments/environment';
 
-/**
- * What is returned is a request, not a subscription: `httpResource` owns the lifecycle and
- * cancels the previous request the moment the query changes, so two pages in flight can no
- * longer resolve out of order and paint the wrong one.
- */
 @Injectable({ providedIn: 'root' })
 export class ProductsApi {
+  private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/products`;
 
+  /**
+   * What is returned is a request, not a subscription: `httpResource` owns the lifecycle and
+   * cancels the previous request the moment the query changes, so two pages in flight can no
+   * longer resolve out of order and paint the wrong one.
+   */
   listRequest(query: ProductListQuery): HttpResourceRequest {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
+  }
+
+  getById(productId: string): Observable<Product> {
+    return this.http.get<Product>(`${this.baseUrl}/${productId}`, { withCredentials: true });
+  }
+
+  create(request: ProductCreateRequest): Observable<Product> {
+    return this.http.post<Product>(this.baseUrl, request, { withCredentials: true });
+  }
+
+  update(productId: string, request: ProductUpdate): Observable<ProductUpdateResponse> {
+    return this.http.patch<ProductUpdateResponse>(`${this.baseUrl}/${productId}`, request, {
+      withCredentials: true,
+    });
+  }
+
+  delete(productId: string): Observable<null> {
+    return this.http.delete<null>(`${this.baseUrl}/${productId}`, { withCredentials: true });
+  }
+
+  uploadImage(productId: string, file: File): Observable<ProductImage> {
+    const body = new FormData();
+    body.append('file', file);
+    return this.http.post<ProductImage>(`${this.baseUrl}/${productId}/images`, body, {
+      withCredentials: true,
+    });
+  }
+
+  setMainImage(productId: string, imageId: string): Observable<ProductImage[]> {
+    return this.http.put<ProductImage[]>(
+      `${this.baseUrl}/${productId}/images/${imageId}/main`,
+      null,
+      { withCredentials: true },
+    );
+  }
+
+  deleteImage(productId: string, imageId: string): Observable<null> {
+    return this.http.delete<null>(`${this.baseUrl}/${productId}/images/${imageId}`, {
+      withCredentials: true,
+    });
   }
 }
 
