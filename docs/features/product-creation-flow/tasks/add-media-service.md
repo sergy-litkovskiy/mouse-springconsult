@@ -1,7 +1,7 @@
 ---
 id: T08
 title: "MediaService.ts — перевірка байтів і запис обʼєкта"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1900
 blocked_by: [T03, T04, T07]
 blocks: [T14, T16, T17]
-updated_at: "2026-09-16"
+updated_at: "2026-09-17"
 ---
 
 # T08 — `MediaService.ts` — перевірка байтів і запис обʼєкта
@@ -87,13 +87,13 @@ updated_at: "2026-09-16"
 
 ## DoD
 
-- [ ] Тип визначається за сигнатурою вмісту — тест із підробленим `Content-Type` відхиляє файл.
-- [ ] Жодного звернення до `ImageStorage` до того, як перевірка пройшла — перевірено тестом на двійнику, який рахує виклики.
-- [ ] У логи не потрапляє тіло зображення в жодній гілці.
-- [ ] `MediaService` не згадує ні `fastify`, ні DTO, ні слова «картка» — `deps:check` зелений.
-- [ ] Класи трьох помилок існують рівно в одному місці — `media/MediaErrors.ts`; `git grep "class InvalidFile"` дає один рядок.
-- [ ] Двійники живуть у самому `*.spec.ts`, окремих файлів з фейками не заведено ([CLAUDE.md](../../../../CLAUDE.md), правило 8).
-- [ ] Коміт: `feat(media): add the media service with content-signature checks`.
+- [x] Тип визначається за сигнатурою вмісту — тест із підробленим `Content-Type` відхиляє файл.
+- [x] Жодного звернення до `ImageStorage` до того, як перевірка пройшла — перевірено тестом на двійнику, який рахує виклики.
+- [x] У логи не потрапляє тіло зображення в жодній гілці: `MediaService` логера не має взагалі.
+- [x] `MediaService` не згадує ні `fastify`, ні DTO, ні слова «картка» — `deps:check` зелений.
+- [x] Класи трьох помилок існують рівно в одному місці (перенесено окремим комітом `refactor(media)` ще до [T07](add-image-storage-adapter.md)) — `media/MediaErrors.ts`; `git grep "class InvalidFile"` дає один рядок.
+- [x] Двійники живуть у самому `*.spec.ts`, окремих файлів з фейками не заведено ([CLAUDE.md](../../../../CLAUDE.md), правило 8).
+- [x] Коміт: `feat(media): add the media service with content-signature checks`.
 
 ## Links
 
