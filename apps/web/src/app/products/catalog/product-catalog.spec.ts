@@ -419,4 +419,118 @@ describe('ProductCatalog', () => {
     expect(await (await publishedSelect('publishedProm')).getValueText()).toBe('Ні');
     expect(await (await publishedSelect('publishedOlx')).getValueText()).toBe('Так');
   });
+
+  function readySelect(): Promise<MatSelectHarness> {
+    return TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
+      MatSelectHarness.with({ selector: '[formcontrolname="ready"]' }),
+    );
+  }
+
+  it('carries ready=false from the address into the request and the select (AC-29)', async () => {
+    await open('/products?ready=false');
+    const request = expectRequest();
+
+    expect(request.request.params.get('ready')).toBe('false');
+
+    request.flush({ ...PAGE, items: [KEYBOARD], total: 1 });
+    await settle();
+
+    expect(await (await readySelect()).getValueText()).toBe('Ні');
+  });
+
+  for (const [label, value] of [
+    ['Так', 'true'],
+    ['Ні', 'false'],
+  ] as const) {
+    it(`writes ready=${value} into the URL and returns to the first page when «${label}» is applied (AC-29)`, async () => {
+      await open('/products?page=2');
+      expectRequest().flush({ ...PAGE, page: 2 });
+      await settle();
+
+      await (await readySelect()).clickOptions({ text: label });
+      submitFilters();
+      await tick();
+
+      const url = TestBed.inject(Router).url;
+      expect(url).toContain(`ready=${value}`);
+      expect(url).not.toContain('page=');
+
+      const request = expectRequest();
+      expect(request.request.params.get('ready')).toBe(value);
+      expect(request.request.params.get('page')).toBe('1');
+
+      request.flush(PAGE);
+      await settle();
+    });
+  }
+
+  it('offers all, yes and no in the readiness filter with all chosen by default (AC-31)', async () => {
+    await open();
+    const request = expectRequest();
+
+    expect(request.request.params.has('ready')).toBe(false);
+
+    request.flush(PAGE);
+    await settle();
+
+    const select = await readySelect();
+    expect(await select.getValueText()).toBe('Всі');
+
+    await select.open();
+    const options = await select.getOptions();
+    expect(await Promise.all(options.map((option) => option.getText()))).toEqual([
+      'Всі',
+      'Так',
+      'Ні',
+    ]);
+    await select.close();
+  });
+
+  it('reads an invalid ready from the address as all and leaves it out of the request (AC-31)', async () => {
+    await open('/products?ready=yes');
+    const request = expectRequest();
+
+    expect(request.request.params.has('ready')).toBe(false);
+
+    request.flush(PAGE);
+    await settle();
+
+    expect(await (await readySelect()).getValueText()).toBe('Всі');
+  });
+
+  it('drops ready from the URL and the request on reset (AC-31)', async () => {
+    await open('/products?ready=true');
+    expectRequest().flush(PAGE);
+    await settle();
+
+    [...element.querySelectorAll<HTMLButtonElement>('.filters__actions button')]
+      .find((button) => button.textContent.trim() === 'Скинути')
+      ?.click();
+    await tick();
+
+    expect(TestBed.inject(Router).url).toBe('/products');
+
+    const request = expectRequest();
+    expect(request.request.params.has('ready')).toBe(false);
+    request.flush(PAGE);
+    await settle();
+
+    expect(await (await readySelect()).getValueText()).toBe('Всі');
+  });
+
+  it('puts the readiness select back in line with the address on Back', async () => {
+    await open('/products?ready=true');
+    expectRequest().flush(PAGE);
+    await settle();
+
+    await harness.navigateByUrl('/products');
+    await tick();
+
+    const request = expectRequest();
+    expect(request.request.params.has('ready')).toBe(false);
+    request.flush(PAGE);
+    await settle();
+
+    expect(await (await readySelect()).getValueText()).toBe('Всі');
+  });
 });
