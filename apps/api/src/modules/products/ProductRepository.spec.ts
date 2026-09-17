@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
 import { createDataSource } from '../../db.ts';
+import type { MediaService } from '../media/index.ts';
 import { PRODUCTS_TABLE, Product } from './Product.ts';
 import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
 import {
@@ -66,6 +67,9 @@ const dataSource = createDataSource({
 });
 
 let products: ProductRepository;
+
+/** The service is used here only for what never touches storage. */
+const NO_MEDIA = undefined as unknown as MediaService;
 
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
 const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
@@ -314,7 +318,7 @@ describe('product repository (postgres)', () => {
     const notReadyIds = new Set(
       (await products.list({ ...BASE_CRITERIA, filters: { ready: false } })).items.map((p) => p.id),
     );
-    const service = new ProductService(products);
+    const service = new ProductService(products, NO_MEDIA);
 
     assert.equal(readyIds.size, 1);
     for (const [name, id] of ids) {
@@ -450,6 +454,15 @@ describe('product repository (postgres)', () => {
     assert.equal(image.isMain, false);
   });
 
+  it('adds a frame marked main when asked to (AC-19)', async () => {
+    const id = await seedProduct();
+
+    const image = await products.addImage(id, `products/${id}/first.jpg`, 0, true);
+
+    assert.equal(image.isMain, true);
+    assert.equal((await products.findImage(id, image.id))?.isMain, true);
+  });
+
   it('counts only the frames of the card that was asked about', async () => {
     const counted = await seedProduct();
     const other = await seedProduct({ titleProm: 'Інша картка' });
@@ -582,7 +595,7 @@ describe('product repository (postgres)', () => {
     await seedImage(id, { position: 0, isMain: true });
     const chosen = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
 
-    await new ProductService(products).setMainImage(id, chosen);
+    await new ProductService(products, NO_MEDIA).setMainImage(id, chosen);
 
     assert.deepEqual(await mainFramesOf(id), [chosen]);
   });
@@ -591,7 +604,7 @@ describe('product repository (postgres)', () => {
     const id = await seedProduct();
     const main = await seedImage(id, { position: 0, isMain: true });
     await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
-    const service = new ProductService(products);
+    const service = new ProductService(products, NO_MEDIA);
 
     const first = await service.setMainImage(id, main);
     const second = await service.setMainImage(id, main);
@@ -610,7 +623,7 @@ describe('product repository (postgres)', () => {
     });
 
     await assert.rejects(
-      new ProductService(products).setMainImage(id, foreignImage),
+      new ProductService(products, NO_MEDIA).setMainImage(id, foreignImage),
       ImageNotFound,
     );
 

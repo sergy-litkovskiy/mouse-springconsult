@@ -179,7 +179,12 @@ export class ProductRepository {
     return (result.affected ?? 0) > 0;
   }
 
-  async addImage(productId: string, r2Key: string, position: number): Promise<ProductImage> {
+  async addImage(
+    productId: string,
+    r2Key: string,
+    position: number,
+    isMain?: boolean,
+  ): Promise<ProductImage> {
     const repository = this.dataSource.getRepository(ProductImage);
     return repository.save(repository.create({ productId, r2Key, position, isMain: false }));
   }

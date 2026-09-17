@@ -6,6 +6,7 @@ import type {
   ProductList,
   ProductImage as ProductImageResponse,
 } from '../../contracts/products.contract.ts';
+import type { MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -14,6 +15,9 @@ import { ProductService } from './ProductService.ts';
 
 /** The DataSource is never reached: every repository method the routes call is overridden. */
 const NO_DATA_SOURCE = undefined as unknown as ConstructorParameters<typeof ProductRepository>[0];
+
+/** No route in this spec uploads a frame, so the media service is never reached. */
+const NO_MEDIA = undefined as unknown as MediaService;
 
 const READY_ID = '01931f2a-3333-7000-8000-000000000001';
 const UNPRICED_ID = '01931f2a-3333-7000-8000-000000000002';
@@ -88,7 +92,7 @@ class StubProductRepository extends ProductRepository {
 
 describe('product controller: list', () => {
   const repository = new StubProductRepository();
-  const service = new ProductService(repository);
+  const service = new ProductService(repository, NO_MEDIA);
   let app: FastifyInstance;
 
   before(async () => {
@@ -153,12 +157,12 @@ describe('product controller: main frame', () => {
   before(async () => {
     repository = new StubProductRepository();
     app = Fastify();
-    new ProductController(new ProductService(repository), 'https://images.example.com').register(
-      app,
-      async () => {
-        // Lets every request through: the session is not what this suite is about.
-      },
-    );
+    new ProductController(
+      new ProductService(repository, NO_MEDIA),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this suite is about.
+    });
     await app.ready();
   });
 
@@ -218,7 +222,7 @@ describe('product controller: main frame without a session', () => {
   before(async () => {
     app = Fastify();
     new ProductController(
-      new ProductService(new StubProductRepository()),
+      new ProductService(new StubProductRepository(), NO_MEDIA),
       'https://images.example.com',
     ).register(app, async (_request, reply) => {
       return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });

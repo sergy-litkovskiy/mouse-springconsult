@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
+import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ImageNotFound, ProductNotFound } from './ProductErrors.ts';
+import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
@@ -71,6 +72,7 @@ class StubProductRepository extends ProductRepository {
   lastCriteria: ProductListCriteria | undefined;
   lastDraft: ProductDraft | undefined;
   lastChanges: ProductChanges | undefined;
+  readonly addedImages: ProductImage[] = [];
   /** The one card this repository holds; `null` stands for an empty table. */
   stored: Product | null = readyCard();
 
@@ -112,8 +114,50 @@ class StubProductRepository extends ProductRepository {
     return true;
   }
 
+  override async countImages(productId: string): Promise<number> {
+    return this.galleryOf(productId).length;
+  }
+
+  override async addImage(
+    productId: string,
+    r2Key: string,
+    position: number,
+    isMain?: boolean,
+  ): Promise<ProductImage> {
+    const image: ProductImage = {
+      id: `01931f2a-2222-7000-8000-${String(this.addedImages.length + 100).padStart(12, '0')}`,
+      productId,
+      r2Key,
+      position,
+      isMain: isMain ?? false,
+    };
+    this.addedImages.push(image);
+    this.galleryOf(productId).push(image);
+    return image;
+  }
+
   private galleryOf(productId: string): ProductImage[] {
     return this.stored?.id === productId ? this.stored.images : [];
+  }
+}
+
+/** The storage is never reached: `store` is overridden, and nothing else is called. */
+const NO_STORAGE = undefined as unknown as ImageStorage;
+
+class RecordingMediaService extends MediaService {
+  readonly stored: { bytes: Uint8Array; key: string }[] = [];
+  failure: Error | undefined;
+
+  constructor() {
+    super(NO_STORAGE);
+  }
+
+  override async store(bytes: Uint8Array, key: string): Promise<string> {
+    if (this.failure !== undefined) {
+      throw this.failure;
+    }
+    this.stored.push({ bytes, key });
+    return key;
   }
 }
 
@@ -124,9 +168,14 @@ const BASE_QUERY: ProductListQuery = {
   direction: 'asc',
 };
 
-function setup(): { service: ProductService; repository: StubProductRepository } {
+function setup(): {
+  service: ProductService;
+  repository: StubProductRepository;
+  media: RecordingMediaService;
+} {
   const repository = new StubProductRepository();
-  return { service: new ProductService(repository), repository };
+  const media = new RecordingMediaService();
+  return { service: new ProductService(repository, media), repository, media };
 }
 
 describe('product service', () => {
@@ -344,5 +393,95 @@ describe('product service: main frame', () => {
 
     await assert.rejects(service.setMainImage(CARD_ID, FOREIGN_IMAGE_ID), ImageNotFound);
     assert.deepEqual(mainFlags(repository.stored.images), { [FRONT_ID]: true, [BACK_ID]: false });
+  });
+});
+
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+
+/** A card whose gallery already holds `count` frames, the first of them main. */
+function cardWithFrames(count: number): Product {
+  return readyCard({
+    images: Array.from({ length: count }, (_, position) => ({
+      id: `01931f2a-2222-7000-8000-${String(position + 1).padStart(12, '0')}`,
+      productId: CARD_ID,
+      r2Key: `products/${CARD_ID}/frame-${String(position)}.jpg`,
+      position,
+      isMain: position === 0,
+    })),
+  });
+}
+
+describe('product service: adding a frame', () => {
+  it('stores the file under a key of the card and adds the frame after the last one (AC-01)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+
+    const image = await service.addImage(CARD_ID, JPEG);
+
+    assert.equal(media.stored.length, 1);
+    assert.equal(media.stored[0]?.bytes, JPEG);
+    const key = media.stored[0]?.key ?? '';
+    assert.match(key, new RegExp(`^products/${CARD_ID}/[^/]+$`));
+    assert.equal(image.productId, CARD_ID);
+    assert.equal(image.r2Key, key);
+    assert.equal(image.position, 2);
+    assert.deepEqual(repository.stored.images.map((frame) => frame.id).slice(0, 2), [
+      FRONT_ID,
+      BACK_ID,
+    ]);
+    assert.equal(repository.stored.images.length, 3);
+  });
+
+  it('makes the first frame of an empty gallery the main one (AC-19)', async () => {
+    const { service, repository } = setup();
+    repository.stored = readyCard({ images: [] });
+
+    const image = await service.addImage(CARD_ID, JPEG);
+
+    assert.equal(image.isMain, true);
+    assert.equal(image.position, 0);
+  });
+
+  it('does not make a frame main when the gallery already has one (AC-19)', async () => {
+    const { service, repository } = setup();
+    repository.stored = twoFrameCard();
+
+    const image = await service.addImage(CARD_ID, JPEG);
+
+    assert.equal(image.isMain, false);
+    assert.deepEqual(mainFlags(repository.stored.images.slice(0, 2)), {
+      [FRONT_ID]: true,
+      [BACK_ID]: false,
+    });
+  });
+
+  it('accepts the tenth frame (AC-02)', async () => {
+    const { service, repository } = setup();
+    repository.stored = cardWithFrames(9);
+
+    const image = await service.addImage(CARD_ID, JPEG);
+
+    assert.equal(image.position, 9);
+    assert.equal(repository.stored.images.length, 10);
+  });
+
+  it('refuses an eleventh frame without storing it and keeps the ten in place (AC-02)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = cardWithFrames(10);
+
+    await assert.rejects(service.addImage(CARD_ID, JPEG), GalleryFull);
+    assert.equal(media.stored.length, 0);
+    assert.equal(repository.addedImages.length, 0);
+    assert.deepEqual(repository.stored.images, cardWithFrames(10).images);
+  });
+
+  it('writes no frame row when storage is unavailable (DoD, QG-1)', async () => {
+    const { service, repository, media } = setup();
+    repository.stored = twoFrameCard();
+    media.failure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
+
+    await assert.rejects(service.addImage(CARD_ID, JPEG), StorageUnavailable);
+    assert.equal(repository.addedImages.length, 0);
+    assert.equal(repository.stored.images.length, 2);
   });
 });

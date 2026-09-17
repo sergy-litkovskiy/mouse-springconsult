@@ -4,6 +4,7 @@ import type {
   ProductUpdate,
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
+import type { MediaService } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -33,7 +34,10 @@ function capKeywords(keywords: string[]): {
 }
 
 export class ProductService {
-  constructor(private readonly products: ProductRepository) {}
+  constructor(
+    private readonly products: ProductRepository,
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * A filter that was not sent does not become a condition: zod leaves an absent `.optional()`
@@ -77,6 +81,10 @@ export class ProductService {
     }
 
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
+  }
+
+  async addImage(productId: string, bytes: Uint8Array): Promise<ProductImage> {
+    throw new Error('Not implemented');
   }
 
   async setMainImage(productId: string, imageId: string): Promise<ProductImage[]> {
