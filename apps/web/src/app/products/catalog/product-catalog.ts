@@ -359,6 +359,8 @@ export class ProductCatalog {
       product.descriptionProm === '' ? 'опис Prom' : null,
       product.titleOlx === '' ? 'заголовок OLX' : null,
       product.descriptionOlx === '' ? 'опис OLX' : null,
+      // Same test as the server's: the decimal string never becomes a number, so any non-zero
+      // digit means the price is above zero.
       /[1-9]/.test(product.price) ? null : 'ціна',
       product.images.length === 0 ? 'галерея' : null,
     ].filter((gap) => gap !== null);
