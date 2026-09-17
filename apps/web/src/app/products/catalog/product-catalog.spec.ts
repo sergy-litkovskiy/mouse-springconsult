@@ -4,8 +4,10 @@ import {
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { ProductCard, ProductList } from '@contracts/products.contract';
@@ -370,5 +372,51 @@ describe('ProductCatalog', () => {
 
     expect(element.textContent).toContain('Сесія завершилась');
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(0);
+  });
+
+  function publishedSelect(name: 'publishedProm' | 'publishedOlx'): Promise<MatSelectHarness> {
+    return TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
+      MatSelectHarness.with({ selector: `[formcontrolname="${name}"]` }),
+    );
+  }
+
+  for (const name of ['publishedProm', 'publishedOlx'] as const) {
+    it(`offers all, yes and no in the ${name} filter with all chosen by default (AC-32)`, async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      const select = await publishedSelect(name);
+      expect(await select.getValueText()).toBe('Всі');
+
+      await select.open();
+      const options = await select.getOptions();
+      expect(await Promise.all(options.map((option) => option.getText()))).toEqual([
+        'Всі',
+        'Так',
+        'Ні',
+      ]);
+      expect(await Promise.all(options.map((option) => option.isSelected()))).toEqual([
+        true,
+        false,
+        false,
+      ]);
+      await select.close();
+    });
+  }
+
+  it('labels the published filters of a saved address with no and yes (AC-13)', async () => {
+    await open('/products?publishedProm=false&publishedOlx=true');
+    const request = expectRequest();
+
+    // The option values are what saved addresses carry, so the relabelling must not touch them.
+    expect(request.request.params.get('publishedProm')).toBe('false');
+    expect(request.request.params.get('publishedOlx')).toBe('true');
+
+    request.flush(PAGE);
+    await settle();
+
+    expect(await (await publishedSelect('publishedProm')).getValueText()).toBe('Ні');
+    expect(await (await publishedSelect('publishedOlx')).getValueText()).toBe('Так');
   });
 });
