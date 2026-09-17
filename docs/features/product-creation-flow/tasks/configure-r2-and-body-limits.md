@@ -6,7 +6,7 @@ delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1500
+context_budget: 1800
 blocked_by: [T04]
 blocks: [T07, T12]
 updated_at: "2026-09-17"
@@ -80,8 +80,8 @@ servers:
 - [x] `docker compose up api` падає з внятним повідомленням, якщо прибрати будь-яку з пʼяти змінних — перевірено вручну на кожній.
 - [x] Домен бакета лежить поруч із креденшелами в `process.env`, а не в `config.ts`: один бакет описується в одному місці, інакше запис і читання розходяться по різних бакетах.
 - [x] `bodyLimitBytes` і `max_size` у `Caddyfile` виведені з одного числа, і обидва мають коментар про парність.
-  Уточнення 2026-09-17: пару з `max_size` утворює окремий `config.http.imageUploadBodyLimitBytes`
-  (`maxImageBytes` + 1 МіБ на обгортку multipart), а не загальний `bodyLimitBytes`. Так вимагає
+  Уточнення 2026-09-17: пару з `max_size` утворює окремий `config.http.imageUpload.bodyLimitBytes`
+  (спершу `maxImageBytes` + 1 МіБ на обгортку multipart; після `critical-path-review` T14 — 2 × `maxImageBytes`, бо файл трохи понад межу мусить дійти до `api`), а не загальний `bodyLimitBytes`. Так вимагає
   коментар у `products-limits.ts` з T04: JSON-маршрути лишаються з межею 256 КіБ, а межу кадру
   отримує лише маршрут вивантаження ([T14](add-image-upload-endpoint.md)).
 - [x] `.env` у git не потрапив; `.env.example` оновлено. Заглушки R2 додано й у `CI_ENV_FILE`
