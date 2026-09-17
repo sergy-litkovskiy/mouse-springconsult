@@ -44,6 +44,7 @@ export class ProductController {
     app.post('/', { preHandler: sessionGuard }, this.create);
     app.get('/:productId', { preHandler: sessionGuard }, this.getById);
     app.patch('/:productId', { preHandler: sessionGuard }, this.update);
+    app.delete('/:productId', { preHandler: sessionGuard }, this.deleteProduct);
     app.post(
       '/:productId/images',
       { preHandler: sessionGuard, bodyLimit: config.http.imageUpload.bodyLimitBytes },
@@ -106,6 +107,14 @@ export class ProductController {
     const productId = this.readProductId(request);
     const imageId = this.readImageId(request);
     await this.products.deleteImage(productId, imageId);
+    return reply.code(204).send();
+  };
+
+  private readonly deleteProduct = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FastifyReply> => {
+    await this.products.deleteProduct(this.readProductId(request));
     return reply.code(204).send();
   };
 
