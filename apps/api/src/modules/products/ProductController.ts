@@ -78,20 +78,12 @@ export class ProductController {
     return this.toSavingResponse(await this.products.update(productId, changes));
   };
 
-  /** A malformed frame identifier names no frame, so it is answered as one that does not exist. */
   private readonly setMainImage = async (
     request: FastifyRequest,
   ): Promise<ProductImageResponse[]> => {
     const productId = this.readProductId(request);
-    const rawImageId = (request.params as { imageId?: unknown }).imageId;
-    const parsed = z.uuid().safeParse(rawImageId);
-    if (!parsed.success) {
-      throw new ImageNotFound(String(rawImageId));
-    }
-    const gallery = await this.products.setMainImage(productId, parsed.data);
-    return [...gallery]
-      .sort((left, right) => left.position - right.position)
-      .map((image) => this.toImageResponse(image));
+    const imageId = this.readImageId(request);
+    return this.toGalleryResponse(await this.products.setMainImage(productId, imageId));
   };
 
   /**
@@ -104,6 +96,16 @@ export class ProductController {
       throw new ProductNotFound(String((request.params as { productId?: unknown }).productId));
     }
     return parsed.data.productId;
+  }
+
+  /** A malformed frame identifier names no frame, so it is answered as one that does not exist. */
+  private readImageId(request: FastifyRequest): string {
+    const rawImageId = (request.params as { imageId?: unknown }).imageId;
+    const parsed = z.uuid().safeParse(rawImageId);
+    if (!parsed.success) {
+      throw new ImageNotFound(String(rawImageId));
+    }
+    return parsed.data;
   }
 
   private toCardResponse({ product, isReady }: ProductReading): ProductCard {
@@ -128,7 +130,6 @@ export class ProductController {
     };
   }
 
-  /** The gallery reaches the API ordered by position. */
   private toProductResponse(product: Product): ProductResponse {
     return {
       id: product.id,
@@ -142,12 +143,17 @@ export class ProductController {
       publishedProm: product.publishedProm,
       publishedOlx: product.publishedOlx,
       condition: product.condition,
-      images: [...product.images]
-        .sort((left, right) => left.position - right.position)
-        .map((image) => this.toImageResponse(image)),
+      images: this.toGalleryResponse(product.images),
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),
     };
+  }
+
+  /** The gallery reaches the API ordered by position. */
+  private toGalleryResponse(images: readonly ProductImage[]): ProductImageResponse[] {
+    return [...images]
+      .sort((left, right) => left.position - right.position)
+      .map((image) => this.toImageResponse(image));
   }
 
   private toImageResponse(image: ProductImage): ProductImageResponse {
