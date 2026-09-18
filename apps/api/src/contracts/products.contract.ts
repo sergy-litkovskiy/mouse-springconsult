@@ -111,7 +111,7 @@ export const productCreateSchema = z.object({
   titleProm: cardTitle.default(''),
   titleOlx: cardTitle.default(''),
   category: cardCategory.default(''),
-  descriptionProm: cardDescription.default(''),
+  descriptionProm: z.string().default(''),
   descriptionOlx: cardDescription.default(''),
   /** `NUMERIC(12,2) DEFAULT 0` gives back "0.00", and the predicate of readiness reads it as "not priced yet". */
   price: priceDecimal.default('0.00'),
@@ -132,7 +132,7 @@ export const productUpdateSchema = z.object({
   titleProm: cardTitle.optional(),
   titleOlx: cardTitle.optional(),
   category: cardCategory.optional(),
-  descriptionProm: cardDescription.optional(),
+  descriptionProm: z.string().optional(),
   descriptionOlx: cardDescription.optional(),
   price: priceDecimal.optional(),
   seoKeywords: cardKeywords.optional(),

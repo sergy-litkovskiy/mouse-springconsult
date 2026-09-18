@@ -97,7 +97,7 @@ const TEXT_ENTITIES: readonly (readonly [string, string])[] = [
  */
 export function toPlainText(cleanHtml: string): string {
   const withBreaks = cleanHtml
-    .replaceAll(/<br \/>\s*/g, '\n')
+    .replaceAll(/<br(?: \/)?>\s*/g, '\n')
     .replaceAll('<li>', '• ')
     .replaceAll(/<\/li>\s*/g, '\n')
     .replaceAll(/<\/(?:p|ul|ol|h2|h3|h4)>/g, '\n\n');
