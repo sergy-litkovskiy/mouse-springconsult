@@ -44,6 +44,8 @@ const REPLACEMENTS: Required<ProductChanges> = {
   publishedProm: false,
   publishedOlx: false,
   condition: 'new',
+  promId: '1519870367',
+  olxId: '900000001',
 };
 
 function writableOf(product: Product): Required<ProductChanges> {
@@ -58,6 +60,8 @@ function writableOf(product: Product): Required<ProductChanges> {
     publishedProm: product.publishedProm,
     publishedOlx: product.publishedOlx,
     condition: product.condition,
+    promId: product.promId,
+    olxId: product.olxId,
   };
 }
 
@@ -93,6 +97,8 @@ async function seedProduct(seed: ProductSeed = {}): Promise<string> {
     publishedProm: true,
     publishedOlx: true,
     condition: 'used',
+    promId: null,
+    olxId: null,
     ...seed,
   };
 
@@ -371,6 +377,8 @@ describe('product repository (postgres)', () => {
       publishedProm: false,
       publishedOlx: false,
       condition: 'used',
+      promId: null,
+      olxId: null,
     });
     assert.deepEqual(created.images, []);
   });
@@ -517,6 +525,23 @@ describe('product repository (postgres)', () => {
 
   it('returns null for a card that does not exist', async () => {
     assert.equal(await products.findById(MISSING_ID), null);
+  });
+
+  it('finds a card by its Prom id together with its gallery', async () => {
+    const id = await seedProduct({ titleProm: 'З Prom', promId: '1519870367' });
+    await seedProduct({ titleProm: 'Інша з Prom', promId: '1519870368' });
+    await seedImage(id, { isMain: true });
+
+    const found = must(await products.findByPromId('1519870367'), 'the card imported from Prom');
+
+    assert.equal(found.id, id);
+    assert.equal(found.images.length, 1);
+  });
+
+  it('returns null for a Prom id no card carries', async () => {
+    await seedProduct();
+
+    assert.equal(await products.findByPromId('1519870367'), null);
   });
 
   it('answers about one marketplace without answering about the other', async () => {

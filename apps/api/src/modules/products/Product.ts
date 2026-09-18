@@ -54,6 +54,13 @@ export class Product {
   @Column({ name: 'condition', type: 'varchar', length: 8 })
   condition!: ProductCondition;
 
+  /** The card's id on each marketplace; null until the card is known there. */
+  @Column({ name: 'prom_id', type: 'varchar', length: 32, nullable: true })
+  promId!: string | null;
+
+  @Column({ name: 'olx_id', type: 'varchar', length: 32, nullable: true })
+  olxId!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
