@@ -12,5 +12,6 @@ export type {
 
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
+export { cleanDescription } from './cleanDescription.ts';
 
 export { GalleryFull, ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
