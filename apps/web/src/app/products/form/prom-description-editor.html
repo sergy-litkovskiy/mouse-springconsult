@@ -18,6 +18,18 @@
           <mat-icon>{{ action.icon }}</mat-icon>
         </button>
       }
+      <button
+        matIconButton
+        type="button"
+        class="editor__tool"
+        aria-label="Почистити html"
+        matTooltip="Почистити html"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="cleanup()"
+      >
+        <mat-icon>cleaning_services</mat-icon>
+      </button>
     </div>
 
     <mat-button-toggle-group

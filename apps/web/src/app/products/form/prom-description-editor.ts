@@ -15,6 +15,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { Editor } from '@tiptap/core';
+import { promDescriptionCleanup } from './prom-description-cleanup';
 
 export type EditorMode = 'visual' | 'html';
 
@@ -258,6 +259,15 @@ export class PromDescriptionEditor implements ControlValueAccessor {
     if (this.editor !== null && !this.disabled()) {
       action.run(this.editor);
     }
+  }
+
+  protected cleanup(): void {
+    const cleaned = promDescriptionCleanup(this.value());
+    if (cleaned === this.value()) {
+      return;
+    }
+    this.emit(cleaned);
+    this.editor?.commands.setContent(cleaned, { emitUpdate: false });
   }
 
   protected htmlInput(event: Event): void {
