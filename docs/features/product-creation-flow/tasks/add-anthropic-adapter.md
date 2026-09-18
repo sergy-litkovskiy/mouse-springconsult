@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T25]
 blocks: [T28]
-updated_at: "2026-09-13"
+updated_at: "2026-09-18"
 ---
 
 # T27 — Адаптер Anthropic і оптимізація кадру через sharp
@@ -45,7 +45,7 @@ updated_at: "2026-09-13"
 ## API contract excerpt
 
 ```yaml
-        model: { type: string, example: claude-opus-5 }
+        model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }
 ```
@@ -65,12 +65,15 @@ updated_at: "2026-09-13"
 ## Checklist
 
 1. `apps/api/package.json` — `sharp`, `@anthropic-ai/sdk`.
-2. `src/config.ts` — константи з `ai/CLAUDE.md`: `claude-opus-5`, довша сторона ≤ 1568 px, JPEG q80, sRGB, EXIF вирізано, максимум **3 кадри** на запит.
+2. `src/config.ts` — константи з `ai/CLAUDE.md`: модель `claude-sonnet-5`, `effort` і `max_uses` пошуку **окремо на кожен виклик** — тексти, ціна, поле; старт — `effort: low` усюди, `max_uses: 2` ([ADR 0004](../../../adr/0004-use-sonnet-5-for-card-preparation.md)); довша сторона ≤ 1568 px, JPEG q80, sRGB, EXIF вирізано, максимум **3 кадри** на запит.
 3. `src/config.ts` `envSchema` — `ANTHROPIC_API_KEY`; `.env.example`; проброс у сервіс `worker`.
-4. Адаптер у `modules/ai/` — structured outputs (`output_config.format` з JSON-схемою), adaptive thinking без `budget_tokens`, server tool `web_search_20260209` з `user_location` = UA для цін; повертає `usage`. Метод ціни приймає вже складений текст запиту (`title`/`description`) як параметр — сам їх не читає й не компонує, це робить [T28](add-preparation-service.md) за формулою AC-27; адаптер про `products` не знає нічого.
+4. Адаптер у `modules/ai/` — structured outputs (`output_config.format` з JSON-схемою), adaptive thinking без `budget_tokens`, `output_config.effort` з константи виклику, `stop_reason` перевіряється до читання відповіді, server tool `web_search_20260209` з `user_location` = UA для цін; повертає `usage`. Метод ціни приймає вже складений текст запиту (`title`/`description`) як параметр — сам їх не читає й не компонує, це робить [T28](add-preparation-service.md) за формулою AC-27; адаптер про `products` не знає нічого.
 5. Оптимізація кадру через sharp перед відправкою.
 6. **Розпізнавання в тому самому виклику.** Метод для `texts`/`both` повертає розпізнаний факт як частину structured-output схеми відповіді (не окремим полем БД) — адаптер його не персистує, лише повертає викликачу ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md)).
 7. **Text-only метод для `scope: field`.** Без зображень: приймає `field` і `draftText`, повертає один рядок/масив (залежно від поля) і `usage`; той самий шлях structured outputs, plain text, без Markdown ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
+8. **Без мережі за замовчуванням.** Тести й локальний стек працюють з фейковим адаптером або записаною відповіддю; `ANTHROPIC_API_KEY` немає ні в тестах, ні в CI. Живий виклик вмикається свідомо — механізм перемикання визначає ця задача.
+9. **Ключ розробки** — з окремого workspace у Claude Console з лімітом витрат $10 на місяць; ключ проду — з іншого workspace. Зазначити в `.env.example`.
+10. **Прогін на 3–5 реальних товарах замовника** перед закриттям задачі (≈ $0.30–0.50, запуск — з дозволу). Якщо розпізнавання помиляється — кроки з ADR 0004: `effort: medium` на виклику розпізнавання, потім Opus 5 лише на ньому.
 
 ## Out of scope
 
@@ -84,12 +87,15 @@ updated_at: "2026-09-13"
 - [ ] Кадр перед відправкою справді зменшений: перевірено розміром байтів до і після, не припущено.
 - [ ] Відповідь зберігається plain text.
 - [ ] `usage` повертається з кожного виклику; ключ Anthropic не потрапляє в лог у жодній гілці.
-- [ ] Ідентифікатор моделі — константа `config.ts`, а не env-змінна: заміна моделі має проходити через коміт і рев'ю.
+- [ ] Модель і `effort` кожного виклику — константи `config.ts`, а не env-змінні: заміна має проходити через коміт і рев'ю.
+- [ ] Тести зелені без `ANTHROPIC_API_KEY` у середовищі.
+- [ ] Прогін на реальних товарах виконано, результат і `usage` записано в story.
 - [ ] На один запит іде не більше трьох кадрів — перевірено тестом на картці з десятьма.
 - [ ] Коміт: `feat(ai): add the Anthropic adapter with image optimisation`.
 
 ## Links
 
 - [apps/api/src/modules/ai/CLAUDE.md](../../../../apps/api/src/modules/ai/CLAUDE.md) — усі рішення дослівно
+- [ADR 0004](../../../adr/0004-use-sonnet-5-for-card-preparation.md) — модель, `effort` на виклик, бюджет розробки
 - [sad.md §7](../sad.md#7-deployment-view) · [sad.md §2](../sad.md#2-constraints)
 - [CONTEXT.md](../CONTEXT.md) — «розпізнавання», «вартість картки»

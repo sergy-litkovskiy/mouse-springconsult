@@ -5,7 +5,9 @@
 - **Контекст рішення:** старт проєкту `mouse.springconsult.com.ua`
 - **Переглянуто:** пункт 7 (бекенд без збірки) і шари всередині модуля —
   [ADR 0003](0003-three-layer-classes.md) додав крок збірки `tsc` і замінив
-  `routes → use-case → port ← repository` на `Controller → Service → Repository`.
+  `routes → use-case → port ← repository` на `Controller → Service → Repository`;
+  пункт 4 (модель `claude-opus-5`) — [ADR 0004](0004-use-sonnet-5-for-card-preparation.md)
+  замінив модель на `claude-sonnet-5`.
 
 ## Контекст
 
