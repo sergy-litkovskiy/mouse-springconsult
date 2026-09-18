@@ -68,6 +68,27 @@ export const config = {
     deleteBatchSize: 1_000,
   },
 
+  queue: {
+    /** pg-boss keeps its own tables in this schema of the same database as the cards. */
+    schema: 'pgboss',
+    /** The api only enqueues and the worker takes one job at a time, so a small pool suffices. */
+    poolSize: 4,
+    /**
+     * A queued job has to start within 5 s (PRD §6). Polling, not LISTEN/NOTIFY, is the floor:
+     * one second leaves room for the fetch itself.
+     */
+    pollingIntervalSeconds: 1,
+    preparation: {
+      name: 'product-preparation',
+      /** A failed attempt is retried with a growing pause; past the limit the job stays `failed`. */
+      retryLimit: 2,
+      retryDelaySeconds: 10,
+      retryBackoff: true,
+      /** A model call takes tens of seconds; an attempt still active after this is presumed dead. */
+      expireInSeconds: 5 * 60,
+    },
+  },
+
   db: {
     poolSize: 10,
     connectTimeoutMs: 10_000,

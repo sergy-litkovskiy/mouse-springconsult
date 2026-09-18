@@ -98,6 +98,20 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # The api image with a different command; it needs no port and no healthcheck of its own.
+  worker:
+    image: ${API_IMAGE:-ghcr.io/OWNER/mouse-api:latest}
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ['node', '--enable-source-maps', 'dist/src/worker.js']
+    restart: unless-stopped
+
   # One image carries both the Angular static files and Caddy: TLS, /api → api:3000, SPA fallback.
   caddy:
     image: ${WEB_IMAGE:-ghcr.io/OWNER/mouse-web:latest}

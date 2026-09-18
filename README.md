@@ -15,9 +15,8 @@
 > Фронт: сторінка входу, guard і зворотний guard, 401-інтерсептор, оболонка з
 > тулбаром і каталог товарів, стан якого живе в URL, — 38 тестів.
 >
-> *Ще немає:* модулів `media` і `ai` — це порожні теки каркаса. Немає `worker.ts` і
-> черги: асинхронної роботи поки немає, а порожній воркер був би каркасом про запас.
-> Вони зʼявляться разом із першою задачею для черги.
+> *Ще немає:* модуля `ai` — це порожня тека каркаса. Черга pg-boss і `worker.ts` уже
+> є, але обробник задачі підготовки поки лише логує її: виклики Claude в ньому ще не підключені.
 
 ## Документація
 
@@ -45,7 +44,7 @@ Docker Compose на Hetzner VPS · GitHub Actions
 ## Структура
 
 ```
-apps/api/src/               api.ts (+ worker.ts згодом) · config, db, logger, errors
+apps/api/src/               api.ts · worker.ts · config, db, logger, queue, errors
 apps/api/src/modules/       auth · products · media · ai
 apps/api/src/contracts/     zod-схеми запитів/відповідей, фронт бере з них типи
 apps/api/db/                міграції, їх раннер, створення БД
@@ -65,13 +64,13 @@ Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `app
 
 | Сервіс | Роль | dev | prod |
 |---|---|---|---|
-| `postgres` | Дані застосунку (згодом — і черга pg-boss) | 5432 | внутр. |
+| `postgres` | Дані застосунку й черга pg-boss (схема `pgboss`) | 5432 | внутр. |
 | `api` | Fastify: HTTP, авторизація, CRUD, постановка задач у чергу | 3000 (дебаг) | внутр. |
 | `backup` | Разова задача: `pg_dump` перед міграціями, 14 останніх у `./backups` | — | автоматично |
 | `migrate` | Разова задача: створення БД і міграції перед стартом `api` | автоматично | автоматично |
 | `web` | `ng serve` у dev; у prod збирається в статику для Caddy | 4200 | — |
 | `caddy` | TLS (Let's Encrypt), статика Angular, проксі `/api` | — | 80, 443 |
-| `worker` | Той самий образ, інша команда: sharp, R2, Claude — зʼявиться з першою задачею | — | — |
+| `worker` | Той самий образ, інша команда (`dist/src/worker.js`): обробник черги pg-boss | — | — |
 
 У проді назовні відкриті лише 80/443 на Caddy; `postgres` і `api`
 доступні тільки у внутрішній docker-мережі. У dev порти `api` і `web`
@@ -283,7 +282,13 @@ docker compose run --rm web npx ng generate component products/form/product-form
 docker compose run --rm web npx ng build            # збірка статики для проду
 ```
 
-**Черга** — зʼявиться разом із сервісом `worker` і першою задачею для pg-boss.
+**Черга** — pg-boss у схемі `pgboss` тієї самої бази; параметри (`retryLimit`, пауза,
+таймаут спроби, інтервал опитування) задає `config.queue`.
+
+```bash
+docker compose logs -f worker                        # "worker subscribed", "job started" з waitMs
+docker compose stop worker                           # api від цього не залежить
+```
 
 ## Бекап
 

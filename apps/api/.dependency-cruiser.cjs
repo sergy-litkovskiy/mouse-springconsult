@@ -45,11 +45,23 @@ module.exports = {
     },
 
     {
+      name: 'composition-roots-stay-apart',
+      severity: 'error',
+      comment:
+        'api.ts and worker.ts are two processes. An import between them would start one inside ' +
+        'the other, and a stopped worker could no longer leave the api untouched.',
+      from: { path: '^src/(api|worker)\\.ts$' },
+      to: { path: '^src/(api|worker)\\.ts$' },
+    },
+
+    {
       name: 'contracts-are-pure',
       severity: 'error',
       comment: 'contracts/ holds pure zod schemas: no modules, no technical services, no I/O.',
       from: { path: '^src/contracts/(?!.*\\.spec\\.ts$)' },
-      to: { path: '^src/(modules|api\\.ts|worker\\.ts|db\\.ts|logger\\.ts|config\\.ts)' },
+      to: {
+        path: '^src/(modules|api\\.ts|worker\\.ts|db\\.ts|logger\\.ts|config\\.ts|queue\\.ts)',
+      },
     },
 
     {

@@ -6,7 +6,7 @@ delivery: 2
 gate_profile: decision
 owner: "Serhii"
 estimate: S
-context_budget: 3100
+context_budget: 3400
 blocked_by: [T01]
 blocks: [T26]
 updated_at: "2026-09-18"
