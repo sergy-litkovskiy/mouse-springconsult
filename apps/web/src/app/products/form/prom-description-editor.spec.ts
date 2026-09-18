@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonToggleHarness } from '@angular/material/button-toggle/testing';
+import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { PromDescriptionEditor } from './prom-description-editor';
 
 @Component({
@@ -52,6 +53,14 @@ describe('PromDescriptionEditor', () => {
 
   function htmlArea(): HTMLTextAreaElement | null {
     return element.querySelector<HTMLTextAreaElement>('textarea');
+  }
+
+  function cleanupButton(): HTMLButtonElement {
+    const button = element.querySelector<HTMLButtonElement>('button[aria-label="Почистити html"]');
+    if (button === null) {
+      throw new Error('no cleanup button');
+    }
+    return button;
   }
 
   function tool(id: string): HTMLButtonElement {
@@ -167,6 +176,65 @@ describe('PromDescriptionEditor', () => {
 
     expect(visual()?.textContent).toBe('');
     expect(control.value).toBe('');
+  });
+
+  describe('the "Почистити html" button', () => {
+    const PASTED = '<div><span style="color:red">Червоний</span> колір</div><p>&nbsp;</p>';
+
+    it('replaces the description with its cleaned version and marks the form changed (AC-48)', async () => {
+      await open(PASTED);
+
+      cleanupButton().click();
+      await settle();
+
+      expect(control.value).toBe('Червоний колір');
+      expect(control.dirty).toBe(true);
+      expect(visual()?.textContent).toBe('Червоний колір');
+      expect(visual()?.querySelector('span, div')).toBeNull();
+    });
+
+    it('cleans the description in the HTML mode as well (AC-48)', async () => {
+      await open('<p>Опис</p>');
+      await switchTo('HTML');
+      typeHtml(PASTED);
+      await settle();
+
+      cleanupButton().click();
+      await settle();
+
+      expect(control.value).toBe('Червоний колір');
+      expect(htmlArea()?.value).toBe('Червоний колір');
+    });
+
+    it('leaves a clean description as it is and the form untouched (AC-48)', async () => {
+      const clean = '<p><strong>Стан</strong> ідеальний</p><ul><li>Пункт</li></ul>';
+      await open(clean);
+
+      cleanupButton().click();
+      await settle();
+
+      expect(control.value).toBe(clean);
+      expect(control.dirty).toBe(false);
+    });
+
+    it('shows the cleaning icon with a tooltip and an aria-label of the same text (AC-48)', async () => {
+      await open('<p>Опис</p>');
+
+      expect(cleanupButton().querySelector('mat-icon')?.textContent?.trim()).toBe(
+        'cleaning_services',
+      );
+      const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+        MatTooltipHarness.with({ selector: 'button[aria-label="Почистити html"]' }),
+      );
+      await tooltip.show();
+      expect(await tooltip.getTooltipText()).toBe('Почистити html');
+    });
+
+    it('is unavailable in a disabled form (AC-48)', async () => {
+      await open(PASTED, { disabled: true });
+
+      expect(cleanupButton().disabled).toBe(true);
+    });
   });
 
   describe('in a disabled form (AC-20)', () => {
