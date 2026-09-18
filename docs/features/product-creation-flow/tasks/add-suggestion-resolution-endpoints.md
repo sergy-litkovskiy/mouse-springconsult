@@ -92,7 +92,8 @@ updated_at: "2026-09-13"
 2. Сервіс: правило звірки, автозастосування, `resolution` = `accepted` | `rejected`.
 3. `POST /:productId/suggestions/:suggestionId/accept` і `.../reject` під `sessionGuard`.
 4. Прийняття пише значення в поле картки тим самим запитом, що й ручне збереження — **крім** `field: price`, для якого `accept` відмовляє до будь-якого запису (AC-26).
-5. `*.spec.ts`: поле збігається з прийнятим → нова застосовується сама; поле виправлено руками → чекає рішення; повторне рішення → `suggestion_already_resolved`; `field: price` → `price_suggestion_readonly`, і жодного запису в `products`.
+5. **`descriptionProm` стає HTML під час прийняття** ([ADR 0016](../adr/0016-store-the-prom-description-as-html.md), рішення №7): екранувати `&`, `<`, `>`, блоки між `\n\n` обгорнути в `<p>`, одиночний `\n` замінити на `<br>`, далі та сама чистка, що й під час збереження (T47). Правило звірки порівнює поле картки з уже перетвореним значенням. `descriptionOlx` не перетворюється.
+6. `*.spec.ts`: поле збігається з прийнятим → нова застосовується сама; поле виправлено руками → чекає рішення; повторне рішення → `suggestion_already_resolved`; `field: price` → `price_suggestion_readonly`, і жодного запису в `products`.
 
 ## Out of scope
 

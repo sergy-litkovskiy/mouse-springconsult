@@ -77,9 +77,9 @@ stage: "13"
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T46 | [Рішення: опис Prom як HTML](decide-prom-description-html.md) | Todo | — | S | Serhii | — |
-| T47 | [Чистка HTML в `api`](sanitize-prom-description-on-save.md) | Blocked | T46 | S | Serhii | — |
-| T48 | [Редактор опису Prom](add-prom-description-editor.md) | Blocked | T46 | S | Serhii | — |
+| T46 | [Рішення: опис Prom як HTML](decide-prom-description-html.md) | Done | — | S | Serhii | — |
+| T47 | [Чистка HTML в `api`](sanitize-prom-description-on-save.md) | Todo | T46 | S | Serhii | — |
+| T48 | [Редактор опису Prom](add-prom-description-editor.md) | Todo | T46 | S | Serhii | — |
 | T49 | [Кнопка «Почистити html»](add-prom-description-cleanup-button.md) | Blocked | T47, T48 | S | Serhii | — |
 
 ## Поставка 2 — модель
@@ -99,8 +99,8 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T24, T46 — жодної незакритої залежності. T46 (рішення про HTML в описі Prom) іде першою в
-третій хвилі UI-доопрацювання; T25 чекає на T49, тож код поставки 2 почнеться після неї. T24 не
+T24, T47, T48 — жодної незакритої залежності. T47 (`apps/api`) і T48 (`apps/web`) пишуть різні
+файли, тож їхній порядок довільний; T25 чекає на T49, тож код поставки 2 почнеться після неї. T24 не
 залежить від коду й може вестись паралельно.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
@@ -153,6 +153,8 @@ T25 знову Blocked, тепер до T42 і T43.
 
 **2026-09-18 додано T46–T49** (опис Prom у HTML, запит 2026-09-18): їх треба закрити до поставки 2.
 T25 знову Blocked, тепер до T49.
+
+**2026-09-18 закрито T46** ([ADR 0016](../adr/0016-store-the-prom-description-as-html.md)). Вона розблокувала T47 і T48.
 
 Раніше: T13 закрито 2026-09-10, T10 і T19 — 2026-09-12. T21 і T22 чекають ще й на T18,
 а T22 — і на T20.

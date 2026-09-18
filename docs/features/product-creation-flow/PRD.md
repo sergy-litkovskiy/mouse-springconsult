@@ -410,6 +410,20 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** збереження не вдалося: сервер відмовив або мережа недоступна
 **Then** діалог лишається відкритим, поля зберігають введене, а поруч із кнопками видно текст за кодом помилки від сервера або дефолтний текст фронту
 
+### AC-45 (US-06) — happy path
+
+Запит 2026-09-18, [T46](tasks/decide-prom-description-html.md), [ADR 0016](adr/0016-store-the-prom-description-as-html.md).
+
+**Given** ADR 0016 прийнято
+**When** виконавець T47–T49 читає кореневий `CLAUDE.md`, `ai/CLAUDE.md` і цей PRD
+**Then** опис для Prom є HTML з переліку ADR 0016: жоден документ не забороняє в ньому HTML, а опис для OLX лишається plain text
+
+### AC-45 (US-06) — edge case
+
+**Given** модель повернула опис для Prom як plain text з абзацами через `\n\n`
+**When** `user` приймає пропозицію й відкриває картку в редакторі
+**Then** абзаци видно як абзаци, а не як один рядок: `api` під час прийняття обгортає кожен у `<p>` (ADR 0016, рішення №7)
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

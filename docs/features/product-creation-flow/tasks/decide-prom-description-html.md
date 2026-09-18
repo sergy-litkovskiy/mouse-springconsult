@@ -1,7 +1,7 @@
 ---
 id: T46
 title: "Рішення: опис для Prom зберігається як HTML"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: decision
 owner: "Serhii"
@@ -90,10 +90,10 @@ plain text. HTML чистять і браузер (кнопка, T49), і `api` 
 
 ## DoD
 
-- [ ] ADR 0016 у статусі Accepted, рішення №2–№8 записані в ньому.
-- [ ] Кореневий `CLAUDE.md`, `ai/CLAUDE.md`, `PRD.md` (AC-45) і `sad.md` §4 правлені.
-- [ ] Checklist T30 містить рішення №7.
-- [ ] Коміт: `docs(product-creation-flow): store the Prom description as HTML`.
+- [x] ADR 0016 у статусі Accepted, рішення №2–№8 записані в ньому.
+- [x] Кореневий `CLAUDE.md`, `ai/CLAUDE.md`, `PRD.md` (AC-45) і `sad.md` §4 правлені.
+- [x] Checklist T30 містить рішення №7.
+- [x] Коміт: `docs(product-creation-flow): store the Prom description as HTML`.
 
 ## Links
 

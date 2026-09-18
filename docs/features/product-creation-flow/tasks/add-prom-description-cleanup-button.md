@@ -62,7 +62,7 @@ updated_at: "2026-09-18"
 
 ## Checklist
 
-1. Якщо T46 обрала бібліотеку — установити її окремим комітом до `/tdd` (команда з `mouse-commands`, не на хості).
+1. Установити `dompurify` в образ `web` окремим комітом до `/tdd` (ADR 0016 №4, команда з `mouse-commands`, не на хості).
 2. Функція чистки поруч із редактором, `prom-description-cleanup.ts`: перелік тегів з `@contracts/prom-description-html` (рантайм-імпорт константи, не zod-файлу).
 3. `prom-description-editor.html`: `mat-icon-button` з іконкою `cleaning_services`, `matTooltip` і `aria-label` «Почистити html». Працює в обох режимах редактора.
 4. Тести функції на спільному наборі прикладів з T46, той самий `describe`, що й у T47. Тести кнопки: заміна вмісту, чистий вміст без змін, вимкнений стан.
