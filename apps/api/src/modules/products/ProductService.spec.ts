@@ -97,9 +97,15 @@ class StubProductRepository extends ProductRepository {
     return readyCard({ images: [] });
   }
 
+  /** Off by default: most tests read the stored card back exactly as it was. */
+  appliesChanges = false;
+
   override async update(id: string, changes: ProductChanges): Promise<Product | null> {
     this.lastChanges = changes;
-    return this.stored?.id === id ? this.stored : null;
+    if (this.stored?.id !== id) {
+      return null;
+    }
+    return this.appliesChanges ? { ...this.stored, ...changes } : this.stored;
   }
 
   override async findImage(productId: string, imageId: string): Promise<ProductImage | null> {
@@ -425,6 +431,141 @@ describe('product service: readiness', () => {
 
     assert.deepEqual(saved.product, readyCard({ price: '0.00' }));
     assert.equal(saved.isReady, false);
+  });
+});
+
+const XSS_VECTORS =
+  '<script>alert(1)</script><img src=x onerror="alert(1)"><p><a href="javascript:alert(1)">x</a></p>';
+
+describe('product service: Prom description', () => {
+  it('saves browser markup without div, span and style, keeping the allowed tags (AC-46)', async () => {
+    const { service, repository } = setup();
+    repository.appliesChanges = true;
+
+    const saved = await service.update(CARD_ID, {
+      descriptionProm:
+        '<div><span style="color:red">Червоний</span> колір</div><ul><li><strong>Пункт</strong></li></ul><p>Абзац</p>',
+    });
+
+    const expected = 'Червоний колір<ul><li><strong>Пункт</strong></li></ul><p>Абзац</p>';
+    assert.equal(repository.lastChanges?.descriptionProm, expected);
+    assert.equal(saved.product.descriptionProm, expected);
+  });
+
+  it('keeps a script, an onerror handler and a javascript: link out of a new card (AC-46)', async () => {
+    const { service, repository } = setup();
+
+    await service.create({ ...CREATE_INPUT, descriptionProm: XSS_VECTORS });
+
+    assert.equal(repository.lastDraft?.descriptionProm, '<p><a>x</a></p>');
+  });
+
+  it('keeps a script, an onerror handler and a javascript: link out of a saved card (AC-46)', async () => {
+    const { service, repository } = setup();
+
+    await service.update(CARD_ID, { descriptionProm: XSS_VECTORS });
+
+    assert.equal(repository.lastChanges?.descriptionProm, '<p><a>x</a></p>');
+  });
+
+  it('cleans the Prom description of a new card and leaves the OLX one as it came', async () => {
+    const { service, repository } = setup();
+    const html = '<div>Опис</div>';
+
+    await service.create({ ...CREATE_INPUT, descriptionProm: html, descriptionOlx: html });
+
+    assert.equal(repository.lastDraft?.descriptionProm, 'Опис');
+    assert.equal(repository.lastDraft?.descriptionOlx, html);
+  });
+
+  it('cleans the Prom description on save and leaves the OLX one as it came', async () => {
+    const { service, repository } = setup();
+    const html = '<div>Опис</div>';
+
+    await service.update(CARD_ID, { descriptionProm: html, descriptionOlx: html });
+
+    assert.equal(repository.lastChanges?.descriptionProm, 'Опис');
+    assert.equal(repository.lastChanges?.descriptionOlx, html);
+  });
+
+  it('keeps an http, https or mailto link and drops the href of any other scheme', async () => {
+    const { service, repository } = setup();
+
+    await service.update(CARD_ID, {
+      descriptionProm:
+        '<p><a href="http://a.ua">a</a><a href="https://b.ua">b</a><a href="mailto:c@d.ua">c</a><a href="ftp://e.ua">e</a></p>',
+    });
+
+    assert.equal(
+      repository.lastChanges?.descriptionProm,
+      '<p><a href="http://a.ua">a</a><a href="https://b.ua">b</a><a href="mailto:c@d.ua">c</a><a>e</a></p>',
+    );
+  });
+
+  it('saves an empty paragraph as an empty description and counts it empty for readiness (AC-46)', async () => {
+    const { service, repository } = setup();
+    repository.appliesChanges = true;
+
+    for (const descriptionProm of ['<p></p>', '<p>&nbsp;</p>']) {
+      const saved = await service.update(CARD_ID, { descriptionProm });
+
+      assert.equal(repository.lastChanges?.descriptionProm, '');
+      assert.equal(saved.product.descriptionProm, '');
+      assert.equal(saved.isReady, false);
+    }
+  });
+});
+
+/** ADR 0016 №4: the web cleanup (T49) repeats these rows under the same describe name. */
+describe('Prom description cleanup: shared examples', () => {
+  async function cleaned(descriptionProm: string): Promise<string | undefined> {
+    const { service, repository } = setup();
+    await service.update(CARD_ID, { descriptionProm });
+    return repository.lastChanges?.descriptionProm;
+  }
+
+  it('unwraps foreign markup and drops an empty paragraph (AC-46)', async () => {
+    assert.equal(
+      await cleaned('<div><span style="color:red">Червоний</span> колір</div><p>&nbsp;</p>'),
+      'Червоний колір',
+    );
+  });
+
+  it('keeps the allowed structure, renaming b and i to strong and em (AC-46)', async () => {
+    assert.equal(
+      await cleaned('<p><b>Жирний</b> і <i>курсив</i></p>'),
+      '<p><strong>Жирний</strong> і <em>курсив</em></p>',
+    );
+    assert.equal(await cleaned('<ul><li>Пункт</li></ul>'), '<ul><li>Пункт</li></ul>');
+  });
+
+  it('writes a line break the way the browser serializes it (AC-46)', async () => {
+    assert.equal(await cleaned('<p>a<br/>b</p>'), '<p>a<br>b</p>');
+  });
+
+  it('drops a script together with its content (AC-46)', async () => {
+    assert.equal(await cleaned('<script>alert(1)</script><p>Текст</p>'), '<p>Текст</p>');
+  });
+
+  it('drops an image together with its onerror handler (AC-46)', async () => {
+    assert.equal(await cleaned('<img src=x onerror="alert(1)"><p>Текст</p>'), '<p>Текст</p>');
+  });
+
+  it('drops a javascript: href and keeps the link text (AC-46)', async () => {
+    assert.equal(await cleaned('<a href="javascript:alert(1)">x</a>'), '<a>x</a>');
+  });
+
+  it('keeps only href on a link (AC-46)', async () => {
+    assert.equal(
+      await cleaned('<a href="https://prom.ua" target="_blank">Prom</a>'),
+      '<a href="https://prom.ua">Prom</a>',
+    );
+  });
+
+  it('turns an empty paragraph into an empty string (AC-46)', async () => {
+    for (const html of ['<p></p>', '<p>&nbsp;</p>', '<p><br></p>']) {
+      assert.equal(await cleaned(html), '', html);
+    }
   });
 });
 

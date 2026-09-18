@@ -196,6 +196,21 @@ describe('product write contracts', () => {
     assert.equal(productUpdateSchema.parse({ seoKeywords: tooMany }).seoKeywords?.length, 31);
   });
 
+  it('takes a Prom description of any length and keeps the ceiling on the OLX one, on both write routes', () => {
+    const tooLong = 'а'.repeat(productConstraints.descriptionMaxLength + 1);
+
+    assert.equal(
+      productCreateSchema.safeParse({ ...newCard, descriptionProm: tooLong }).success,
+      true,
+    );
+    assert.equal(productUpdateSchema.safeParse({ descriptionProm: tooLong }).success, true);
+    assert.equal(
+      productCreateSchema.safeParse({ ...newCard, descriptionOlx: tooLong }).success,
+      false,
+    );
+    assert.equal(productUpdateSchema.safeParse({ descriptionOlx: tooLong }).success, false);
+  });
+
   it('leaves a field the update did not send out of the parsed object', () => {
     // A default here would rewrite a column the admin never touched.
     const parsed = productUpdateSchema.parse({ price: '2499.00' });
