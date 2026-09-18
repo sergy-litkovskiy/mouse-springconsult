@@ -88,13 +88,13 @@ export class ProductService {
 
   async update(id: string, changes: ProductUpdate): Promise<ProductSaving> {
     const { seoKeywords, discardedKeywordsCount } = capKeywords(changes.seoKeywords ?? []);
-    // zod leaves an absent `.optional()` field out of the object rather than setting it to
-    // `undefined`, so no key here holds `undefined` — its inferred type just cannot say so
-    // under `exactOptionalPropertyTypes`.
     const cleaned =
       changes.descriptionProm === undefined
         ? changes
         : { ...changes, descriptionProm: cleanDescription(changes.descriptionProm) };
+    // zod leaves an absent `.optional()` field out of the object rather than setting it to
+    // `undefined`, so no key here holds `undefined` — its inferred type just cannot say so
+    // under `exactOptionalPropertyTypes`.
     const product = await this.products.update(
       id,
       (cleaned.seoKeywords === undefined ? cleaned : { ...cleaned, seoKeywords }) as ProductChanges,
