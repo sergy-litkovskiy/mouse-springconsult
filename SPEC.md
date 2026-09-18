@@ -51,7 +51,8 @@
    `sharp` при цьому лишається — але для стиснення кадру перед відправкою в модель
    (довша сторона ≤ 1568 px, JPEG q80, sRGB, без EXIF), а не для збережених копій. Модель
    приймає й більший кадр (до 2576 px), тож 1568 px — вибір ціни, а не технічна межа.
-4. **AI: `claude-opus-5` + structured outputs.** Відповідь приходить за JSON-схемою
+4. **AI: `claude-sonnet-5` + structured outputs**
+   ([ADR 0004](docs/adr/0004-use-sonnet-5-for-card-preparation.md)). Відповідь приходить за JSON-схемою
    (`output_config.format`), поля зберігаються як plain text — без Markdown і
    службових обгорток, які коштують токенів. Ринкові ціни — server tool
    `web_search_20260209` з локацією UA; кожна генерація пише `usage` у БД. Результат

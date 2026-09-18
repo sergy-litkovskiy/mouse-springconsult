@@ -15,7 +15,7 @@
 | Черга | pg-boss (поверх PostgreSQL, без Redis) |
 | Файли | Cloudflare R2 (S3 API, `@aws-sdk/client-s3`) |
 | Зображення | sharp |
-| AI | Anthropic Claude API — `claude-opus-5` |
+| AI | Anthropic Claude API — `claude-sonnet-5` |
 | Проксі/TLS | Caddy 2 |
 | Хостинг | Hetzner VPS, Docker Compose |
 | CI/CD | GitHub Actions |

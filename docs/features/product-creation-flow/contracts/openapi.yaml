@@ -722,7 +722,7 @@ components:
         errorCode:
           type: [string, null]
           description: Заповнено лише при status=failed; той самий код, що показує AC-10.
-        model: { type: string, example: claude-opus-5 }
+        model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }
         createdAt: { type: string, format: date-time }

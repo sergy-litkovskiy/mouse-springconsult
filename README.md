@@ -34,7 +34,7 @@
 
 Angular 22 + Angular Material · Node.js 26 + Fastify · TypeScript 6.0.3 ·
 PostgreSQL 18 + TypeORM · JWT у httpOnly-cookie (`jose`) + argon2id · pg-boss ·
-Cloudflare R2 · sharp · Anthropic Claude (`claude-opus-5`) · Caddy 2 ·
+Cloudflare R2 · sharp · Anthropic Claude (`claude-sonnet-5`) · Caddy 2 ·
 Docker Compose на Hetzner VPS · GitHub Actions
 
 Бекенд збирається `tsc` у `dist/`: entity описані декораторами TypeORM, а Node їх не
