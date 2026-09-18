@@ -15,7 +15,6 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { Editor } from '@tiptap/core';
-import { promDescriptionCleanup } from './prom-description-cleanup';
 
 export type EditorMode = 'visual' | 'html';
 
@@ -261,7 +260,9 @@ export class PromDescriptionEditor implements ControlValueAccessor {
     }
   }
 
-  protected cleanup(): void {
+  /** DOMPurify comes with the cleanup module on first click, not with the catalogue chunk. */
+  protected async cleanup(): Promise<void> {
+    const { promDescriptionCleanup } = await import('./prom-description-cleanup');
     const cleaned = promDescriptionCleanup(this.value());
     if (cleaned === this.value()) {
       return;

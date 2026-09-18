@@ -26,7 +26,7 @@
         matTooltip="Почистити html"
         [disabled]="disabled()"
         (mousedown)="$event.preventDefault()"
-        (click)="cleanup()"
+        (click)="void cleanup()"
       >
         <mat-icon>cleaning_services</mat-icon>
       </button>
