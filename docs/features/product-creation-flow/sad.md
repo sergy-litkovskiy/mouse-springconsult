@@ -94,7 +94,7 @@ ticket: "TBD"
   збігаються), унікальний `product_images_r2_key_key`, `on delete cascade` з картки на кадр
   і `products_price_non_negative_check`.
 - Межі полів — константи `contracts/products-limits.ts`: 10 кадрів на картку, 30 ключових
-  слів, заголовок 200 знаків, опис OLX 8000 (опис Prom ліміту не має, [ADR 0016](adr/0016-store-the-prom-description-as-html.md)), категорія 120, ціна за взірцем
+  слів, заголовок 200 знаків, описи без ліміту ([ADR 0016](adr/0016-store-the-prom-description-as-html.md)), категорія 120, ціна за взірцем
   `^\d{1,10}(\.\d{1,2})?$`.
 - **Два обмеження, які фіча мусить посунути:** `config.http.bodyLimitBytes` дорівнює
   256 KiB — «тіла запитів авторизації крихітні, великі файли підуть окремим маршрутом»,

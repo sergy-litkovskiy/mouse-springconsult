@@ -73,6 +73,10 @@ describe('toPlainText', () => {
     );
   });
 
+  it('reads a <br> the way cleanDescription now writes it', () => {
+    assert.equal(toPlainText('<p>Рядок один<br>рядок два</p>'), 'Рядок один\nрядок два');
+  });
+
   it('turns list items into bulleted lines and drops the inline markup', () => {
     assert.equal(
       toPlainText(

@@ -40,7 +40,7 @@ updated_at: "2026-09-18"
 
 ```yaml
       operationId: updateProduct
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm: { type: string }
 ```
 
 ## Acceptance criteria

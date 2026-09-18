@@ -97,13 +97,11 @@ export type ProductListQuery = z.infer<typeof productListQuerySchema>;
  * the bounds, so an absent title stays empty while a blank one sent on purpose is refused.
  */
 const cardTitle = z.string().trim().min(1).max(productConstraints.titleMaxLength);
-const cardDescription = z.string().max(productConstraints.descriptionMaxLength);
 /**
  * Unbounded on purpose (ADR 0016, №6): markup makes a character count a poor measure of how much
- * text there is, and Fastify's `bodyLimit` still caps the request. `cardDescription` keeps its
- * bound because that one is OLX's own limit.
+ * text there is, and Fastify's `bodyLimit` still caps the request.
  */
-const cardHtmlDescription = z.string();
+const cardDescription = z.string();
 const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMaxLength);
 
 /**
@@ -117,7 +115,7 @@ export const productCreateSchema = z.object({
   titleProm: cardTitle.default(''),
   titleOlx: cardTitle.default(''),
   category: cardCategory.default(''),
-  descriptionProm: cardHtmlDescription.default(''),
+  descriptionProm: cardDescription.default(''),
   descriptionOlx: cardDescription.default(''),
   /** `NUMERIC(12,2) DEFAULT 0` gives back "0.00", and the predicate of readiness reads it as "not priced yet". */
   price: priceDecimal.default('0.00'),
@@ -138,7 +136,7 @@ export const productUpdateSchema = z.object({
   titleProm: cardTitle.optional(),
   titleOlx: cardTitle.optional(),
   category: cardCategory.optional(),
-  descriptionProm: cardHtmlDescription.optional(),
+  descriptionProm: cardDescription.optional(),
   descriptionOlx: cardDescription.optional(),
   price: priceDecimal.optional(),
   seoKeywords: cardKeywords.optional(),

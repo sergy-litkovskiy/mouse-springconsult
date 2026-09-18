@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
-import type { Product, ProductPage } from './Product.ts';
+import { Product, type ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
@@ -105,7 +105,7 @@ class StubProductRepository extends ProductRepository {
     if (this.stored?.id !== id) {
       return null;
     }
-    return this.appliesChanges ? { ...this.stored, ...changes } : this.stored;
+    return this.appliesChanges ? Object.assign(new Product(), this.stored, changes) : this.stored;
   }
 
   override async findImage(productId: string, imageId: string): Promise<ProductImage | null> {
@@ -475,7 +475,7 @@ describe('product service: Prom description', () => {
     await service.create({ ...CREATE_INPUT, descriptionProm: html, descriptionOlx: html });
 
     assert.equal(repository.lastDraft?.descriptionProm, 'Опис');
-    assert.equal(repository.lastDraft?.descriptionOlx, html);
+    assert.equal(repository.lastDraft.descriptionOlx, html);
   });
 
   it('cleans the Prom description on save and leaves the OLX one as it came', async () => {
@@ -485,7 +485,7 @@ describe('product service: Prom description', () => {
     await service.update(CARD_ID, { descriptionProm: html, descriptionOlx: html });
 
     assert.equal(repository.lastChanges?.descriptionProm, 'Опис');
-    assert.equal(repository.lastChanges?.descriptionOlx, html);
+    assert.equal(repository.lastChanges.descriptionOlx, html);
   });
 
   it('keeps an http, https or mailto link and drops the href of any other scheme', async () => {

@@ -56,7 +56,7 @@ plain text. HTML чистять і браузер (кнопка, T49), і `api` 
 ```yaml
       operationId: updateProduct
     ProductUpdateRequest:
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm: { type: string }
 ```
 
 ## Acceptance criteria

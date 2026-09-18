@@ -572,9 +572,9 @@ components:
       properties:
         id: { type: string, format: uuid }
         titleProm: { type: string, maxLength: 200 }
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm: { type: string, description: "HTML з переліку ADR 0016" }
         titleOlx: { type: string, maxLength: 200 }
-        descriptionOlx: { type: string, maxLength: 8000 }
+        descriptionOlx: { type: string }
         price:
           type: string
           pattern: '^\d{1,10}(\.\d{1,2})?$'
@@ -635,8 +635,11 @@ components:
         titleProm: { type: string, minLength: 1, maxLength: 200, default: "" }
         titleOlx: { type: string, minLength: 1, maxLength: 200, default: "" }
         category: { type: string, minLength: 1, maxLength: 120, default: "" }
-        descriptionProm: { type: string, maxLength: 8000, default: "" }
-        descriptionOlx: { type: string, maxLength: 8000, default: "" }
+        descriptionProm:
+          type: string
+          default: ""
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом, порожній абзац стає "".
+        descriptionOlx: { type: string, default: "" }
         price:
           type: string
           pattern: '^\d{1,10}(\.\d{1,2})?$'
@@ -652,9 +655,11 @@ components:
       description: Усі поля опційні — PATCH змінює лише надіслане.
       properties:
         titleProm: { type: string, maxLength: 200 }
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm:
+          type: string
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом, порожній абзац стає "".
         titleOlx: { type: string, maxLength: 200 }
-        descriptionOlx: { type: string, maxLength: 8000 }
+        descriptionOlx: { type: string }
         price:
           type: string
           pattern: '^\d{1,10}(\.\d{1,2})?$'

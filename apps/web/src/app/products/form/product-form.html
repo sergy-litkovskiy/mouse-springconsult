@@ -52,17 +52,11 @@
       <mat-form-field appearance="outline">
         <mat-label>Опис для Prom</mat-label>
         <textarea matInput formControlName="descriptionProm" rows="6"></textarea>
-        @if (form.controls.descriptionProm.hasError('maxlength')) {
-          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
-        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Опис для OLX</mat-label>
         <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
-        @if (form.controls.descriptionOlx.hasError('maxlength')) {
-          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
-        }
       </mat-form-field>
     </div>
 

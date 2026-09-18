@@ -4,7 +4,6 @@
  */
 export const productConstraints = {
   titleMaxLength: 200,
-  descriptionMaxLength: 8_000,
   categoryMaxLength: 120,
   keywordMaxLength: 60,
   maxKeywords: 30,

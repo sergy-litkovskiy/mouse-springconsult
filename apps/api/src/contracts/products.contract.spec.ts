@@ -196,19 +196,13 @@ describe('product write contracts', () => {
     assert.equal(productUpdateSchema.parse({ seoKeywords: tooMany }).seoKeywords?.length, 31);
   });
 
-  it('takes a Prom description of any length and keeps the ceiling on the OLX one, on both write routes', () => {
-    const tooLong = 'а'.repeat(productConstraints.descriptionMaxLength + 1);
+  it('takes a description of any length for either marketplace, on both write routes', () => {
+    const long = 'а'.repeat(20_000);
 
-    assert.equal(
-      productCreateSchema.safeParse({ ...newCard, descriptionProm: tooLong }).success,
-      true,
-    );
-    assert.equal(productUpdateSchema.safeParse({ descriptionProm: tooLong }).success, true);
-    assert.equal(
-      productCreateSchema.safeParse({ ...newCard, descriptionOlx: tooLong }).success,
-      false,
-    );
-    assert.equal(productUpdateSchema.safeParse({ descriptionOlx: tooLong }).success, false);
+    for (const field of ['descriptionProm', 'descriptionOlx'] as const) {
+      assert.equal(productCreateSchema.safeParse({ ...newCard, [field]: long }).success, true);
+      assert.equal(productUpdateSchema.safeParse({ [field]: long }).success, true);
+    }
   });
 
   it('leaves a field the update did not send out of the parsed object', () => {

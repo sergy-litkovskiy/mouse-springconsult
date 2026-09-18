@@ -424,6 +424,26 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `user` приймає пропозицію й відкриває картку в редакторі
 **Then** абзаци видно як абзаци, а не як один рядок: `api` під час прийняття обгортає кожен у `<p>` (ADR 0016, рішення №7)
 
+### AC-46 (US-06) — happy path
+
+Запит 2026-09-18, [T47](tasks/sanitize-prom-description-on-save.md).
+
+**Given** відкрита картка
+**When** `PATCH` надсилає `descriptionProm: "<div><span style=\"color:red\">Червоний</span> колір</div>"`
+**Then** у відповіді й у базі лишається текст без `div`, `span` і `style`, а дозволені теги (`p`, `ul`, `strong`, …) збережені
+
+### AC-46 (US-06) — security
+
+**Given** будь-яка картка
+**When** `POST` чи `PATCH` надсилає опис з `<script>`, `<img onerror=…>` або `<a href="javascript:…">`
+**Then** у базу не потрапляють ні ці теги, ні атрибути, ні їхній вміст
+
+### AC-46 (US-06) — edge case
+
+**Given** опис складається лише з `<p></p>` чи `<p>&nbsp;</p>`
+**When** картку зберігають
+**Then** `descriptionProm` стає `""`, а готовність картки рахує опис порожнім
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

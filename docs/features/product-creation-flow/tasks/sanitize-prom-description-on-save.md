@@ -44,7 +44,10 @@ updated_at: "2026-09-18"
 ```yaml
       operationId: createProduct
       operationId: updateProduct
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm:
+          type: string
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом, порожній абзац стає "".
+        descriptionOlx: { type: string }
 ```
 
 ## Acceptance criteria
@@ -69,9 +72,9 @@ updated_at: "2026-09-18"
 1. **Окремим комітом до `/tdd`** — `refactor(products)`: перенести `cleanDescription` і його тести з `db/prom-csv.ts` у модуль `products`, експортувати через `products/index.ts`; `db/prom-csv.ts` імпортує звідти. Перелік тегів винести в `apps/api/src/contracts/prom-description-html.ts`.
 2. `ProductService`: чистити `descriptionProm` під час створення й оновлення картки. `descriptionOlx` не чіпати.
 3. Тести сервісу на AC-46: розмітка з браузера, три вектори XSS, порожній абзац. Спільний набір прикладів з T46 (рішення №4) — окремий `describe`, який T49 повторить на фронті.
-4. **Ліміт прибрати** (ADR 0016, рішення №6): `descriptionProm` у схемах запису `products.contract.ts` втрачає `.max()`, а `descriptionOlx` лишає 8000. Тести контракту на ліміт Prom переписуються: це зміна вимоги.
+4. **Ліміт прибрати** (ADR 0016, рішення №6): `descriptionProm` і `descriptionOlx` у схемах запису `products.contract.ts` втрачають `.max()`, `descriptionMaxLength` зникає з `products-limits.ts`, а валідатори й `mat-error` довжини — з форми картки. Тести контракту на ліміт переписуються: це зміна вимоги.
 4a. Серверна постобробка зводить вихід `sanitize-html` до канонічної форми браузера (`<br>`, а не `<br />`), як вимагає спільний набір прикладів ADR 0016 №4. `b`/`i` перейменовуються на `strong`/`em`, `href` — лише `http`, `https`, `mailto`.
-5. `openapi.yaml`: у `descriptionProm` обох схем запису прибрати `maxLength` і дописати, що сервер чистить HTML за переліком ADR 0016. Оновити excerpt цієї story.
+5. `openapi.yaml`: в обох описах прибрати `maxLength`, у `descriptionProm` схем запису дописати, що сервер чистить HTML за переліком ADR 0016. Оновити excerpt цієї story.
 6. `PRD.md §5`: AC-46.
 
 ## Out of scope
