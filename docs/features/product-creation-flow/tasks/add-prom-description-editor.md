@@ -1,7 +1,7 @@
 ---
 id: T48
 title: "Міні-редактор HTML для опису Prom з режимом сирого HTML"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -80,9 +80,9 @@ updated_at: "2026-09-18"
 
 ## DoD
 
-- [ ] AC-47: тести компонента й форми зелені, `pw` пройдено.
-- [ ] `lint` · `test` у `web` зелені, бандл сторінки картки виміряно до і після.
-- [ ] Коміт: `feat(web): edit the Prom description in a mini HTML editor`.
+- [x] AC-47: тести компонента й форми зелені, `pw` пройдено.
+- [x] `lint` · `test` у `web` зелені, бандл сторінки картки виміряно до і після: чанк `product-catalog` 59.71 → 64.56 КБ gzip, Tiptap — окремими lazy-чанками (~85 КБ gzip), initial 85.21 → 85.79 КБ.
+- [x] Коміт: `feat(web): edit the Prom description in a mini HTML editor`.
 
 ## Links
 

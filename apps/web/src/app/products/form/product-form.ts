@@ -38,6 +38,7 @@ import { priceBound } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
+import { PromDescriptionEditor } from './prom-description-editor';
 
 /** `null` opens an empty dialog: the card itself is created once the first frame is chosen. */
 export type ProductFormData = {
@@ -93,6 +94,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatSlideToggleModule,
     MatTooltipModule,
     ProductGallery,
+    PromDescriptionEditor,
   ],
   templateUrl: './product-form.html',
   styleUrl: './product-form.css',

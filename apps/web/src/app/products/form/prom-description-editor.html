@@ -1,0 +1,50 @@
+<div class="editor" [class.editor--disabled]="disabled()">
+  <div class="editor__bar">
+    <div class="editor__tools" role="toolbar" aria-label="Форматування опису">
+      @for (action of toolbar; track action.id) {
+        <button
+          matIconButton
+          type="button"
+          class="editor__tool"
+          [class.editor__tool--active]="active().has(action.id)"
+          [attr.aria-label]="action.label"
+          [attr.aria-pressed]="action.isActive === null ? null : active().has(action.id)"
+          [matTooltip]="action.label"
+          [disabled]="disabled() || mode() === 'html' || !loaded()"
+          [attr.data-action]="action.id"
+          (mousedown)="$event.preventDefault()"
+          (click)="runAction(action)"
+        >
+          <mat-icon>{{ action.icon }}</mat-icon>
+        </button>
+      }
+    </div>
+
+    <mat-button-toggle-group
+      class="editor__modes"
+      hideSingleSelectionIndicator
+      aria-label="Режим редактора"
+      [value]="mode()"
+      [disabled]="disabled()"
+      (change)="switchMode($event.value)"
+    >
+      <mat-button-toggle value="visual">Перегляд</mat-button-toggle>
+      <mat-button-toggle value="html">HTML</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  <div #host class="editor__visual" [hidden]="mode() !== 'visual'"></div>
+
+  @if (mode() === 'html') {
+    <textarea
+      class="editor__html"
+      aria-label="Опис для Prom, HTML"
+      spellcheck="false"
+      rows="8"
+      [value]="value()"
+      [disabled]="disabled()"
+      (input)="htmlInput($event)"
+      (blur)="touched()"
+    ></textarea>
+  }
+</div>
