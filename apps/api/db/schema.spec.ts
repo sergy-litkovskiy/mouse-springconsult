@@ -117,4 +117,18 @@ describe('database schema constraints', () => {
       /products_price_non_negative_check/,
     );
   });
+
+  it('lets one Prom id belong to a single card, while any number of cards have none', async () => {
+    const first = await insertProduct();
+    const second = await insertProduct();
+    await insertProduct();
+    await dataSource.query(`update "products" set "prom_id" = '1519870367' where "id" = $1`, [
+      first,
+    ]);
+
+    await assert.rejects(
+      dataSource.query(`update "products" set "prom_id" = '1519870367' where "id" = $1`, [second]),
+      /products_prom_id_key/,
+    );
+  });
 });

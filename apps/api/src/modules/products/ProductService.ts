@@ -11,6 +11,7 @@ import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts'
 import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
+  ProductDraft,
   ProductListCriteria,
   ProductRepository,
 } from './ProductRepository.ts';
@@ -66,6 +67,18 @@ export class ProductService {
     const product = await this.products.create({ ...input, seoKeywords });
 
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
+  }
+
+  /**
+   * A card carried over from a Prom export. It skips the HTTP contract on purpose: the export is
+   * trusted input that `db/import-prom.ts` maps itself, and its frames follow through `addImage`.
+   */
+  async importFromProm(card: ProductDraft & { readonly promId: string }): Promise<Product> {
+    return this.products.create(card);
+  }
+
+  async findByPromId(promId: string): Promise<Product | null> {
+    return this.products.findByPromId(promId);
   }
 
   async update(id: string, changes: ProductUpdate): Promise<ProductSaving> {

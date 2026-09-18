@@ -138,6 +138,16 @@ export class ProductRepository {
     return product;
   }
 
+  async findByPromId(promId: string): Promise<Product | null> {
+    const product = await this.dataSource.getRepository(Product).findOneBy({ promId });
+    if (product === null) {
+      return null;
+    }
+
+    product.images = (await this.galleriesOf([product.id])).get(product.id) ?? [];
+    return product;
+  }
+
   /**
    * The row is read back instead of being returned from the insert: an empty card is mostly
    * column defaults, and decimal(12,2) rounds the price itself — reading it back is what

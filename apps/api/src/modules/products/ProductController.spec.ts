@@ -43,6 +43,8 @@ function card(id: string, overrides: Partial<Product> = {}): Product {
     publishedProm: false,
     publishedOlx: false,
     condition: 'used',
+    promId: null,
+    olxId: null,
     createdAt: new Date('2026-09-01T10:00:00.000Z'),
     updatedAt: new Date('2026-09-01T10:00:00.000Z'),
     images: [
@@ -268,6 +270,8 @@ function emptyCard(draft: ProductDraft): Product {
     publishedProm: false,
     publishedOlx: false,
     condition: 'used',
+    promId: null,
+    olxId: null,
     createdAt: new Date('2026-09-17T10:00:00.000Z'),
     updatedAt: new Date('2026-09-17T10:00:00.000Z'),
     images: [],

@@ -22,7 +22,8 @@
     "db:migrate": "node dist/db/migrate.js up",
     "db:migrate:revert": "node dist/db/migrate.js down",
     "db:migrate:show": "node dist/db/migrate.js show",
-    "db:migrate:new": "node dist/db/new-migration.js"
+    "db:migrate:new": "node dist/db/new-migration.js",
+    "db:import:prom": "node --enable-source-maps dist/db/import-prom.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1134.0",
@@ -31,10 +32,12 @@
     "@fastify/multipart": "^10.1.1",
     "@fastify/rate-limit": "^11.2.0",
     "argon2": "^0.45.1",
+    "csv-parse": "^7.0.2",
     "fastify": "^5.12.1",
     "jose": "^6.2.10",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
+    "sanitize-html": "^2.17.7",
     "typeorm": "^1.1.0",
     "zod": "^4.4.3"
   },
@@ -42,6 +45,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.3.0",
     "@types/pg": "^8.15.6",
+    "@types/sanitize-html": "^2.16.1",
     "dependency-cruiser": "^18.2.0",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
