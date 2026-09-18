@@ -220,7 +220,7 @@ describe('PromDescriptionEditor', () => {
     it('shows the cleaning icon with a tooltip and an aria-label of the same text (AC-48)', async () => {
       await open('<p>Опис</p>');
 
-      expect(cleanupButton().querySelector('mat-icon')?.textContent?.trim()).toBe(
+      expect(cleanupButton().querySelector('mat-icon')?.textContent.trim()).toBe(
         'cleaning_services',
       );
       const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarness(

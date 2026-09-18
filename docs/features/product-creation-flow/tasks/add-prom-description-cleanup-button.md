@@ -1,7 +1,7 @@
 ---
 id: T49
 title: "Кнопка «Почистити html» біля опису для Prom"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -78,9 +78,9 @@ updated_at: "2026-09-18"
 
 ## DoD
 
-- [ ] AC-48: тести зелені, `pw` пройдено, результат кнопки збігається з відповіддю сервера після збереження.
-- [ ] `lint` · `test` у `web` зелені.
-- [ ] Коміт: `feat(web): clean up the Prom description HTML on demand`.
+- [x] AC-48: тести зелені, `pw` пройдено, результат кнопки збігається з відповіддю сервера після збереження.
+- [x] `lint` · `test` у `web` зелені.
+- [x] Коміт: `feat(web): clean up the Prom description HTML on demand`.
 
 ## Links
 

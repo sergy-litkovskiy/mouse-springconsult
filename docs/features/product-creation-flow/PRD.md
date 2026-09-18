@@ -464,6 +464,26 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** відкривається діалог
 **Then** редактор теж вимкнений у обох режимах
 
+### AC-48 (US-06) — happy path
+
+Запит 2026-09-18, [T49](tasks/add-prom-description-cleanup-button.md).
+
+**Given** в описі Prom є `<div><span style="color:red">Червоний</span> колір</div><p>&nbsp;</p>`
+**When** `user` натискає кнопку «Почистити html»
+**Then** поле містить лише дозволені теги й текст без втрат, порожнього абзацу немає, форма позначена зміненою
+
+### AC-48 (US-06) — edge case
+
+**Given** опис уже чистий
+**When** `user` натискає кнопку
+**Then** вміст не змінюється, і форма не стає зміненою
+
+### AC-48 (US-06) — accessibility
+
+**Given** відкрита картка
+**When** `user` наводить курсор чи фокус на кнопку
+**Then** видно tooltip «Почистити html», у кнопки є `aria-label` з тим самим текстом, а у вимкненій формі кнопка вимкнена
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
