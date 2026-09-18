@@ -38,8 +38,8 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
 | `ProductUpdateResponse.discardedKeywordsCount` | AC-07, рахує сервіс, колонки немає | medium |
 | `PreparationRun.*` | `product_preparation_runs` — таблиця без міграції (перевірено: відсутня в `db/migrations/`) | medium (spec'd, unmigrated) |
 | `FieldSuggestion.field` enum | `product_field_suggestions.field CHECK IN (...)` | high |
-| `FieldSuggestion.value` (форма для `price`) | data-model.md Open items: TBD | **low** |
-| `PreparationRunCreateRequest.scope` | `product_preparation_runs.scope CHECK IN (texts,price,both)` | high |
+| `FieldSuggestion.value` (форма для `price`) | data-model.md Open items: `{priceFrom, priceTo}`, закрито 2026-09-13 | high |
+| `PreparationRunCreateRequest.scope` | `product_preparation_runs.scope CHECK IN (texts,price,both,field)`; тіло — `z.discriminatedUnion('scope', …)` ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)) | high |
 | `Product.totalInputTokens/OutputTokens` | AC-14, `sum(...)`; валюта не вводиться (PRD §8 open) | medium |
 
 ## Section B — 5-point drift check
@@ -75,17 +75,15 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
 
 ## Section C — unresolved_origins
 
-| schema_path | поточне походження | що витягне наступний прохід |
-|---|---|---|
-| `FieldSuggestion.value` (форма для `field: price`) | Здогад із sad.md сценарію 8 → `{priceFrom, priceTo}` decimal-рядки | data-model.md Open items досі TBD — власник Serhii підтверджує до міграції поставки 2 |
-| `PreparationRun.status` під частковою відмовою `scope: both` | Не виведено — data-model.md не називає цього питання явно (на відміну від трьох Open items, які вже там перелічені) | Рішення стейджу 08/break-tasks: або запис статусу per-scope (нова колонка/таблиця), або конвенція «`both` завершується `failed`, якщо будь-яка частина не вдалась, а відновлення йде через окремий запуск `scope: price`» (сценарій 8 уже покриває цей шлях відновлення) |
+Порожньо. Обидва рядки закрила [T24](../tasks/close-preparation-open-items.md): форму
+`value` для `price` — 2026-09-13, `status` при частковій відмові `scope: both` — 2026-09-18
+(`failed` з `error_code: price_unavailable`, без статусу per-scope; data-model.md, Open items).
 
 ## Conflicts
 
 Жодного з чотирьох типів таблиці Conflicts скіла (`#unused-in-prd`, `#orphan-sequence`,
 `#stale`, `#manual-addition`) не виявлено. Прогалину зі `status` під частковою відмовою
-зафіксовано в Section C, не як конфлікт-позначку в YAML: це прогалина в `data-model.md`,
-а не розходження контракту з джерелом.
+спершу було зафіксовано в Section C; закрито в T24 2026-09-18.
 
 ## Self-check DoD
 
@@ -114,7 +112,7 @@ Delivery 2 має pg-boss-задачу лише як намір у `sad.md` (с�
 
 Backend Lead → стейдж break-tasks:
 1. `ProductErrors.ts` за переліком кодів Section B п.2.
-2. Форма `FieldSuggestion.value` для `price` (Section C).
-3. Рішення для `PreparationRun.status` під частковою відмовою `scope: both`
-   (Section C) — до міграції поставки 2.
+2. ~~Форма `FieldSuggestion.value` для `price` (Section C).~~ Закрито 2026-09-13.
+3. ~~Рішення для `PreparationRun.status` під частковою відмовою `scope: both`~~
+   Закрито в T24 2026-09-18.
 4. `events.md` разом із чергою поставки 2 (не цим прогоном — обґрунтування вище).

@@ -1,7 +1,7 @@
 ---
 id: T24
 title: "Закрити відкриті TBD і статус запуску при частковій відмові"
-status: Todo
+status: Done
 delivery: 2
 gate_profile: decision
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 3100
 blocked_by: [T01]
 blocks: [T26]
-updated_at: "2026-09-13"
+updated_at: "2026-09-18"
 ---
 
 # T24 — Закрити відкриті TBD і статус запуску при частковій відмові
@@ -94,10 +94,10 @@ updated_at: "2026-09-13"
 
 1. ✅ **Гейт AC-06.** Закрито: «немає жодного кадру» — правку внесено в [PRD §5](../PRD.md#5-acceptance-criteria) AC-06.
 2. ✅ **Форма `value` для `price`.** Закрито 2026-09-13: `{priceFrom, priceTo}`, десяткові рядки — [openapi.yaml](../contracts/openapi.yaml) і `data-model.md` правлені; `acceptFieldSuggestion` виключає `field: price` (`price_suggestion_readonly`, [T30](add-suggestion-resolution-endpoints.md)).
-3. **Вікно обмеження частоти запусків** — кількість і період, у `src/config.ts`.
+3. ✅ **Вікно обмеження частоти запусків.** Закрито 2026-09-18: 20 запусків на картку за годину, спільні для всіх областей — [data-model.md](../data-model.md) Open items, [sad.md §8](../sad.md#8-crosscutting-concepts), `openapi.yaml` (`429`); константу в `src/config.ts` пише [T29](add-preparation-run-endpoints.md).
 4. ✅ **«Версія входу».** Закрито: хеш `r2_key` кадрів для `texts`/`both` (бо саме фото тепер вхід розпізнавання, [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md)); хеш (`field`, `draftText`) для `field`. Для `price` **переглянуто 2026-09-13**: хеш (`title`, `description`) за формулою AC-27 — попередній підхід (`category`, `condition`) не бачив зміни заголовка чи опису й повертав би застарілий діапазон під новим текстом картки.
-5. **`status` при частковій відмові `scope: both`** — статус per-scope (нова колонка чи таблиця) або конвенція «`both` завершується `failed`, а відновлення йде окремим запуском `scope: price`».
-6. **Валідація тіла запиту для `scope: field`.** `field` і `draftText` обов'язкові лише для цієї області — `z.discriminatedUnion('scope', …)` у `contracts/ai.contract.ts`, не окрема `.optional()` пара на плоскій схемі ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
+5. ✅ **`status` при частковій відмові `scope: both`.** Закрито 2026-09-18 конвенцією: запуск завершується `failed` з `error_code: price_unavailable`, пропозиції текстів лишаються, ціну просить окремий `scope: price`. Колонки чи таблиці per-scope немає — схема [T26](add-preparation-tables-migration.md) не змінюється. Записано в [data-model.md](../data-model.md), [sad.md §6](../sad.md#6-runtime-view) сценарій 5, `openapi.yaml` (`PreparationRun.errorCode`), [CONTEXT.md](../CONTEXT.md), [T28](add-preparation-service.md).
+6. ✅ **Валідація тіла запиту для `scope: field`.** Закрито: записано в [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md), `openapi.yaml` (`PreparationRunCreateRequest`) і checklist 1 [T29](add-preparation-run-endpoints.md), яка його виконує. `field` і `draftText` обов'язкові лише для цієї області — `z.discriminatedUnion('scope', …)` у `contracts/ai.contract.ts`, не окрема `.optional()` пара на плоскій схемі ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)).
 
 ## Out of scope
 
@@ -108,12 +108,12 @@ updated_at: "2026-09-13"
 
 - [x] Рішення №1 (гейт AC-06) і №4 (версія входу) записані й закриті 2026-09-12 — [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md).
 - [x] Рішення №2 (форма `value` для `price`) записане й закрите 2026-09-13 — `openapi.yaml`, `data-model.md`, PRD AC-23–AC-26, [T30](add-suggestion-resolution-endpoints.md).
-- [ ] Рішення №3, №5, №6 записані — кожне в тому документі, який його виконує.
-- [ ] Жодного `<!-- TBD -->` у розділі Open items [data-model.md](../data-model.md), крім пунктів 3, 5.
-- [ ] `unresolved_origins` у [api-sync-report.md](../contracts/api-sync-report.md) порожній, або кожен рядок має названу причину й строк.
-- [ ] Рішення №5, якщо воно вводить колонку, відображене в схемі **до** [T26](add-preparation-tables-migration.md), а не після.
+- [x] Рішення №3, №5, №6 записані — кожне в тому документі, який його виконує.
+- [x] Жодного `<!-- TBD -->` у розділі Open items [data-model.md](../data-model.md), крім пунктів 3, 5.
+- [x] `unresolved_origins` у [api-sync-report.md](../contracts/api-sync-report.md) порожній, або кожен рядок має названу причину й строк.
+- [x] Рішення №5, якщо воно вводить колонку, відображене в схемі **до** [T26](add-preparation-tables-migration.md), а не після.
 - [x] Рішення №1/№4 пройшли гейт blast-radius (незворотне, зачіпає кілька модулів, мали живу альтернативу) — заведено [ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md) і [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md), наскрізні номери після 0013.
-- [ ] Коміт: `docs(product-creation-flow): close the preparation open items`.
+- [x] Коміт: `docs(product-creation-flow): close the preparation open items`.
 
 ## Links
 

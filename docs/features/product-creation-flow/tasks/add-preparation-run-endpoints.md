@@ -88,7 +88,7 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 2. `contracts/error-codes.ts` — `preparation_input_incomplete`, `preparation_rate_limited`.
 3. `POST /:productId/preparation-runs` і `GET /:productId/preparation-runs/:runId` під `sessionGuard`.
 4. Гейт для `scope: price` (AC-27): дешева перевірка `titleProm ?? titleOlx` — інакше `preparation_input_incomplete` з `details.missing: ["title"]`, без постановки задачі. Сам запит до моделі (title+description) маршрут не складає — це читає й формує `worker` при виконанні ([T28](add-preparation-service.md)), так само як гейт AC-06 лише рахує кадри, а не читає їх байти.
-5. `src/config.ts` — вікно обмеження частоти, число з рішення №3 [T24](close-preparation-open-items.md).
+5. `src/config.ts` — вікно обмеження частоти: 20 запусків на картку за годину, спільні для всіх областей (рішення №3 [T24](close-preparation-open-items.md)).
 6. Постановка задачі в чергу; HTTP-відповідь не чекає на модель.
 
 ## Out of scope

@@ -331,7 +331,7 @@ paths:
                 title:
                   value: { error: { code: preparation_input_incomplete, message: "Додайте заголовок Prom або OLX перед пошуком ціни", details: { missing: ["title"] } } }
         "429":
-          description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
+          description: Перевищено обмеження частоти запусків — 20 на картку за годину, спільні для всіх областей (PRD §6.1 — окреме від ліміту входу)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -721,7 +721,10 @@ components:
         status: { type: string, enum: [queued, running, succeeded, failed] }
         errorCode:
           type: [string, null]
-          description: Заповнено лише при status=failed; той самий код, що показує AC-10.
+          description: >-
+            Заповнено лише при status=failed; той самий код, що показує AC-10.
+            `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
+            записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
         model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }

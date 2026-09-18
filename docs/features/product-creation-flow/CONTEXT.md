@@ -57,6 +57,7 @@ feature: product-creation-flow
 | `storage_unavailable` | `media` | сховище не відповіло після повторів | NOT втрата даних: збережене ціле |
 | `preparation_input_incomplete` | `products` (п. 2) | `scope: texts`/`both` — у галереї немає жодного кадру; `scope: price` — немає ні `titleProm`, ні `titleOlx` (AC-27, `details.missing` називає, чого саме бракує) | NOT «модель відмовила»: до моделі не дійшло. До [ADR 0014](adr/0014-let-ai-recognize-the-item-from-photos.md) код означав ще й «не внесено розпізнавання» — цієї причини більше немає |
 | `preparation_rate_limited` | `products` (п. 2) | вичерпано вікно запусків | NOT ліміт на спроби входу: окремий лічильник |
+| `price_unavailable` | `products` (п. 2) | запуск `scope: both` записав тексти, а діапазону ціни не отримав; запуск `failed` | NOT відмова всього запуску: пропозиції текстів лишились, бракує лише ціни — її просить окремий `scope: price` (AC-10b) |
 | `suggestion_not_found` | `products` (п. 2) | пропозиції немає або вона з іншої картки | — |
 | `suggestion_already_resolved` | `products` (п. 2) | пропозицію вже прийнято чи відхилено | NOT помилка: повторне рішення без предмета |
 | `price_suggestion_readonly` | `products` (п. 2) | `POST .../suggestions/{id}/accept` викликано для пропозиції з `field: price` | NOT `suggestion_already_resolved`: пропозиція не вирішена, її взагалі не можна прийняти цим маршрутом — діапазон не пишеться в скалярну `price` (AC-26) |
