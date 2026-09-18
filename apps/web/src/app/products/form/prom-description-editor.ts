@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { Editor } from '@tiptap/core';
@@ -165,7 +164,7 @@ async function createEditor(
  */
 @Component({
   selector: 'app-prom-description-editor',
-  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatTooltipModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './prom-description-editor.html',
   styleUrl: './prom-description-editor.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -244,14 +243,13 @@ export class PromDescriptionEditor implements ControlValueAccessor {
     this.editor?.setEditable(!disabled, false);
   }
 
-  protected switchMode(mode: EditorMode): void {
-    if (mode === this.mode()) {
-      return;
-    }
-    if (mode === 'visual') {
+  protected toggleMode(): void {
+    if (this.mode() === 'html') {
       this.editor?.commands.setContent(this.value(), { emitUpdate: false });
+      this.mode.set('visual');
+    } else {
+      this.mode.set('html');
     }
-    this.mode.set(mode);
   }
 
   protected runAction(action: ToolbarAction): void {

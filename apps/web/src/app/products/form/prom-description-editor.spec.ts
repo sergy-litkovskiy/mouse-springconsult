@@ -2,7 +2,6 @@ import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatButtonToggleHarness } from '@angular/material/button-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { PromDescriptionEditor } from './prom-description-editor';
 
@@ -71,9 +70,11 @@ describe('PromDescriptionEditor', () => {
     return button;
   }
 
+  /** The HTML button toggles, so it is pressed only when the mode is not already the one wanted. */
   async function switchTo(label: 'Перегляд' | 'HTML'): Promise<void> {
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    await (await loader.getHarness(MatButtonToggleHarness.with({ text: label }))).check();
+    if (tool('html-mode').getAttribute('aria-pressed') !== String(label === 'HTML')) {
+      tool('html-mode').click();
+    }
     await settle();
   }
 
@@ -140,6 +141,24 @@ describe('PromDescriptionEditor', () => {
     expect(visual()?.querySelector('ul li')?.textContent).toBe('Пункт');
     expect(control.value).toBe('<p>Опис</p><ul><li>Пункт</li></ul>');
     expect(control.dirty).toBe(true);
+  });
+
+  it('opens in the visual mode and switches mode on every press of the HTML button', async () => {
+    await open('<p>Опис</p>');
+
+    expect(tool('html-mode').getAttribute('aria-pressed')).toBe('false');
+    expect(htmlArea()).toBeNull();
+
+    tool('html-mode').click();
+    await settle();
+    expect(tool('html-mode').getAttribute('aria-pressed')).toBe('true');
+    expect(htmlArea()?.value).toBe('<p>Опис</p>');
+
+    tool('html-mode').click();
+    await settle();
+    expect(tool('html-mode').getAttribute('aria-pressed')).toBe('false');
+    expect(htmlArea()).toBeNull();
+    expect(visual()?.textContent).toBe('Опис');
   });
 
   it('keeps an edit across both mode switches', async () => {
@@ -243,9 +262,7 @@ describe('PromDescriptionEditor', () => {
 
       expect(visual()?.getAttribute('contenteditable')).toBe('false');
       expect(tool('bold').disabled).toBe(true);
-      const loader = TestbedHarnessEnvironment.loader(fixture);
-      const html = await loader.getHarness(MatButtonToggleHarness.with({ text: 'HTML' }));
-      expect(await html.isDisabled()).toBe(true);
+      expect(tool('html-mode').disabled).toBe(true);
     });
 
     it('cannot be edited in the HTML mode either', async () => {

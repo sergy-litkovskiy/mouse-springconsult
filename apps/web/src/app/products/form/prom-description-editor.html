@@ -30,19 +30,23 @@
       >
         <mat-icon>cleaning_services</mat-icon>
       </button>
+      <!-- One toggle, not two: aria-pressed already says which mode is on. -->
+      <button
+        matIconButton
+        type="button"
+        class="editor__tool"
+        data-action="html-mode"
+        aria-label="Режим HTML"
+        [class.editor__tool--active]="mode() === 'html'"
+        [attr.aria-pressed]="mode() === 'html'"
+        [matTooltip]="mode() === 'html' ? 'Повернутись до перегляду' : 'Показати HTML'"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="toggleMode()"
+      >
+        <mat-icon>code</mat-icon>
+      </button>
     </div>
-
-    <mat-button-toggle-group
-      class="editor__modes"
-      hideSingleSelectionIndicator
-      aria-label="Режим редактора"
-      [value]="mode()"
-      [disabled]="disabled()"
-      (change)="switchMode($event.value)"
-    >
-      <mat-button-toggle value="visual">Перегляд</mat-button-toggle>
-      <mat-button-toggle value="html">HTML</mat-button-toggle>
-    </mat-button-toggle-group>
   </div>
 
   <div #host class="editor__visual" [hidden]="mode() !== 'visual'"></div>

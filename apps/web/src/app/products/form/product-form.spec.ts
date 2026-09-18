@@ -7,7 +7,6 @@ import {
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatButtonToggleHarness } from '@angular/material/button-toggle/testing';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { firstValueFrom } from 'rxjs';
@@ -145,7 +144,7 @@ describe('ProductForm', () => {
    * admin pasting markup would, through its HTML mode.
    */
   async function typePromDescription(html: string): Promise<void> {
-    await promHtmlMode().then((mode) => mode.check());
+    promHtmlMode().click();
     await settle();
     const area = element.querySelector<HTMLTextAreaElement>('app-prom-description-editor textarea');
     if (area === null) {
@@ -155,9 +154,14 @@ describe('ProductForm', () => {
     area.dispatchEvent(new Event('input'));
   }
 
-  async function promHtmlMode(): Promise<MatButtonToggleHarness> {
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    return loader.getHarness(MatButtonToggleHarness.with({ text: 'HTML' }));
+  function promHtmlMode(): HTMLButtonElement {
+    const button = element.querySelector<HTMLButtonElement>(
+      'app-prom-description-editor [data-action="html-mode"]',
+    );
+    if (button === null) {
+      throw new Error('the Prom description editor has no HTML button');
+    }
+    return button;
   }
 
   async function toggle(label: string): Promise<MatSlideToggleHarness> {
@@ -211,7 +215,7 @@ describe('ProductForm', () => {
       ]) {
         expect(field(name).disabled, name).toBe(true);
       }
-      expect(await (await promHtmlMode()).isDisabled()).toBe(true);
+      expect(promHtmlMode().disabled).toBe(true);
       expect(await (await toggle('Опубліковано на Prom')).isDisabled()).toBe(true);
       expect(await (await toggle('Опубліковано на OLX')).isDisabled()).toBe(true);
       expect(saveButton().disabled).toBe(true);
