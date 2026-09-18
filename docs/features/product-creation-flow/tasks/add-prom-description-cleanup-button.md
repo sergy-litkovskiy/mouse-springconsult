@@ -40,7 +40,9 @@ updated_at: "2026-09-18"
 
 ```yaml
       operationId: updateProduct
-        descriptionProm: { type: string }
+        descriptionProm:
+          type: string
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом, порожній абзац стає "".
 ```
 
 ## Acceptance criteria

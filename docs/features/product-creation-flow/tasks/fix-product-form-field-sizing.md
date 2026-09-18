@@ -50,9 +50,9 @@ updated_at: "2026-09-17"
 ```yaml
     Product:
         titleProm: { type: string, maxLength: 200 }
-        descriptionProm: { type: string, maxLength: 8000 }
+        descriptionProm: { type: string, description: "HTML з переліку ADR 0016" }
         titleOlx: { type: string, maxLength: 200 }
-        descriptionOlx: { type: string, maxLength: 8000 }
+        descriptionOlx: { type: string }
 ```
 
 ## Acceptance criteria

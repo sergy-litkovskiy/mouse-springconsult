@@ -1,7 +1,7 @@
 ---
 id: T47
 title: "Серверна чистка HTML опису для Prom під час збереження"
-status: Todo
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -84,9 +84,9 @@ updated_at: "2026-09-18"
 
 ## DoD
 
-- [ ] AC-46: тести сервісу зелені, тести `prom-csv` зелені без зміни очікувань.
-- [ ] `typecheck` · `lint` · `test` · `deps:check` в `api` зелені.
-- [ ] Коміт: `feat(products): sanitize the Prom description on save`.
+- [x] AC-46: тести сервісу зелені, тести `prom-csv` зелені без зміни очікувань.
+- [x] `typecheck` · `lint` · `test` · `deps:check` в `api` зелені.
+- [x] Коміт: `feat(products): sanitize the Prom description on save`.
 
 ## Links
 
