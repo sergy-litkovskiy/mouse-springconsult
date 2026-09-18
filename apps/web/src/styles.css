@@ -69,3 +69,18 @@ body {
   line-height: 1;
   padding-left: 10px;
 }
+
+/*
+ * Tiptap builds the Prom description editor's content outside Angular, so the component's
+ * emulated styles never reach it.
+ */
+app-prom-description-editor .ProseMirror {
+  min-height: 8rem;
+  padding: 8px 0;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+
+app-prom-description-editor .ProseMirror p {
+  margin: 0 0 8px;
+}

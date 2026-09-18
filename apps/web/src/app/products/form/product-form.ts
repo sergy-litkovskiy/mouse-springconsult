@@ -38,6 +38,7 @@ import { priceBound } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
+import { PromDescriptionEditor } from './prom-description-editor';
 
 /** `null` opens an empty dialog: the card itself is created once the first frame is chosen. */
 export type ProductFormData = {
@@ -93,6 +94,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatSlideToggleModule,
     MatTooltipModule,
     ProductGallery,
+    PromDescriptionEditor,
   ],
   templateUrl: './product-form.html',
   styleUrl: './product-form.css',
@@ -123,7 +125,6 @@ export class ProductForm {
   protected readonly changed = signal(false);
 
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
-  protected readonly descriptionMaxLength = productConstraints.descriptionMaxLength;
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
   protected readonly keywordMaxLength = productConstraints.keywordMaxLength;
   protected readonly maxKeywords = productConstraints.maxKeywords;
@@ -136,8 +137,8 @@ export class ProductForm {
   protected readonly form = this.formBuilder.nonNullable.group({
     titleProm: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
     titleOlx: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
-    descriptionProm: ['', [Validators.maxLength(productConstraints.descriptionMaxLength)]],
-    descriptionOlx: ['', [Validators.maxLength(productConstraints.descriptionMaxLength)]],
+    descriptionProm: [''],
+    descriptionOlx: [''],
     seoKeywords: ['', [keywordsBound]],
     price: ['', [priceBound]],
     category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],

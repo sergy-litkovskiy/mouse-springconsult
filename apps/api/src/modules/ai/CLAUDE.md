@@ -19,7 +19,10 @@
   фото-викликів.
 - **Без зайвого форматування.** Відповідь запитуємо через structured outputs
   (`output_config.format` з JSON-схемою) і зберігаємо як plain text. Markdown,
-  емодзі, обгортки «Ось ваш опис:» — не генеруємо і не парсимо.
+  емодзі, обгортки «Ось ваш опис:» — не генеруємо і не парсимо. Опис для Prom у картці
+  є HTML, але модель його теж повертає plain text: у `<p>` його перетворює `products` під
+  час прийняття пропозиції, а не цей модуль
+  ([ADR 0016](../../../../../docs/features/product-creation-flow/adr/0016-store-the-prom-description-as-html.md), рішення №7).
 - Пошук ринкових цін — server tool `web_search_20260209` з `user_location` = UA;
   повертаємо діапазон + посилання на джерела, ціну не вигадуємо.
 - Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`

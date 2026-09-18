@@ -44,9 +44,23 @@
   gap: 0 16px;
 }
 
-.card-form__pair > mat-form-field {
+.card-form__pair > mat-form-field,
+.card-form__description {
   flex: 1 1 18rem;
   min-width: 0;
+}
+
+/* Matches the gap a mat-form-field leaves for its hint, so the pair lines up. */
+.card-form__description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 22px;
+}
+
+.card-form__label {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
 }
 
 .card-form__row {

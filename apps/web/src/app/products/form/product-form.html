@@ -49,20 +49,15 @@
     </div>
 
     <div class="card-form__pair">
-      <mat-form-field appearance="outline">
-        <mat-label>Опис для Prom</mat-label>
-        <textarea matInput formControlName="descriptionProm" rows="6"></textarea>
-        @if (form.controls.descriptionProm.hasError('maxlength')) {
-          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
-        }
-      </mat-form-field>
+      <!-- Not a mat-form-field: the editor is not a MatFormFieldControl, so the label is its own. -->
+      <div class="card-form__description">
+        <span class="card-form__label" aria-hidden="true">Опис для Prom</span>
+        <app-prom-description-editor formControlName="descriptionProm" />
+      </div>
 
       <mat-form-field appearance="outline">
         <mat-label>Опис для OLX</mat-label>
         <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
-        @if (form.controls.descriptionOlx.hasError('maxlength')) {
-          <mat-error>Довше за {{ descriptionMaxLength }} символів.</mat-error>
-        }
       </mat-form-field>
     </div>
 

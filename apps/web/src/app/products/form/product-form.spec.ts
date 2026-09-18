@@ -139,6 +139,31 @@ describe('ProductForm', () => {
     element.querySelector('form')?.dispatchEvent(new Event('submit'));
   }
 
+  /**
+   * The Prom description is an HTML editor (ADR 0016), not a textarea: the test writes the way an
+   * admin pasting markup would, through its HTML mode.
+   */
+  async function typePromDescription(html: string): Promise<void> {
+    promHtmlMode().click();
+    await settle();
+    const area = element.querySelector<HTMLTextAreaElement>('app-prom-description-editor textarea');
+    if (area === null) {
+      throw new Error('the Prom description editor has no HTML mode');
+    }
+    area.value = html;
+    area.dispatchEvent(new Event('input'));
+  }
+
+  function promHtmlMode(): HTMLButtonElement {
+    const button = element.querySelector<HTMLButtonElement>(
+      'app-prom-description-editor [data-action="html-mode"]',
+    );
+    if (button === null) {
+      throw new Error('the Prom description editor has no HTML button');
+    }
+    return button;
+  }
+
   async function toggle(label: string): Promise<MatSlideToggleHarness> {
     const loader = TestbedHarnessEnvironment.loader(fixture);
     return loader.getHarness(MatSlideToggleHarness.with({ label }));
@@ -183,7 +208,6 @@ describe('ProductForm', () => {
       for (const name of [
         'titleProm',
         'titleOlx',
-        'descriptionProm',
         'descriptionOlx',
         'seoKeywords',
         'price',
@@ -191,6 +215,7 @@ describe('ProductForm', () => {
       ]) {
         expect(field(name).disabled, name).toBe(true);
       }
+      expect(promHtmlMode().disabled).toBe(true);
       expect(await (await toggle('Опубліковано на Prom')).isDisabled()).toBe(true);
       expect(await (await toggle('Опубліковано на OLX')).isDisabled()).toBe(true);
       expect(saveButton().disabled).toBe(true);
@@ -242,7 +267,7 @@ describe('ProductForm', () => {
 
     type('titleProm', 'Миша Logitech MX Master 3');
     type('titleOlx', 'Logitech MX Master 3 бездротова');
-    type('descriptionProm', 'Бездротова миша у відмінному стані.');
+    await typePromDescription('Бездротова миша у відмінному стані.');
     type('descriptionOlx', 'Продам мишу, повний комплект.');
     type('seoKeywords', 'миша, logitech');
     type('price', '2499.00');
@@ -275,7 +300,7 @@ describe('ProductForm', () => {
     open(EMPTY_WITH_FRAME);
     await settle();
 
-    type('descriptionProm', 'Опис');
+    await typePromDescription('Опис');
     await settle();
     submit();
     await settle();

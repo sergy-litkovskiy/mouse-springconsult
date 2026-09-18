@@ -196,6 +196,15 @@ describe('product write contracts', () => {
     assert.equal(productUpdateSchema.parse({ seoKeywords: tooMany }).seoKeywords?.length, 31);
   });
 
+  it('takes a description of any length for either marketplace, on both write routes', () => {
+    const long = 'а'.repeat(20_000);
+
+    for (const field of ['descriptionProm', 'descriptionOlx'] as const) {
+      assert.equal(productCreateSchema.safeParse({ ...newCard, [field]: long }).success, true);
+      assert.equal(productUpdateSchema.safeParse({ [field]: long }).success, true);
+    }
+  });
+
   it('leaves a field the update did not send out of the parsed object', () => {
     // A default here would rewrite a column the admin never touched.
     const parsed = productUpdateSchema.parse({ price: '2499.00' });

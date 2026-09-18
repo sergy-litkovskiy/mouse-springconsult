@@ -6,6 +6,7 @@ import type {
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
+import { cleanDescription } from './cleanDescription.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -64,7 +65,11 @@ export class ProductService {
 
   async create(input: ProductCreate): Promise<ProductSaving> {
     const { seoKeywords, discardedKeywordsCount } = capKeywords(input.seoKeywords);
-    const product = await this.products.create({ ...input, seoKeywords });
+    const product = await this.products.create({
+      ...input,
+      descriptionProm: cleanDescription(input.descriptionProm),
+      seoKeywords,
+    });
 
     return { product, isReady: this.isReady(product), discardedKeywordsCount };
   }
@@ -83,12 +88,16 @@ export class ProductService {
 
   async update(id: string, changes: ProductUpdate): Promise<ProductSaving> {
     const { seoKeywords, discardedKeywordsCount } = capKeywords(changes.seoKeywords ?? []);
+    const cleaned =
+      changes.descriptionProm === undefined
+        ? changes
+        : { ...changes, descriptionProm: cleanDescription(changes.descriptionProm) };
     // zod leaves an absent `.optional()` field out of the object rather than setting it to
     // `undefined`, so no key here holds `undefined` — its inferred type just cannot say so
     // under `exactOptionalPropertyTypes`.
     const product = await this.products.update(
       id,
-      (changes.seoKeywords === undefined ? changes : { ...changes, seoKeywords }) as ProductChanges,
+      (cleaned.seoKeywords === undefined ? cleaned : { ...cleaned, seoKeywords }) as ProductChanges,
     );
     if (product === null) {
       throw new ProductNotFound(id);

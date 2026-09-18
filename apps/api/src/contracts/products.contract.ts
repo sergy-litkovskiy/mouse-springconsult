@@ -97,7 +97,11 @@ export type ProductListQuery = z.infer<typeof productListQuerySchema>;
  * the bounds, so an absent title stays empty while a blank one sent on purpose is refused.
  */
 const cardTitle = z.string().trim().min(1).max(productConstraints.titleMaxLength);
-const cardDescription = z.string().max(productConstraints.descriptionMaxLength);
+/**
+ * Unbounded on purpose (ADR 0016, №6): markup makes a character count a poor measure of how much
+ * text there is, and Fastify's `bodyLimit` still caps the request.
+ */
+const cardDescription = z.string();
 const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMaxLength);
 
 /**

@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse/sync';
 import sanitizeHtml from 'sanitize-html';
 import { productConstraints, type ProductCondition } from '../src/contracts/products-limits.ts';
-import type { ProductDraft } from '../src/modules/products/index.ts';
+import { cleanDescription, type ProductDraft } from '../src/modules/products/index.ts';
 
 /**
  * Pure mapping of a Prom product export (the CSV from the Prom cabinet) onto cards. No I/O here:
@@ -77,40 +77,6 @@ export function resolveColumns(header: readonly string[]): PromColumns {
 }
 
 /**
- * Most descriptions were pasted from a browser and carry Google's markup along: `data-*`,
- * `jscontroller`, inline styles, comments, empty paragraphs. Only the structure an admin would
- * type by hand survives; any other tag is unwrapped and its text kept.
- */
-export function cleanDescription(html: string): string {
-  const sanitized = sanitizeHtml(html, {
-    allowedTags: [
-      'p',
-      'br',
-      'ul',
-      'ol',
-      'li',
-      'strong',
-      'b',
-      'em',
-      'i',
-      'u',
-      'h2',
-      'h3',
-      'h4',
-      'a',
-    ],
-    allowedAttributes: { a: ['href'] },
-    nonTextTags: ['style', 'script', 'textarea', 'option', 'noscript', 'title'],
-  });
-
-  return sanitized
-    .replaceAll(/(?:&nbsp;|\u00a0)(?:\s|&nbsp;)+/g, ' ')
-    .replaceAll(/<p>(?:\s|&nbsp;|<br \/>)*<\/p>/g, '')
-    .replaceAll(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-/**
  * sanitize-html escapes the text it writes out; plain text has no markup to protect, so the
  * entities go back to characters. `&amp;` is last, or `&amp;lt;` would turn into `<`.
  */
@@ -131,7 +97,7 @@ const TEXT_ENTITIES: readonly (readonly [string, string])[] = [
  */
 export function toPlainText(cleanHtml: string): string {
   const withBreaks = cleanHtml
-    .replaceAll(/<br \/>\s*/g, '\n')
+    .replaceAll(/<br(?: \/)?>\s*/g, '\n')
     .replaceAll('<li>', '• ')
     .replaceAll(/<\/li>\s*/g, '\n')
     .replaceAll(/<\/(?:p|ul|ol|h2|h3|h4)>/g, '\n\n');
