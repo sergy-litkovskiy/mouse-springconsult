@@ -47,7 +47,7 @@ Redis і RabbitMQ не додаємо: черга живе в Postgres ([CLAUDE.
 
 ```yaml
     PreparationRun:
-      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      description: "**Поставка 2 — спроектовано, таблиця створена міграцією.**"
         status: { type: string, enum: [queued, running, succeeded, failed] }
 ```
 

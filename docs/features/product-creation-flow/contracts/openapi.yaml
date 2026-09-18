@@ -13,7 +13,7 @@ info:
     сховище, відмітки присутності. Ендпоінти `/products`, `/products/{id}`,
     `/products/{id}/images*`.
 
-    **Поставка 2** (спроектована в data-model.md, таблиці ще без міграції): тексти,
+    **Поставка 2** (спроектована в data-model.md, таблиці створені міграцією): тексти,
     діапазон ціни, пропозиції, вартість підготовки. Ендпоінти
     `/products/{id}/preparation-runs*` і `/products/{id}/suggestions/*` описані тут
     наперед, бо форма зберігання вже зафіксована ([sad.md §1](../sad.md)), а розділяти
@@ -282,7 +282,7 @@ paths:
       summary: Запустити підготовку (тексти, ціна або обидва)
       description: >-
         **Поставка 2 — ендпоінт спроектований, таблиця `product_preparation_runs`
-        іще без міграції (data-model.md, розділ Migrations).**
+        створена міграцією (data-model.md, розділ Migrations).**
 
         Область `texts`/`both` розпізнає товар із головного кадру автоматично, як
         частину того самого виклику, що готує тексти ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md));
@@ -712,7 +712,7 @@ components:
 
     PreparationRun:
       type: object
-      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      description: "**Поставка 2 — спроектовано, таблиця створена міграцією.**"
       required: [id, productId, scope, status, model, inputTokens, outputTokens, createdAt]
       properties:
         id: { type: string, format: uuid }

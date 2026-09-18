@@ -36,7 +36,7 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
 | `ProductImage.r2Key/url/position/isMain` | `product_images` (перевірено міграцією — колонка `url` реально ще існує, не лише в схемі) | high |
 | `ProductCreateRequest.category` | `products.category VARCHAR(120) NOT NULL` | high |
 | `ProductUpdateResponse.discardedKeywordsCount` | AC-07, рахує сервіс, колонки немає | medium |
-| `PreparationRun.*` | `product_preparation_runs` — таблиця без міграції (перевірено: відсутня в `db/migrations/`) | medium (spec'd, unmigrated) |
+| `PreparationRun.*` | `product_preparation_runs` — міграція `1789736913481-create-preparation-tables` (T26) | high |
 | `FieldSuggestion.field` enum | `product_field_suggestions.field CHECK IN (...)` | high |
 | `FieldSuggestion.value` (форма для `price`) | data-model.md Open items: `{priceFrom, priceTo}`, закрито 2026-09-13 | high |
 | `PreparationRunCreateRequest.scope` | `product_preparation_runs.scope CHECK IN (texts,price,both,field)`; тіло — `z.discriminatedUnion('scope', …)` ([ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md)) | high |
