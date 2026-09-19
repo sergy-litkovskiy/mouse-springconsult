@@ -19,6 +19,15 @@ export type {
   ProductListCriteria,
 } from './ProductRepository.ts';
 
+export { PreparationRepository } from './PreparationRepository.ts';
+export type {
+  CallUsage,
+  PreparationRunDraft,
+  RunOutcome,
+  SuggestionDraft,
+  TokenTotals,
+} from './PreparationRepository.ts';
+
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
 export { cleanDescription } from './cleanDescription.ts';

@@ -19,6 +19,10 @@ export class MediaService {
     return key;
   }
 
+  async read(key: string): Promise<Uint8Array> {
+    throw new Error('Not implemented');
+  }
+
   async remove(key: string): Promise<void> {
     await this.storage.delete(key);
   }

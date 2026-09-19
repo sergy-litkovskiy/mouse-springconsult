@@ -1,0 +1,224 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { after, before, beforeEach, describe, it } from 'node:test';
+import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
+import { createDataSource } from '../../db.ts';
+import { FieldSuggestion } from './FieldSuggestion.ts';
+import { PreparationRepository } from './PreparationRepository.ts';
+import { PreparationRun, type PreparationStatus } from './PreparationRun.ts';
+import { PRODUCTS_TABLE, Product } from './Product.ts';
+import { ProductImage } from './ProductImage.ts';
+
+/**
+ * Against a real Postgres: adding tokens instead of overwriting them and the transaction around
+ * the finishing write are exactly what a stub would answer by construction.
+ */
+
+const dataSource = createDataSource({
+  url: testDatabaseUrl(),
+  entities: [Product, ProductImage, PreparationRun, FieldSuggestion],
+});
+
+let runs: PreparationRepository;
+
+const MODEL = 'claude-sonnet-5';
+
+async function seedProduct(): Promise<string> {
+  const saved = await dataSource.getRepository(Product).save({
+    titleProm: 'Миша Logitech MX Master 3',
+    descriptionProm: 'Бездротова миша у відмінному стані.',
+    titleOlx: 'Logitech MX Master 3 бездротова миша',
+    descriptionOlx: 'Продам мишу Logitech, повний комплект.',
+    price: '2499.00',
+    seoKeywords: ['миша'],
+    category: 'Периферія',
+    publishedProm: false,
+    publishedOlx: false,
+    condition: 'used',
+    promId: null,
+    olxId: null,
+  });
+  return saved.id;
+}
+
+async function seedRun(
+  productId: string,
+  status: PreparationStatus = 'running',
+  tokens: { inputTokens: number; outputTokens: number } = { inputTokens: 0, outputTokens: 0 },
+): Promise<string> {
+  const saved = await dataSource.getRepository(PreparationRun).save({
+    productId,
+    scope: 'both',
+    idempotencyKey: randomUUID(),
+    status,
+    errorCode: null,
+    model: MODEL,
+    ...tokens,
+    startedAt: null,
+    finishedAt: null,
+  });
+  return saved.id;
+}
+
+async function loadRun(runId: string): Promise<PreparationRun> {
+  const run = await dataSource.getRepository(PreparationRun).findOneBy({ id: runId });
+  assert.ok(run, `run ${runId} was expected to exist`);
+  return run;
+}
+
+async function suggestionsOf(runId: string): Promise<FieldSuggestion[]> {
+  return dataSource
+    .getRepository(FieldSuggestion)
+    .find({ where: { runId }, order: { field: 'ASC' } });
+}
+
+describe('preparation repository (postgres)', () => {
+  before(async () => {
+    await prepareTestDatabase();
+    await dataSource.initialize();
+    runs = new PreparationRepository(dataSource);
+  });
+
+  after(async () => {
+    await dataSource.destroy();
+  });
+
+  beforeEach(async () => {
+    // The run and suggestion tables go with the card: both reference it `on delete cascade`.
+    await resetTables(dataSource, [PRODUCTS_TABLE]);
+  });
+
+  it('inserts a queued run with no tokens spent yet (Checklist 1)', async () => {
+    const productId = await seedProduct();
+
+    const created = await runs.createRun({
+      productId,
+      scope: 'texts',
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    });
+
+    const stored = await loadRun(created.id);
+    assert.equal(stored.productId, productId);
+    assert.equal(stored.scope, 'texts');
+    assert.equal(stored.idempotencyKey, 'card:texts:v1');
+    assert.equal(stored.status, 'queued');
+    assert.equal(stored.errorCode, null);
+    assert.equal(stored.inputTokens, 0);
+    assert.equal(stored.outputTokens, 0);
+  });
+
+  it('moves a queued run to running and stamps its start (Checklist 1)', async () => {
+    const runId = await seedRun(await seedProduct(), 'queued');
+
+    await runs.startRun(runId);
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'running');
+    assert.ok(stored.startedAt instanceof Date);
+    assert.equal(stored.finishedAt, null);
+  });
+
+  it('adds the usage of every call to the run instead of overwriting it (AC-14, DoD retry)', async () => {
+    const runId = await seedRun(await seedProduct());
+
+    await runs.recordUsage(runId, { model: MODEL, inputTokens: 1000, outputTokens: 200 });
+    await runs.recordUsage(runId, { model: MODEL, inputTokens: 300, outputTokens: 50 });
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.model, MODEL);
+    assert.equal(stored.inputTokens, 1300);
+    assert.equal(stored.outputTokens, 250);
+  });
+
+  it('writes one row per suggestion and marks the run succeeded (AC-05, AC-28)', async () => {
+    const runId = await seedRun(await seedProduct());
+
+    await runs.finishRun(runId, {
+      status: 'succeeded',
+      suggestions: [
+        { field: 'description_prom', value: 'Опис для Prom.' },
+        { field: 'description_olx', value: 'Опис для OLX.' },
+        { field: 'seo_keywords', value: ['миша', 'logitech'] },
+        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } },
+      ],
+    });
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'succeeded');
+    assert.equal(stored.errorCode, null);
+    assert.ok(stored.finishedAt instanceof Date);
+
+    const suggestions = await suggestionsOf(runId);
+    assert.deepEqual(
+      suggestions.map(({ field, value, resolution }) => ({ field, value, resolution })),
+      [
+        { field: 'description_olx', value: 'Опис для OLX.', resolution: null },
+        { field: 'description_prom', value: 'Опис для Prom.', resolution: null },
+        {
+          field: 'price',
+          value: { priceFrom: '1800.00', priceTo: '2400.00' },
+          resolution: null,
+        },
+        { field: 'seo_keywords', value: ['миша', 'logitech'], resolution: null },
+      ],
+    );
+  });
+
+  it('keeps the suggestions of a run that ends failed with its error code (AC-10b)', async () => {
+    const runId = await seedRun(await seedProduct());
+
+    await runs.finishRun(runId, {
+      status: 'failed',
+      errorCode: 'price_unavailable',
+      suggestions: [{ field: 'description_prom', value: 'Опис для Prom.' }],
+    });
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'failed');
+    assert.equal(stored.errorCode, 'price_unavailable');
+    assert.ok(stored.finishedAt instanceof Date);
+    assert.deepEqual(
+      (await suggestionsOf(runId)).map(({ field }) => field),
+      ['description_prom'],
+    );
+  });
+
+  it('leaves the run unfinished and without suggestions when the finishing write fails (AC-28)', async () => {
+    const runId = await seedRun(await seedProduct());
+
+    // A second row for the same field breaks `product_field_suggestions_run_field_key`: the
+    // only way to make the database itself refuse part of an otherwise valid write.
+    await assert.rejects(
+      runs.finishRun(runId, {
+        status: 'succeeded',
+        suggestions: [
+          { field: 'description_prom', value: 'Перший варіант.' },
+          { field: 'description_prom', value: 'Другий варіант.' },
+        ],
+      }),
+      /product_field_suggestions_run_field_key/,
+    );
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'running');
+    assert.equal(stored.finishedAt, null);
+    assert.deepEqual(await suggestionsOf(runId), []);
+  });
+
+  it('sums the tokens of every run of a card and of that card only (Checklist 1, AC-14)', async () => {
+    const productId = await seedProduct();
+    const otherProductId = await seedProduct();
+    await seedRun(productId, 'succeeded', { inputTokens: 1000, outputTokens: 200 });
+    await seedRun(productId, 'failed', { inputTokens: 300, outputTokens: 50 });
+    await seedRun(otherProductId, 'succeeded', { inputTokens: 7000, outputTokens: 900 });
+
+    assert.deepEqual(await runs.sumTokens(productId), { inputTokens: 1300, outputTokens: 250 });
+  });
+
+  it('reports zero tokens for a card that has never been prepared (Checklist 1)', async () => {
+    const productId = await seedProduct();
+
+    assert.deepEqual(await runs.sumTokens(productId), { inputTokens: 0, outputTokens: 0 });
+  });
+});
