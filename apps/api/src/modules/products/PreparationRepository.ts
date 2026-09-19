@@ -38,6 +38,12 @@ export type TokenTotals = {
   readonly outputTokens: number;
 };
 
+export type RunClaim = {
+  readonly run: PreparationRun;
+  /** `false` when a run with the same idempotency key already existed and was returned instead. */
+  readonly created: boolean;
+};
+
 const UNFINISHED: PreparationStatus[] = ['queued', 'running'];
 
 export class PreparationRepository {
@@ -56,6 +62,18 @@ export class PreparationRepository {
         finishedAt: null,
       }),
     );
+  }
+
+  async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
+    throw new Error('Not implemented');
+  }
+
+  async countRecentRuns(productId: string, windowSeconds: number): Promise<number> {
+    throw new Error('Not implemented');
+  }
+
+  async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
+    throw new Error('Not implemented');
   }
 
   /**

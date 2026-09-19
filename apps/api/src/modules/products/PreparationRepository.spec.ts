@@ -232,4 +232,87 @@ describe('preparation repository (postgres)', () => {
 
     assert.deepEqual(await runs.sumTokens(productId), { inputTokens: 0, outputTokens: 0 });
   });
+
+  it('inserts a queued run for an input it has not seen and reports it as created (Checklist 6)', async () => {
+    const productId = await seedProduct();
+
+    const claim = await runs.createRunOnce({
+      productId,
+      scope: 'texts',
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    });
+
+    assert.equal(claim.created, true);
+    const stored = await loadRun(claim.run.id);
+    assert.equal(stored.productId, productId);
+    assert.equal(stored.scope, 'texts');
+    assert.equal(stored.status, 'queued');
+  });
+
+  it('returns the existing run for a repeated idempotency key without a second row (DoD idempotency)', async () => {
+    const productId = await seedProduct();
+    const draft = {
+      productId,
+      scope: 'texts' as const,
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    };
+
+    const first = await runs.createRunOnce(draft);
+    const second = await runs.createRunOnce(draft);
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+    assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
+  });
+
+  it('leaves one row when the same input is started twice at once (DoD idempotency)', async () => {
+    const productId = await seedProduct();
+    const draft = {
+      productId,
+      scope: 'price' as const,
+      idempotencyKey: 'card:price:v1',
+      model: MODEL,
+    };
+
+    const claims = await Promise.all([runs.createRunOnce(draft), runs.createRunOnce(draft)]);
+
+    assert.deepEqual(claims.map(({ created }) => created).sort(), [false, true]);
+    assert.equal(claims[0]?.run.id, claims[1]?.run.id);
+    assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
+  });
+
+  it('counts the runs of a card created inside the window, whatever their scope or status (Checklist 5)', async () => {
+    const productId = await seedProduct();
+    const otherProductId = await seedProduct();
+    await seedRun(productId, 'queued');
+    await seedRun(productId, 'succeeded');
+    await seedRun(productId, 'failed');
+    const oldRunId = await seedRun(productId, 'succeeded');
+    await seedRun(otherProductId, 'queued');
+    await dataSource.query(
+      `update product_preparation_runs set created_at = now() - interval '2 hours' where id = $1`,
+      [oldRunId],
+    );
+
+    assert.equal(await runs.countRecentRuns(productId, 60 * 60), 3);
+  });
+
+  it('finds a run of the card by its id (Checklist 3)', async () => {
+    const productId = await seedProduct();
+    const runId = await seedRun(productId, 'queued');
+
+    const found = await runs.findRun(productId, runId);
+
+    assert.equal(found?.id, runId);
+    assert.equal(found?.status, 'queued');
+  });
+
+  it('does not find a run through another card (Checklist 3)', async () => {
+    const runId = await seedRun(await seedProduct(), 'queued');
+    const otherProductId = await seedProduct();
+
+    assert.equal(await runs.findRun(otherProductId, runId), null);
+  });
 });
