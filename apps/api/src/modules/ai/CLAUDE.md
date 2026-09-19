@@ -25,8 +25,11 @@
   є HTML, але модель його теж повертає plain text: у `<p>` його перетворює `products` під
   час прийняття пропозиції, а не цей модуль
   ([ADR 0016](../../../../../docs/features/product-creation-flow/adr/0016-store-the-prom-description-as-html.md), рішення №7).
-- Пошук ринкових цін — server tool `web_search_20260209` з `user_location` = UA;
-  повертаємо діапазон + посилання на джерела, ціну не вигадуємо.
+- Пошук ринкових цін — server tool `web_search_20260209`; повертаємо діапазон + посилання
+  на джерела, ціну не вигадуємо. `user_location` — `timezone: 'Europe/Kyiv'`, не
+  `country: 'UA'`: провайдер пошуку відмовляє на цьому коді країни («not supported»,
+  знайдено на живому прогоні T27, 2026-09-19). Локалізацію «в Україні, у гривнях» несе
+  сам текст запиту.
 - Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`
   не використовуємо — параметр видалено на цій моделі. Ціну знижуємо через
   `output_config.effort` (старт — `low` на всіх викликах), а не вимкненням thinking.

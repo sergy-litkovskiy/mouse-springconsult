@@ -120,6 +120,17 @@ module.exports = {
     },
 
     {
+      name: 'anthropic-sdk-stays-in-the-adapter',
+      severity: 'error',
+      comment:
+        'AnthropicAdapter.ts is the only file that knows the model is called through the ' +
+        'Anthropic SDK (T27). An import anywhere else makes swapping providers a change across ' +
+        'modules instead of one file.',
+      from: { pathNot: ['^src/modules/ai/AnthropicAdapter\\.ts$'] },
+      to: { dependencyTypes: ['npm'], path: '^node_modules/@anthropic-ai/' },
+    },
+
+    {
       name: 'no-deep-import-between-modules',
       severity: 'error',
       comment: 'A module sees another module only through its index.ts.',
