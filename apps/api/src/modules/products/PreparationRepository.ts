@@ -64,16 +64,41 @@ export class PreparationRepository {
     );
   }
 
+  /**
+   * `ON CONFLICT DO NOTHING` rather than a lookup first: two starts of the same input at once
+   * would both miss the lookup, and the UNIQUE index is what settles which of them created the run.
+   */
   async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
-    throw new Error('Not implemented');
+    const runs = this.dataSource.getRepository(PreparationRun);
+    const inserted = await runs
+      .createQueryBuilder()
+      .insert()
+      .values({
+        ...draft,
+        status: 'queued',
+        errorCode: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        startedAt: null,
+        finishedAt: null,
+      })
+      .orIgnore()
+      .execute();
+    const run = await runs.findOneByOrFail({ idempotencyKey: draft.idempotencyKey });
+    return { run, created: (inserted.raw as unknown[]).length > 0 };
   }
 
   async countRecentRuns(productId: string, windowSeconds: number): Promise<number> {
-    throw new Error('Not implemented');
+    return this.dataSource
+      .getRepository(PreparationRun)
+      .createQueryBuilder('run')
+      .where('run.productId = :productId', { productId })
+      .andWhere('run.createdAt > now() - make_interval(secs => :windowSeconds)', { windowSeconds })
+      .getCount();
   }
 
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
-    throw new Error('Not implemented');
+    return this.dataSource.getRepository(PreparationRun).findOneBy({ id: runId, productId });
   }
 
   /**

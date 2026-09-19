@@ -1,4 +1,4 @@
-import type { PgBoss } from '../../queue.ts';
+import { preparationQueue, type PgBoss } from '../../queue.ts';
 
 export type RewritableCardField =
   'titleProm' | 'titleOlx' | 'descriptionProm' | 'descriptionOlx' | 'seoKeywords';
@@ -21,6 +21,6 @@ export class PreparationQueue {
   constructor(private readonly boss: PgBoss) {}
 
   async enqueue(job: PreparationRunJob): Promise<void> {
-    throw new Error('Not implemented');
+    await this.boss.send(preparationQueue.name, job);
   }
 }
