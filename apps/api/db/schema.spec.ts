@@ -37,6 +37,36 @@ async function insertImage(
   );
 }
 
+async function insertRun(
+  productId: string,
+  idempotencyKey: string,
+  scope = 'both',
+): Promise<string> {
+  const rows = await dataSource.query<{ id: string }[]>(
+    `insert into "product_preparation_runs" ("product_id", "scope", "idempotency_key", "status", "model")
+     values ($1, $2, $3, 'queued', 'claude-sonnet-5')
+     returning "id"`,
+    [productId, scope, idempotencyKey],
+  );
+
+  const id = rows[0]?.id;
+  assert.ok(id !== undefined, 'insert into product_preparation_runs returned no row');
+  return id;
+}
+
+async function insertSuggestion(
+  runId: string,
+  field: string,
+  value: unknown,
+  resolution: string | null = null,
+): Promise<void> {
+  await dataSource.query(
+    `insert into "product_field_suggestions" ("run_id", "field", "value", "resolution")
+     values ($1, $2, $3::jsonb, $4)`,
+    [runId, field, JSON.stringify(value), resolution],
+  );
+}
+
 describe('database schema constraints', () => {
   before(async () => {
     await prepareTestDatabase();
@@ -48,7 +78,12 @@ describe('database schema constraints', () => {
   });
 
   beforeEach(async () => {
-    await resetTables(dataSource, ['product_images', 'products']);
+    await resetTables(dataSource, [
+      'product_field_suggestions',
+      'product_preparation_runs',
+      'product_images',
+      'products',
+    ]);
   });
 
   it('lets two frames swap positions inside one transaction', async () => {
@@ -130,5 +165,68 @@ describe('database schema constraints', () => {
       dataSource.query(`update "products" set "prom_id" = '1519870367' where "id" = $1`, [second]),
       /products_prom_id_key/,
     );
+  });
+
+  it('finds the paid run again instead of letting the same input start a second one', async () => {
+    const productId = await insertProduct();
+    await insertRun(productId, 'card:both:frames-hash');
+
+    await assert.rejects(
+      insertRun(productId, 'card:both:frames-hash'),
+      /product_preparation_runs_idempotency_key_key/,
+    );
+  });
+
+  it('rejects a scope and a status outside the listed ones', async () => {
+    const productId = await insertProduct();
+
+    await assert.rejects(insertRun(productId, 'k1', 'all'), /product_preparation_runs_scope_check/);
+    await assert.rejects(
+      dataSource.query(
+        `insert into "product_preparation_runs" ("product_id", "scope", "idempotency_key", "status", "model")
+         values ($1, 'texts', 'k2', 'dlq', 'claude-sonnet-5')`,
+        [productId],
+      ),
+      /product_preparation_runs_status_check/,
+    );
+  });
+
+  it('keeps at most one suggestion per field in a run', async () => {
+    const runId = await insertRun(await insertProduct(), 'k');
+    await insertSuggestion(runId, 'description_olx', 'Опис');
+
+    await assert.rejects(
+      insertSuggestion(runId, 'description_olx', 'Інший опис'),
+      /product_field_suggestions_run_field_key/,
+    );
+  });
+
+  it('leaves an undecided suggestion as NULL and has no word for it', async () => {
+    const runId = await insertRun(await insertProduct(), 'k');
+
+    await assert.doesNotReject(
+      insertSuggestion(runId, 'price', { priceFrom: '100.00', priceTo: '200.00' }),
+    );
+    await assert.rejects(
+      insertSuggestion(runId, 'seo_keywords', ['миша'], 'pending'),
+      /product_field_suggestions_resolution_check/,
+    );
+    await assert.rejects(
+      insertSuggestion(runId, 'category', 'Периферія'),
+      /product_field_suggestions_field_check/,
+    );
+  });
+
+  it('removes the runs and their suggestions together with the card', async () => {
+    const productId = await insertProduct();
+    await insertSuggestion(await insertRun(productId, 'k'), 'title_prom', 'Миша');
+
+    await dataSource.query(`delete from "products" where "id" = $1`, [productId]);
+
+    const [counts] = await dataSource.query<{ runs: number; suggestions: number }[]>(
+      `select (select count(*)::int from "product_preparation_runs") as "runs",
+              (select count(*)::int from "product_field_suggestions") as "suggestions"`,
+    );
+    assert.deepEqual(counts, { runs: 0, suggestions: 0 });
   });
 });

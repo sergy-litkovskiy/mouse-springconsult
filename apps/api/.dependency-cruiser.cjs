@@ -20,7 +20,8 @@ const REPOSITORIES = '^src/modules/[^/]+/[^/]*Repository\\.ts$';
  * A new entity is added here, and that is the whole point of the list: adding one is a
  * decision about where the ORM is allowed to appear.
  */
-const ENTITIES = '^src/modules/[^/]+/(User|Product|ProductImage)\\.ts$';
+const ENTITIES =
+  '^src/modules/[^/]+/(User|Product|ProductImage|PreparationRun|FieldSuggestion)\\.ts$';
 // depcruise matches `to.path` against the *resolved* path, not against the package name.
 const ORM_PACKAGES = '^node_modules/(typeorm|pg)(/|$)';
 
@@ -45,11 +46,23 @@ module.exports = {
     },
 
     {
+      name: 'composition-roots-stay-apart',
+      severity: 'error',
+      comment:
+        'api.ts and worker.ts are two processes. An import between them would start one inside ' +
+        'the other, and a stopped worker could no longer leave the api untouched.',
+      from: { path: '^src/(api|worker)\\.ts$' },
+      to: { path: '^src/(api|worker)\\.ts$' },
+    },
+
+    {
       name: 'contracts-are-pure',
       severity: 'error',
       comment: 'contracts/ holds pure zod schemas: no modules, no technical services, no I/O.',
       from: { path: '^src/contracts/(?!.*\\.spec\\.ts$)' },
-      to: { path: '^src/(modules|api\\.ts|worker\\.ts|db\\.ts|logger\\.ts|config\\.ts)' },
+      to: {
+        path: '^src/(modules|api\\.ts|worker\\.ts|db\\.ts|logger\\.ts|config\\.ts|queue\\.ts)',
+      },
     },
 
     {
@@ -104,6 +117,17 @@ module.exports = {
         'makes replacing the storage a change across modules instead of one file.',
       from: { pathNot: ['^src/modules/media/ImageStorage\\.ts$'] },
       to: { dependencyTypes: ['npm'], path: '^node_modules/@aws-sdk/' },
+    },
+
+    {
+      name: 'anthropic-sdk-stays-in-the-adapter',
+      severity: 'error',
+      comment:
+        'AnthropicAdapter.ts is the only file that knows the model is called through the ' +
+        'Anthropic SDK (T27). An import anywhere else makes swapping providers a change across ' +
+        'modules instead of one file.',
+      from: { pathNot: ['^src/modules/ai/AnthropicAdapter\\.ts$'] },
+      to: { dependencyTypes: ['npm'], path: '^node_modules/@anthropic-ai/' },
     },
 
     {

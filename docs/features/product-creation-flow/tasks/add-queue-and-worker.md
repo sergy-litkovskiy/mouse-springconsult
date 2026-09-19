@@ -1,7 +1,7 @@
 ---
 id: T25
 title: "queue.ts, worker.ts, pg-boss, сервіс worker у compose"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1500
 blocked_by: [T23, T42, T43, T49]
 blocks: [T26, T27]
-updated_at: "2026-09-17"
+updated_at: "2026-09-18"
 ---
 
 # T25 — `queue.ts`, `worker.ts`, pg-boss, сервіс `worker` у compose
@@ -47,7 +47,7 @@ Redis і RabbitMQ не додаємо: черга живе в Postgres ([CLAUDE.
 
 ```yaml
     PreparationRun:
-      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      description: "**Поставка 2 — спроектовано, таблиця створена міграцією.**"
         status: { type: string, enum: [queued, running, succeeded, failed] }
 ```
 
@@ -81,12 +81,12 @@ Redis і RabbitMQ не додаємо: черга живе в Postgres ([CLAUDE.
 
 ## DoD
 
-- [ ] `docker compose up` піднімає `worker`; `docker compose logs -f worker` показує, що обробник підписався.
-- [ ] Задача доходить до обробника за ≤ 5 с — виміряно, а не припущено.
-- [ ] `worker.ts` не імпортується з `api.ts` і навпаки — `deps:check` зелений.
-- [ ] Падіння `worker` не валить `api` — перевірено зупинкою контейнера.
-- [ ] Параметри черги — константи `config.ts`, а не env-змінні: значення однакове на всіх машинах.
-- [ ] Коміт: `feat(api): add the pg-boss queue and the worker process`.
+- [x] `docker compose up` піднімає `worker`; `docker compose logs -f worker` показує, що обробник підписався (`worker subscribed`).
+- [x] Задача доходить до обробника за ≤ 5 с — виміряно, а не припущено: 5 проб, `waitMs` 249–787 мс (`createdOn` задачі → старт обробника) при опитуванні раз на 1 с.
+- [x] `worker.ts` не імпортується з `api.ts` і навпаки — `deps:check` зелений; правило `composition-roots-stay-apart` перевірено навмисним порушенням.
+- [x] Падіння `worker` не валить `api` — перевірено зупинкою контейнера: `api` healthy, `/healthz` 200, `/products` без сесії 401.
+- [x] Параметри черги — константи `config.ts`, а не env-змінні: значення однакове на всіх машинах.
+- [x] Коміт: `feat(api): add the pg-boss queue and the worker process`.
 
 ## Links
 

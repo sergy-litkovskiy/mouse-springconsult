@@ -13,7 +13,7 @@ info:
     сховище, відмітки присутності. Ендпоінти `/products`, `/products/{id}`,
     `/products/{id}/images*`.
 
-    **Поставка 2** (спроектована в data-model.md, таблиці ще без міграції): тексти,
+    **Поставка 2** (спроектована в data-model.md, таблиці створені міграцією): тексти,
     діапазон ціни, пропозиції, вартість підготовки. Ендпоінти
     `/products/{id}/preparation-runs*` і `/products/{id}/suggestions/*` описані тут
     наперед, бо форма зберігання вже зафіксована ([sad.md §1](../sad.md)), а розділяти
@@ -282,7 +282,7 @@ paths:
       summary: Запустити підготовку (тексти, ціна або обидва)
       description: >-
         **Поставка 2 — ендпоінт спроектований, таблиця `product_preparation_runs`
-        іще без міграції (data-model.md, розділ Migrations).**
+        створена міграцією (data-model.md, розділ Migrations).**
 
         Область `texts`/`both` розпізнає товар із головного кадру автоматично, як
         частину того самого виклику, що готує тексти ([ADR 0014](../adr/0014-let-ai-recognize-the-item-from-photos.md));
@@ -331,7 +331,7 @@ paths:
                 title:
                   value: { error: { code: preparation_input_incomplete, message: "Додайте заголовок Prom або OLX перед пошуком ціни", details: { missing: ["title"] } } }
         "429":
-          description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
+          description: Перевищено обмеження частоти запусків — 20 на картку за годину, спільні для всіх областей (PRD §6.1 — окреме від ліміту входу)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -712,7 +712,7 @@ components:
 
     PreparationRun:
       type: object
-      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      description: "**Поставка 2 — спроектовано, таблиця створена міграцією.**"
       required: [id, productId, scope, status, model, inputTokens, outputTokens, createdAt]
       properties:
         id: { type: string, format: uuid }
@@ -721,7 +721,10 @@ components:
         status: { type: string, enum: [queued, running, succeeded, failed] }
         errorCode:
           type: [string, null]
-          description: Заповнено лише при status=failed; той самий код, що показує AC-10.
+          description: >-
+            Заповнено лише при status=failed; той самий код, що показує AC-10.
+            `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
+            записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
         model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }

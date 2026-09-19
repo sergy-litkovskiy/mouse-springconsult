@@ -68,10 +68,67 @@ export const config = {
     deleteBatchSize: 1_000,
   },
 
+  queue: {
+    /** pg-boss keeps its own tables in this schema of the same database as the cards. */
+    schema: 'pgboss',
+    /** The api only enqueues and the worker takes one job at a time, so a small pool suffices. */
+    poolSize: 4,
+    /**
+     * A queued job has to start within 5 s (PRD §6). Polling, not LISTEN/NOTIFY, is the floor:
+     * one second leaves room for the fetch itself.
+     */
+    pollingIntervalSeconds: 1,
+    preparation: {
+      name: 'product-preparation',
+      /** A failed attempt is retried with a growing pause; past the limit the job stays `failed`. */
+      retryLimit: 2,
+      retryDelaySeconds: 10,
+      retryBackoff: true,
+      /** A model call takes tens of seconds; an attempt still active after this is presumed dead. */
+      expireInSeconds: 5 * 60,
+    },
+  },
+
   db: {
     poolSize: 10,
     connectTimeoutMs: 10_000,
     synchronize: false,
+  },
+
+  ai: {
+    /**
+     * One model for every call (ADR 0004): the parameter contract is identical to Opus 5, so
+     * raising a single call back to Opus is a constant edit, not a code change. Not an env var —
+     * swapping the model changes generation quality, response shape and cost per card, so it goes
+     * through a commit and a review, not a container restart.
+     */
+    model: 'claude-sonnet-5',
+    /** Per-call `effort`, so one call can be raised without touching the other two (ADR 0004). */
+    effort: {
+      texts: 'low',
+      price: 'low',
+      field: 'low',
+    },
+    webSearch: {
+      maxUses: 2,
+      /**
+       * `user_location.country: 'UA'` (`ai/CLAUDE.md`'s original choice) is rejected by the
+       * search provider with "Country code UA is not supported" — found on T27's live run
+       * (2026-09-19). A timezone is the closest still-supported way to localize the search.
+       */
+      userTimezone: 'Europe/Kyiv',
+    },
+    /**
+     * Deliberate cost reduction, not a model limit — `claude-sonnet-5` accepts up to 2576 px on
+     * the longer side (~4784 visual tokens/frame). A product photo does not need that detail; if
+     * recognition starts missing, raise this after remeasuring cost with `count_tokens`.
+     */
+    frameOptimization: {
+      maxDimensionPx: 1568,
+      jpegQuality: 80,
+    },
+    /** Additional frames upload without AI; recognition never sees more than this many. */
+    maxFramesPerRequest: 3,
   },
 } as const;
 
@@ -110,6 +167,13 @@ const envSchema = z.object({
         !URL.canParse(value) || !new URL(value).hostname.endsWith('.r2.cloudflarestorage.com'),
       'R2_PUBLIC_BASE_URL must be the public bucket address, not the S3 endpoint',
     ),
+
+  /**
+   * Optional on purpose (`ai/CLAUDE.md`): tests and CI never set it, and `AnthropicAdapter` is
+   * only ever constructed with a real key by whatever composition root chooses to wire it up. A
+   * required schema entry would make every test process load-fail without it.
+   */
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -21,7 +21,7 @@ updated_at: "2026-09-18"
 
 Запит 2026-09-18: поле «Опис для Prom» отримує міні-редактор HTML з режимом перегляду й
 редагування сирого HTML, а поруч — кнопку «Почистити html». Prom приймає опис у HTML, а
-CSV-імпорт (`db/prom-csv.ts`, `cleanDescription`) уже пише в `descriptionProm` очищений HTML.
+xlsx-імпорт (`db/prom-xlsx.ts`, `cleanDescription`) уже пише в `descriptionProm` очищений HTML.
 Тобто HTML у колонці вже є, а правила досі кажуть, що його там немає.
 
 **Що суперечить запиту.**

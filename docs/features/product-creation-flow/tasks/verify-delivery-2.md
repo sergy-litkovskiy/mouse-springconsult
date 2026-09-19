@@ -6,7 +6,7 @@ delivery: 2
 gate_profile: verification
 owner: "Serhii"
 estimate: S
-context_budget: 1600
+context_budget: 1900
 blocked_by: [T32]
 blocks: []
 updated_at: "2026-09-13"
@@ -49,9 +49,11 @@ updated_at: "2026-09-13"
 ```yaml
         errorCode:
           type: [string, null]
-          description: Заповнено лише при status=failed; той самий код, що показує AC-10.
+          description: >-
+            Заповнено лише при status=failed; той самий код, що показує AC-10.
+            `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
         "429":
-          description: Перевищено обмеження частоти запусків (PRD §6.1 — окреме від ліміту входу)
+          description: Перевищено обмеження частоти запусків — 20 на картку за годину, спільні для всіх областей (PRD §6.1 — окреме від ліміту входу)
 ```
 
 ## Acceptance criteria

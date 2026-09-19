@@ -1,7 +1,7 @@
 ---
 id: T26
 title: "Міграція таблиць підготовки, entity, перелік у dependency-cruiser"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T24, T25]
 blocks: [T28, T31]
-updated_at: "2026-09-05"
+updated_at: "2026-09-18"
 ---
 
 # T26 — Міграція таблиць підготовки, entity, перелік у dependency-cruiser
@@ -38,19 +38,22 @@ AC-14 — бо вартість картки є сумою по цій самі�
 
 | Таблиця | Ключові колонки | Обмеження |
 |---|---|---|
-| `product_preparation_runs` | `product_id` FK CASCADE, `scope`, `idempotency_key` UNIQUE, `status`, `error_code`, `model`, `input_tokens`, `output_tokens`, три timestamptz | `scope CHECK IN (texts, price, both)`; `status CHECK IN (queued, running, succeeded, failed)` |
-| `product_field_suggestions` | `run_id` FK CASCADE, `field`, `value` **JSONB**, `resolution`, `resolved_at` | `field CHECK IN (description_prom, description_olx, seo_keywords, price)`; `resolution CHECK IN (accepted, rejected)`, **`NULL` = ще не вирішено** |
+| `product_preparation_runs` | `product_id` FK CASCADE, `scope`, `idempotency_key` UNIQUE, `status`, `error_code`, `model`, `input_tokens`, `output_tokens`, три timestamptz | `scope CHECK IN (texts, price, both, field)`; `status CHECK IN (queued, running, succeeded, failed)` |
+| `product_field_suggestions` | `run_id` FK CASCADE, `field`, `value` **JSONB**, `resolution`, `resolved_at` | `field CHECK IN (title_prom, title_olx, description_prom, description_olx, seo_keywords, price)`; `resolution CHECK IN (accepted, rejected)`, **`NULL` = ще не вирішено** |
 
 Індекси: `product_preparation_runs_product_id_idx`, `..._idempotency_key_key` UNIQUE,
 `product_field_suggestions_run_field_key` `(run_id, field)` UNIQUE.
 
 `product_id` у пропозиціях **не дублюється** — картка досяжна через запуск.
 
+Переліки `CHECK` узято з [data-model.md](../data-model.md): область `field` і поля `title_prom`/`title_olx`
+додав [ADR 0015](../adr/0015-add-per-field-text-rewrite-scope.md) уже після того, як писалась ця story.
+
 ## API contract excerpt
 
 ```yaml
     PreparationRun:
-      description: "**Поставка 2 — спроектовано, таблиця без міграції.**"
+      description: "**Поставка 2 — спроектовано, таблиця створена міграцією.**"
       required: [id, productId, scope, status, model, inputTokens, outputTokens, createdAt]
     FieldSuggestion:
       required: [id, runId, field, value, createdAt]
@@ -85,12 +88,12 @@ AC-14 — бо вартість картки є сумою по цій самі�
 
 ## DoD
 
-- [ ] `db:migrate` вниз і вгору проходить на тестовій базі.
-- [ ] `value` — **єдиний JSONB у схемі**; жодної другої колонки такого типу не зʼявилось.
-- [ ] `resolution` має три стани через `NULL`; слова `pending` у схемі немає — воно дублювало б відсутність рішення.
-- [ ] Нові entity є в `ENTITIES` `.dependency-cruiser.cjs`; `deps:check` зелений — інакше правило меж їх просто не побачить.
-- [ ] Рядок `ai/CLAUDE.md` про `ai_generations` приведений у відповідність зі схемою.
-- [ ] Коміт: `feat(products): add the preparation runs and field suggestions tables`.
+- [x] `db:migrate` вниз і вгору проходить: `revert` лишає 0 таблиць підготовки, `up` повертає обидві з трьома індексами. Обмеження (два UNIQUE, чотири CHECK, каскад від картки) перевіряє `db/schema.spec.ts` на тестовій базі.
+- [x] `value` — **єдиний JSONB у схемі** (перевірено через `information_schema.columns`); жодної другої колонки такого типу не зʼявилось.
+- [x] `resolution` має три стани через `NULL`; слова `pending` у схемі немає — воно дублювало б відсутність рішення.
+- [x] Нові entity є в `ENTITIES` `.dependency-cruiser.cjs`; `deps:check` зелений — інакше правило меж їх просто не побачить.
+- [x] Рядок `ai/CLAUDE.md` про `ai_generations` приведений у відповідність зі схемою.
+- [x] Коміт: `feat(products): add the preparation runs and field suggestions tables`.
 
 ## Links
 

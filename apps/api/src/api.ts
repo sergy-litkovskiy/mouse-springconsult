@@ -20,6 +20,8 @@ import {
 } from './modules/auth/index.ts';
 import { ImageStorage, MediaService } from './modules/media/index.ts';
 import {
+  FieldSuggestion,
+  PreparationRun,
   Product,
   ProductController,
   ProductImage,
@@ -80,7 +82,9 @@ function createApp() {
 export type ApiServer = ReturnType<typeof createApp>;
 
 export async function buildServer(): Promise<ApiServer> {
-  const dataSource = createDataSource({ entities: [User, Product, ProductImage] });
+  const dataSource = createDataSource({
+    entities: [User, Product, ProductImage, PreparationRun, FieldSuggestion],
+  });
   await dataSource.initialize();
 
   const authService = new AuthService(

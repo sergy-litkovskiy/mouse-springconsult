@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-18"
+updated_at: "2026-09-19"
 stage: "13"
 ---
 
@@ -86,21 +86,20 @@ stage: "13"
 
 | ID | Задача | Статус | blocked_by | Est | Owner | PR |
 |----|--------|--------|------|-----|-------|-----|
-| T24 | [Закрити відкриті TBD](close-preparation-open-items.md) | Todo | T01 | S | Serhii | — |
-| T25 | [Черга і `worker`](add-queue-and-worker.md) | Todo | T23, T42, T43, T49 | S | Serhii | — |
-| T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Blocked | T24, T25 | S | Serhii | — |
-| T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Blocked | T25 | S | Serhii | — |
-| T28 | [Сервіс підготовки](add-preparation-service.md) | Blocked | T26, T27 | S | Serhii | — |
+| T24 | [Закрити відкриті TBD](close-preparation-open-items.md) | Done | T01 | S | Serhii | — |
+| T25 | [Черга і `worker`](add-queue-and-worker.md) | Done | T23, T42, T43, T49 | S | Serhii | — |
+| T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Done | T24, T25 | S | Serhii | — |
+| T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Done | T25 | S | Serhii | — |
+| T28 | [Сервіс підготовки](add-preparation-service.md) | Todo | T26, T27 | S | Serhii | — |
 | T29 | [Маршрути запусків](add-preparation-run-endpoints.md) | Blocked | T28 | S | Serhii | — |
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Blocked | T29 | S | Serhii | — |
-| T31 | [Вартість картки](add-card-cost-readout.md) | Blocked | T11, T26 | XS | Serhii | — |
+| T31 | [Вартість картки](add-card-cost-readout.md) | Todo | T11, T26 | XS | Serhii | — |
 | T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31 | M | Serhii | — |
 | T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32 | S | Serhii | — |
 
 ## Готові до старту просто зараз
 
-T24, T25 — жодної незакритої залежності. T25 відкриває код поставки 2, а T24 від коду не
-залежить і може вестись паралельно.
+T28, T31 — жодної незакритої залежності.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
 Розблоковано: T07 (після T06), T08 (після T07), T12, T15 і T16 (після T11), T14 (після T12), T17
@@ -143,6 +142,19 @@ T25 знову Blocked, тепер до T42 і T43.
 **2026-09-17 закрито T42.** Нічого не розблокувала: T25 чекає ще й на T43.
 
 **2026-09-17 закрито T43** і з нею UI-доопрацювання. Вона розблокувала T25, тож поставку 2 можна починати.
+
+**2026-09-18 закрито T24.** Нічого не розблокувала: T26 чекає ще й на T25. Рішення №5 схему не
+змінює (`failed` з `price_unavailable`, без статусу per-scope), тож міграція T26 іде за data-model.md
+як є; вікно частоти — 20 запусків на картку за годину.
+
+**2026-09-18 закрито T25.** Вона розблокувала T26 (T24 закрита раніше) і T27. Задача доходить до
+`worker` за 249–787 мс. Готові до старту: T26 і T27, у будь-якому порядку.
+
+**2026-09-18 закрито T26.** Вона розблокувала T31 (T11 закрита раніше). T28 чекає ще й на T27.
+
+**2026-09-19 закрито T27.** Вона розблокувала T28 (T26 закрита раніше): обидві залежності T28
+тепер Done. Живий прогін на 4 реальних фото (у story) знайшов, що `user_location.country: 'UA'`
+провайдер пошуку не підтримує — замінено на `timezone: 'Europe/Kyiv'`.
 
 **2026-09-17 додано T44 і T45** (друга хвиля UI-доопрацювання): лінії в діалозі картки й результат збереження. Вони нічого не блокують.
 
