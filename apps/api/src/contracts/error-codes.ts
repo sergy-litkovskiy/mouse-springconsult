@@ -17,6 +17,8 @@ export const apiErrorCodes = {
   imageNotFound: 'image_not_found',
   galleryFull: 'gallery_full',
   invalidPrice: 'invalid_price',
+  preparationInputIncomplete: 'preparation_input_incomplete',
+  preparationRateLimited: 'preparation_rate_limited',
 
   // These three belong to modules/media/MediaErrors.ts: `products` depends on `media`
   // (ADR 0013), so a class kept in `products` would close a cycle.

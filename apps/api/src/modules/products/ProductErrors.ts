@@ -53,3 +53,26 @@ export class InvalidPrice extends AppError {
     });
   }
 }
+
+/** One code for both gates (AC-06, AC-27): `details.missing` names what the card lacks. */
+export class PreparationInputIncomplete extends AppError {
+  constructor(missing: 'gallery' | 'title') {
+    super({
+      code: apiErrorCodes.preparationInputIncomplete,
+      statusCode: 409,
+      message: 'The card lacks the input this preparation needs',
+      details: { missing: [missing] },
+    });
+  }
+}
+
+/** Kept apart from `too_many_requests`: this window counts paid runs of a card, not sign-ins. */
+export class PreparationRateLimited extends AppError {
+  constructor() {
+    super({
+      code: apiErrorCodes.preparationRateLimited,
+      statusCode: 429,
+      message: 'Too many preparation runs for this card, try again later',
+    });
+  }
+}

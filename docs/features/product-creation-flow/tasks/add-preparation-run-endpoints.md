@@ -1,15 +1,15 @@
 ---
 id: T29
 title: "Запуск підготовки, гейт AC-06, обмеження частоти, полінг"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2400
+context_budget: 2800
 blocked_by: [T28]
-blocks: [T30, T32]
-updated_at: "2026-09-13"
+blocks: [T30, T32, T50, T51, T52]
+updated_at: "2026-09-19"
 ---
 
 # T29 — Запуск підготовки, гейти AC-06/AC-27, обмеження частоти, полінг
@@ -98,15 +98,37 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 
 ## DoD
 
-- [ ] AC-06: картка без жодного кадру дає `preparation_input_incomplete`, `details.missing: ["gallery"]`.
-- [ ] AC-27: картка без `titleProm` і без `titleOlx` дає `preparation_input_incomplete`, `details.missing: ["title"]`, для `scope: price` — задача в чергу не ставиться. Опис без заголовка сам по собі гейт не проходить.
-- [ ] `scope: field` без `field` або без `draftText` відхиляється валідацією контролера — 400, а не проходить до `worker`.
-- [ ] AC-10b: `scope: price` запускається окремо, не перезапускаючи текстів.
-- [ ] Повторний запуск того самого входу повертає наявний запуск і `200` — перевірено проти унікального індексу, а не логікою в коді.
-- [ ] Вичерпаний ліміт частоти дає `preparation_rate_limited`, а не тишу й не 500.
-- [ ] `POST` відповідає, не чекаючи на модель — виміряно тривалістю запиту з pino.
-- [ ] Обмеження частоти окреме від наявного на спроби входу — перевірено, що вичерпання одного не блокує другого.
-- [ ] Коміт: `feat(products): add preparation run endpoints`.
+- [x] AC-06: картка без жодного кадру дає `preparation_input_incomplete`, `details.missing: ["gallery"]`.
+- [x] AC-27: картка без `titleProm` і без `titleOlx` дає `preparation_input_incomplete`, `details.missing: ["title"]`, для `scope: price` — задача в чергу не ставиться. Опис без заголовка сам по собі гейт не проходить.
+- [x] `scope: field` без `field` або без `draftText` відхиляється валідацією контролера — 400, а не проходить до `worker`.
+- [x] AC-10b: `scope: price` запускається окремо, не перезапускаючи текстів.
+- [x] Повторний запуск того самого входу повертає наявний запуск і `200` — перевірено проти унікального індексу, а не логікою в коді.
+- [x] Вичерпаний ліміт частоти дає `preparation_rate_limited`, а не тишу й не 500.
+- [x] `POST` відповідає, не чекаючи на модель — виміряно тривалістю запиту з pino.
+- [x] Обмеження частоти окреме від наявного на спроби входу — перевірено, що вичерпання одного не блокує другого.
+- [x] Коміт: `feat(products): add preparation run endpoints`.
+
+## Результат
+
+- Обв'язка поза `/tdd` — коміт `feat(products): wire the preparation run routes into the api`:
+  `contracts/ai.contract.ts`, `config.rateLimit.preparation`, `api.ts` (pg-boss, маршрути під
+  `sessionGuard`), `index.ts`.
+- Ключ ідемпотентності вирівняно з data-model.md: ключі R2 трьох кадрів, які піде в модель, і
+  заголовок з описом за формулою AC-27. Два тести, червоні на ключі з GREEN.
+- Смоук на живому стеку зі зупиненим `worker`: 401, 409 `gallery`/`title`, 400 `field` без
+  `draftText`, 201 → 200 з тим самим id і одна задача в черзі, GET 200, 404, проксі `web` 200.
+  Усі відповіді — 2–60 мс у pino.
+- Ліміт запусків окремий від ліміту входу за побудовою: лічильник по картці з
+  `product_preparation_runs.created_at` і код `preparation_rate_limited` проти плагіна
+  `@fastify/rate-limit` за IP на `/auth/login` з `too_many_requests`.
+- Невідомий запуск відповідає `404 product_not_found`: openapi має один спільний 404
+  «картку або запуск не знайдено».
+- Знахідка RED: відмовлений запуск займає ключ назавжди — [T51](allow-retry-after-failed-run.md).
+- `critical-path-review`: WARN, закрито комітом `fix(products): recover a lost enqueue and answer
+  repeats before the limit`. Id задачі тепер дорівнює id запуску, тож pg-boss сам відкидає
+  дубль, а запуск, що лишився `queued`, ставиться в чергу ще раз. Повтор того самого входу
+  отримує свій запуск раніше, ніж рахується ліміт. Ключ `both` охоплює й кадри, і вхід ціни,
+  і data-model.md оновлено під це.
 
 ## Links
 

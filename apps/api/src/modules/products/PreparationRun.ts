@@ -4,6 +4,11 @@ export const PREPARATION_RUNS_TABLE = 'product_preparation_runs';
 
 export type PreparationScope = 'texts' | 'price' | 'both' | 'field';
 export type PreparationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+/**
+ * `price_unavailable` — the texts of a `both` run were stored, only the price is missing (AC-10b).
+ * `preparation_failed` — every retry of the job failed and the run has no suggestions (AC-10).
+ */
+export type PreparationErrorCode = 'price_unavailable' | 'preparation_failed';
 
 /**
  * An event rather than an entity edited as a whole, so there is no `updated_at`: the moments that
@@ -27,7 +32,7 @@ export class PreparationRun {
   status!: PreparationStatus;
 
   @Column({ name: 'error_code', type: 'varchar', length: 64, nullable: true })
-  errorCode!: string | null;
+  errorCode!: PreparationErrorCode | null;
 
   /** Without it the tokens cannot be turned into money once a cost ceiling appears. */
   @Column({ name: 'model', type: 'varchar', length: 64 })

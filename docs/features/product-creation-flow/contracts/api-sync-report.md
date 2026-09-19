@@ -98,6 +98,8 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
 
 ## events.md — навмисно не створено
 
+> **2026-09-19:** створено в [T28](../tasks/add-preparation-service.md) разом з обробником у `worker.ts` — [events.md](events.md). Нижче — обґрунтування станом на прогін.
+
 Delivery 2 має pg-boss-задачу лише як намір у `sad.md` (сценарії 5, 7, 8: `API->>Worker:
 ставить задачу`), не як код: перевірено напряму — `apps/api/src/worker.ts` і
 `apps/api/src/queue.ts` не існують, `pg-boss` відсутній у `apps/api/package.json`
@@ -115,4 +117,4 @@ Backend Lead → стейдж break-tasks:
 2. ~~Форма `FieldSuggestion.value` для `price` (Section C).~~ Закрито 2026-09-13.
 3. ~~Рішення для `PreparationRun.status` під частковою відмовою `scope: both`~~
    Закрито в T24 2026-09-18.
-4. `events.md` разом із чергою поставки 2 (не цим прогоном — обґрунтування вище).
+4. ~~`events.md` разом із чергою поставки 2.~~ Створено в T28 2026-09-19.

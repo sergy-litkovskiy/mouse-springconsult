@@ -21,13 +21,18 @@ import {
 import { ImageStorage, MediaService } from './modules/media/index.ts';
 import {
   FieldSuggestion,
+  PreparationQueue,
+  PreparationRepository,
   PreparationRun,
+  PreparationRunController,
+  PreparationRunService,
   Product,
   ProductController,
   ProductImage,
   ProductRepository,
   ProductService,
 } from './modules/products/index.ts';
+import { preparationQueue, startQueue } from './queue.ts';
 
 /** The single HTTP error mapping: stack traces and 5xx messages never leave the process. */
 function toApiError(error: unknown): { statusCode: number; body: ApiError } {
@@ -128,6 +133,16 @@ export async function buildServer(): Promise<ApiServer> {
     env.R2_PUBLIC_BASE_URL,
   );
 
+  // The api only enqueues; `startQueue` also brings the queue row in line with `config`.
+  const boss = await startQueue([preparationQueue]);
+  const preparationRunController = new PreparationRunController(
+    new PreparationRunService(
+      new ProductRepository(dataSource),
+      new PreparationRepository(dataSource),
+      new PreparationQueue(boss),
+    ),
+  );
+
   const app = createApp();
 
   await app.register(helmet, { contentSecurityPolicy: false });
@@ -174,11 +189,13 @@ export async function buildServer(): Promise<ApiServer> {
   await app.register(
     async (instance) => {
       productController.register(instance, authController.sessionGuard);
+      preparationRunController.register(instance, authController.sessionGuard);
     },
     { prefix: '/products' },
   );
 
   app.addHook('onClose', async () => {
+    await boss.stop({ graceful: true });
     if (dataSource.isInitialized) {
       await dataSource.destroy();
     }

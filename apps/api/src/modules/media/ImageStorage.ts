@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -55,6 +56,18 @@ export class ImageStorage {
         }),
       ),
     );
+  }
+
+  async get(key: string): Promise<Uint8Array> {
+    return this.attempt(async () => {
+      const output = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (output.Body === undefined) {
+        throw new Error(`R2 returned no body for ${key}`);
+      }
+      return output.Body.transformToByteArray();
+    });
   }
 
   /** S3 answers 204 for a key that does not exist, so a repeated delete succeeds. */
