@@ -279,7 +279,7 @@ describe('preparation repository (postgres)', () => {
     const claims = await Promise.all([runs.createRunOnce(draft), runs.createRunOnce(draft)]);
 
     assert.deepEqual(claims.map(({ created }) => created).sort(), [false, true]);
-    assert.equal(claims[0]?.run.id, claims[1]?.run.id);
+    assert.equal(claims[0].run.id, claims[1].run.id);
     assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
   });
 
@@ -306,7 +306,7 @@ describe('preparation repository (postgres)', () => {
     const found = await runs.findRun(productId, runId);
 
     assert.equal(found?.id, runId);
-    assert.equal(found?.status, 'queued');
+    assert.equal(found.status, 'queued');
   });
 
   it('does not find a run through another card (Checklist 3)', async () => {

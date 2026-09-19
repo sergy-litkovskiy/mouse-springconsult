@@ -54,6 +54,11 @@ export const config = {
     /** Password guessing limit. Keyed by IP, sliding window. */
     login: { max: 10, timeWindowMs: 5 * 60 * 1000 },
     global: { max: 300, timeWindowMs: 60 * 1000 },
+    /**
+     * Preparation runs are paid calls, so they have their own limit, separate from login (PRD §6.1).
+     * Counted per card over every scope, from `product_preparation_runs.created_at` (T24 decision 3).
+     */
+    preparation: { maxRuns: 20, windowSeconds: 60 * 60 },
   },
 
   storage: {

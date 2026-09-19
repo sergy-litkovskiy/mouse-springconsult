@@ -5,6 +5,10 @@ import type {
   preHandlerAsyncHookHandler,
 } from 'fastify';
 import { z } from 'zod';
+import {
+  preparationRunRequestSchema,
+  type PreparationRunDto,
+} from '../../contracts/ai.contract.ts';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import { AppError } from '../../errors.ts';
 import { ProductNotFound } from './ProductErrors.ts';
@@ -13,14 +17,6 @@ import type { PreparationRunService } from './PreparationRunService.ts';
 
 const startParamsSchema = z.object({ productId: z.uuid() });
 const runParamsSchema = z.object({ productId: z.uuid(), runId: z.uuid() });
-const startBodySchema = z.discriminatedUnion('scope', [
-  z.object({ scope: z.enum(['texts', 'price', 'both']) }),
-  z.object({
-    scope: z.literal('field'),
-    field: z.enum(['titleProm', 'titleOlx', 'descriptionProm', 'descriptionOlx', 'seoKeywords']),
-    draftText: z.string(),
-  }),
-]);
 
 export class PreparationRunController {
   constructor(private readonly preparations: PreparationRunService) {}
@@ -33,7 +29,7 @@ export class PreparationRunController {
   // Arrow fields: Fastify calls the handler on its own, and a method would lose `this`.
   private readonly start = async (request: FastifyRequest, reply: FastifyReply) => {
     const params = parseParams(startParamsSchema, request.params);
-    const body = startBodySchema.safeParse(request.body);
+    const body = preparationRunRequestSchema.safeParse(request.body);
     if (!body.success) {
       throw new AppError({
         code: apiErrorCodes.validationFailed,
@@ -64,7 +60,7 @@ function parseParams<Params>(schema: z.ZodType<Params>, params: unknown): Params
   return parsed.data;
 }
 
-function toRunResponse(run: PreparationRun) {
+function toRunResponse(run: PreparationRun): PreparationRunDto {
   return {
     id: run.id,
     productId: run.productId,

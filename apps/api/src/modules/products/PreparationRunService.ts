@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { config } from '../../config.ts';
 import type { PreparationRepository } from './PreparationRepository.ts';
 import type { PreparationRun } from './PreparationRun.ts';
+import type { Product } from './Product.ts';
 import type { PreparationQueue, RewritableCardField } from './PreparationQueue.ts';
 import {
   PreparationInputIncomplete,
@@ -42,20 +43,16 @@ export class PreparationRunService {
       throw new PreparationInputIncomplete('title');
     }
 
-    // 20 runs of a card per hour, whatever their scope (T24 decision 3).
-    if ((await this.runs.countRecentRuns(productId, 60 * 60)) >= 20) {
+    const { maxRuns, windowSeconds } = config.rateLimit.preparation;
+    if ((await this.runs.countRecentRuns(productId, windowSeconds)) >= maxRuns) {
       throw new PreparationRateLimited();
     }
 
-    // The key names the input the run reads, so a changed input starts a new run and an unchanged
-    // one returns the run it already has.
+    // The key names the input the model actually receives (data-model.md, "версія входу"), so a
+    // changed input starts a new run and an unchanged one returns the run it already has.
     const input = {
-      frames: readsFrames
-        ? [...product.images]
-            .sort((left, right) => left.position - right.position)
-            .map((image) => [image.id, image.isMain])
-        : null,
-      titles: readsTitles ? [product.titleProm, product.titleOlx] : null,
+      frames: readsFrames ? recognitionFrameKeys(product) : null,
+      priceQuery: readsTitles ? priceQueryInput(product) : null,
       field: request.scope === 'field' ? [request.field, request.draftText] : null,
     };
     const inputVersion = createHash('sha256').update(JSON.stringify(input)).digest('hex');
@@ -80,4 +77,22 @@ export class PreparationRunService {
     }
     return run;
   }
+}
+
+/** The frames the worker sends: the main one first, then gallery order, up to the per-call ceiling. */
+function recognitionFrameKeys(product: Product): string[] {
+  return [...product.images]
+    .sort(
+      (left, right) => Number(right.isMain) - Number(left.isMain) || left.position - right.position,
+    )
+    .slice(0, config.ai.maxFramesPerRequest)
+    .map((image) => image.r2Key);
+}
+
+/** The AC-27 formula the worker builds its search from; '' is "absent" in NOT NULL text columns. */
+function priceQueryInput(product: Product): [string, string] {
+  return [
+    product.titleProm !== '' ? product.titleProm : product.titleOlx,
+    product.descriptionProm !== '' ? product.descriptionProm : product.descriptionOlx,
+  ];
 }

@@ -299,6 +299,35 @@ describe('preparation run service: idempotency', () => {
     assert.notEqual(second.run.id, first.run.id);
   });
 
+  it('starts a new price run once the description has changed, because it is part of the query (AC-27)', async () => {
+    const { service, products } = setup();
+
+    const first = await service.start(CARD_ID, { scope: 'price' });
+    products.cards[0] = card(CARD_ID, { descriptionProm: 'Нова батарея, повний комплект.' });
+    const second = await service.start(CARD_ID, { scope: 'price' });
+
+    assert.equal(second.created, true);
+    assert.notEqual(second.run.id, first.run.id);
+  });
+
+  it('keeps the texts run when a frame beyond the three sent to the model is added (Data delta)', async () => {
+    const frame = (position: number) => ({
+      id: `01931f2a-5555-7000-8000-00000000010${String(position)}`,
+      productId: CARD_ID,
+      r2Key: `products/${CARD_ID}/frame-${String(position)}.jpg`,
+      position,
+      isMain: position === 0,
+    });
+    const { service, products } = setup([card(CARD_ID, { images: [0, 1, 2].map(frame) })]);
+
+    const first = await service.start(CARD_ID, { scope: 'texts' });
+    products.cards[0] = card(CARD_ID, { images: [0, 1, 2, 3].map(frame) });
+    const second = await service.start(CARD_ID, { scope: 'texts' });
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+  });
+
   it('starts a new field run for a different draft of the same field (Data delta)', async () => {
     const { service } = setup();
 

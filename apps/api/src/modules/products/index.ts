@@ -29,11 +29,24 @@ export type {
   PreparationRunDraft,
   RunOutcome,
   SuggestionDraft,
+  RunClaim,
   TokenTotals,
 } from './PreparationRepository.ts';
+export { PreparationQueue } from './PreparationQueue.ts';
+export type { PreparationRunJob } from './PreparationQueue.ts';
+export { PreparationRunService } from './PreparationRunService.ts';
+export type { PreparationRequest, PreparationStart } from './PreparationRunService.ts';
+export { PreparationRunController } from './PreparationRunController.ts';
 
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
 export { cleanDescription } from './cleanDescription.ts';
 
-export { GalleryFull, ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
+export {
+  GalleryFull,
+  ImageNotFound,
+  InvalidPrice,
+  PreparationInputIncomplete,
+  PreparationRateLimited,
+  ProductNotFound,
+} from './ProductErrors.ts';
