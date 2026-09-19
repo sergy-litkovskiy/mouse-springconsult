@@ -43,11 +43,6 @@ export class PreparationRunService {
       throw new PreparationInputIncomplete('title');
     }
 
-    const { maxRuns, windowSeconds } = config.rateLimit.preparation;
-    if ((await this.runs.countRecentRuns(productId, windowSeconds)) >= maxRuns) {
-      throw new PreparationRateLimited();
-    }
-
     // The key names the input the model actually receives (data-model.md, "версія входу"), so a
     // changed input starts a new run and an unchanged one returns the run it already has.
     const input = {
@@ -56,14 +51,29 @@ export class PreparationRunService {
       field: request.scope === 'field' ? [request.field, request.draftText] : null,
     };
     const inputVersion = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    const idempotencyKey = `${productId}:${request.scope}:${inputVersion}`;
 
-    const claim = await this.runs.createRunOnce({
-      productId,
-      scope: request.scope,
-      idempotencyKey: `${productId}:${request.scope}:${inputVersion}`,
-      model: config.ai.model,
-    });
-    if (claim.created) {
+    // A repeat of the same input costs nothing, so it is answered before the limit is counted.
+    const existing = await this.runs.findRunByKey(idempotencyKey);
+    if (existing === null) {
+      const { maxRuns, windowSeconds } = config.rateLimit.preparation;
+      if ((await this.runs.countRecentRuns(productId, windowSeconds)) >= maxRuns) {
+        throw new PreparationRateLimited();
+      }
+    }
+
+    const claim =
+      existing === null
+        ? await this.runs.createRunOnce({
+            productId,
+            scope: request.scope,
+            idempotencyKey,
+            model: config.ai.model,
+          })
+        : { run: existing, created: false };
+    // The row and the job are two writes: a run still queued may have lost its send, and queueing
+    // it again is safe because the job id is the run id.
+    if (claim.run.status === 'queued') {
       await this.queue.enqueue({ runId: claim.run.id, productId, ...request });
     }
     return claim;

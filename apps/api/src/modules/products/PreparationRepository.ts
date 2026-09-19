@@ -97,6 +97,10 @@ export class PreparationRepository {
       .getCount();
   }
 
+  async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
+    return this.dataSource.getRepository(PreparationRun).findOneBy({ idempotencyKey });
+  }
+
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
     return this.dataSource.getRepository(PreparationRun).findOneBy({ id: runId, productId });
   }

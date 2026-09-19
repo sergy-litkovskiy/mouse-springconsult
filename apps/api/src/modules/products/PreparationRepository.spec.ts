@@ -299,6 +299,20 @@ describe('preparation repository (postgres)', () => {
     assert.equal(await runs.countRecentRuns(productId, 60 * 60), 3);
   });
 
+  it('finds a run by its idempotency key, and nothing for a key never used', async () => {
+    const productId = await seedProduct();
+    const draft = {
+      productId,
+      scope: 'price' as const,
+      idempotencyKey: 'card:price:v2',
+      model: MODEL,
+    };
+    const { run } = await runs.createRunOnce(draft);
+
+    assert.equal((await runs.findRunByKey('card:price:v2'))?.id, run.id);
+    assert.equal(await runs.findRunByKey('card:price:never'), null);
+  });
+
   it('finds a run of the card by its id (Checklist 3)', async () => {
     const productId = await seedProduct();
     const runId = await seedRun(productId, 'queued');

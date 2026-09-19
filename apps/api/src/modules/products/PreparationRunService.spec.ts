@@ -100,6 +100,10 @@ class StubPreparationRepository extends PreparationRepository {
     return this.recentRuns[productId] ?? 0;
   }
 
+  override async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
+    return this.rows.find((row) => row.idempotencyKey === idempotencyKey) ?? null;
+  }
+
   override async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
     return this.rows.find((row) => row.id === runId && row.productId === productId) ?? null;
   }
@@ -112,15 +116,33 @@ class RecordingQueue extends PreparationQueue {
     super(NO_BOSS);
   }
 
+  /** pg-boss keeps the first job of an id and ignores the rest, as the real queue does. */
   override async enqueue(job: PreparationRunJob): Promise<void> {
+    if (this.jobs.some((queued) => queued.runId === job.runId)) {
+      return;
+    }
     this.jobs.push(job);
   }
 }
 
-function setup(cards: Product[] = [card(CARD_ID)]) {
+class QueueDown extends Error {}
+
+/** Loses the first job, as a dropped connection between the insert and the send would. */
+class FlakyQueue extends RecordingQueue {
+  private failuresLeft = 1;
+
+  override async enqueue(job: PreparationRunJob): Promise<void> {
+    if (this.failuresLeft > 0) {
+      this.failuresLeft -= 1;
+      throw new QueueDown('connection terminated unexpectedly');
+    }
+    return super.enqueue(job);
+  }
+}
+
+function setup(cards: Product[] = [card(CARD_ID)], queue = new RecordingQueue()) {
   const products = new StubProductRepository(cards);
   const runs = new StubPreparationRepository();
-  const queue = new RecordingQueue();
   const service = new PreparationRunService(products, runs, queue);
   return { products, runs, queue, service };
 }
@@ -264,6 +286,28 @@ describe('preparation run service: idempotency', () => {
     assert.equal(second.created, false);
     assert.equal(second.run.id, first.run.id);
     assert.equal(runs.rows.length, 1);
+    assert.equal(queue.jobs.length, 1);
+  });
+
+  it('queues a run again when the same input finds it still queued, so a lost send is recovered', async () => {
+    const { service, queue } = setup([card(CARD_ID)], new FlakyQueue());
+
+    await assert.rejects(service.start(CARD_ID, { scope: 'texts' }), QueueDown);
+    const retried = await service.start(CARD_ID, { scope: 'texts' });
+
+    assert.equal(retried.created, false);
+    assert.deepEqual(queue.jobs, [{ runId: retried.run.id, productId: CARD_ID, scope: 'texts' }]);
+  });
+
+  it('returns the existing run for the same input even when the card has used up its limit', async () => {
+    const { service, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, { scope: 'price' });
+    runs.recentRuns[CARD_ID] = 20;
+    const repeat = await service.start(CARD_ID, { scope: 'price' });
+
+    assert.equal(repeat.created, false);
+    assert.equal(repeat.run.id, first.run.id);
     assert.equal(queue.jobs.length, 1);
   });
 

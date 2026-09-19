@@ -135,6 +135,10 @@ class StubPreparationRepository extends PreparationRepository {
     return this.recentRuns;
   }
 
+  override async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
+    return this.rows.find((row) => row.idempotencyKey === idempotencyKey) ?? null;
+  }
+
   override async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
     return this.rows.find((row) => row.id === runId && row.productId === productId) ?? null;
   }
@@ -147,7 +151,11 @@ class RecordingQueue extends PreparationQueue {
     super(NO_BOSS);
   }
 
+  /** pg-boss keeps the first job of an id and ignores the rest, as the real queue does. */
   override async enqueue(job: PreparationRunJob): Promise<void> {
+    if (this.jobs.some((queued) => queued.runId === job.runId)) {
+      return;
+    }
     this.jobs.push(job);
   }
 }

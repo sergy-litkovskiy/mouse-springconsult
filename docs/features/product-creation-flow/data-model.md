@@ -189,7 +189,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `id` | UUID | PK, `default uuidv7()` | |
 | `product_id` | UUID | NOT NULL, FK → `products(id)` ON DELETE CASCADE | |
 | `scope` | VARCHAR(8) | NOT NULL, CHECK IN (`texts`,`price`,`both`,`field`) | Без області AC-10b не має предмета: саму ціну не попросити, не перезапускаючи тексти. `field` — регенерація одного поля з чернетки, без фото ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) |
-| `idempotency_key` | TEXT | NOT NULL, UNIQUE | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts`/`both` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `field` — хеш (`field`, `draftText`) |
+| `idempotency_key` | TEXT | NOT NULL, UNIQUE | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
 | `status` | VARCHAR(16) | NOT NULL, CHECK IN (`queued`,`running`,`succeeded`,`failed`) | Джерело для полінгу (сценарій 7, 8) |
 | `error_code` | VARCHAR(64) | NULL | Доменний код при `failed` — той самий, що фронт мапить у текст (AC-10). `price_unavailable` — часткова відмова `both`: тексти записані, ціни немає (AC-10b). `preparation_failed` — вичерпано `retryLimit` задачі, пропозицій немає (AC-10, [events.md](contracts/events.md)) |
 | `model` | VARCHAR(64) | NOT NULL | Без нього токени не перевести в гроші, коли зʼявиться стеля вартості (PRD §8) |
