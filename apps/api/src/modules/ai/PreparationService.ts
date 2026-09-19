@@ -3,6 +3,7 @@ import type { MediaService } from '../media/index.ts';
 import {
   ProductNotFound,
   type PreparationRepository,
+  type Product,
   type ProductRepository,
   type SuggestionDraft,
   type SuggestionField,
@@ -23,6 +24,21 @@ export type PreparationJob =
       readonly draftText: string;
     };
 
+const SUGGESTION_FIELDS: Record<RewritableField, SuggestionField> = {
+  titleProm: 'title_prom',
+  titleOlx: 'title_olx',
+  descriptionProm: 'description_prom',
+  descriptionOlx: 'description_olx',
+  seoKeywords: 'seo_keywords',
+};
+
+function priceQuery(card: Product): string {
+  // Text columns are NOT NULL with '' as the default, so "absent" in AC-27 is an empty string.
+  const title = card.titleProm !== '' ? card.titleProm : card.titleOlx;
+  const description = card.descriptionProm !== '' ? card.descriptionProm : card.descriptionOlx;
+  return description !== '' ? `${title} ${description}` : title;
+}
+
 export class PreparationService {
   constructor(
     private readonly adapter: AnthropicAdapter,
@@ -35,18 +51,11 @@ export class PreparationService {
     await this.runs.startRun(job.runId);
 
     if (job.scope === 'field') {
-      const fields: Record<RewritableField, SuggestionField> = {
-        titleProm: 'title_prom',
-        titleOlx: 'title_olx',
-        descriptionProm: 'description_prom',
-        descriptionOlx: 'description_olx',
-        seoKeywords: 'seo_keywords',
-      };
       const rewrite = await this.adapter.rewriteField(job.field, job.draftText);
       await this.runs.recordUsage(job.runId, rewrite.usage);
       await this.runs.finishRun(job.runId, {
         status: 'succeeded',
-        suggestions: [{ field: fields[job.field], value: rewrite.value }],
+        suggestions: [{ field: SUGGESTION_FIELDS[job.field], value: rewrite.value }],
       });
       return;
     }
@@ -59,17 +68,7 @@ export class PreparationService {
     const suggestions: SuggestionDraft[] = [];
 
     if (job.scope === 'texts' || job.scope === 'both') {
-      // The main frame goes first: recognition leans on it, and the ceiling may cut the rest.
-      const gallery = [
-        ...card.images.filter((image) => image.isMain),
-        ...card.images.filter((image) => !image.isMain),
-      ].slice(0, config.ai.maxFramesPerRequest);
-      const frames: Uint8Array[] = [];
-      for (const image of gallery) {
-        frames.push(await this.media.read(image.r2Key));
-      }
-
-      const texts = await this.adapter.generateTexts(frames);
+      const texts = await this.adapter.generateTexts(await this.readRecognitionFrames(card));
       await this.runs.recordUsage(job.runId, texts.usage);
       suggestions.push(
         { field: 'description_prom', value: texts.descriptionProm },
@@ -79,14 +78,9 @@ export class PreparationService {
     }
 
     if (job.scope === 'price' || job.scope === 'both') {
-      // Text columns are NOT NULL with '' as the default, so "absent" in AC-27 is an empty string.
-      const title = card.titleProm !== '' ? card.titleProm : card.titleOlx;
-      const description = card.descriptionProm !== '' ? card.descriptionProm : card.descriptionOlx;
-      const query = description !== '' ? `${title} ${description}` : title;
-
       let price: PriceResult;
       try {
-        price = await this.adapter.findPriceRange(query);
+        price = await this.adapter.findPriceRange(priceQuery(card));
       } catch {
         // The texts already paid for stay with the run; only the price is reported missing.
         await this.runs.finishRun(job.runId, {
@@ -104,5 +98,18 @@ export class PreparationService {
     }
 
     await this.runs.finishRun(job.runId, { status: 'succeeded', suggestions });
+  }
+
+  private async readRecognitionFrames(card: Product): Promise<Uint8Array[]> {
+    // The main frame goes first: recognition leans on it, and the ceiling may cut the rest.
+    const gallery = [
+      ...card.images.filter((image) => image.isMain),
+      ...card.images.filter((image) => !image.isMain),
+    ].slice(0, config.ai.maxFramesPerRequest);
+    const frames: Uint8Array[] = [];
+    for (const image of gallery) {
+      frames.push(await this.media.read(image.r2Key));
+    }
+    return frames;
   }
 }
