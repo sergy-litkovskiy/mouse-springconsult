@@ -1,9 +1,10 @@
-import type { DataSource } from 'typeorm';
+import { In, type DataSource } from 'typeorm';
 import { FieldSuggestion, type SuggestionField, type SuggestionValue } from './FieldSuggestion.ts';
 import {
   PreparationRun,
   type PreparationErrorCode,
   type PreparationScope,
+  type PreparationStatus,
 } from './PreparationRun.ts';
 
 export type PreparationRunDraft = {
@@ -37,6 +38,8 @@ export type TokenTotals = {
   readonly outputTokens: number;
 };
 
+const UNFINISHED: PreparationStatus[] = ['queued', 'running'];
+
 export class PreparationRepository {
   constructor(private readonly dataSource: DataSource) {}
 
@@ -55,10 +58,15 @@ export class PreparationRepository {
     );
   }
 
-  async startRun(runId: string): Promise<void> {
-    await this.dataSource
+  /**
+   * `false` for a run that has already finished: pg-boss delivers a job again when the worker died
+   * after the finishing commit but before acknowledging it, and that job must not pay twice.
+   */
+  async startRun(runId: string): Promise<boolean> {
+    const result = await this.dataSource
       .getRepository(PreparationRun)
-      .update({ id: runId }, { status: 'running', startedAt: new Date() });
+      .update({ id: runId, status: In(UNFINISHED) }, { status: 'running', startedAt: new Date() });
+    return result.affected !== 0;
   }
 
   /** Adds in SQL rather than read-modify-write: a retried attempt pays again, and both bills count. */
@@ -85,7 +93,7 @@ export class PreparationRepository {
           .insert(outcome.suggestions.map(({ field, value }) => ({ runId, field, value })));
       }
       await manager.getRepository(PreparationRun).update(
-        { id: runId },
+        { id: runId, status: In(UNFINISHED) },
         {
           status: outcome.status,
           errorCode: outcome.status === 'failed' ? outcome.errorCode : null,

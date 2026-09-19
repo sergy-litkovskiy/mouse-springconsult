@@ -119,6 +119,17 @@ describe('preparation repository (postgres)', () => {
     assert.equal(stored.finishedAt, null);
   });
 
+  it('refuses to restart a finished run, so a redelivered job cannot reopen it (AC-28)', async () => {
+    const runId = await seedRun(await seedProduct(), 'queued');
+    await runs.startRun(runId);
+    await runs.finishRun(runId, { status: 'succeeded', suggestions: [] });
+
+    const restarted = await runs.startRun(runId);
+
+    assert.equal(restarted, false);
+    assert.equal((await loadRun(runId)).status, 'succeeded');
+  });
+
   it('adds the usage of every call to the run instead of overwriting it (AC-14, DoD retry)', async () => {
     const runId = await seedRun(await seedProduct());
 

@@ -496,6 +496,20 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), []);
     });
 
+    it('does nothing when the job is redelivered after its run has finished (AC-28)', async () => {
+      const { service, adapter } = setup();
+      const job = await textsJob();
+      await service.prepare(job);
+
+      await service.prepare(job);
+
+      const run = await loadRun(job.runId);
+      assert.equal(adapter.textsCalls.length, 1);
+      assert.equal(run.status, 'succeeded');
+      assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
+      assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
+    });
+
     it('ends the run failed with model_unavailable once the retries are spent (AC-10)', async () => {
       const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob();

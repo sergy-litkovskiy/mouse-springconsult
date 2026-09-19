@@ -48,7 +48,9 @@ export class PreparationService {
   ) {}
 
   async prepare(job: PreparationJob): Promise<void> {
-    await this.runs.startRun(job.runId);
+    if (!(await this.runs.startRun(job.runId))) {
+      return;
+    }
 
     if (job.scope === 'field') {
       const rewrite = await this.adapter.rewriteField(job.field, job.draftText);
