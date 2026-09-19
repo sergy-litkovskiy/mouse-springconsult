@@ -7,7 +7,7 @@ gate_profile: verification
 owner: "Serhii"
 estimate: S
 context_budget: 1900
-blocked_by: [T32]
+blocked_by: [T32, T50]
 blocks: []
 updated_at: "2026-09-13"
 ---
