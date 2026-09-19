@@ -725,6 +725,7 @@ components:
             Заповнено лише при status=failed; той самий код, що показує AC-10.
             `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
             записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
+            `model_unavailable` — усі спроби задачі впали, пропозицій немає (AC-10, events.md).
         model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }

@@ -1,6 +1,10 @@
 import type { DataSource } from 'typeorm';
 import { FieldSuggestion, type SuggestionField, type SuggestionValue } from './FieldSuggestion.ts';
-import { PreparationRun, type PreparationScope } from './PreparationRun.ts';
+import {
+  PreparationRun,
+  type PreparationErrorCode,
+  type PreparationScope,
+} from './PreparationRun.ts';
 
 export type PreparationRunDraft = {
   readonly productId: string;
@@ -24,7 +28,7 @@ export type RunOutcome =
   | { readonly status: 'succeeded'; readonly suggestions: readonly SuggestionDraft[] }
   | {
       readonly status: 'failed';
-      readonly errorCode: string;
+      readonly errorCode: PreparationErrorCode;
       readonly suggestions: readonly SuggestionDraft[];
     };
 

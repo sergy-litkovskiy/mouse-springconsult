@@ -496,6 +496,21 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), []);
     });
 
+    it('ends the run failed with model_unavailable once the retries are spent (AC-10)', async () => {
+      const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
+      const job = await textsJob();
+
+      await assert.rejects(service.prepare(job), ModelAnswerUnavailable);
+      await service.abandon(job.runId);
+
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'failed');
+      assert.equal(run.errorCode, 'model_unavailable');
+      assert.notEqual(run.finishedAt, null);
+      assert.equal(run.inputTokens, 0);
+      assert.deepEqual(await suggestionsOf(job.runId), []);
+    });
+
     it('never writes into the card in any scope or outcome (ADR 0006)', async () => {
       const productId = await seedProduct();
       await seedGallery(productId, 2);

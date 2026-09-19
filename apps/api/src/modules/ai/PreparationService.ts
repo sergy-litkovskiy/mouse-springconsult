@@ -100,6 +100,18 @@ export class PreparationService {
     await this.runs.finishRun(job.runId, { status: 'succeeded', suggestions });
   }
 
+  /**
+   * Called by the worker once the last retry of a job has failed: without it the run would stay
+   * `running`, and the polling client would never learn that the preparation did not happen.
+   */
+  async abandon(runId: string): Promise<void> {
+    await this.runs.finishRun(runId, {
+      status: 'failed',
+      errorCode: 'model_unavailable',
+      suggestions: [],
+    });
+  }
+
   private async readRecognitionFrames(card: Product): Promise<Uint8Array[]> {
     // The main frame goes first: recognition leans on it, and the ceiling may cut the rest.
     const gallery = [
