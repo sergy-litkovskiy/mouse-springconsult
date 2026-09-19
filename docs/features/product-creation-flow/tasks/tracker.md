@@ -94,8 +94,9 @@ stage: "13"
 | T29 | [Маршрути запусків](add-preparation-run-endpoints.md) | Todo | T28 | S | Serhii | — |
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Blocked | T29 | S | Serhii | — |
 | T31 | [Вартість картки](add-card-cost-readout.md) | Todo | T11, T26 | XS | Serhii | — |
-| T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31 | M | Serhii | — |
+| T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31, T51 | M | Serhii | — |
 | T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50 | S | Serhii | — |
+| T51 | [Повтор після відмови](allow-retry-after-failed-run.md) | Blocked | T29 | S | Serhii | — |
 | T50 | [Помилки підготовки в каталозі](show-preparation-failures-in-catalog.md) | Blocked | T29, T32 | M | Serhii | — |
 
 ## Готові до старту просто зараз
@@ -159,6 +160,8 @@ T25 знову Blocked, тепер до T42 і T43.
 
 **2026-09-19 закрито T28.** Вона розблокувала T29. Запуск, що вичерпав спроби, тепер закривається
 `failed` з `preparation_failed` ([events.md](../contracts/events.md)).
+
+**2026-09-19 додано T51** (знахідка RED T29): відмовлений запуск займає ключ ідемпотентності назавжди, тож повтор з тим самим входом неможливий. T32 тепер чекає й на неї.
 
 **2026-09-19 додано T50** (запит під час T28): кількість невдалих запусків підготовки в каталозі й попап з текстами помилок. T33 тепер чекає й на неї.
 
