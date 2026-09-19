@@ -17,7 +17,7 @@ ticket: "T46"
 ## Context
 
 Запит 2026-09-18: поле «Опис для Prom» отримує міні-редактор з режимом сирого HTML і кнопку
-«Почистити html». Prom приймає опис у HTML, а CSV-імпорт (`db/prom-csv.ts`, `cleanDescription`)
+«Почистити html». Prom приймає опис у HTML, а xlsx-імпорт (`db/prom-xlsx.ts`, `cleanDescription`)
 уже пише в `description_prom` очищений HTML. Отже, HTML у колонці вже є, а два правила досі
 стверджують протилежне:
 
@@ -47,7 +47,7 @@ ticket: "T46"
 ## Decision outcome
 
 **Chosen: опція 2.** Опція 1 не дає ні жирного, ні списків, тобто саме того, про що запит.
-Крім того, вона суперечить даним, які вже є: CSV-імпорт пише HTML, і довелося б або
+Крім того, вона суперечить даним, які вже є: xlsx-імпорт пише HTML, і довелося б або
 вирізати з нього розмітку, або тримати в колонці два формати. Модуля `marketplace` ще не
 існує, тож відкласти конвертацію «на потім» означає відкласти й сам запит.
 
@@ -137,7 +137,7 @@ DOMPurify (~11 КБ gzip) налаштовується тим самим пер�
 ### №5. Наявні plain-text рядки — нічого не робимо
 
 Міграції немає, і форма нічого не конвертує. Локальна база не має жодного непорожнього
-опису, CSV-імпорт ще не запускався й писатиме HTML, а вручну до T48 введено одиниці карток.
+опису, xlsx-імпорт ще не запускався й писатиме HTML, а вручну до T48 введено одиниці карток.
 Якщо такий опис трапиться, редактор склеїть його абзаци, і адмін поправить їх руками.
 
 ### №6. Ліміту довжини в описах немає
@@ -169,7 +169,7 @@ DOMPurify (~11 КБ gzip) налаштовується тим самим пер�
 
 **Positive**
 
-- Опис на Prom виглядає так, як його бачить адмін, а CSV-імпорт і ручне редагування пишуть
+- Опис на Prom виглядає так, як його бачить адмін, а xlsx-імпорт і ручне редагування пишуть
   один формат.
 - Серверна чистка закриває збережений XSS незалежно від того, звідки прийшов запит.
 
@@ -193,4 +193,4 @@ DOMPurify (~11 КБ gzip) налаштовується тим самим пер�
 
 - [T46](../tasks/decide-prom-description-html.md) · [T47](../tasks/sanitize-prom-description-on-save.md) · [T48](../tasks/add-prom-description-editor.md) · [T49](../tasks/add-prom-description-cleanup-button.md) · [T30](../tasks/add-suggestion-resolution-endpoints.md)
 - [ADR 0004](0004-validate-uploads-in-api-before-r2.md) · [ADR 0009](0009-derive-card-readiness-instead-of-storing-it.md) · [ADR 0014](0014-let-ai-recognize-the-item-from-photos.md) · [ADR 0015](0015-add-per-field-text-rewrite-scope.md)
-- `apps/api/db/prom-csv.ts` — `cleanDescription`, з якого взято перелік тегів
+- `apps/api/db/prom-xlsx.ts` — `cleanDescription`, з якого взято перелік тегів
