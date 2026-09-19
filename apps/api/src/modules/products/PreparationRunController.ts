@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import { AppError } from '../../errors.ts';
 import { ProductNotFound } from './ProductErrors.ts';
+import type { PreparationRun } from './PreparationRun.ts';
 import type { PreparationRunService } from './PreparationRunService.ts';
 
 const startParamsSchema = z.object({ productId: z.uuid() });
@@ -31,10 +32,7 @@ export class PreparationRunController {
 
   // Arrow fields: Fastify calls the handler on its own, and a method would lose `this`.
   private readonly start = async (request: FastifyRequest, reply: FastifyReply) => {
-    const params = startParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ProductNotFound(String((request.params as { productId?: unknown }).productId));
-    }
+    const params = parseParams(startParamsSchema, request.params);
     const body = startBodySchema.safeParse(request.body);
     if (!body.success) {
       throw new AppError({
@@ -45,43 +43,39 @@ export class PreparationRunController {
       });
     }
 
-    const { run, created } = await this.preparations.start(params.data.productId, body.data);
+    const { run, created } = await this.preparations.start(params.productId, body.data);
     reply.code(created ? 201 : 200);
-    return {
-      id: run.id,
-      productId: run.productId,
-      scope: run.scope,
-      status: run.status,
-      errorCode: run.errorCode,
-      model: run.model,
-      inputTokens: run.inputTokens,
-      outputTokens: run.outputTokens,
-      createdAt: run.createdAt.toISOString(),
-      startedAt: run.startedAt?.toISOString() ?? null,
-      finishedAt: run.finishedAt?.toISOString() ?? null,
-    };
+    return toRunResponse(run);
   };
 
-  /** A malformed identifier names nothing, so it is answered as missing, like the product routes. */
   private readonly getRun = async (request: FastifyRequest) => {
-    const params = runParamsSchema.safeParse(request.params);
-    if (!params.success) {
-      throw new ProductNotFound(String((request.params as { productId?: unknown }).productId));
-    }
+    const params = parseParams(runParamsSchema, request.params);
+    const run = await this.preparations.getRun(params.productId, params.runId);
+    return toRunResponse(run);
+  };
+}
 
-    const run = await this.preparations.getRun(params.data.productId, params.data.runId);
-    return {
-      id: run.id,
-      productId: run.productId,
-      scope: run.scope,
-      status: run.status,
-      errorCode: run.errorCode,
-      model: run.model,
-      inputTokens: run.inputTokens,
-      outputTokens: run.outputTokens,
-      createdAt: run.createdAt.toISOString(),
-      startedAt: run.startedAt?.toISOString() ?? null,
-      finishedAt: run.finishedAt?.toISOString() ?? null,
-    };
+/** A malformed identifier names nothing, so it is answered as missing, like the product routes. */
+function parseParams<Params>(schema: z.ZodType<Params>, params: unknown): Params {
+  const parsed = schema.safeParse(params);
+  if (!parsed.success) {
+    throw new ProductNotFound(String((params as { productId?: unknown }).productId));
+  }
+  return parsed.data;
+}
+
+function toRunResponse(run: PreparationRun) {
+  return {
+    id: run.id,
+    productId: run.productId,
+    scope: run.scope,
+    status: run.status,
+    errorCode: run.errorCode,
+    model: run.model,
+    inputTokens: run.inputTokens,
+    outputTokens: run.outputTokens,
+    createdAt: run.createdAt.toISOString(),
+    startedAt: run.startedAt?.toISOString() ?? null,
+    finishedAt: run.finishedAt?.toISOString() ?? null,
   };
 }
