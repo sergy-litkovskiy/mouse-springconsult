@@ -510,7 +510,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
     });
 
-    it('ends the run failed with model_unavailable once the retries are spent (AC-10)', async () => {
+    it('ends the run failed with preparation_failed once the retries are spent (AC-10)', async () => {
       const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob();
 
@@ -519,7 +519,7 @@ describe('preparation service (postgres)', () => {
 
       const run = await loadRun(job.runId);
       assert.equal(run.status, 'failed');
-      assert.equal(run.errorCode, 'model_unavailable');
+      assert.equal(run.errorCode, 'preparation_failed');
       assert.notEqual(run.finishedAt, null);
       assert.equal(run.inputTokens, 0);
       assert.deepEqual(await suggestionsOf(job.runId), []);

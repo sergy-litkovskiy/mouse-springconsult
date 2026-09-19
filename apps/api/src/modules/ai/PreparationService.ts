@@ -109,7 +109,7 @@ export class PreparationService {
   async abandon(runId: string): Promise<void> {
     await this.runs.finishRun(runId, {
       status: 'failed',
-      errorCode: 'model_unavailable',
+      errorCode: 'preparation_failed',
       suggestions: [],
     });
   }

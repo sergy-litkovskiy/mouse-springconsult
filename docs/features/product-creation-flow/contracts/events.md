@@ -71,7 +71,7 @@ UNIQUE-індекс у `product_preparation_runs` не дає другому о�
 | `both`: тексти є, ціновий виклик упав | `failed`, `price_unavailable` | лише тексти (AC-10b) | `completed`, без повтору |
 | `price`: ціновий виклик упав | `failed`, `price_unavailable` | немає | `completed`, без повтору |
 | Упав виклик текстів чи `field`, або запис | лишається `running` | немає | `retry` |
-| Те саме на останній спробі | `failed`, `model_unavailable` | немає | `failed` |
+| Те саме на останній спробі | `failed`, `preparation_failed` | немає | `failed` |
 | Повторна доставка після вже закоміченого завершення | не змінюється | не змінюються | `completed`, модель не викликається |
 
 Ціновий збій повтору не отримує: тексти вже оплачено, а ціну людина просить окремим
@@ -81,7 +81,7 @@ UNIQUE-індекс у `product_preparation_runs` не дає другому о�
 
 Обробник у `worker.ts` бачить `job.retryCount >= job.retryLimit`, кличе
 `PreparationService.abandon(runId)` і кидає помилку далі. `abandon` закриває запуск як
-`failed` з `error_code: model_unavailable` без пропозицій. Без цього запуск лишився б
+`failed` з `error_code: preparation_failed` без пропозицій. Без цього запуск лишився б
 `running` назавжди, і полінг фронту ніколи б не дізнався, що підготовка не відбулась (AC-10).
 
 **Відома межа.** Якщо останню спробу вбило `expireInSeconds` (процес `worker` упав

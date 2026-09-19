@@ -121,12 +121,14 @@ ${description}" : title`. Той самий розподіл ролей, що й
 - Обв'язка поза `/tdd` — окремим комітом `feat(ai): run the preparation job in the worker`:
   `ImageStorage.get` → `MediaService.read`, обробник у `worker.ts`, `events.md`.
 - **Рішення 2026-09-19:** задача, що вичерпала `retryLimit`, закриває запуск як `failed` з
-  `error_code: model_unavailable` (`PreparationService.abandon`). Без цього запуск лишався б
+  `error_code: preparation_failed` (`PreparationService.abandon`). Без цього запуск лишався б
   `running` назавжди. Записано в [events.md](../contracts/events.md), data-model, openapi.
   Показ відмов у каталозі — нова [T50](show-preparation-failures-in-catalog.md).
+  Спершу код звався `model_unavailable`. Того ж дня його перейменовано на `preparation_failed`, бо
+  смоук показав, що ним закінчується й відмова сховища, а не лише моделі.
 - AC-27: «відсутнє» — це порожній рядок, бо текстові колонки `NOT NULL DEFAULT ''`.
 - Смоук на живому `worker` без виклику моделі: кадр з неіснуючим ключем R2 → три спроби
-  (`retryCount` 0→2) → `failed` / `model_unavailable`, 0 токенів, 0 пропозицій.
+  (`retryCount` 0→2) → `failed` / `preparation_failed`, 0 токенів, 0 пропозицій.
 
 ## Links
 

@@ -6,9 +6,9 @@ export type PreparationScope = 'texts' | 'price' | 'both' | 'field';
 export type PreparationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 /**
  * `price_unavailable` — the texts of a `both` run were stored, only the price is missing (AC-10b).
- * `model_unavailable` — every retry of the job failed and the run has no suggestions (AC-10).
+ * `preparation_failed` — every retry of the job failed and the run has no suggestions (AC-10).
  */
-export type PreparationErrorCode = 'price_unavailable' | 'model_unavailable';
+export type PreparationErrorCode = 'price_unavailable' | 'preparation_failed';
 
 /**
  * An event rather than an entity edited as a whole, so there is no `updated_at`: the moments that
