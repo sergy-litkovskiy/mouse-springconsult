@@ -6,7 +6,7 @@ delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: M
-context_budget: 2400
+context_budget: 1800
 blocked_by: [T29, T32]
 blocks: [T33]
 updated_at: "2026-09-19"
@@ -53,6 +53,22 @@ updated_at: "2026-09-19"
 | схема | немає за варіантом (а); `error_detail` за варіантом (б) |
 | читання списку | `count(*) filter (where status = 'failed')` по `product_preparation_runs` у тому самому запиті сторінки, без N+1 |
 | індекс | `product_preparation_runs_product_id_idx` |
+
+## API contract excerpt
+
+Наявна схема `PreparationRun`, з якої береться текст відмови:
+
+```yaml
+        errorCode:
+          type: [string, null]
+          description: >-
+            Заповнено лише при status=failed; той самий код, що показує AC-10.
+            `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
+            записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
+            `model_unavailable` — усі спроби задачі впали, пропозицій немає (AC-10, events.md).
+```
+
+Рядок списку каталогу отримує нове поле `failedRuns: integer, minimum: 0` (Checklist 1).
 
 ## Acceptance criteria
 

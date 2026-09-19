@@ -1,15 +1,15 @@
 ---
 id: T28
 title: "Сервіс підготовки: тексти, діапазон ціни, запис usage"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2800
+context_budget: 3100
 blocked_by: [T26, T27]
 blocks: [T29]
-updated_at: "2026-09-15"
+updated_at: "2026-09-19"
 ---
 
 # T28 — Сервіс підготовки: тексти, діапазон ціни, запис `usage`
@@ -106,15 +106,27 @@ ${description}" : title`. Той самий розподіл ролей, що й
 
 ## DoD
 
-- [ ] AC-05: запуск дає опис під Prom, ключові слова й опис під OLX — **трьома окремими записами**, не одним.
-- [ ] AC-08, AC-27: запит до `web_search` складається з заголовка (Prom, інакше OLX) і, якщо він є, опису (Prom, інакше OLX) — перевірено тестом на всіх чотирьох комбінаціях наявності title/description; ціна приходить діапазоном «від — до».
-- [ ] Повторна спроба pg-boss (`config.queue.preparation.retryLimit`) працює з тим самим рядком запуску, тож **додає** свої токени до `input_tokens`/`output_tokens`, а не перезаписує їх — інакше вартість картки (AC-14) не врахує вже оплачену спробу. Тест на двійнику: дві спроби дають суму обох. Знахідка `critical-path-review` T26.
-- [ ] AC-10b: коли ціновий виклик падає, тексти лишаються пропозиціями, а запуск завершується `failed` з `error_code: price_unavailable` (рішення №5 [T24](close-preparation-open-items.md)) — тест на двійнику.
-- [ ] AC-14: `model`, `input_tokens`, `output_tokens` записані для **кожного** виклику, не для запуску загалом.
-- [ ] AC-28: вставка пропозицій і перехід запуску в `succeeded` — одна транзакція; тест на двійнику, що падає між ними, лишає запуск незавершеним і без пропозицій.
-- [ ] Модель не пише в `products` у жодній гілці — перевірено тестом, не оком.
-- [ ] `events.md` створено й описує реальну задачу, а не намір.
-- [ ] Коміт: `feat(ai): add the card preparation service`.
+- [x] AC-05: запуск дає опис під Prom, ключові слова й опис під OLX — **трьома окремими записами**, не одним.
+- [x] AC-08, AC-27: запит до `web_search` складається з заголовка (Prom, інакше OLX) і, якщо він є, опису (Prom, інакше OLX) — перевірено тестом на всіх чотирьох комбінаціях наявності title/description; ціна приходить діапазоном «від — до».
+- [x] Повторна спроба pg-boss (`config.queue.preparation.retryLimit`) працює з тим самим рядком запуску, тож **додає** свої токени до `input_tokens`/`output_tokens`, а не перезаписує їх — інакше вартість картки (AC-14) не врахує вже оплачену спробу. Тест на двійнику: дві спроби дають суму обох. Знахідка `critical-path-review` T26.
+- [x] AC-10b: коли ціновий виклик падає, тексти лишаються пропозиціями, а запуск завершується `failed` з `error_code: price_unavailable` (рішення №5 [T24](close-preparation-open-items.md)) — тест на двійнику.
+- [x] AC-14: `model`, `input_tokens`, `output_tokens` записані для **кожного** виклику, не для запуску загалом.
+- [x] AC-28: вставка пропозицій і перехід запуску в `succeeded` — одна транзакція; тест на двійнику, що падає між ними, лишає запуск незавершеним і без пропозицій.
+- [x] Модель не пише в `products` у жодній гілці — перевірено тестом, не оком.
+- [x] `events.md` створено й описує реальну задачу, а не намір.
+- [x] Коміт: `feat(ai): add the card preparation service`.
+
+## Результат
+
+- Обв'язка поза `/tdd` — окремим комітом `feat(ai): run the preparation job in the worker`:
+  `ImageStorage.get` → `MediaService.read`, обробник у `worker.ts`, `events.md`.
+- **Рішення 2026-09-19:** задача, що вичерпала `retryLimit`, закриває запуск як `failed` з
+  `error_code: model_unavailable` (`PreparationService.abandon`). Без цього запуск лишався б
+  `running` назавжди. Записано в [events.md](../contracts/events.md), data-model, openapi.
+  Показ відмов у каталозі — нова [T50](show-preparation-failures-in-catalog.md).
+- AC-27: «відсутнє» — це порожній рядок, бо текстові колонки `NOT NULL DEFAULT ''`.
+- Смоук на живому `worker` без виклику моделі: кадр з неіснуючим ключем R2 → три спроби
+  (`retryCount` 0→2) → `failed` / `model_unavailable`, 0 токенів, 0 пропозицій.
 
 ## Links
 

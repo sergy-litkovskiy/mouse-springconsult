@@ -39,7 +39,8 @@ properties у конструкторах і жодного окремого ша
 ```
 
 Другий процес зʼявився разом із **поставкою 2** фічі `product-creation-flow`. Черга pg-boss
-і `worker` вже працюють; виклики Claude в них ще не підключені:
+і `worker` вже працюють, і `worker` виконує задачу підготовки викликами Claude; маршрути, що
+ставлять задачу, — попереду:
 
 ```
                                   ┌──────────────┐
@@ -60,7 +61,7 @@ properties у конструкторах і жодного окремого ша
 | `auth` | Вхід адміна, сесії, відновлення пароля через email | вхід/вихід/перевірка сесії реалізовані ([ADR 0002](docs/adr/0002-auth-jwt-and-typeorm.md)); відновлення пароля — попереду |
 | `products` | Картка товару: окремі тексти для Prom і OLX, ціна, категорія, стан речі, дві незалежні відмітки присутності, галерея | каталог з пагінацією, фільтрами і сортуванням, читання, створення й редагування картки, приймання, видалення й головний кадр, видалення картки разом з об'єктами в R2 реалізовані; форма й галерея на фронті — попереду |
 | `media` | Прийом файлів: перевірка справжнього типу за сигнатурою вмісту, запис і видалення обʼєктів у R2. Домену не знає — слова «картка» в ньому немає ([ADR 0013](docs/features/product-creation-flow/adr/0013-call-media-from-products-as-a-storage-adapter.md)) | адаптер R2 (`ImageStorage`) і `MediaService` з перевіркою сигнатури вмісту реалізовані; маршрут вивантаження живе в `products` |
-| `ai` | Розпізнавання речі за головним фото, генерація опису й SEO під обидва майданчики, регенерація окремого поля з чернетки, пошук ринкових цін, облік `usage` ([ADR 0014](docs/features/product-creation-flow/adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](docs/features/product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md)) | `AnthropicAdapter` (модель, sharp, structured outputs, `web_search`) реалізований; сервіс підготовки, черга й запис пропозицій — попереду (поставка 2) |
+| `ai` | Розпізнавання речі за головним фото, генерація опису й SEO під обидва майданчики, регенерація окремого поля з чернетки, пошук ринкових цін, облік `usage` ([ADR 0014](docs/features/product-creation-flow/adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](docs/features/product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md)) | `AnthropicAdapter` (модель, sharp, structured outputs, `web_search`) і `PreparationService` (запис пропозицій і `usage`, обробник у `worker`) реалізовані; маршрути запусків і прийняття пропозицій — попереду (поставка 2) |
 
 Модуль — це **одна папка**. Шари всередині виражені суфіксом імені класу
 (`ProductController`, `ProductService`, `ProductRepository`), а не вкладеними

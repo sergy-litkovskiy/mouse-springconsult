@@ -90,8 +90,8 @@ stage: "13"
 | T25 | [Черга і `worker`](add-queue-and-worker.md) | Done | T23, T42, T43, T49 | S | Serhii | — |
 | T26 | [Таблиці підготовки](add-preparation-tables-migration.md) | Done | T24, T25 | S | Serhii | — |
 | T27 | [Адаптер Anthropic](add-anthropic-adapter.md) | Done | T25 | S | Serhii | — |
-| T28 | [Сервіс підготовки](add-preparation-service.md) | Todo | T26, T27 | S | Serhii | — |
-| T29 | [Маршрути запусків](add-preparation-run-endpoints.md) | Blocked | T28 | S | Serhii | — |
+| T28 | [Сервіс підготовки](add-preparation-service.md) | Done | T26, T27 | S | Serhii | — |
+| T29 | [Маршрути запусків](add-preparation-run-endpoints.md) | Todo | T28 | S | Serhii | — |
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Blocked | T29 | S | Serhii | — |
 | T31 | [Вартість картки](add-card-cost-readout.md) | Todo | T11, T26 | XS | Serhii | — |
 | T32 | [Фронт підготовки](add-preparation-ui.md) | Blocked | T20, T29, T30, T31 | M | Serhii | — |
@@ -100,7 +100,7 @@ stage: "13"
 
 ## Готові до старту просто зараз
 
-T28, T31 — жодної незакритої залежності.
+T29, T31 — жодної незакритої залежності.
 
 **2026-09-17 закрито бекенд-доріжку поставки 1:** T06, T07, T08, T11, T12, T34, T15, T14, T16, T17.
 Розблоковано: T07 (після T06), T08 (після T07), T12, T15 і T16 (після T11), T14 (після T12), T17
@@ -156,6 +156,9 @@ T25 знову Blocked, тепер до T42 і T43.
 **2026-09-19 закрито T27.** Вона розблокувала T28 (T26 закрита раніше): обидві залежності T28
 тепер Done. Живий прогін на 4 реальних фото (у story) знайшов, що `user_location.country: 'UA'`
 провайдер пошуку не підтримує — замінено на `timezone: 'Europe/Kyiv'`.
+
+**2026-09-19 закрито T28.** Вона розблокувала T29. Запуск, що вичерпав спроби, тепер закривається
+`failed` з `model_unavailable` ([events.md](../contracts/events.md)).
 
 **2026-09-19 додано T50** (запит під час T28): кількість невдалих запусків підготовки в каталозі й попап з текстами помилок. T33 тепер чекає й на неї.
 
