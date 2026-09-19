@@ -4,10 +4,10 @@ import { config, env } from '../src/config.ts';
 import { createDataSource } from '../src/db.ts';
 import { ImageStorage, MediaService } from '../src/modules/media/index.ts';
 import { ProductRepository, ProductService } from '../src/modules/products/index.ts';
-import { parsePromExport, type PromCard, type PromExport } from './prom-csv.ts';
+import { parsePromExport, type PromCard, type PromExport } from './prom-xlsx.ts';
 
 /**
- * `npm run db:import:prom -- <csv-path> [--dry-run] [--limit N]`.
+ * `npm run db:import:prom -- <xlsx-path> [--dry-run] [--limit N]`.
  *
  * Carries a Prom export over into cards, frames included. A run can be repeated at any point: a
  * card is found again by its `prom_id`, and its gallery is topped up from the frame it stopped at.
@@ -95,14 +95,14 @@ async function main(): Promise<void> {
     allowPositionals: true,
     options: { 'dry-run': { type: 'boolean', default: false }, limit: { type: 'string' } },
   });
-  const [csvPath] = positionals;
-  if (csvPath === undefined) {
-    process.stderr.write('usage: npm run db:import:prom -- <csv-path> [--dry-run] [--limit N]\n');
+  const [xlsxPath] = positionals;
+  if (xlsxPath === undefined) {
+    process.stderr.write('usage: npm run db:import:prom -- <xlsx-path> [--dry-run] [--limit N]\n');
     process.exitCode = 1;
     return;
   }
 
-  const parsed = parsePromExport(await readFile(csvPath, 'utf8'));
+  const parsed = await parsePromExport(await readFile(xlsxPath));
   for (const { row, promId, reason } of parsed.errors) {
     process.stderr.write(`row ${String(row)} (${promId}): ${reason}\n`);
   }

@@ -1,11 +1,12 @@
-import { parse } from 'csv-parse/sync';
+import ExcelJS from 'exceljs';
 import sanitizeHtml from 'sanitize-html';
 import { productConstraints, type ProductCondition } from '../src/contracts/products-limits.ts';
 import { cleanDescription, type ProductDraft } from '../src/modules/products/index.ts';
 
 /**
- * Pure mapping of a Prom product export (the CSV from the Prom cabinet) onto cards. No I/O here:
- * `import-prom.ts` reads the file, fetches the frames and writes the cards.
+ * Mapping of a Prom product export (the xlsx from the Prom cabinet, hand-edited before import) onto
+ * cards. No file or network I/O here: `import-prom.ts` reads the file from disk, fetches the frames
+ * and writes the cards; `parsePromExport` only decodes the bytes it is handed.
  */
 
 export type PromCardDraft = ProductDraft & { readonly promId: string };
@@ -51,6 +52,35 @@ export type PromColumns = {
 const OUT_OF_STOCK = '-';
 const CONDITION_CHARACTERISTIC = 'Стан';
 const NEW_CONDITIONS: ReadonlySet<string> = new Set(['Новий', 'Новое', 'Негашене']);
+const PRODUCTS_SHEET_NAME = 'Export Products Sheet';
+
+/**
+ * A machine-written CSV only ever held strings; a hand-edited workbook can hold whatever type Excel
+ * guessed for a column — `Унікальний_ідентифікатор` comes back as a number, and a pasted link can
+ * turn into a hyperlink cell. `characteristic()` and `toPromCard()` still work on plain strings, so
+ * every cell is flattened to text right after reading.
+ */
+function cellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if ('richText' in value) {
+    return value.richText.map((run) => run.text).join('');
+  }
+  if ('text' in value) {
+    return cellText(value.text);
+  }
+  if ('result' in value) {
+    return cellText(value.result ?? '');
+  }
+  throw new Error(`unsupported cell value: ${JSON.stringify(value)}`);
+}
 
 export function resolveColumns(header: readonly string[]): PromColumns {
   const find = (name: string): number => {
@@ -157,7 +187,7 @@ export function toPromCard(row: readonly string[], columns: PromColumns): PromCa
     throw new Error('no Унікальний_ідентифікатор');
   }
 
-  // The column rounds it to two decimals itself; the string goes in as Prom wrote it.
+  // The column rounds it to two decimals itself; the cell's text goes in as read.
   const price = cell(columns.price);
   if (!productConstraints.pricePattern.test(price)) {
     throw new Error(`price "${price}" is not a decimal`);
@@ -185,29 +215,55 @@ export function toPromCard(row: readonly string[], columns: PromColumns): PromCa
   };
 }
 
-export function parsePromExport(csv: string): PromExport {
-  const [header, ...rows] = parse(csv, { bom: true, relax_column_count: true });
-  if (header === undefined) {
+/**
+ * exceljs's bundled types declare their own module-local `Buffer extends ArrayBuffer`, which this
+ * project's `lib: es2024` no longer treats as compatible with Node's real `Buffer` — a gap in the
+ * library's types, not a runtime one. This is the one cast that bridges it.
+ */
+type XlsxBytes = Parameters<ExcelJS.Xlsx['load']>[0];
+
+export async function parsePromExport(xlsx: Buffer): Promise<PromExport> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(xlsx as unknown as XlsxBytes);
+  const sheet = workbook.getWorksheet(PRODUCTS_SHEET_NAME);
+  if (sheet === undefined) {
+    throw new Error(`the workbook has no "${PRODUCTS_SHEET_NAME}" sheet`);
+  }
+
+  const columnCount = sheet.columnCount;
+  const toRow = (row: ExcelJS.Row): string[] =>
+    Array.from({ length: columnCount }, (_, index) => cellText(row.getCell(index + 1).value));
+
+  const [headerRow, ...dataRows] = sheet.getRows(1, sheet.rowCount) ?? [];
+  if (headerRow === undefined) {
     throw new Error('the export is empty');
   }
-  const columns = resolveColumns(header);
+  const columns = resolveColumns(toRow(headerRow));
 
+  // A cell a spreadsheet tool cannot resolve (e.g. a formula error) fails `cellText` too, so the
+  // conversion to strings happens inside the loop: one bad cell costs its row, not the whole file.
   const cards: PromCard[] = [];
   const errors: PromRowError[] = [];
   let outOfStock = 0;
 
-  for (const [index, row] of rows.entries()) {
+  for (const [index, sheetRow] of dataRows.entries()) {
     try {
-      const card = toPromCard(row, columns);
+      const card = toPromCard(toRow(sheetRow), columns);
       if (card === null) {
         outOfStock += 1;
       } else {
         cards.push(card);
       }
     } catch (error) {
+      let promId = '';
+      try {
+        promId = cellText(sheetRow.getCell(columns.promId + 1).value);
+      } catch {
+        // The id cell itself is unreadable; the row error below still gets reported.
+      }
       errors.push({
         row: index + 2,
-        promId: row[columns.promId] ?? '',
+        promId,
         reason: error instanceof Error ? error.message : String(error),
       });
     }
