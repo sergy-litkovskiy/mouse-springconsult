@@ -341,6 +341,7 @@ describe('ProductCatalog', () => {
     expect(keyboardRow?.querySelector('button.gallery-cell__thumb')).toBeNull();
     keyboardRow?.querySelector<HTMLElement>('.gallery-cell__thumb--empty')?.click();
     await settle();
+    await answerCardRead(KEYBOARD);
 
     const dialogs = TestBed.inject(MatDialog).openDialogs;
     expect(dialogs.length).toBe(1);
@@ -603,6 +604,17 @@ describe('ProductCatalog', () => {
     return TestBed.inject(MatDialog).openDialogs;
   }
 
+  /**
+   * The card form reads the card it was given (T32): the row of the list carries neither the
+   * suggestions waiting for a decision nor the cost of the card, so the dialog asks for them.
+   */
+  async function answerCardRead(card: ProductCard): Promise<void> {
+    const read = http.expectOne(`/api/products/${card.id}`);
+    expect(read.request.method).toBe('GET');
+    read.flush({ ...card, pendingSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 });
+    await settle();
+  }
+
   /** The overlay lives on the body, outside the routed fixture. */
   function dialogField(name: string): HTMLInputElement | null {
     return document.querySelector<HTMLInputElement>(
@@ -678,6 +690,7 @@ describe('ProductCatalog', () => {
 
     rows()[1]?.click();
     await settle();
+    await answerCardRead(KEYBOARD);
 
     expect(dialogs().length).toBe(1);
     expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ProductForm);
@@ -694,6 +707,7 @@ describe('ProductCatalog', () => {
 
     rows()[0]?.click();
     await settle();
+    await answerCardRead(MOUSE);
     await closeDialog(true);
 
     const request = expectRequest();
@@ -726,6 +740,7 @@ describe('ProductCatalog', () => {
 
     rows()[0]?.click();
     await settle();
+    await answerCardRead(MOUSE);
     expect(dialogs().length).toBe(1);
     await closeDialog(false);
 

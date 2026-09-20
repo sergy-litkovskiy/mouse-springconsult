@@ -364,9 +364,10 @@ export class ProductCatalog {
     });
   }
 
-  /** `null` is a new card. */
+  /** `null` is a new card. The dialog reads the card itself: a row of the list carries neither
+   * the suggestions waiting for a decision nor the cost of the card. */
   protected openForm(product: ProductCard | null): void {
-    const data: ProductFormData = { product };
+    const data: ProductFormData = { productId: product?.id ?? null };
     // Material 3 caps a dialog at 560px unless maxWidth says otherwise.
     this.dialog
       .open<ProductForm, ProductFormData, boolean>(ProductForm, {

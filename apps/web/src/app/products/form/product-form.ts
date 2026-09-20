@@ -28,7 +28,7 @@ import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
   Product,
-  ProductCard,
+  ProductCardRead,
   ProductImage,
   ProductUpdate,
 } from '@contracts/products.contract';
@@ -40,9 +40,15 @@ import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
 import { PromDescriptionEditor } from './prom-description-editor';
 
-/** `null` opens an empty dialog: the card itself is created once the first frame is chosen. */
+/**
+ * `null` opens an empty dialog: the card itself is created once the first frame is chosen.
+ *
+ * An identifier rather than the card the catalogue already holds: the suggestions waiting for a
+ * decision and the cost of the card ride only with the read of one card (T31, T53), and a row of
+ * the list carries neither. The dialog therefore reads the card it was given.
+ */
 export type ProductFormData = {
-  readonly product: ProductCard | null;
+  readonly productId: string | null;
 };
 
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
@@ -53,6 +59,7 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку. Спробуйте ще раз.';
+const UNKNOWN_READ_MESSAGE = 'Не вдалося прочитати картку. Закрийте вікно і спробуйте ще раз.';
 
 /** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
 const UNPRICED = '0.00';
@@ -107,18 +114,22 @@ export class ProductForm {
   private readonly dialogRef = inject<MatDialogRef<ProductForm, boolean>>(MatDialogRef);
   private readonly snackBar = inject(MatSnackBar);
 
-  private readonly productId = signal<string | null>(this.data.product?.id ?? null);
-  protected readonly images = signal<readonly ProductImage[]>(this.data.product?.images ?? []);
+  private readonly productId = signal<string | null>(this.data.productId);
+  protected readonly card = signal<ProductCardRead | null>(null);
+  protected readonly images = signal<readonly ProductImage[]>([]);
 
   /** Every field waits for the first frame (AC-20): the texts are written about the photos. */
   protected readonly hasFrames = computed(() => this.images().length > 0);
   /**
    * Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". The badge
-   * describes the card as it was opened, not the fields being edited.
+   * describes the card as it was read, not the fields being edited.
    */
-  protected readonly ready = this.data.product?.isReady ?? false;
-  protected readonly missingFields =
-    this.data.product === null ? '' : missingFieldsHint(this.data.product);
+  protected readonly ready = computed(() => this.card()?.isReady ?? false);
+  protected readonly missingFields = computed(() => {
+    const card = this.card();
+    return card === null ? '' : missingFieldsHint(card);
+  });
+  protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
   /** The catalogue re-reads its page only when the dialog changed something. */
@@ -160,8 +171,8 @@ export class ProductForm {
   );
 
   constructor() {
-    if (this.data.product !== null) {
-      this.fill(this.data.product);
+    if (this.data.productId !== null) {
+      void this.read(this.data.productId);
     }
 
     effect(() => {
@@ -252,6 +263,25 @@ export class ProductForm {
       ...(titleOlx === '' ? {} : { titleOlx }),
       ...(category === '' ? {} : { category }),
     };
+  }
+
+  private async read(productId: string): Promise<void> {
+    this.loading.set(true);
+    this.formError.set(null);
+    try {
+      this.take(await firstValueFrom(this.api.getById(productId)));
+    } catch (error: unknown) {
+      this.formError.set(apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_READ_MESSAGE));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** Both the read and every answer that recounts the card land here, so neither can drift. */
+  private take(card: ProductCardRead): void {
+    this.card.set(card);
+    this.images.set(card.images);
+    this.fill(card);
   }
 
   private fill(product: Product): void {

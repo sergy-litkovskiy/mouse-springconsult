@@ -27,8 +27,10 @@ export class ProductsApi {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
   }
 
-  getById(productId: string): Observable<Product> {
-    return this.http.get<Product>(`${this.baseUrl}/${productId}`, { withCredentials: true });
+  getById(productId: string): Observable<ProductCardRead> {
+    return this.http.get<ProductCardRead>(`${this.baseUrl}/${productId}`, {
+      withCredentials: true,
+    });
   }
 
   create(request: ProductCreateRequest): Observable<Product> {

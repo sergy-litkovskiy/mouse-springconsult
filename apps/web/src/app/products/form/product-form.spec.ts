@@ -14,6 +14,7 @@ import type { ApiError } from '@contracts/error.contract';
 import type {
   Product,
   ProductCard,
+  ProductCardRead,
   ProductImage,
   ProductUpdateResponse,
 } from '@contracts/products.contract';
@@ -80,8 +81,12 @@ describe('ProductForm', () => {
   let element: HTMLElement;
   let close: ReturnType<typeof vi.fn>;
 
+  /**
+   * The dialog is handed an identifier and reads the card itself, so a test that opens an existing
+   * card answers that read before anything else can happen.
+   */
   function open(product: ProductCard | null): void {
-    const data: ProductFormData = { product };
+    const data: ProductFormData = { productId: product?.id ?? null };
     close = vi.fn();
     TestBed.configureTestingModule({
       imports: [ProductForm],
@@ -95,6 +100,16 @@ describe('ProductForm', () => {
     fixture = TestBed.createComponent(ProductForm);
     http = TestBed.inject(HttpTestingController);
     element = fixture.nativeElement as HTMLElement;
+    if (product !== null) {
+      const read = http.expectOne(`/api/products/${product.id}`);
+      expect(read.request.method).toBe('GET');
+      read.flush(asRead(product));
+    }
+  }
+
+  /** The three fields a read carries and a row of the list does not (T31, T53). */
+  function asRead(card: ProductCard): ProductCardRead {
+    return { ...card, pendingSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
   }
 
   /**
