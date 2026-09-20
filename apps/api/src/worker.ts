@@ -69,9 +69,29 @@ async function main(): Promise<void> {
   );
   logger.info({ queue: preparationQueue.name }, 'worker subscribed');
 
+  async function sweepStuckRuns(): Promise<void> {
+    try {
+      const closed = await preparation.closeStuckRuns();
+      if (closed > 0) {
+        logger.warn({ closed }, 'closed stuck preparation runs');
+      }
+    } catch (error) {
+      // A failed sweep must not take the worker down: the next round tries again.
+      logger.error({ err: error }, 'stuck run sweep failed');
+    }
+  }
+
+  // The first sweep is at startup, because a worker coming back up is precisely when the runs its
+  // own death left behind are waiting.
+  await sweepStuckRuns();
+  const sweep = setInterval(() => {
+    void sweepStuckRuns();
+  }, config.queue.preparation.stuckSweepIntervalSeconds * 1000);
+
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
       logger.info({ signal }, 'shutting down');
+      clearInterval(sweep);
       void queue
         .stop({ graceful: true })
         .then(() => dataSource.destroy())

@@ -114,6 +114,14 @@ export class PreparationService {
     });
   }
 
+  /**
+   * The two paths `abandon` cannot cover: `expireInSeconds` killed the last attempt (the handler
+   * never reached its own `catch`), or `abandon` itself failed. Returns how many runs were closed.
+   */
+  async closeStuckRuns(): Promise<number> {
+    return this.runs.closeStuckRuns(config.queue.preparation.stuckAfterSeconds);
+  }
+
   private async readRecognitionFrames(card: Product): Promise<Uint8Array[]> {
     // The main frame goes first: recognition leans on it, and the ceiling may cut the rest.
     const gallery = [

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
+import { config } from '../../config.ts';
 import { createDataSource } from '../../db.ts';
 import { MediaService, type ImageStorage } from '../media/index.ts';
 import {
@@ -173,6 +174,14 @@ async function seedRun(productId: string, scope: PreparationRun['scope']): Promi
     finishedAt: null,
   });
   return saved.id;
+}
+
+/** `created_at` is a `@CreateDateColumn`, which an ORM update leaves alone — hence raw SQL. */
+async function ageRun(runId: string, ageSeconds: number): Promise<void> {
+  await dataSource.query(
+    `update product_preparation_runs set created_at = now() - make_interval(secs => $2) where id = $1`,
+    [runId, ageSeconds],
+  );
 }
 
 async function loadRun(runId: string): Promise<PreparationRun> {
@@ -561,6 +570,32 @@ describe('preparation service (postgres)', () => {
       }
 
       assert.deepEqual(await loadCard(productId), before);
+    });
+  });
+
+  describe('the sweep of stuck runs', () => {
+    it('closes a run whose last attempt died without closing it (AC-39)', async () => {
+      const { service } = setup();
+      const job = await textsJob();
+      await ageRun(job.runId, config.queue.preparation.stuckAfterSeconds + 60);
+
+      assert.equal(await service.closeStuckRuns(), 1);
+
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'failed');
+      assert.equal(run.errorCode, 'preparation_failed');
+      assert.deepEqual(await suggestionsOf(job.runId), []);
+    });
+
+    it('leaves a run alone while its own series of attempts could still be running (AC-40)', async () => {
+      const { service } = setup();
+      const job = await textsJob();
+      // Older than a single attempt, younger than the whole series: the threshold has to cover
+      // every retry, or the sweep would close a run pg-boss is about to hand over again.
+      await ageRun(job.runId, config.queue.preparation.expireInSeconds + 60);
+
+      assert.equal(await service.closeStuckRuns(), 0);
+      assert.equal((await loadRun(job.runId)).status, 'queued');
     });
   });
 });

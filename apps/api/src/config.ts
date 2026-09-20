@@ -6,6 +6,29 @@ import { productConstraints } from './contracts/products-limits.ts';
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * HOUR_SECONDS;
 
+/**
+ * Declared beside `config` rather than inside it: the threshold of a stuck run is derived from
+ * these very fields, and a literal cannot read itself while it is still being built.
+ */
+const preparationJob = {
+  name: 'product-preparation',
+  /** A failed attempt is retried with a growing pause; past the limit the job stays `failed`. */
+  retryLimit: 2,
+  retryDelaySeconds: 10,
+  retryBackoff: true,
+  /** A model call takes tens of seconds; an attempt still active after this is presumed dead. */
+  expireInSeconds: 5 * 60,
+} as const;
+
+/**
+ * A queued job has to start within 5 s (PRD §6). Polling, not LISTEN/NOTIFY, is the floor:
+ * one second leaves room for the fetch itself.
+ */
+const POLLING_INTERVAL_SECONDS = 1;
+
+/** Runs left behind by a dead attempt are a handful, so the sweep looking for them is rare. */
+const STUCK_SWEEP_INTERVAL_SECONDS = 60;
+
 export const config = {
   http: {
     host: '0.0.0.0',
@@ -78,19 +101,24 @@ export const config = {
     schema: 'pgboss',
     /** The api only enqueues and the worker takes one job at a time, so a small pool suffices. */
     poolSize: 4,
-    /**
-     * A queued job has to start within 5 s (PRD §6). Polling, not LISTEN/NOTIFY, is the floor:
-     * one second leaves room for the fetch itself.
-     */
-    pollingIntervalSeconds: 1,
+    pollingIntervalSeconds: POLLING_INTERVAL_SECONDS,
     preparation: {
-      name: 'product-preparation',
-      /** A failed attempt is retried with a growing pause; past the limit the job stays `failed`. */
-      retryLimit: 2,
-      retryDelaySeconds: 10,
-      retryBackoff: true,
-      /** A model call takes tens of seconds; an attempt still active after this is presumed dead. */
-      expireInSeconds: 5 * 60,
+      ...preparationJob,
+      stuckSweepIntervalSeconds: STUCK_SWEEP_INTERVAL_SECONDS,
+      /**
+       * Past this age a `queued` or `running` run was left behind by an attempt nobody closed: a
+       * full series of `retryLimit + 1` attempts of `expireInSeconds` each, the pauses between
+       * them (with `retryBackoff` every next pause doubles, so they sum to `retryDelaySeconds ×
+       * (2^retryLimit − 1)`), plus one polling interval and one sweep period of slack — ~16 min at
+       * the current values. Derived rather than written out, so that retuning the queue cannot
+       * drift away from the threshold; turning `retryBackoff` off would only leave it too
+       * generous, which errs on the side of the live run.
+       */
+      stuckAfterSeconds:
+        (preparationJob.retryLimit + 1) * preparationJob.expireInSeconds +
+        preparationJob.retryDelaySeconds * (2 ** preparationJob.retryLimit - 1) +
+        POLLING_INTERVAL_SECONDS +
+        STUCK_SWEEP_INTERVAL_SECONDS,
     },
   },
 
