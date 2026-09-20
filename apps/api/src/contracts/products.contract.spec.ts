@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  productCardReadSchema,
   productCreateSchema,
   productListQuerySchema,
   productListSchema,
@@ -128,6 +129,63 @@ describe('product list response contract', () => {
       true,
     );
     assert.equal(productListSchema.safeParse({ ...page, items: [row] }).success, false);
+  });
+});
+
+describe('product card read contract', () => {
+  const card = {
+    id: '0199c0de-0000-7000-8000-000000000001',
+    titleProm: 'Миша',
+    descriptionProm: 'Опис',
+    titleOlx: 'Миша',
+    descriptionOlx: 'Опис',
+    price: '2499.00',
+    seoKeywords: ['миша'],
+    category: 'Периферія',
+    publishedProm: false,
+    publishedOlx: false,
+    condition: 'used',
+    images: [],
+    createdAt: '2026-09-09T10:00:00.000Z',
+    updatedAt: '2026-09-09T10:00:00.000Z',
+    isReady: false,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+  };
+  const suggestion = {
+    id: '0199c0de-1111-7000-8000-000000000001',
+    runId: '0199c0de-2222-7000-8000-000000000001',
+    field: 'titleOlx',
+    value: 'Миша Logitech MX Master 3 бездротова',
+    resolution: null,
+    resolvedAt: null,
+    createdAt: '2026-09-20T10:00:00.000Z',
+  };
+
+  it('requires the pending suggestions of a card in its read response (AC-41)', () => {
+    assert.equal(
+      productCardReadSchema.safeParse({ ...card, pendingSuggestions: [] }).success,
+      true,
+    );
+    assert.equal(productCardReadSchema.safeParse(card).success, false);
+  });
+
+  it('carries a pending suggestion whole, resolution and all (AC-41)', () => {
+    const parsed: Record<string, unknown> = productCardReadSchema.parse({
+      ...card,
+      pendingSuggestions: [suggestion],
+    });
+
+    assert.deepEqual(parsed['pendingSuggestions'], [suggestion]);
+  });
+
+  it('refuses a suggestion field spelled the way the column holds it (AC-41)', () => {
+    const result = productCardReadSchema.safeParse({
+      ...card,
+      pendingSuggestions: [{ ...suggestion, field: 'title_olx' }],
+    });
+
+    assert.equal(result.success, false);
   });
 });
 

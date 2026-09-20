@@ -125,7 +125,11 @@ class StubPreparationRepository extends PreparationRepository {
     return this.totals.get(productId) ?? { inputTokens: 0, outputTokens: 0 };
   }
 
+  /** Counts the trips to the table: a card read takes its suggestions from one of them. */
+  suggestionQueries = 0;
+
   override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    this.suggestionQueries += 1;
     return this.suggestions.get(productId) ?? [];
   }
 
@@ -822,7 +826,10 @@ describe('product controller: card cost', () => {
 
 const SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000001';
 const PRICE_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000002';
+const OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000003';
 const MISSING_SUGGESTION_ID = '01931f2a-6666-7000-8000-00000000000f';
+const RUN_ID = '01931f2a-5555-7000-8000-000000000001';
+const SUGGESTED_AT = '2026-09-20T10:00:00.000Z';
 
 class SuggestionProductRepository extends StubProductRepository {
   override async update(id: string, changes: ProductChanges): Promise<Product | null> {
@@ -842,12 +849,12 @@ function pendingSuggestion(
 ): FieldSuggestion {
   return Object.assign(new FieldSuggestion(), {
     id,
-    runId: '01931f2a-5555-7000-8000-000000000001',
+    runId: RUN_ID,
     field,
     value,
     resolution: null,
     resolvedAt: null,
-    createdAt: new Date('2026-09-20T10:00:00.000Z'),
+    createdAt: new Date(SUGGESTED_AT),
   });
 }
 
@@ -959,5 +966,135 @@ describe('product controller: resolving a suggestion', () => {
     assert.equal(accepted.statusCode, 401);
     assert.equal(rejected.statusCode, 401);
     assert.equal(repository.cards[0]?.titleOlx, 'Моя власна назва');
+  });
+});
+
+type CardReadBody = {
+  titleOlx: string;
+  pendingSuggestions?: readonly Record<string, unknown>[];
+};
+
+/** What the card read owes per suggestion: the identifiers, the field of the contract, the value. */
+function pendingDto(id: string, field: string, value: unknown): Record<string, unknown> {
+  return { id, runId: RUN_ID, field, value, createdAt: SUGGESTED_AT };
+}
+
+/** An absent field collapses to an empty list, so forgetting it reads as offering no suggestion. */
+function pendingOf(body: CardReadBody): Record<string, unknown>[] {
+  return (body.pendingSuggestions ?? []).map((row) => ({
+    id: row['id'],
+    runId: row['runId'],
+    field: row['field'],
+    value: row['value'],
+    createdAt: row['createdAt'],
+  }));
+}
+
+describe('product controller: pending suggestions of a card', () => {
+  let repository: SuggestionProductRepository;
+  let runs: StubPreparationRepository;
+  let app: FastifyInstance;
+
+  before(async () => {
+    repository = new SuggestionProductRepository();
+    runs = new StubPreparationRepository();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, runs),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this suite is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    // Edited by hand, so the reconciliation of the read leaves the suggestion to the human.
+    repository.cards[0] = card(READY_ID, { titleOlx: 'Моя власна назва' });
+    runs.suggestions.set(READY_ID, [
+      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
+    ]);
+    runs.suggestionQueries = 0;
+  });
+
+  it('answers the card read with the suggestion waiting beside the field (AC-41)', async () => {
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
+      pendingDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі'),
+    ]);
+  });
+
+  it('leaves the suggestion the read applied itself out of the pending ones (AC-42)', async () => {
+    repository.cards[0] = card(READY_ID, { titleOlx: '' });
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const body = response.json<CardReadBody>();
+
+    assert.equal(body.titleOlx, 'Назва від моделі');
+    assert.deepEqual(body.pendingSuggestions, []);
+  });
+
+  it('never brings a rejected suggestion back among the pending ones (AC-42)', async () => {
+    await app.inject({ method: 'POST', url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject') });
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.deepEqual(response.json<CardReadBody>().pendingSuggestions, []);
+  });
+
+  it('answers an acceptance with what is still waiting for a decision (Checklist 3)', async () => {
+    runs.suggestions.set(READY_ID, [
+      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
+      pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
+      pendingDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.'),
+    ]);
+  });
+
+  it('answers a rejection with what is still waiting for a decision (Checklist 3)', async () => {
+    runs.suggestions.set(READY_ID, [
+      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
+      pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
+      pendingDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.'),
+    ]);
+  });
+
+  it('answers a card that was never prepared with an empty array, not a missing field (DoD)', async () => {
+    const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json<CardReadBody>().pendingSuggestions, []);
+  });
+
+  it('takes the pending suggestions from the query the reconciliation already makes (DoD)', async () => {
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
+      pendingDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі'),
+    ]);
+    assert.equal(runs.suggestionQueries, 1);
   });
 });
