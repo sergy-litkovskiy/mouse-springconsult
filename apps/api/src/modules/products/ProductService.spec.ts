@@ -4,6 +4,7 @@ import type { ProductCreate, ProductListQuery } from '../../contracts/products.c
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
 import { Product, type ProductPage } from './Product.ts';
+import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
@@ -247,6 +248,17 @@ class RecordingMediaService extends MediaService {
   }
 }
 
+/** No test here is about the cost of a card, so no card here has ever been prepared. */
+class StubPreparationRepository extends PreparationRepository {
+  constructor() {
+    super(NO_DATA_SOURCE);
+  }
+
+  override async sumTokens(): Promise<TokenTotals> {
+    return { inputTokens: 0, outputTokens: 0 };
+  }
+}
+
 const BASE_QUERY: ProductListQuery = {
   page: 1,
   pageSize: 20,
@@ -261,7 +273,11 @@ function setup(): {
 } {
   const repository = new StubProductRepository();
   const media = new RecordingMediaService();
-  return { service: new ProductService(repository, media), repository, media };
+  return {
+    service: new ProductService(repository, media, new StubPreparationRepository()),
+    repository,
+    media,
+  };
 }
 
 describe('product service', () => {

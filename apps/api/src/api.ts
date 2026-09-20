@@ -129,6 +129,7 @@ export async function buildServer(): Promise<ApiServer> {
           ...config.storage,
         }),
       ),
+      new PreparationRepository(dataSource),
     ),
     env.R2_PUBLIC_BASE_URL,
   );

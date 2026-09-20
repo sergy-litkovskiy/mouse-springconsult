@@ -12,6 +12,7 @@ import { config } from '../../config.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.ts';
 import type { Product, ProductPage } from './Product.ts';
+import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
@@ -100,9 +101,25 @@ class StubProductRepository extends ProductRepository {
   }
 }
 
+/**
+ * Holds what the sum over `product_preparation_runs` gives back; a card it does not know about
+ * has never been prepared.
+ */
+class StubPreparationRepository extends PreparationRepository {
+  readonly totals = new Map<string, TokenTotals>();
+
+  constructor() {
+    super(NO_DATA_SOURCE);
+  }
+
+  override async sumTokens(productId: string): Promise<TokenTotals> {
+    return this.totals.get(productId) ?? { inputTokens: 0, outputTokens: 0 };
+  }
+}
+
 describe('product controller: list', () => {
   const repository = new StubProductRepository();
-  const service = new ProductService(repository, NO_MEDIA);
+  const service = new ProductService(repository, NO_MEDIA, new StubPreparationRepository());
   let app: FastifyInstance;
 
   before(async () => {
@@ -168,7 +185,7 @@ describe('product controller: main frame', () => {
     repository = new StubProductRepository();
     app = Fastify();
     new ProductController(
-      new ProductService(repository, NO_MEDIA),
+      new ProductService(repository, NO_MEDIA, new StubPreparationRepository()),
       'https://images.example.com',
     ).register(app, async () => {
       // Lets every request through: the session is not what this suite is about.
@@ -232,7 +249,7 @@ describe('product controller: main frame without a session', () => {
   before(async () => {
     app = Fastify();
     new ProductController(
-      new ProductService(new StubProductRepository(), NO_MEDIA),
+      new ProductService(new StubProductRepository(), NO_MEDIA, new StubPreparationRepository()),
       'https://images.example.com',
     ).register(app, async (_request, reply) => {
       return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
@@ -291,7 +308,11 @@ describe('product controller: create', () => {
   let app: FastifyInstance;
 
   before(async () => {
-    const service = new ProductService(new CreateRepository(), NO_MEDIA);
+    const service = new ProductService(
+      new CreateRepository(),
+      NO_MEDIA,
+      new StubPreparationRepository(),
+    );
     app = Fastify();
     new ProductController(service, 'https://images.example.com').register(app, async () => {
       // Lets every request through: the session is not what this spec is about.
@@ -399,7 +420,7 @@ describe('product controller: upload', () => {
       },
     });
     new ProductController(
-      new ProductService(repository, new MediaService(storage)),
+      new ProductService(repository, new MediaService(storage), new StubPreparationRepository()),
       'https://images.example.com',
     ).register(app, async (_request, reply) => {
       if (!allowed) {
@@ -537,7 +558,7 @@ describe('product controller: delete frame', () => {
     storage = new DeletingImageStorage();
     app = Fastify();
     new ProductController(
-      new ProductService(repository, new MediaService(storage)),
+      new ProductService(repository, new MediaService(storage), new StubPreparationRepository()),
       'https://images.example.com',
     ).register(app, async (_request, reply) => {
       if (!allowed) {
@@ -652,7 +673,7 @@ describe('product controller: delete card', () => {
     storage = new DeletingImageStorage();
     app = Fastify();
     new ProductController(
-      new ProductService(repository, new MediaService(storage)),
+      new ProductService(repository, new MediaService(storage), new StubPreparationRepository()),
       'https://images.example.com',
     ).register(app, async (_request, reply) => {
       if (!allowed) {
@@ -719,5 +740,49 @@ describe('product controller: delete card', () => {
     } finally {
       allowed = true;
     }
+  });
+});
+
+describe('product controller: card cost', () => {
+  const runs = new StubPreparationRepository();
+  let app: FastifyInstance;
+
+  before(async () => {
+    app = Fastify();
+    new ProductController(
+      new ProductService(new StubProductRepository(), NO_MEDIA, runs),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this suite is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  it('answers the card read with what every preparation of that card has cost (AC-14)', async () => {
+    runs.totals.set(READY_ID, { inputTokens: 1300, outputTokens: 250 });
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const body = response.json<Record<string, unknown>>();
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(
+      { totalInputTokens: body['totalInputTokens'], totalOutputTokens: body['totalOutputTokens'] },
+      { totalInputTokens: 1300, totalOutputTokens: 250 },
+    );
+  });
+
+  it('answers zeros for a card that has never been prepared, not an empty field (sad.md §12)', async () => {
+    const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
+    const body = response.json<Record<string, unknown>>();
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(
+      { totalInputTokens: body['totalInputTokens'], totalOutputTokens: body['totalOutputTokens'] },
+      { totalInputTokens: 0, totalOutputTokens: 0 },
+    );
   });
 });

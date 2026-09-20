@@ -7,6 +7,7 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import { cleanDescription } from './cleanDescription.ts';
+import type { PreparationRepository } from './PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -40,6 +41,7 @@ export class ProductService {
   constructor(
     private readonly products: ProductRepository,
     private readonly media: MediaService,
+    private readonly preparations: PreparationRepository,
   ) {}
 
   /**

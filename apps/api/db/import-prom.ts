@@ -3,7 +3,11 @@ import { parseArgs } from 'node:util';
 import { config, env } from '../src/config.ts';
 import { createDataSource } from '../src/db.ts';
 import { ImageStorage, MediaService } from '../src/modules/media/index.ts';
-import { ProductRepository, ProductService } from '../src/modules/products/index.ts';
+import {
+  PreparationRepository,
+  ProductRepository,
+  ProductService,
+} from '../src/modules/products/index.ts';
 import { parsePromExport, type PromCard, type PromExport } from './prom-xlsx.ts';
 
 /**
@@ -128,6 +132,7 @@ async function main(): Promise<void> {
         ...config.storage,
       }),
     ),
+    new PreparationRepository(dataSource),
   );
 
   let created = 0;
