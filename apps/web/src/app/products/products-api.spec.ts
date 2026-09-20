@@ -1,8 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.contract';
 import type {
+  FieldSuggestion,
   Product,
+  ProductCardRead,
   ProductCreate,
   ProductImage,
   ProductUpdate,
@@ -37,6 +40,43 @@ const PRODUCT: Product = {
   images: [IMAGE],
   createdAt: '2026-08-01T09:00:00.000Z',
   updatedAt: '2026-08-01T09:00:00.000Z',
+};
+
+const RUN_ID = '22222222-2222-4222-8222-222222222222';
+const SUGGESTION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+const QUEUED_RUN: PreparationRunDto = {
+  id: RUN_ID,
+  productId: PRODUCT_ID,
+  scope: 'texts',
+  status: 'queued',
+  errorCode: null,
+  model: 'claude-sonnet-5',
+  inputTokens: 0,
+  outputTokens: 0,
+  createdAt: '2026-09-20T09:00:00.000Z',
+  startedAt: null,
+  finishedAt: null,
+};
+
+const SUGGESTED_OLX_DESCRIPTION = 'Продам мишу Logitech MX Master 3, повний комплект.';
+
+const SUGGESTION: FieldSuggestion = {
+  id: SUGGESTION_ID,
+  runId: RUN_ID,
+  field: 'descriptionOlx',
+  value: SUGGESTED_OLX_DESCRIPTION,
+  resolution: null,
+  resolvedAt: null,
+  createdAt: '2026-09-20T09:00:30.000Z',
+};
+
+const CARD_WITH_SUGGESTION: ProductCardRead = {
+  ...PRODUCT,
+  isReady: true,
+  pendingSuggestions: [SUGGESTION],
+  totalInputTokens: 1200,
+  totalOutputTokens: 800,
 };
 
 describe('ProductsApi', () => {
@@ -163,5 +203,96 @@ describe('ProductsApi', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     expect(await pending).toBeNull();
+  });
+
+  it('starts a run over all the texts of the card (AC-05)', async () => {
+    const body: PreparationRunRequest = { scope: 'texts' };
+
+    const pending = firstValueFrom(api.startPreparationRun(PRODUCT_ID, body));
+    const request = http.expectOne(`/api/products/${PRODUCT_ID}/preparation-runs`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(body);
+    request.flush(QUEUED_RUN, { status: 201, statusText: 'Created' });
+
+    expect(await pending).toEqual(QUEUED_RUN);
+  });
+
+  it('starts a run that only looks up the price (AC-23)', async () => {
+    const body: PreparationRunRequest = { scope: 'price' };
+    const started: PreparationRunDto = { ...QUEUED_RUN, scope: 'price' };
+
+    const pending = firstValueFrom(api.startPreparationRun(PRODUCT_ID, body));
+    const request = http.expectOne(`/api/products/${PRODUCT_ID}/preparation-runs`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(body);
+    request.flush(started, { status: 201, statusText: 'Created' });
+
+    expect(await pending).toEqual(started);
+  });
+
+  it('starts a run over one field and sends its draft along (AC-21)', async () => {
+    const body: PreparationRunRequest = {
+      scope: 'field',
+      field: 'descriptionOlx',
+      draftText: 'Продам мишу, написав сам.',
+    };
+    const started: PreparationRunDto = { ...QUEUED_RUN, scope: 'field' };
+
+    const pending = firstValueFrom(api.startPreparationRun(PRODUCT_ID, body));
+    const request = http.expectOne(`/api/products/${PRODUCT_ID}/preparation-runs`);
+    expect(request.request.method).toBe('POST');
+    // Exactly one field travels: the other texts are not named, so the run cannot touch them.
+    expect(request.request.body).toEqual(body);
+    request.flush(started, { status: 201, statusText: 'Created' });
+
+    expect(await pending).toEqual(started);
+  });
+
+  it('reads the state of a started run (AC-05)', async () => {
+    const finished: PreparationRunDto = {
+      ...QUEUED_RUN,
+      status: 'succeeded',
+      inputTokens: 1200,
+      outputTokens: 800,
+      startedAt: '2026-09-20T09:00:05.000Z',
+      finishedAt: '2026-09-20T09:00:35.000Z',
+    };
+
+    const pending = firstValueFrom(api.getPreparationRun(PRODUCT_ID, RUN_ID));
+    const request = http.expectOne(`/api/products/${PRODUCT_ID}/preparation-runs/${RUN_ID}`);
+    expect(request.request.method).toBe('GET');
+    request.flush(finished);
+
+    expect(await pending).toEqual(finished);
+  });
+
+  it('accepts one suggestion and answers with the recounted card (AC-11)', async () => {
+    const accepted: ProductCardRead = {
+      ...CARD_WITH_SUGGESTION,
+      descriptionOlx: SUGGESTED_OLX_DESCRIPTION,
+      pendingSuggestions: [],
+    };
+
+    const pending = firstValueFrom(api.acceptSuggestion(PRODUCT_ID, SUGGESTION_ID));
+    const request = http.expectOne(
+      `/api/products/${PRODUCT_ID}/suggestions/${SUGGESTION_ID}/accept`,
+    );
+    expect(request.request.method).toBe('POST');
+    request.flush(accepted);
+
+    expect(await pending).toEqual(accepted);
+  });
+
+  it('rejects one suggestion and answers with the recounted card', async () => {
+    const rejected: ProductCardRead = { ...CARD_WITH_SUGGESTION, pendingSuggestions: [] };
+
+    const pending = firstValueFrom(api.rejectSuggestion(PRODUCT_ID, SUGGESTION_ID));
+    const request = http.expectOne(
+      `/api/products/${PRODUCT_ID}/suggestions/${SUGGESTION_ID}/reject`,
+    );
+    expect(request.request.method).toBe('POST');
+    request.flush(rejected);
+
+    expect(await pending).toEqual(rejected);
   });
 });

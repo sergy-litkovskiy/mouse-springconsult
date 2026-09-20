@@ -1,8 +1,10 @@
 import { HttpClient, type HttpResourceRequest } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
+import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.contract';
 import type {
   Product,
+  ProductCardRead,
   ProductCreateRequest,
   ProductImage,
   ProductListQuery,
@@ -63,6 +65,25 @@ export class ProductsApi {
     return this.http.delete<null>(`${this.baseUrl}/${productId}/images/${imageId}`, {
       withCredentials: true,
     });
+  }
+
+  startPreparationRun(
+    productId: string,
+    request: PreparationRunRequest,
+  ): Observable<PreparationRunDto> {
+    throw new Error('Not implemented');
+  }
+
+  getPreparationRun(productId: string, runId: string): Observable<PreparationRunDto> {
+    throw new Error('Not implemented');
+  }
+
+  acceptSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
+    throw new Error('Not implemented');
+  }
+
+  rejectSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
+    throw new Error('Not implemented');
   }
 }
 
