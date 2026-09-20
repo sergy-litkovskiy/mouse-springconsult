@@ -18,7 +18,9 @@ export class PreparationRunPoller {
   private pending: Subscription | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.stop());
+    inject(DestroyRef).onDestroy(() => {
+      this.stop();
+    });
   }
 
   /** The last state the server reported for the watched run. */
@@ -37,7 +39,9 @@ export class PreparationRunPoller {
         this.pending = null;
         this.state.set(run);
         if (run.status === 'queued' || run.status === 'running') {
-          this.timer = setTimeout(() => this.ask(productId, runId), POLL_INTERVAL_MS);
+          this.timer = setTimeout(() => {
+            this.ask(productId, runId);
+          }, POLL_INTERVAL_MS);
         }
       },
       // Asking again is what was refused in the first place, and every ask is paid for; the
