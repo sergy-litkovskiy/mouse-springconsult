@@ -208,6 +208,10 @@ export class ProductForm {
     return status === 'queued' || status === 'running';
   });
 
+  protected readonly preparingNotice = computed(() =>
+    this.poller.run()?.scope === 'price' ? 'Модель шукає ціну…' : 'Модель готує тексти…',
+  );
+
   protected readonly suggestions = computed<Partial<Record<string, FieldSuggestion>>>(() => {
     const pending: Partial<Record<string, FieldSuggestion>> = {};
     for (const suggestion of this.card()?.pendingSuggestions ?? []) {

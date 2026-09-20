@@ -29,7 +29,7 @@
       Згенерувати все
     </button>
     @if (preparing()) {
-      <span class="card-prepare__state" role="status">Модель готує тексти…</span>
+      <span class="card-prepare__state" role="status">{{ preparingNotice() }}</span>
     }
     @if (totalTokens(); as tokens) {
       <span class="card-prepare__cost" data-testid="card-cost">
