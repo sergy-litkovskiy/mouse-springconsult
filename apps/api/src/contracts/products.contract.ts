@@ -157,6 +157,17 @@ export const productCardSchema = productSchema.extend({
 
 export type ProductCard = z.infer<typeof productCardSchema>;
 
+/**
+ * The cost of a card rides with the card itself and not with a list: it is a sum over the
+ * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
+ */
+export const productCardReadSchema = productCardSchema.extend({
+  totalInputTokens: z.int().nonnegative(),
+  totalOutputTokens: z.int().nonnegative(),
+});
+
+export type ProductCardRead = z.infer<typeof productCardReadSchema>;
+
 export const productListSchema = z.object({
   items: z.array(productCardSchema),
   /** Total number of rows matching the filters, not the size of the page. */

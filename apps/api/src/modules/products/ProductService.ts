@@ -7,7 +7,7 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import { cleanDescription } from './cleanDescription.ts';
-import type { PreparationRepository } from './PreparationRepository.ts';
+import type { PreparationRepository, TokenTotals } from './PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
@@ -22,6 +22,11 @@ import type {
 export type ProductReading = {
   readonly product: Product;
   readonly isReady: boolean;
+};
+
+/** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
+export type ProductCardReading = ProductReading & {
+  readonly tokens: TokenTotals;
 };
 
 /** Keywords past the ceiling are reported here rather than raised as an error (AC-07). */
@@ -56,13 +61,17 @@ export class ProductService {
     return this.products.list(criteria);
   }
 
-  async getById(id: string): Promise<ProductReading> {
+  async getById(id: string): Promise<ProductCardReading> {
     const product = await this.products.findById(id);
     if (product === null) {
       throw new ProductNotFound(id);
     }
 
-    return { product, isReady: this.isReady(product) };
+    return {
+      product,
+      isReady: this.isReady(product),
+      tokens: await this.preparations.sumTokens(id),
+    };
   }
 
   async create(input: ProductCreate): Promise<ProductSaving> {

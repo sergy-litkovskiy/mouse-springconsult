@@ -12,6 +12,7 @@ import {
   productListQuerySchema,
   productUpdateSchema,
   type ProductCard,
+  type ProductCardRead,
   type ProductImage as ProductImageResponse,
   type ProductList,
   type Product as ProductResponse,
@@ -70,8 +71,13 @@ export class ProductController {
     return this.toListResponse(await this.products.list(parsed.data));
   };
 
-  private readonly getById = async (request: FastifyRequest): Promise<ProductCard> => {
-    return this.toCardResponse(await this.products.getById(this.readProductId(request)));
+  private readonly getById = async (request: FastifyRequest): Promise<ProductCardRead> => {
+    const reading = await this.products.getById(this.readProductId(request));
+    return {
+      ...this.toCardResponse(reading),
+      totalInputTokens: reading.tokens.inputTokens,
+      totalOutputTokens: reading.tokens.outputTokens,
+    };
   };
 
   private readonly create = async (
