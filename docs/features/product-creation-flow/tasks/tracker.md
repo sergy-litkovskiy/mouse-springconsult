@@ -95,7 +95,7 @@ stage: "13"
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Done | T29 | S | Serhii | — |
 | T31 | [Вартість картки](add-card-cost-readout.md) | Done | T11, T26 | XS | Serhii | — |
 | T53 | [Непідтверджені пропозиції](expose-pending-suggestions.md) | Done | T26, T30 | S | Serhii | — |
-| T32 | [Фронт підготовки](add-preparation-ui.md) | Todo | T20, T29, T30, T31, T51, T52, T53 | M | Serhii | — |
+| T32 | [Фронт підготовки](add-preparation-ui.md) | In progress | T20, T29, T30, T31, T51, T52, T53 | M | Serhii | — |
 | T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50 | S | Serhii | — |
 | T51 | [Повтор після відмови](allow-retry-after-failed-run.md) | Done | T29 | S | Serhii | — |
 | T52 | [Завислі запуски](close-stuck-preparation-runs.md) | Done | T29 | S | Serhii | — |
