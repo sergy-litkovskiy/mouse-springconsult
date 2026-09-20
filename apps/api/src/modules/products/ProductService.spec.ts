@@ -1152,6 +1152,23 @@ describe('product service: accepting a suggestion', () => {
     assert.deepEqual(repository.changes, [{ seoKeywords: ['миша', 'logitech', 'бездротова'] }]);
   });
 
+  it('caps an accepted keyword list at the ceiling a manual save uses (AC-12)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ seoKeywords: [] });
+    const tooMany = Array.from(
+      { length: productConstraints.maxKeywords + 5 },
+      (_, index) => `k${String(index)}`,
+    );
+    seed(preparations, [suggestion('seo_keywords', tooMany)]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [
+      { seoKeywords: tooMany.slice(0, productConstraints.maxKeywords) },
+    ]);
+  });
+
   it('refuses to accept a price suggestion and writes nothing to the card (AC-26)', async () => {
     const { service, repository, preparations } = setup();
     repository.stored = readyCard({ price: '2499.00' });

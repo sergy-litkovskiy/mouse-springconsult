@@ -188,7 +188,7 @@ export class PreparationRepository {
     const result = await this.dataSource
       .getRepository(FieldSuggestion)
       .update({ id: suggestionId, resolution: IsNull() }, { resolution, resolvedAt: new Date() });
-    return result.affected !== 0;
+    return (result.affected ?? 0) > 0;
   }
 
   async sumTokens(productId: string): Promise<TokenTotals> {

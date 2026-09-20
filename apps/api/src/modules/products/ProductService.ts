@@ -68,7 +68,10 @@ function isKeywordList(value: SuggestionValue): value is readonly string[] {
  */
 function suggestionChanges(field: SuggestionField, value: SuggestionValue): ProductChanges | null {
   if (field === 'seo_keywords') {
-    return isKeywordList(value) ? { seoKeywords: [...value] } : null;
+    // Through the same cap as a manual save (AC-12): nothing upstream bounds the list the model
+    // returns, so an accepted suggestion would otherwise put more keywords in the column than the
+    // form can ever save back.
+    return isKeywordList(value) ? { seoKeywords: capKeywords([...value]).seoKeywords } : null;
   }
   if (typeof value !== 'string') {
     return null;
@@ -190,10 +193,16 @@ export class ProductService {
       throw new SuggestionNotFound(suggestionId);
     }
 
-    const changes = suggestionChanges(suggestion.field, suggestion.value);
     // Refused before anything is written: `products.price` is not touched by this route (AC-26).
-    if (changes === null) {
+    if (suggestion.field === 'price') {
       throw new PriceSuggestionReadonly();
+    }
+
+    const changes = suggestionChanges(suggestion.field, suggestion.value);
+    // Every other field takes what its column takes, so `null` here is a row that contradicts its
+    // own `field` — a 500 names that honestly, where the price code would blame the wrong cause.
+    if (changes === null) {
+      throw new Error(`suggestion ${suggestionId} holds a value ${suggestion.field} cannot take`);
     }
 
     if (!(await this.preparations.resolveSuggestion(suggestionId, 'accepted'))) {
