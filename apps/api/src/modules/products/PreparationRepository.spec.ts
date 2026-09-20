@@ -60,6 +60,32 @@ async function seedRun(
   return saved.id;
 }
 
+async function seedFailedRun(productId: string, idempotencyKey: string): Promise<string> {
+  const { run } = await runs.createRunOnce({
+    productId,
+    scope: 'texts',
+    idempotencyKey,
+    model: MODEL,
+  });
+  await runs.finishRun(run.id, {
+    status: 'failed',
+    errorCode: 'preparation_failed',
+    suggestions: [],
+  });
+  return run.id;
+}
+
+async function queuedRunId(productId: string): Promise<string> {
+  const queued = await dataSource
+    .getRepository(PreparationRun)
+    .findOneByOrFail({ productId, status: 'queued' });
+  return queued.id;
+}
+
+async function countRuns(productId: string): Promise<number> {
+  return dataSource.getRepository(PreparationRun).countBy({ productId });
+}
+
 async function loadRun(runId: string): Promise<PreparationRun> {
   const run = await dataSource.getRepository(PreparationRun).findOneBy({ id: runId });
   assert.ok(run, `run ${runId} was expected to exist`);
@@ -281,6 +307,66 @@ describe('preparation repository (postgres)', () => {
     assert.deepEqual(claims.map(({ created }) => created).sort(), [false, true]);
     assert.equal(claims[0].run.id, claims[1].run.id);
     assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
+  });
+
+  it('starts a new run for a key whose only run ended failed (AC-37)', async () => {
+    const productId = await seedProduct();
+    const failedRunId = await seedFailedRun(productId, 'card:texts:v1');
+
+    const claim = await runs.createRunOnce({
+      productId,
+      scope: 'texts',
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    });
+
+    assert.equal(claim.created, true);
+    assert.notEqual(claim.run.id, failedRunId);
+    assert.equal(claim.run.status, 'queued');
+    // The failed run stays in the history of the card, so its tokens keep counting (AC-14).
+    assert.equal(await countRuns(productId), 2);
+    assert.equal((await loadRun(failedRunId)).status, 'failed');
+  });
+
+  it('returns the live retry rather than the failed run of the same key (AC-38)', async () => {
+    const productId = await seedProduct();
+    await seedFailedRun(productId, 'card:texts:v1');
+    const draft = {
+      productId,
+      scope: 'texts' as const,
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    };
+    await runs.createRunOnce(draft);
+
+    const repeat = await runs.createRunOnce(draft);
+
+    assert.equal(repeat.created, false);
+    assert.equal(repeat.run.id, await queuedRunId(productId));
+    assert.equal(await countRuns(productId), 2);
+  });
+
+  it('reports no run for a key whose only run ended failed (AC-37)', async () => {
+    const productId = await seedProduct();
+    await seedFailedRun(productId, 'card:texts:v1');
+
+    assert.equal(await runs.findRunByKey('card:texts:v1'), null);
+  });
+
+  it('finds the live retry, not the failed run, for a key that has both (AC-38)', async () => {
+    const productId = await seedProduct();
+    const failedRunId = await seedFailedRun(productId, 'card:texts:v1');
+    await runs.createRunOnce({
+      productId,
+      scope: 'texts',
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    });
+
+    const found = await runs.findRunByKey('card:texts:v1');
+
+    assert.notEqual(found?.id, failedRunId);
+    assert.equal(found?.id, await queuedRunId(productId));
   });
 
   it('counts the runs of a card created inside the window, whatever their scope or status (Checklist 5)', async () => {
