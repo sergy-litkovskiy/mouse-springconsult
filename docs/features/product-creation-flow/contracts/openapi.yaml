@@ -120,8 +120,8 @@ paths:
           description: Картка
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Product" }
-              example: { $ref: "#/components/examples/ProductExample/value" }
+              schema: { $ref: "#/components/schemas/ProductCardRead" }
+              example: { $ref: "#/components/examples/ProductCardReadExample/value" }
         "401": { $ref: "#/components/responses/NotAuthenticated" }
         "404": { $ref: "#/components/responses/ProductNotFound" }
 
@@ -294,9 +294,12 @@ paths:
         сценарій 7). Ідемпотентність — **не** заголовок клієнта:
         ключ (картка, область, версія входу) обчислює сервер із `idempotency_key`
         UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом
-        повертає наявний запуск (`200`), а не створює новий (`201`). "Версія входу" —
-        відкритий пункт data-model.md (Open items), контракт лишає його явним, а не
-        ховає.
+        повертає наявний запуск (`200`), а не створює новий (`201`). Наявним є лише
+        незавершений (`queued`, `running`) чи `succeeded` запуск: UNIQUE частковий,
+        `WHERE status <> 'failed'`, бо відмовлений запуск результату не має й захищати
+        в ньому нема чого. Після `failed` той самий вхід дає `201` і нову задачу
+        (AC-37). "Версія входу" — відкритий пункт data-model.md (Open items),
+        контракт лишає його явним, а не ховає.
       operationId: startPreparationRun
       requestBody:
         required: true
@@ -391,7 +394,7 @@ paths:
           description: Пропозицію прийнято, картку оновлено
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Product" }
+              schema: { $ref: "#/components/schemas/ProductCardRead" }
         "401": { $ref: "#/components/responses/NotAuthenticated" }
         "404": { $ref: "#/components/responses/SuggestionNotFound" }
         "409":
@@ -425,7 +428,7 @@ paths:
           description: Пропозицію відхилено
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Product" }
+              schema: { $ref: "#/components/schemas/ProductCardRead" }
         "401": { $ref: "#/components/responses/NotAuthenticated" }
         "404": { $ref: "#/components/responses/SuggestionNotFound" }
         "409": { $ref: "#/components/responses/SuggestionAlreadyResolved" }
@@ -564,9 +567,6 @@ components:
         - condition
         - images
         - isReady
-        - pendingSuggestions
-        - totalInputTokens
-        - totalOutputTokens
         - createdAt
         - updatedAt
       properties:
@@ -596,23 +596,33 @@ components:
           description: >-
             Похідне поле, не колонка: обидва заголовки й обидва описи непорожні, price > 0,
             є хоча б один кадр ([ADR 0009](../adr/0009-derive-card-readiness-instead-of-storing-it.md)).
-        pendingSuggestions:
-          type: array
-          description: >-
-            **Поставка 2 — спроектовано.** Непідтверджені пропозиції поруч зі
-            значеннями (sad.md сценарій 9). Порожній масив, поки таблиці немає.
-          items: { $ref: "#/components/schemas/FieldSuggestion" }
-        totalInputTokens:
-          type: integer
-          minimum: 0
-          description: >-
-            **Поставка 2 — спроектовано.** Сума `product_preparation_runs.input_tokens`
-            по картці (AC-14). Гроші не показуються: перевід токенів у вартість
-            потребує ціни моделі, якої немає в data-model.md (PRD §8, відкрите
-            питання) — контракт не вигадує курс.
-        totalOutputTokens: { type: integer, minimum: 0 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+
+    ProductCardRead:
+      allOf:
+        - { $ref: "#/components/schemas/Product" }
+        - type: object
+          description: >-
+            Читання однієї картки, а не рядок каталогу: обидві добавки рахуються по
+            одній картці, і сторінка з 50 рядків рахувала б їх 50 разів.
+          required: [pendingSuggestions, totalInputTokens, totalOutputTokens]
+          properties:
+            pendingSuggestions:
+              type: array
+              description: >-
+                Непідтверджені пропозиції поруч зі значеннями (sad.md сценарій 9) —
+                те, що звірка цього ж читання лишила людині (AC-11). `resolution`
+                і `resolvedAt` тут завжди `null`.
+              items: { $ref: "#/components/schemas/FieldSuggestion" }
+            totalInputTokens:
+              type: integer
+              minimum: 0
+              description: >-
+                Сума `product_preparation_runs.input_tokens` по картці (AC-14). Гроші не
+                показуються: перевід токенів у вартість потребує ціни моделі, якої немає
+                в data-model.md (PRD §8, відкрите питання) — контракт не вигадує курс.
+            totalOutputTokens: { type: integer, minimum: 0 }
 
     ProductList:
       type: object
@@ -830,8 +840,39 @@ components:
             position: 0
             isMain: true
         isReady: true
-        pendingSuggestions: []
-        totalInputTokens: 0
-        totalOutputTokens: 0
+        createdAt: "2026-09-01T10:00:00.000Z"
+        updatedAt: "2026-09-03T11:30:00.000Z"
+
+    ProductCardReadExample:
+      description: >-
+        Та сама картка, прочитана окремо: поруч зі значеннями — те, що чекає на рішення.
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: "Кавомашина DeLonghi ECAM, б/у"
+        descriptionProm: "Кавомашина DeLonghi ECAM у гарному стані. Автоматичний капучинатор, регулювання помелу. Без сколів, повний комплект."
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно, причина продажу — оновлення моделі."
+        price: "8500.00"
+        seoKeywords: ["кавомашина", "delonghi", "ecam", "капучинатор"]
+        category: "Побутова техніка"
+        publishedProm: false
+        publishedOlx: true
+        condition: used
+        images:
+          - id: "01930000-0000-7000-8000-000000000002"
+            r2Key: "products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            url: "https://media.mouse.springconsult.com.ua/products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            position: 0
+            isMain: true
+        isReady: true
+        pendingSuggestions:
+          - id: "01930000-0000-7000-8000-000000000003"
+            runId: "01930000-0000-7000-8000-000000000004"
+            field: titleOlx
+            value: "Кавомашина DeLonghi ECAM з автоматичним капучинатором"
+            resolution: null
+            resolvedAt: null
+            createdAt: "2026-09-03T11:20:00.000Z"
+        totalInputTokens: 1840
+        totalOutputTokens: 620
         createdAt: "2026-09-01T10:00:00.000Z"
         updatedAt: "2026-09-03T11:30:00.000Z"

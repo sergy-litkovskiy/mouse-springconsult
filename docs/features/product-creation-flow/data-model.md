@@ -189,7 +189,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `id` | UUID | PK, `default uuidv7()` | |
 | `product_id` | UUID | NOT NULL, FK → `products(id)` ON DELETE CASCADE | |
 | `scope` | VARCHAR(8) | NOT NULL, CHECK IN (`texts`,`price`,`both`,`field`) | Без області AC-10b не має предмета: саму ціну не попросити, не перезапускаючи тексти. `field` — регенерація одного поля з чернетки, без фото ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) |
-| `idempotency_key` | TEXT | NOT NULL, UNIQUE | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
+| `idempotency_key` | TEXT | NOT NULL, UNIQUE серед незавершених і вдалих | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
 | `status` | VARCHAR(16) | NOT NULL, CHECK IN (`queued`,`running`,`succeeded`,`failed`) | Джерело для полінгу (сценарій 7, 8) |
 | `error_code` | VARCHAR(64) | NULL | Доменний код при `failed` — той самий, що фронт мапить у текст (AC-10). `price_unavailable` — часткова відмова `both`: тексти записані, ціни немає (AC-10b). `preparation_failed` — вичерпано `retryLimit` задачі, пропозицій немає (AC-10, [events.md](contracts/events.md)) |
 | `model` | VARCHAR(64) | NOT NULL | Без нього токени не перевести в гроші, коли зʼявиться стеля вартості (PRD §8) |
@@ -212,7 +212,8 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 - Обмеження частоти запусків (§8, PRD §6.1) → `count(*) where product_id = $1 and
   created_at > now() - вікно`. **Окремої таблиці лічильника не заводимо** — запуски вже
   записані тут, а індекс під це не потрібен: при десятках запусків на місяць скан дешевший.
-- Повторний клік по незміненому входу не платить двічі → `idempotency_key` UNIQUE.
+- Повторний клік по незміненому входу не платить двічі → `idempotency_key` UNIQUE
+  `WHERE status <> 'failed'`. Відмовлений запуск результату не має, тож ключ не займає (AC-37).
 
 ### `product_field_suggestions` — поставка 2, створено
 
@@ -260,7 +261,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `product_images_main_key` | `product_images` | `product_id` WHERE `is_main` UNIQUE | Рівно один головний кадр (AC-03). **Наявний** |
 | `product_images_position_key` | `product_images` | (`product_id`, `position`) UNIQUE DEFERRABLE | Порядок у галереї з дозволеною перестановкою. **Наявний** |
 | `product_preparation_runs_product_id_idx` | `product_preparation_runs` | `product_id` | Вартість картки (AC-14) і запуски картки; FK-індекс. **Поставка 2** |
-| `product_preparation_runs_idempotency_key_key` | `product_preparation_runs` | `idempotency_key` UNIQUE | Повторний запуск того самого входу не платить двічі. **Поставка 2** |
+| `product_preparation_runs_idempotency_key_key` | `product_preparation_runs` | `idempotency_key` UNIQUE `WHERE status <> 'failed'` | Повторний запуск того самого входу не платить двічі; після відмови вхід вільний (AC-37). **Поставка 2** |
 | `product_field_suggestions_run_field_key` | `product_field_suggestions` | (`run_id`, `field`) UNIQUE | Пропозиції запуску; один запуск дає не більше однієї на поле; той самий індекс обслуговує join у звірці AC-11. **Поставка 2** |
 
 `products` не має жодного вторинного індексу — каталог фільтрує через `ilike`, якого

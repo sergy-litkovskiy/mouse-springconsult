@@ -19,6 +19,9 @@ export const apiErrorCodes = {
   invalidPrice: 'invalid_price',
   preparationInputIncomplete: 'preparation_input_incomplete',
   preparationRateLimited: 'preparation_rate_limited',
+  suggestionNotFound: 'suggestion_not_found',
+  suggestionAlreadyResolved: 'suggestion_already_resolved',
+  priceSuggestionReadonly: 'price_suggestion_readonly',
 
   // These three belong to modules/media/MediaErrors.ts: `products` depends on `media`
   // (ADR 0013), so a class kept in `products` would close a cycle.

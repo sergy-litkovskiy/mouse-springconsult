@@ -11,7 +11,9 @@ import {
   productCreateSchema,
   productListQuerySchema,
   productUpdateSchema,
+  type FieldSuggestion as FieldSuggestionResponse,
   type ProductCard,
+  type ProductCardRead,
   type ProductImage as ProductImageResponse,
   type ProductList,
   type Product as ProductResponse,
@@ -21,12 +23,33 @@ import { productConstraints } from '../../contracts/products-limits.ts';
 import { config } from '../../config.ts';
 import { AppError } from '../../errors.ts';
 import { FileTooLarge } from '../media/index.ts';
+import type { FieldSuggestion, SuggestionField } from './FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
+import {
+  ImageNotFound,
+  InvalidPrice,
+  ProductNotFound,
+  SuggestionNotFound,
+} from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
-import type { ProductReading, ProductSaving, ProductService } from './ProductService.ts';
+import type {
+  ProductCardReading,
+  ProductReading,
+  ProductSaving,
+  ProductService,
+} from './ProductService.ts';
 
 const productParamsSchema = z.object({ productId: z.uuid() });
+
+/** The column spells a field the way SQL does; the contract spells it the way the card does. */
+const suggestionFieldNames = {
+  title_prom: 'titleProm',
+  title_olx: 'titleOlx',
+  description_prom: 'descriptionProm',
+  description_olx: 'descriptionOlx',
+  seo_keywords: 'seoKeywords',
+  price: 'price',
+} as const satisfies Record<SuggestionField, FieldSuggestionResponse['field']>;
 
 /**
  * The session guard arrives ready-made from the composition root: how a session is recognised is
@@ -52,6 +75,16 @@ export class ProductController {
     );
     app.delete('/:productId/images/:imageId', { preHandler: sessionGuard }, this.deleteImage);
     app.put('/:productId/images/:imageId/main', { preHandler: sessionGuard }, this.setMainImage);
+    app.post(
+      '/:productId/suggestions/:suggestionId/accept',
+      { preHandler: sessionGuard },
+      this.acceptSuggestion,
+    );
+    app.post(
+      '/:productId/suggestions/:suggestionId/reject',
+      { preHandler: sessionGuard },
+      this.rejectSuggestion,
+    );
   }
 
   // An arrow field rather than a method: Fastify calls the handler on its own, and a
@@ -70,8 +103,8 @@ export class ProductController {
     return this.toListResponse(await this.products.list(parsed.data));
   };
 
-  private readonly getById = async (request: FastifyRequest): Promise<ProductCard> => {
-    return this.toCardResponse(await this.products.getById(this.readProductId(request)));
+  private readonly getById = async (request: FastifyRequest): Promise<ProductCardRead> => {
+    return this.toCardReadResponse(await this.products.getById(this.readProductId(request)));
   };
 
   private readonly create = async (
@@ -118,6 +151,18 @@ export class ProductController {
     return reply.code(204).send();
   };
 
+  private readonly acceptSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
+    const productId = this.readProductId(request);
+    const suggestionId = this.readSuggestionId(request);
+    return this.toCardReadResponse(await this.products.acceptSuggestion(productId, suggestionId));
+  };
+
+  private readonly rejectSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
+    const productId = this.readProductId(request);
+    const suggestionId = this.readSuggestionId(request);
+    return this.toCardReadResponse(await this.products.rejectSuggestion(productId, suggestionId));
+  };
+
   private readonly setMainImage = async (
     request: FastifyRequest,
   ): Promise<ProductImageResponse[]> => {
@@ -146,6 +191,38 @@ export class ProductController {
       throw new ImageNotFound(String(rawImageId));
     }
     return parsed.data;
+  }
+
+  /** A malformed identifier names no suggestion, so it is answered as one that does not exist. */
+  private readSuggestionId(request: FastifyRequest): string {
+    const rawSuggestionId = (request.params as { suggestionId?: unknown }).suggestionId;
+    const parsed = z.uuid().safeParse(rawSuggestionId);
+    if (!parsed.success) {
+      throw new SuggestionNotFound(String(rawSuggestionId));
+    }
+    return parsed.data;
+  }
+
+  private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
+    return {
+      ...this.toCardResponse(reading),
+      pendingSuggestions: reading.pendingSuggestions.map((suggestion) =>
+        this.toSuggestionResponse(suggestion),
+      ),
+      totalInputTokens: reading.tokens.inputTokens,
+      totalOutputTokens: reading.tokens.outputTokens,
+    };
+  }
+
+  /** `resolution` and `resolvedAt` are left out: everything answered here is still undecided. */
+  private toSuggestionResponse(suggestion: FieldSuggestion): FieldSuggestionResponse {
+    return {
+      id: suggestion.id,
+      runId: suggestion.runId,
+      field: suggestionFieldNames[suggestion.field],
+      value: suggestion.value,
+      createdAt: suggestion.createdAt.toISOString(),
+    };
   }
 
   private toCardResponse({ product, isReady }: ProductReading): ProductCard {

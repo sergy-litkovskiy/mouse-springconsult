@@ -3,8 +3,22 @@ import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
+import {
+  FieldSuggestion,
+  type SuggestionField,
+  type SuggestionResolution,
+  type SuggestionValue,
+} from './FieldSuggestion.ts';
 import { Product, type ProductPage } from './Product.ts';
-import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
+import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
+import {
+  GalleryFull,
+  ImageNotFound,
+  PriceSuggestionReadonly,
+  ProductNotFound,
+  SuggestionAlreadyResolved,
+  SuggestionNotFound,
+} from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
@@ -75,6 +89,8 @@ class StubProductRepository extends ProductRepository {
   lastCriteria: ProductListCriteria | undefined;
   lastDraft: ProductDraft | undefined;
   lastChanges: ProductChanges | undefined;
+  /** Every save in order: a suggestion reaches the card through this very call (AC-12). */
+  readonly changes: ProductChanges[] = [];
   readonly addedImages: ProductImage[] = [];
   /** The one card this repository holds; `null` stands for an empty table. */
   stored: Product | null = readyCard();
@@ -102,6 +118,7 @@ class StubProductRepository extends ProductRepository {
 
   override async update(id: string, changes: ProductChanges): Promise<Product | null> {
     this.lastChanges = changes;
+    this.changes.push(changes);
     if (this.stored?.id !== id) {
       return null;
     }
@@ -247,6 +264,47 @@ class RecordingMediaService extends MediaService {
   }
 }
 
+/**
+ * No test here is about the cost of a card, so no card here has ever been prepared. Suggestions
+ * are keyed by card the way the join through the run reaches them, and a decision is recorded
+ * once — the conditional update behind it is proven against Postgres in its own spec.
+ */
+class StubPreparationRepository extends PreparationRepository {
+  readonly suggestions = new Map<string, FieldSuggestion[]>();
+
+  constructor() {
+    super(NO_DATA_SOURCE);
+  }
+
+  override async sumTokens(): Promise<TokenTotals> {
+    return { inputTokens: 0, outputTokens: 0 };
+  }
+
+  override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    return this.suggestions.get(productId) ?? [];
+  }
+
+  override async findSuggestion(
+    productId: string,
+    suggestionId: string,
+  ): Promise<FieldSuggestion | null> {
+    return (this.suggestions.get(productId) ?? []).find((row) => row.id === suggestionId) ?? null;
+  }
+
+  override async resolveSuggestion(
+    suggestionId: string,
+    resolution: SuggestionResolution,
+  ): Promise<boolean> {
+    const row = [...this.suggestions.values()].flat().find((each) => each.id === suggestionId);
+    if (row?.resolution !== null) {
+      return false;
+    }
+    row.resolution = resolution;
+    row.resolvedAt = new Date('2026-09-20T12:00:00.000Z');
+    return true;
+  }
+}
+
 const BASE_QUERY: ProductListQuery = {
   page: 1,
   pageSize: 20,
@@ -258,10 +316,17 @@ function setup(): {
   service: ProductService;
   repository: StubProductRepository;
   media: RecordingMediaService;
+  preparations: StubPreparationRepository;
 } {
   const repository = new StubProductRepository();
   const media = new RecordingMediaService();
-  return { service: new ProductService(repository, media), repository, media };
+  const preparations = new StubPreparationRepository();
+  return {
+    service: new ProductService(repository, media, preparations),
+    repository,
+    media,
+    preparations,
+  };
 }
 
 describe('product service', () => {
@@ -877,5 +942,310 @@ describe('product service: deleting a card', () => {
     repository.stored = null;
 
     await assert.rejects(service.deleteProduct(CARD_ID), ProductNotFound);
+  });
+});
+
+const SUGGESTION_ID = '01931f2a-4444-7000-8000-000000000001';
+const OTHER_SUGGESTION_ID = '01931f2a-4444-7000-8000-000000000002';
+const PROM_SUGGESTION_ID = '01931f2a-4444-7000-8000-000000000003';
+const OTHER_CARD_ID = '01931f2a-1111-7000-8000-000000000002';
+
+let seededSuggestions = 0;
+
+function suggestion(
+  field: SuggestionField,
+  value: SuggestionValue,
+  overrides: Partial<FieldSuggestion> = {},
+): FieldSuggestion {
+  seededSuggestions += 1;
+  return Object.assign(new FieldSuggestion(), {
+    id: SUGGESTION_ID,
+    runId: '01931f2a-5555-7000-8000-000000000001',
+    field,
+    value,
+    resolution: null,
+    resolvedAt: null,
+    createdAt: new Date(Date.UTC(2026, 8, 20, 10, seededSuggestions)),
+    ...overrides,
+  });
+}
+
+function seed(
+  preparations: StubPreparationRepository,
+  rows: FieldSuggestion[],
+  productId = CARD_ID,
+): void {
+  preparations.suggestions.set(productId, rows);
+}
+
+function stored(preparations: StubPreparationRepository, id = SUGGESTION_ID): FieldSuggestion {
+  const row = [...preparations.suggestions.values()].flat().find((each) => each.id === id);
+  assert.ok(row, `suggestion ${id} was expected to exist`);
+  return row;
+}
+
+describe('product service: suggestions met on reading a card', () => {
+  it('applies the first suggestion to a field nobody has filled in (DoD empty card)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: '' });
+    seed(preparations, [suggestion('title_olx', 'Миша Logitech MX Master 3 бездротова')]);
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [{ titleOlx: 'Миша Logitech MX Master 3 бездротова' }]);
+    assert.equal(reading.product.titleOlx, 'Миша Logitech MX Master 3 бездротова');
+    assert.equal(stored(preparations).resolution, 'accepted');
+  });
+
+  it('applies a new suggestion while the field still holds the accepted one (AC-11)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Назва від моделі' });
+    seed(preparations, [
+      suggestion('title_olx', 'Назва від моделі', {
+        id: OTHER_SUGGESTION_ID,
+        resolution: 'accepted',
+        resolvedAt: new Date('2026-09-19T10:00:00.000Z'),
+      }),
+      suggestion('title_olx', 'Свіжа назва від моделі'),
+    ]);
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [{ titleOlx: 'Свіжа назва від моделі' }]);
+    assert.equal(reading.product.titleOlx, 'Свіжа назва від моделі');
+    assert.equal(stored(preparations).resolution, 'accepted');
+  });
+
+  it('leaves the field edited by hand alone while filling in the untouched one (AC-11)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва', titleProm: '' });
+    seed(preparations, [
+      suggestion('title_olx', 'Назва від моделі', {
+        id: OTHER_SUGGESTION_ID,
+        resolution: 'accepted',
+        resolvedAt: new Date('2026-09-19T10:00:00.000Z'),
+      }),
+      suggestion('title_olx', 'Свіжа назва від моделі'),
+      suggestion('title_prom', 'Назва для Prom', { id: PROM_SUGGESTION_ID }),
+    ]);
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [{ titleProm: 'Назва для Prom' }]);
+    assert.equal(reading.product.titleOlx, 'Моя власна назва');
+    assert.equal(stored(preparations).resolution, null);
+    assert.equal(stored(preparations, PROM_SUGGESTION_ID).resolution, 'accepted');
+  });
+
+  it('leaves a field typed in before any suggestion to the human (AC-11)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва', titleProm: '' });
+    seed(preparations, [
+      suggestion('title_olx', 'Назва від моделі'),
+      suggestion('title_prom', 'Назва для Prom', { id: PROM_SUGGESTION_ID }),
+    ]);
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [{ titleProm: 'Назва для Prom' }]);
+    assert.equal(reading.product.titleOlx, 'Моя власна назва');
+    assert.equal(stored(preparations).resolution, null);
+  });
+
+  it('compares the Prom description with the accepted value turned into HTML (Checklist 5)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ descriptionProm: '<p>Опис від моделі.</p>' });
+    seed(preparations, [
+      suggestion('description_prom', 'Опис від моделі.', {
+        id: OTHER_SUGGESTION_ID,
+        resolution: 'accepted',
+        resolvedAt: new Date('2026-09-19T10:00:00.000Z'),
+      }),
+      suggestion('description_prom', 'Свіжий опис.\n\nДругий абзац.'),
+    ]);
+
+    await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [
+      { descriptionProm: '<p>Свіжий опис.</p><p>Другий абзац.</p>' },
+    ]);
+    assert.equal(stored(preparations).resolution, 'accepted');
+  });
+
+  it('writes the text suggestion of the same read but never the price range (AC-26)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ price: '0.00', titleProm: '' });
+    seed(preparations, [
+      suggestion('price', { priceFrom: '2200.00', priceTo: '2700.00' }),
+      suggestion('title_prom', 'Назва для Prom', { id: PROM_SUGGESTION_ID }),
+    ]);
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, [{ titleProm: 'Назва для Prom' }]);
+    assert.equal(reading.product.price, '0.00');
+    assert.equal(stored(preparations).resolution, null);
+  });
+});
+
+describe('product service: accepting a suggestion', () => {
+  it('writes an accepted suggestion through the same save as a manual edit (AC-12)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва' });
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')]);
+
+    const reading = await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [{ titleOlx: 'Назва від моделі' }]);
+    assert.equal(reading.product.titleOlx, 'Назва від моделі');
+    assert.equal(stored(preparations).resolution, 'accepted');
+    assert.ok(stored(preparations).resolvedAt instanceof Date);
+  });
+
+  it('turns an accepted Prom description into HTML (Checklist 5, ADR 0016)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ descriptionProm: 'Мій власний опис.' });
+    seed(preparations, [
+      suggestion(
+        'description_prom',
+        'Миша Logitech & клавіатура.\nСтан <відмінний>.\n\nКомплект: коробка.',
+      ),
+    ]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [
+      {
+        descriptionProm:
+          '<p>Миша Logitech &amp; клавіатура.<br>Стан &lt;відмінний&gt;.</p><p>Комплект: коробка.</p>',
+      },
+    ]);
+  });
+
+  it('accepts an OLX description as plain text, without markup (Checklist 5)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ descriptionOlx: 'Мій власний опис.' });
+    seed(preparations, [suggestion('description_olx', 'Свіжий опис.\n\nДругий абзац.')]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [{ descriptionOlx: 'Свіжий опис.\n\nДругий абзац.' }]);
+  });
+
+  it('accepts a keyword suggestion as the whole list of the field (Checklist 4)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ seoKeywords: ['миша'] });
+    seed(preparations, [suggestion('seo_keywords', ['миша', 'logitech', 'бездротова'])]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [{ seoKeywords: ['миша', 'logitech', 'бездротова'] }]);
+  });
+
+  it('caps an accepted keyword list at the ceiling a manual save uses (AC-12)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ seoKeywords: [] });
+    const tooMany = Array.from(
+      { length: productConstraints.maxKeywords + 5 },
+      (_, index) => `k${String(index)}`,
+    );
+    seed(preparations, [suggestion('seo_keywords', tooMany)]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, [
+      { seoKeywords: tooMany.slice(0, productConstraints.maxKeywords) },
+    ]);
+  });
+
+  it('refuses to accept a price suggestion and writes nothing to the card (AC-26)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.stored = readyCard({ price: '2499.00' });
+    seed(preparations, [suggestion('price', { priceFrom: '2200.00', priceTo: '2700.00' })]);
+
+    await assert.rejects(service.acceptSuggestion(CARD_ID, SUGGESTION_ID), PriceSuggestionReadonly);
+
+    assert.deepEqual(repository.changes, []);
+    assert.equal(repository.stored.price, '2499.00');
+    assert.equal(stored(preparations).resolution, null);
+  });
+
+  it('refuses a second decision on a suggestion already accepted (Checklist 6)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва' });
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')]);
+
+    await service.acceptSuggestion(CARD_ID, SUGGESTION_ID);
+
+    await assert.rejects(
+      service.acceptSuggestion(CARD_ID, SUGGESTION_ID),
+      SuggestionAlreadyResolved,
+    );
+    assert.equal(repository.changes.length, 1);
+  });
+
+  it('refuses a suggestion reached through another card (Checklist 1)', async () => {
+    const { service, repository, preparations } = setup();
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')], OTHER_CARD_ID);
+
+    await assert.rejects(service.acceptSuggestion(CARD_ID, SUGGESTION_ID), SuggestionNotFound);
+
+    assert.deepEqual(repository.changes, []);
+  });
+});
+
+describe('product service: rejecting a suggestion', () => {
+  it('records the rejection and leaves the card as it was (Checklist 2)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва' });
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')]);
+
+    const reading = await service.rejectSuggestion(CARD_ID, SUGGESTION_ID);
+
+    assert.deepEqual(repository.changes, []);
+    assert.equal(reading.product.titleOlx, 'Моя власна назва');
+    assert.equal(stored(preparations).resolution, 'rejected');
+    assert.ok(stored(preparations).resolvedAt instanceof Date);
+  });
+
+  it('refuses to accept a suggestion that was rejected (Checklist 6)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: 'Моя власна назва' });
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')]);
+
+    await service.rejectSuggestion(CARD_ID, SUGGESTION_ID);
+
+    await assert.rejects(
+      service.acceptSuggestion(CARD_ID, SUGGESTION_ID),
+      SuggestionAlreadyResolved,
+    );
+    assert.deepEqual(repository.changes, []);
+  });
+
+  it('does not offer a rejected suggestion again on the next read (Checklist 2)', async () => {
+    const { service, repository, preparations } = setup();
+    repository.appliesChanges = true;
+    repository.stored = readyCard({ titleOlx: '' });
+    seed(preparations, [suggestion('title_olx', 'Назва від моделі')]);
+
+    await service.rejectSuggestion(CARD_ID, SUGGESTION_ID);
+    await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, []);
+    assert.equal(stored(preparations).resolution, 'rejected');
   });
 });

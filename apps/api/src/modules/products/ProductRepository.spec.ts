@@ -11,6 +11,7 @@ import {
   type ProductListCriteria,
 } from './ProductRepository.ts';
 import { ImageNotFound } from './ProductErrors.ts';
+import type { PreparationRepository } from './PreparationRepository.ts';
 import { ProductService } from './ProductService.ts';
 
 /**
@@ -74,6 +75,9 @@ let products: ProductRepository;
 
 /** The service is used here only for what never touches storage. */
 const NO_MEDIA = undefined as unknown as MediaService;
+
+/** Nor for what reads the cost of a card: this data source holds no runs table. */
+const NO_PREPARATIONS = undefined as unknown as PreparationRepository;
 
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
 const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
@@ -324,7 +328,7 @@ describe('product repository (postgres)', () => {
     const notReadyIds = new Set(
       (await products.list({ ...BASE_CRITERIA, filters: { ready: false } })).items.map((p) => p.id),
     );
-    const service = new ProductService(products, NO_MEDIA);
+    const service = new ProductService(products, NO_MEDIA, NO_PREPARATIONS);
 
     assert.equal(readyIds.size, 1);
     for (const [name, id] of ids) {
@@ -337,7 +341,7 @@ describe('product repository (postgres)', () => {
   it('leaves a card without a title out of the ready ones, as isReady does (AC-36)', async () => {
     const withoutPromTitle = await seedProduct({ titleProm: '' });
     const withoutOlxTitle = await seedProduct({ titleOlx: '' });
-    const service = new ProductService(products, NO_MEDIA);
+    const service = new ProductService(products, NO_MEDIA, NO_PREPARATIONS);
     for (const id of [withoutPromTitle, withoutOlxTitle]) {
       await seedImage(id, { position: 0, r2Key: `products/${id}/first.jpg`, isMain: true });
     }
@@ -755,7 +759,7 @@ describe('product repository (postgres)', () => {
     await seedImage(id, { position: 0, isMain: true });
     const chosen = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
 
-    await new ProductService(products, NO_MEDIA).setMainImage(id, chosen);
+    await new ProductService(products, NO_MEDIA, NO_PREPARATIONS).setMainImage(id, chosen);
 
     assert.deepEqual(await mainFramesOf(id), [chosen]);
   });
@@ -764,7 +768,7 @@ describe('product repository (postgres)', () => {
     const id = await seedProduct();
     const main = await seedImage(id, { position: 0, isMain: true });
     await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
-    const service = new ProductService(products, NO_MEDIA);
+    const service = new ProductService(products, NO_MEDIA, NO_PREPARATIONS);
 
     const first = await service.setMainImage(id, main);
     const second = await service.setMainImage(id, main);
@@ -783,7 +787,7 @@ describe('product repository (postgres)', () => {
     });
 
     await assert.rejects(
-      new ProductService(products, NO_MEDIA).setMainImage(id, foreignImage),
+      new ProductService(products, NO_MEDIA, NO_PREPARATIONS).setMainImage(id, foreignImage),
       ImageNotFound,
     );
 

@@ -1,5 +1,10 @@
-import { In, type DataSource } from 'typeorm';
-import { FieldSuggestion, type SuggestionField, type SuggestionValue } from './FieldSuggestion.ts';
+import { In, IsNull, Not, type DataSource } from 'typeorm';
+import {
+  FieldSuggestion,
+  type SuggestionField,
+  type SuggestionResolution,
+  type SuggestionValue,
+} from './FieldSuggestion.ts';
 import {
   PreparationRun,
   type PreparationErrorCode,
@@ -46,6 +51,12 @@ export type RunClaim = {
 
 const UNFINISHED: PreparationStatus[] = ['queued', 'running'];
 
+/**
+ * A failed run guards nothing, so it stops answering for its key: the UNIQUE index leaves it out
+ * as well, and the same input starts a new run instead of reading the failure back.
+ */
+const NOT_FAILED = Not<PreparationStatus>('failed');
+
 export class PreparationRepository {
   constructor(private readonly dataSource: DataSource) {}
 
@@ -70,22 +81,36 @@ export class PreparationRepository {
    */
   async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
     const runs = this.dataSource.getRepository(PreparationRun);
-    const inserted = await runs
-      .createQueryBuilder()
-      .insert()
-      .values({
-        ...draft,
-        status: 'queued',
-        errorCode: null,
-        inputTokens: 0,
-        outputTokens: 0,
-        startedAt: null,
-        finishedAt: null,
-      })
-      .orIgnore()
-      .execute();
-    const run = await runs.findOneByOrFail({ idempotencyKey: draft.idempotencyKey });
-    return { run, created: (inserted.raw as unknown[]).length > 0 };
+    // Two passes, because the insert and the read after it are not one statement: the insert can be
+    // ignored over a live run that then fails before the read, which leaves the read with nothing.
+    // The second pass meets a key no row holds any more and inserts, which is the retry AC-37 asks
+    // for. Two failures in a row would mean the same run failed twice, so there is nothing to wait
+    // for and the caller gets the error.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const inserted = await runs
+        .createQueryBuilder()
+        .insert()
+        .values({
+          ...draft,
+          status: 'queued',
+          errorCode: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          startedAt: null,
+          finishedAt: null,
+        })
+        .orIgnore()
+        .execute();
+      const run = await runs.findOneBy({
+        idempotencyKey: draft.idempotencyKey,
+        status: NOT_FAILED,
+      });
+      if (run !== null) {
+        return { run, created: (inserted.raw as unknown[]).length > 0 };
+      }
+    }
+
+    throw new Error(`run ${draft.idempotencyKey} failed twice between its insert and the read`);
   }
 
   async countRecentRuns(productId: string, windowSeconds: number): Promise<number> {
@@ -98,7 +123,9 @@ export class PreparationRepository {
   }
 
   async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
-    return this.dataSource.getRepository(PreparationRun).findOneBy({ idempotencyKey });
+    return this.dataSource
+      .getRepository(PreparationRun)
+      .findOneBy({ idempotencyKey, status: NOT_FAILED });
   }
 
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
@@ -148,6 +175,59 @@ export class PreparationRepository {
         },
       );
     });
+  }
+
+  /**
+   * The status guard is the same one `finishRun` carries, so the sweep and a handler that is
+   * finishing the very same run at that moment cannot both write an outcome.
+   */
+  async closeStuckRuns(olderThanSeconds: number): Promise<number> {
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(PreparationRun)
+      .set({ status: 'failed', errorCode: 'preparation_failed', finishedAt: new Date() })
+      .where('status in (:...unfinished)', { unfinished: UNFINISHED })
+      .andWhere('created_at < now() - make_interval(secs => :olderThanSeconds)', {
+        olderThanSeconds,
+      })
+      .execute();
+    return result.affected ?? 0;
+  }
+
+  /** Oldest first: the check on reading a card takes the latest suggestion of each field. */
+  async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    return this.dataSource
+      .getRepository(FieldSuggestion)
+      .createQueryBuilder('suggestion')
+      .innerJoin(PreparationRun, 'run', 'run.id = suggestion.runId')
+      .where('run.productId = :productId', { productId })
+      .orderBy('suggestion.createdAt', 'ASC')
+      .addOrderBy('suggestion.id', 'ASC')
+      .getMany();
+  }
+
+  async findSuggestion(productId: string, suggestionId: string): Promise<FieldSuggestion | null> {
+    return this.dataSource
+      .getRepository(FieldSuggestion)
+      .createQueryBuilder('suggestion')
+      .innerJoin(PreparationRun, 'run', 'run.id = suggestion.runId')
+      .where('suggestion.id = :suggestionId', { suggestionId })
+      .andWhere('run.productId = :productId', { productId })
+      .getOne();
+  }
+
+  /**
+   * `false` for a suggestion that already carries a decision: the condition is part of the update,
+   * so two decisions racing each other end with exactly one of them recorded.
+   */
+  async resolveSuggestion(
+    suggestionId: string,
+    resolution: SuggestionResolution,
+  ): Promise<boolean> {
+    const result = await this.dataSource
+      .getRepository(FieldSuggestion)
+      .update({ id: suggestionId, resolution: IsNull() }, { resolution, resolvedAt: new Date() });
+    return (result.affected ?? 0) > 0;
   }
 
   async sumTokens(productId: string): Promise<TokenTotals> {

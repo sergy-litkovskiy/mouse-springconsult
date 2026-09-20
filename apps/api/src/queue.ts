@@ -22,6 +22,10 @@ export async function startQueue(queues: readonly Queue[]): Promise<PgBoss> {
     connectionString: env.DATABASE_URL,
     schema: config.queue.schema,
     max: config.queue.poolSize,
+    // Both match the pg-boss defaults; passed explicitly because the threshold of a stuck run is
+    // derived from them (`config.queue.preparation.stuckAfterSeconds`).
+    superviseIntervalSeconds: config.queue.superviseIntervalSeconds,
+    monitorIntervalSeconds: config.queue.monitorIntervalSeconds,
   });
   // An EventEmitter without an `error` listener throws, and pg-boss emits there on every failed
   // maintenance or polling round — a dropped connection would take the whole process down.
