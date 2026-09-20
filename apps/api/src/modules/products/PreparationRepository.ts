@@ -1,4 +1,4 @@
-import { In, type DataSource } from 'typeorm';
+import { In, IsNull, type DataSource } from 'typeorm';
 import {
   FieldSuggestion,
   type SuggestionField,
@@ -155,19 +155,40 @@ export class PreparationRepository {
     });
   }
 
+  /** Oldest first: the check on reading a card takes the latest suggestion of each field. */
   async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
-    throw new Error('Not implemented');
+    return this.dataSource
+      .getRepository(FieldSuggestion)
+      .createQueryBuilder('suggestion')
+      .innerJoin(PreparationRun, 'run', 'run.id = suggestion.runId')
+      .where('run.productId = :productId', { productId })
+      .orderBy('suggestion.createdAt', 'ASC')
+      .addOrderBy('suggestion.id', 'ASC')
+      .getMany();
   }
 
   async findSuggestion(productId: string, suggestionId: string): Promise<FieldSuggestion | null> {
-    throw new Error('Not implemented');
+    return this.dataSource
+      .getRepository(FieldSuggestion)
+      .createQueryBuilder('suggestion')
+      .innerJoin(PreparationRun, 'run', 'run.id = suggestion.runId')
+      .where('suggestion.id = :suggestionId', { suggestionId })
+      .andWhere('run.productId = :productId', { productId })
+      .getOne();
   }
 
+  /**
+   * `false` for a suggestion that already carries a decision: the condition is part of the update,
+   * so two decisions racing each other end with exactly one of them recorded.
+   */
   async resolveSuggestion(
     suggestionId: string,
     resolution: SuggestionResolution,
   ): Promise<boolean> {
-    throw new Error('Not implemented');
+    const result = await this.dataSource
+      .getRepository(FieldSuggestion)
+      .update({ id: suggestionId, resolution: IsNull() }, { resolution, resolvedAt: new Date() });
+    return result.affected !== 0;
   }
 
   async sumTokens(productId: string): Promise<TokenTotals> {
