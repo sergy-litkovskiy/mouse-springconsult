@@ -1,4 +1,4 @@
-import { In, IsNull, type DataSource } from 'typeorm';
+import { In, IsNull, Not, type DataSource } from 'typeorm';
 import {
   FieldSuggestion,
   type SuggestionField,
@@ -72,6 +72,8 @@ export class PreparationRepository {
   /**
    * `ON CONFLICT DO NOTHING` rather than a lookup first: two starts of the same input at once
    * would both miss the lookup, and the UNIQUE index is what settles which of them created the run.
+   * That index holds only runs that have not failed, so a repeat after a failure inserts a new
+   * row, and the row read back for a key is the live one rather than the failure it retries.
    */
   async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
     const runs = this.dataSource.getRepository(PreparationRun);
@@ -89,7 +91,10 @@ export class PreparationRepository {
       })
       .orIgnore()
       .execute();
-    const run = await runs.findOneByOrFail({ idempotencyKey: draft.idempotencyKey });
+    const run = await runs.findOneByOrFail({
+      idempotencyKey: draft.idempotencyKey,
+      status: Not('failed'),
+    });
     return { run, created: (inserted.raw as unknown[]).length > 0 };
   }
 
@@ -102,8 +107,11 @@ export class PreparationRepository {
       .getCount();
   }
 
+  /** A failed run guards nothing, so it does not answer for its key: the same input starts again. */
   async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
-    return this.dataSource.getRepository(PreparationRun).findOneBy({ idempotencyKey });
+    return this.dataSource
+      .getRepository(PreparationRun)
+      .findOneBy({ idempotencyKey, status: Not('failed') });
   }
 
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
