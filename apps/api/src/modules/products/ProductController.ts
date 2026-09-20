@@ -30,7 +30,12 @@ import {
   SuggestionNotFound,
 } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
-import type { ProductReading, ProductSaving, ProductService } from './ProductService.ts';
+import type {
+  ProductCardReading,
+  ProductReading,
+  ProductSaving,
+  ProductService,
+} from './ProductService.ts';
 
 const productParamsSchema = z.object({ productId: z.uuid() });
 
@@ -87,12 +92,7 @@ export class ProductController {
   };
 
   private readonly getById = async (request: FastifyRequest): Promise<ProductCardRead> => {
-    const reading = await this.products.getById(this.readProductId(request));
-    return {
-      ...this.toCardResponse(reading),
-      totalInputTokens: reading.tokens.inputTokens,
-      totalOutputTokens: reading.tokens.outputTokens,
-    };
+    return this.toCardReadResponse(await this.products.getById(this.readProductId(request)));
   };
 
   private readonly create = async (
@@ -141,22 +141,14 @@ export class ProductController {
 
   private readonly acceptSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
     const productId = this.readProductId(request);
-    const reading = await this.products.acceptSuggestion(productId, this.readSuggestionId(request));
-    return {
-      ...this.toCardResponse(reading),
-      totalInputTokens: reading.tokens.inputTokens,
-      totalOutputTokens: reading.tokens.outputTokens,
-    };
+    const suggestionId = this.readSuggestionId(request);
+    return this.toCardReadResponse(await this.products.acceptSuggestion(productId, suggestionId));
   };
 
   private readonly rejectSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
     const productId = this.readProductId(request);
-    const reading = await this.products.rejectSuggestion(productId, this.readSuggestionId(request));
-    return {
-      ...this.toCardResponse(reading),
-      totalInputTokens: reading.tokens.inputTokens,
-      totalOutputTokens: reading.tokens.outputTokens,
-    };
+    const suggestionId = this.readSuggestionId(request);
+    return this.toCardReadResponse(await this.products.rejectSuggestion(productId, suggestionId));
   };
 
   private readonly setMainImage = async (
@@ -197,6 +189,14 @@ export class ProductController {
       throw new SuggestionNotFound(String(rawSuggestionId));
     }
     return parsed.data;
+  }
+
+  private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
+    return {
+      ...this.toCardResponse(reading),
+      totalInputTokens: reading.tokens.inputTokens,
+      totalOutputTokens: reading.tokens.outputTokens,
+    };
   }
 
   private toCardResponse({ product, isReady }: ProductReading): ProductCard {

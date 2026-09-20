@@ -57,13 +57,18 @@ function promDescription(text: string): string {
   );
 }
 
+/** `Array.isArray` alone narrows a readonly array to `any[]`; the predicate keeps the element type. */
+function isKeywordList(value: SuggestionValue): value is readonly string[] {
+  return Array.isArray(value);
+}
+
 /**
  * `null` for a value no column can take: `price` is a range and `products.price` a scalar, so a
  * price suggestion never reaches the card through this route at all (AC-26).
  */
 function suggestionChanges(field: SuggestionField, value: SuggestionValue): ProductChanges | null {
   if (field === 'seo_keywords') {
-    return Array.isArray(value) ? { seoKeywords: [...value] } : null;
+    return isKeywordList(value) ? { seoKeywords: [...value] } : null;
   }
   if (typeof value !== 'string') {
     return null;
@@ -87,6 +92,23 @@ function cardHolds(product: Product, changes: ProductChanges): boolean {
   return Object.entries(changes).every(
     ([column, value]) => JSON.stringify(product[column as keyof Product]) === JSON.stringify(value),
   );
+}
+
+/** The repository hands them over oldest first, so the last one put in for a field is its latest. */
+function latestPerField(suggestions: readonly FieldSuggestion[]): {
+  accepted: Map<SuggestionField, FieldSuggestion>;
+  pending: Map<SuggestionField, FieldSuggestion>;
+} {
+  const accepted = new Map<SuggestionField, FieldSuggestion>();
+  const pending = new Map<SuggestionField, FieldSuggestion>();
+  for (const suggestion of suggestions) {
+    if (suggestion.resolution === 'accepted') {
+      accepted.set(suggestion.field, suggestion);
+    } else if (suggestion.resolution === null) {
+      pending.set(suggestion.field, suggestion);
+    }
+  }
+  return { accepted, pending };
 }
 
 function capKeywords(keywords: string[]): {
@@ -124,21 +146,16 @@ export class ProductService {
    * suggestion waits for a decision (AC-11).
    */
   async getById(id: string): Promise<ProductCardReading> {
-    let product = await this.products.findById(id);
+    const product = await this.products.findById(id);
     if (product === null) {
       throw new ProductNotFound(id);
     }
 
-    const accepted = new Map<SuggestionField, FieldSuggestion>();
-    const pending = new Map<SuggestionField, FieldSuggestion>();
-    // Oldest first, so the last one put in is the latest of its field.
-    for (const suggestion of await this.preparations.findSuggestions(id)) {
-      if (suggestion.resolution === 'accepted') {
-        accepted.set(suggestion.field, suggestion);
-      } else if (suggestion.resolution === null) {
-        pending.set(suggestion.field, suggestion);
-      }
-    }
+    return this.toCardReading(id, await this.applySuggestionsToUntouchedFields(id, product));
+  }
+
+  private async applySuggestionsToUntouchedFields(id: string, product: Product): Promise<Product> {
+    const { accepted, pending } = latestPerField(await this.preparations.findSuggestions(id));
 
     const changes: ProductChanges = {};
     const applied: FieldSuggestion[] = [];
@@ -152,23 +169,18 @@ export class ProductService {
       Object.assign(changes, suggested);
       applied.push(suggestion);
     }
-
-    if (applied.length > 0) {
-      for (const suggestion of applied) {
-        await this.preparations.resolveSuggestion(suggestion.id, 'accepted');
-      }
-      const saved = await this.products.update(id, changes);
-      if (saved === null) {
-        throw new ProductNotFound(id);
-      }
-      product = saved;
+    if (applied.length === 0) {
+      return product;
     }
 
-    return {
-      product,
-      isReady: this.isReady(product),
-      tokens: await this.preparations.sumTokens(id),
-    };
+    for (const suggestion of applied) {
+      await this.preparations.resolveSuggestion(suggestion.id, 'accepted');
+    }
+    const saved = await this.products.update(id, changes);
+    if (saved === null) {
+      throw new ProductNotFound(id);
+    }
+    return saved;
   }
 
   /** The value reaches the card through the same save as a manual edit (AC-12). */
@@ -193,11 +205,7 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    return {
-      product,
-      isReady: this.isReady(product),
-      tokens: await this.preparations.sumTokens(productId),
-    };
+    return this.toCardReading(productId, product);
   }
 
   async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
@@ -215,6 +223,10 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
+    return this.toCardReading(productId, product);
+  }
+
+  private async toCardReading(productId: string, product: Product): Promise<ProductCardReading> {
     return {
       product,
       isReady: this.isReady(product),
