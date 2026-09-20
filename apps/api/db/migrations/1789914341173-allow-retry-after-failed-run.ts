@@ -5,7 +5,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * the run is still going or has already succeeded. A run that ended `failed` has no result, so it
  * guards nothing — and under the full UNIQUE of T26 it held its key forever, which made a repeat of
  * the same input impossible until the person changed a photo, a title or a text. That contradicts
- * AC-10, where a repeat is the person's own action.
+ * AC-10, where a repeat is the person's own action, and it is AC-37 that this index answers.
  *
  * The invariant stays in the database rather than in the repository: two starts of the same input
  * at once both miss any lookup, and only an index settles which of them creates the run.

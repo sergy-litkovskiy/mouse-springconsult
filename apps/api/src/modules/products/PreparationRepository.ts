@@ -81,25 +81,36 @@ export class PreparationRepository {
    */
   async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
     const runs = this.dataSource.getRepository(PreparationRun);
-    const inserted = await runs
-      .createQueryBuilder()
-      .insert()
-      .values({
-        ...draft,
-        status: 'queued',
-        errorCode: null,
-        inputTokens: 0,
-        outputTokens: 0,
-        startedAt: null,
-        finishedAt: null,
-      })
-      .orIgnore()
-      .execute();
-    const run = await runs.findOneByOrFail({
-      idempotencyKey: draft.idempotencyKey,
-      status: NOT_FAILED,
-    });
-    return { run, created: (inserted.raw as unknown[]).length > 0 };
+    // Two passes, because the insert and the read after it are not one statement: the insert can be
+    // ignored over a live run that then fails before the read, which leaves the read with nothing.
+    // The second pass meets a key no row holds any more and inserts, which is the retry AC-37 asks
+    // for. Two failures in a row would mean the same run failed twice, so there is nothing to wait
+    // for and the caller gets the error.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const inserted = await runs
+        .createQueryBuilder()
+        .insert()
+        .values({
+          ...draft,
+          status: 'queued',
+          errorCode: null,
+          inputTokens: 0,
+          outputTokens: 0,
+          startedAt: null,
+          finishedAt: null,
+        })
+        .orIgnore()
+        .execute();
+      const run = await runs.findOneBy({
+        idempotencyKey: draft.idempotencyKey,
+        status: NOT_FAILED,
+      });
+      if (run !== null) {
+        return { run, created: (inserted.raw as unknown[]).length > 0 };
+      }
+    }
+
+    throw new Error(`run ${draft.idempotencyKey} failed twice between its insert and the read`);
   }
 
   async countRecentRuns(productId: string, windowSeconds: number): Promise<number> {
