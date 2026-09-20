@@ -1,0 +1,38 @@
+<div class="suggestion">
+  <div class="suggestion__head">
+    <span class="suggestion__label">{{ label() }}</span>
+    <span class="suggestion__buttons">
+      <button
+        matIconButton
+        type="button"
+        [disabled]="!canRewrite() || busy()"
+        [matTooltip]="canRewrite() ? 'Попросити модель' : rewriteHint()"
+        [matTooltipDisabled]="canRewrite() && busy()"
+        [attr.aria-label]="'Попросити модель: ' + label()"
+        [attr.data-testid]="'rewrite'"
+        (click)="rewrite.emit()"
+      >
+        <mat-icon>auto_awesome</mat-icon>
+      </button>
+      @if (acceptable()) {
+        <button
+          matIconButton
+          type="button"
+          [disabled]="!canAccept()"
+          matTooltip="Перенести у поле ліворуч"
+          [attr.aria-label]="'Прийняти пропозицію: ' + label()"
+          [attr.data-testid]="'accept'"
+          (click)="accept.emit()"
+        >
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+      }
+    </span>
+  </div>
+
+  @if (text() === '') {
+    <p class="suggestion__empty" data-testid="suggestion-empty">Пропозиції ще немає.</p>
+  } @else {
+    <p class="suggestion__value" data-testid="suggestion-value">{{ text() }}</p>
+  }
+</div>

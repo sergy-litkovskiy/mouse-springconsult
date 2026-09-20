@@ -26,7 +26,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
+import type { PreparationRunRequest, RewritableField } from '@contracts/ai.contract';
 import type {
+  FieldSuggestion,
   Product,
   ProductCardRead,
   ProductImage,
@@ -37,8 +39,10 @@ import { apiErrorMessage } from '../../api-error-message';
 import { priceBound } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
+import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductsApi } from '../products-api';
 import { PromDescriptionEditor } from './prom-description-editor';
+import { SuggestionField } from './suggestion-field';
 
 /**
  * `null` opens an empty dialog: the card itself is created once the first frame is chosen.
@@ -56,6 +60,28 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.validationFailed]: 'Сервер не прийняв значення. Перевірте поля, зокрема ціну.',
   [apiErrorCodes.invalidPrice]: 'Ціна виглядає як 2499 або 2499.00.',
   [apiErrorCodes.productNotFound]: 'Картку вже видалено.',
+};
+
+/** No raw `code` ever reaches the screen: the server sends one, the wording lives here. */
+const PREPARATION_MESSAGES: Readonly<Record<string, string>> = {
+  [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
+  [apiErrorCodes.preparationRateLimited]:
+    'Забагато запусків підготовки для цієї картки. Спробуйте за годину.',
+  [apiErrorCodes.preparationInputIncomplete]:
+    'Для пошуку ціни потрібен хоча б один заголовок. Заповніть назву для Prom або для OLX.',
+  [apiErrorCodes.tooManyRequests]: 'Забагато запитів. Зачекайте трохи і спробуйте ще раз.',
+  [apiErrorCodes.productNotFound]: 'Картку вже видалено.',
+  [apiErrorCodes.suggestionNotFound]: 'Пропозиції вже немає — перечитайте картку.',
+  [apiErrorCodes.suggestionAlreadyResolved]: 'Цю пропозицію вже прийнято або відхилено.',
+  [apiErrorCodes.priceSuggestionReadonly]: 'Ціну вписують у поле руками — вона не переноситься.',
+};
+
+const UNAVAILABLE_MODEL_MESSAGE = 'Модель зараз недоступна. Спробуйте ще раз трохи пізніше.';
+
+/** `errorCode` of a finished run, which is a different vocabulary from an HTTP failure. */
+const RUN_FAILURE_MESSAGES: Readonly<Record<string, string>> = {
+  price_unavailable: 'Ціну знайти не вдалося. Тексти на місці — спробуйте запросити ціну ще раз.',
+  preparation_failed: 'Підготовка не вдалася. Спробуйте ще раз.',
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку. Спробуйте ще раз.';
@@ -102,7 +128,13 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatTooltipModule,
     ProductGallery,
     PromDescriptionEditor,
+    SuggestionField,
   ],
+  /**
+   * Not `providedIn: 'root'`: the poller must die with the dialog. A timer left running polls a
+   * card nobody is looking at any more, and every ask spends the rate limit of that card.
+   */
+  providers: [PreparationRunPoller],
   templateUrl: './product-form.html',
   styleUrl: './product-form.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -163,6 +195,47 @@ export class ProductForm {
     initialValue: this.form.invalid,
   });
 
+  /** Same reason, for the disabled states of AC-22 and AC-24, which read what is typed. */
+  private readonly draft = toSignal(this.form.events.pipe(map(() => this.form.getRawValue())), {
+    initialValue: this.form.getRawValue(),
+  });
+
+  private readonly poller = inject(PreparationRunPoller);
+
+  /** One rate limit for the whole card, so one run at a time (PRD §6.1). */
+  protected readonly preparing = computed(() => {
+    const status = this.poller.run()?.status;
+    return status === 'queued' || status === 'running';
+  });
+
+  protected readonly suggestions = computed<Partial<Record<string, FieldSuggestion>>>(() => {
+    const pending: Partial<Record<string, FieldSuggestion>> = {};
+    for (const suggestion of this.card()?.pendingSuggestions ?? []) {
+      pending[suggestion.field] = suggestion;
+    }
+    return pending;
+  });
+
+  protected readonly totalTokens = computed(() => {
+    const card = this.card();
+    return card === null ? null : { input: card.totalInputTokens, output: card.totalOutputTokens };
+  });
+
+  /** «Generate all» writes about the photos, so it waits for the same first frame as the fields. */
+  protected readonly canGenerateAll = computed(
+    () => this.hasFrames() && this.productId() !== null && !this.preparing(),
+  );
+
+  /** AC-24: a description alone does not enable the price button — the server gates on a title. */
+  protected readonly canLookUpPrice = computed(() => {
+    const value = this.draft();
+    return (
+      this.productId() !== null &&
+      !this.preparing() &&
+      (value.titleProm.trim() !== '' || value.titleOlx.trim() !== '')
+    );
+  });
+
   /** Handed to the gallery section, which needs the card to exist before its first upload. */
   protected readonly ensureProductForGallery = (): Observable<string> => this.ensureProduct();
 
@@ -182,7 +255,27 @@ export class ProductForm {
         this.form.disable();
       }
     });
+
+    effect(() => {
+      const run = this.poller.run();
+      if (run === null || run.status === 'queued' || run.status === 'running') {
+        return;
+      }
+      if (this.settledRunId === run.id) {
+        return;
+      }
+      this.settledRunId = run.id;
+      if (run.status === 'failed') {
+        this.formError.set(RUN_FAILURE_MESSAGES[run.errorCode ?? ''] ?? UNAVAILABLE_MODEL_MESSAGE);
+      }
+      // Even a failed run may have left texts behind: the price alone can be what went missing
+      // (AC-10b), and the suggestions are counted by the read of the card, never by this screen.
+      void this.reread();
+    });
   }
+
+  /** A finished run is reconciled once: the effect re-runs whenever the polled state changes. */
+  private settledRunId: string | null = null;
 
   /**
    * The gallery section reports every change of the frames here. That is what lifts AC-20 for a
@@ -209,6 +302,89 @@ export class ProductForm {
       }),
       map((product) => product.id),
     );
+  }
+
+  /** Recognises the item from the main frame and fills every text at once (ADR 0014). */
+  protected generateAll(): Promise<void> {
+    return this.startRun({ scope: 'texts' });
+  }
+
+  /** One field, rewritten from the draft on the left, without the photos (ADR 0015, AC-21). */
+  protected rewriteField(field: RewritableField): Promise<void> {
+    return this.startRun({ scope: 'field', field, draftText: this.draft()[field] });
+  }
+
+  /** The price never reads the draft — it searches the web, so it is a scope of its own. */
+  protected lookUpPrice(): Promise<void> {
+    return this.startRun({ scope: 'price' });
+  }
+
+  protected canRewrite(field: RewritableField): boolean {
+    return this.productId() !== null && !this.preparing() && this.draft()[field].trim() !== '';
+  }
+
+  protected suggestionFor(field: string): FieldSuggestion | null {
+    return this.suggestions()[field] ?? null;
+  }
+
+  /**
+   * Copies what the server stored into the field on the left, and only that field: the rest of the
+   * form may hold edits of its own, and a suggestion decides nothing about them (AC-11).
+   */
+  protected async acceptSuggestion(field: RewritableField): Promise<void> {
+    const id = this.productId();
+    const suggestion = this.suggestionFor(field);
+    if (id === null || suggestion === null) {
+      return;
+    }
+
+    this.formError.set(null);
+    try {
+      const card = await firstValueFrom(this.api.acceptSuggestion(id, suggestion.id));
+      this.card.set(card);
+      this.images.set(card.images);
+      this.form.controls[field].setValue(
+        field === 'seoKeywords' ? card.seoKeywords.join(', ') : card[field],
+      );
+      this.changed.set(true);
+    } catch (error: unknown) {
+      this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));
+    }
+  }
+
+  private async startRun(request: PreparationRunRequest): Promise<void> {
+    const id = this.productId();
+    if (id === null || this.preparing()) {
+      return;
+    }
+
+    this.formError.set(null);
+    try {
+      const run = await firstValueFrom(this.api.startPreparationRun(id, request));
+      this.poller.watch(id, run.id);
+    } catch (error: unknown) {
+      this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));
+    }
+  }
+
+  /**
+   * Re-reads the card without touching the fields: what the admin typed while the run was going
+   * stays (AC-11), and the suggestions arrive beside it.
+   */
+  private async reread(): Promise<void> {
+    const id = this.productId();
+    if (id === null) {
+      return;
+    }
+    try {
+      const card = await firstValueFrom(this.api.getById(id));
+      this.card.set(card);
+      this.images.set(card.images);
+      this.changed.set(true);
+    } catch {
+      // The run is already reported; a failed re-read would only replace that message with a
+      // vaguer one, and the card on screen is still the one the admin is editing.
+    }
   }
 
   protected async save(): Promise<void> {
