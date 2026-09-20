@@ -1,19 +1,29 @@
+/* Buttons between the two halves, the way the mockup draws them: «? -> AI» carries the draft to
+   the model, «<- AI» brings the answer back, and the arrows only read as arrows in between. */
 .suggestion {
   display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.suggestion__buttons {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.suggestion__value {
+  display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 4px;
-  min-height: 3.5rem;
+  min-width: 0;
   padding: 8px 12px;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 8px;
   background-color: var(--mat-sys-surface-container-low);
-}
-
-.suggestion__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .suggestion__label {
@@ -21,14 +31,8 @@
   font: var(--mat-sys-body-small);
 }
 
-.suggestion__buttons {
-  display: inline-flex;
-  flex: none;
-  gap: 0;
-}
-
 /* Wraps the way the model wrote it: a suggestion is read, not laid out. */
-.suggestion__value {
+.suggestion__text {
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;

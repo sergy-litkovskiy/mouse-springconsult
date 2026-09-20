@@ -55,22 +55,24 @@
   padding-top: 8px;
 }
 
-.card-form__pair,
+/* One pair per row (mockup 2026-09-12): the field being edited, the buttons, the suggestion.
+   Two pairs side by side would leave each half too narrow to read a description in. */
+.card-form__paired,
 .card-form__row {
   display: flex;
   flex-wrap: wrap;
   gap: 0 16px;
 }
 
-.card-form__pair > mat-form-field,
-.card-form__pair > app-suggestion-field,
+.card-form__paired > mat-form-field,
+.card-form__paired > app-suggestion-field,
 .card-form__description {
-  flex: 1 1 18rem;
+  flex: 1 1 20rem;
   min-width: 0;
 }
 
 /* Matches the gap a mat-form-field leaves for its hint, so the halves line up. */
-.card-form__pair > app-suggestion-field {
+.card-form__paired > app-suggestion-field {
   display: block;
   padding-bottom: 22px;
 }

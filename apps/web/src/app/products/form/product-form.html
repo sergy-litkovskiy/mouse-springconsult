@@ -51,7 +51,7 @@
   }
 
   <form class="card-form" id="product-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для Prom</mat-label>
         <input matInput formControlName="titleProm" />
@@ -70,7 +70,9 @@
         (rewrite)="rewriteField('titleProm')"
         (accept)="acceptSuggestion('titleProm')"
       />
+    </div>
 
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для OLX</mat-label>
         <input matInput formControlName="titleOlx" />
@@ -91,7 +93,7 @@
       />
     </div>
 
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <!-- Not a mat-form-field: the editor is not a MatFormFieldControl, so the label is its own. -->
       <div class="card-form__description">
         <span class="card-form__label" aria-hidden="true">Опис для Prom</span>
@@ -108,7 +110,9 @@
         (rewrite)="rewriteField('descriptionProm')"
         (accept)="acceptSuggestion('descriptionProm')"
       />
+    </div>
 
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Опис для OLX</mat-label>
         <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
@@ -126,7 +130,7 @@
       />
     </div>
 
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Ключові слова</mat-label>
         <input matInput formControlName="seoKeywords" placeholder="миша, logitech, бездротова" />
@@ -148,7 +152,7 @@
       />
     </div>
 
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Ціна, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="price" placeholder="2499.00" />
