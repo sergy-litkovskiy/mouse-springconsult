@@ -51,6 +51,12 @@ export type RunClaim = {
 
 const UNFINISHED: PreparationStatus[] = ['queued', 'running'];
 
+/**
+ * A failed run guards nothing, so it stops answering for its key: the UNIQUE index leaves it out
+ * as well, and the same input starts a new run instead of reading the failure back.
+ */
+const NOT_FAILED = Not<PreparationStatus>('failed');
+
 export class PreparationRepository {
   constructor(private readonly dataSource: DataSource) {}
 
@@ -72,8 +78,6 @@ export class PreparationRepository {
   /**
    * `ON CONFLICT DO NOTHING` rather than a lookup first: two starts of the same input at once
    * would both miss the lookup, and the UNIQUE index is what settles which of them created the run.
-   * That index holds only runs that have not failed, so a repeat after a failure inserts a new
-   * row, and the row read back for a key is the live one rather than the failure it retries.
    */
   async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
     const runs = this.dataSource.getRepository(PreparationRun);
@@ -93,7 +97,7 @@ export class PreparationRepository {
       .execute();
     const run = await runs.findOneByOrFail({
       idempotencyKey: draft.idempotencyKey,
-      status: Not('failed'),
+      status: NOT_FAILED,
     });
     return { run, created: (inserted.raw as unknown[]).length > 0 };
   }
@@ -107,11 +111,10 @@ export class PreparationRepository {
       .getCount();
   }
 
-  /** A failed run guards nothing, so it does not answer for its key: the same input starts again. */
   async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
     return this.dataSource
       .getRepository(PreparationRun)
-      .findOneBy({ idempotencyKey, status: Not('failed') });
+      .findOneBy({ idempotencyKey, status: NOT_FAILED });
   }
 
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
