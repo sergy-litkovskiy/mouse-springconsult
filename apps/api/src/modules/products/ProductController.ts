@@ -23,7 +23,7 @@ import { productConstraints } from '../../contracts/products-limits.ts';
 import { config } from '../../config.ts';
 import { AppError } from '../../errors.ts';
 import { FileTooLarge } from '../media/index.ts';
-import type { SuggestionField } from './FieldSuggestion.ts';
+import type { FieldSuggestion, SuggestionField } from './FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
 import {
   ImageNotFound,
@@ -206,15 +206,22 @@ export class ProductController {
   private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
     return {
       ...this.toCardResponse(reading),
-      pendingSuggestions: reading.pendingSuggestions.map((suggestion) => ({
-        id: suggestion.id,
-        runId: suggestion.runId,
-        field: suggestionFieldNames[suggestion.field],
-        value: suggestion.value,
-        createdAt: suggestion.createdAt.toISOString(),
-      })),
+      pendingSuggestions: reading.pendingSuggestions.map((suggestion) =>
+        this.toSuggestionResponse(suggestion),
+      ),
       totalInputTokens: reading.tokens.inputTokens,
       totalOutputTokens: reading.tokens.outputTokens,
+    };
+  }
+
+  /** `resolution` and `resolvedAt` are left out: everything answered here is still undecided. */
+  private toSuggestionResponse(suggestion: FieldSuggestion): FieldSuggestionResponse {
+    return {
+      id: suggestion.id,
+      runId: suggestion.runId,
+      field: suggestionFieldNames[suggestion.field],
+      value: suggestion.value,
+      createdAt: suggestion.createdAt.toISOString(),
     };
   }
 

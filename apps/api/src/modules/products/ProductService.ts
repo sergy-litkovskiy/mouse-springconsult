@@ -229,12 +229,7 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    // Read back after the decision was written, so the answer names what is still undecided.
-    const pending = (await this.preparations.findSuggestions(productId)).filter(
-      (each) => each.resolution === null,
-    );
-
-    return this.toCardReading(productId, product, pending);
+    return this.toCardReading(productId, product, await this.findPendingSuggestions(productId));
   }
 
   async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
@@ -252,12 +247,14 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    // Read back after the decision was written, so the answer names what is still undecided.
-    const pending = (await this.preparations.findSuggestions(productId)).filter(
-      (each) => each.resolution === null,
-    );
+    return this.toCardReading(productId, product, await this.findPendingSuggestions(productId));
+  }
 
-    return this.toCardReading(productId, product, pending);
+  /** Read back after the decision was written, so the answer names what is still undecided. */
+  private async findPendingSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    return (await this.preparations.findSuggestions(productId)).filter(
+      (suggestion) => suggestion.resolution === null,
+    );
   }
 
   private async toCardReading(
