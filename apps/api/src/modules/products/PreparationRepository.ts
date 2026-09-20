@@ -1,5 +1,10 @@
 import { In, type DataSource } from 'typeorm';
-import { FieldSuggestion, type SuggestionField, type SuggestionValue } from './FieldSuggestion.ts';
+import {
+  FieldSuggestion,
+  type SuggestionField,
+  type SuggestionResolution,
+  type SuggestionValue,
+} from './FieldSuggestion.ts';
 import {
   PreparationRun,
   type PreparationErrorCode,
@@ -148,6 +153,21 @@ export class PreparationRepository {
         },
       );
     });
+  }
+
+  async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    throw new Error('Not implemented');
+  }
+
+  async findSuggestion(productId: string, suggestionId: string): Promise<FieldSuggestion | null> {
+    throw new Error('Not implemented');
+  }
+
+  async resolveSuggestion(
+    suggestionId: string,
+    resolution: SuggestionResolution,
+  ): Promise<boolean> {
+    throw new Error('Not implemented');
   }
 
   async sumTokens(productId: string): Promise<TokenTotals> {

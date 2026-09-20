@@ -74,6 +74,14 @@ export class ProductService {
     };
   }
 
+  async acceptSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
+    throw new Error('Not implemented');
+  }
+
+  async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
+    throw new Error('Not implemented');
+  }
+
   async create(input: ProductCreate): Promise<ProductSaving> {
     const { seoKeywords, discardedKeywordsCount } = capKeywords(input.seoKeywords);
     const product = await this.products.create({

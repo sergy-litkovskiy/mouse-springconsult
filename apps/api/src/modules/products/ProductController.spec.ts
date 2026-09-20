@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { after, before, describe, it } from 'node:test';
+import { after, before, beforeEach, describe, it } from 'node:test';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { apiErrorCodes } from '../../contracts/error-codes.ts';
 import type {
@@ -11,12 +11,19 @@ import multipart from '@fastify/multipart';
 import { config } from '../../config.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.ts';
+import {
+  FieldSuggestion,
+  type SuggestionField,
+  type SuggestionResolution,
+  type SuggestionValue,
+} from './FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
+  type ProductChanges,
   type ProductDraft,
   type ProductListCriteria,
 } from './ProductRepository.ts';
@@ -107,6 +114,8 @@ class StubProductRepository extends ProductRepository {
  */
 class StubPreparationRepository extends PreparationRepository {
   readonly totals = new Map<string, TokenTotals>();
+  /** Suggestions reach the card through their run, so the double keys them the way the join does. */
+  readonly suggestions = new Map<string, FieldSuggestion[]>();
 
   constructor() {
     super(NO_DATA_SOURCE);
@@ -114,6 +123,30 @@ class StubPreparationRepository extends PreparationRepository {
 
   override async sumTokens(productId: string): Promise<TokenTotals> {
     return this.totals.get(productId) ?? { inputTokens: 0, outputTokens: 0 };
+  }
+
+  override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    return this.suggestions.get(productId) ?? [];
+  }
+
+  override async findSuggestion(
+    productId: string,
+    suggestionId: string,
+  ): Promise<FieldSuggestion | null> {
+    return (this.suggestions.get(productId) ?? []).find((row) => row.id === suggestionId) ?? null;
+  }
+
+  override async resolveSuggestion(
+    suggestionId: string,
+    resolution: SuggestionResolution,
+  ): Promise<boolean> {
+    const row = [...this.suggestions.values()].flat().find((each) => each.id === suggestionId);
+    if (row === undefined || row.resolution !== null) {
+      return false;
+    }
+    row.resolution = resolution;
+    row.resolvedAt = new Date('2026-09-20T12:00:00.000Z');
+    return true;
   }
 }
 
@@ -784,5 +817,147 @@ describe('product controller: card cost', () => {
       { totalInputTokens: body['totalInputTokens'], totalOutputTokens: body['totalOutputTokens'] },
       { totalInputTokens: 0, totalOutputTokens: 0 },
     );
+  });
+});
+
+const SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000001';
+const PRICE_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000002';
+const MISSING_SUGGESTION_ID = '01931f2a-6666-7000-8000-00000000000f';
+
+class SuggestionProductRepository extends StubProductRepository {
+  override async update(id: string, changes: ProductChanges): Promise<Product | null> {
+    const card = this.cards.find((product) => product.id === id);
+    if (card === undefined) {
+      return null;
+    }
+    Object.assign(card, changes);
+    return card;
+  }
+}
+
+function pendingSuggestion(
+  id: string,
+  field: SuggestionField,
+  value: SuggestionValue,
+): FieldSuggestion {
+  return Object.assign(new FieldSuggestion(), {
+    id,
+    runId: '01931f2a-5555-7000-8000-000000000001',
+    field,
+    value,
+    resolution: null,
+    resolvedAt: null,
+    createdAt: new Date('2026-09-20T10:00:00.000Z'),
+  });
+}
+
+function suggestionUrl(productId: string, suggestionId: string, decision: string): string {
+  return `/${productId}/suggestions/${suggestionId}/${decision}`;
+}
+
+describe('product controller: resolving a suggestion', () => {
+  let repository: SuggestionProductRepository;
+  let runs: StubPreparationRepository;
+  let app: FastifyInstance;
+  let allowed = true;
+
+  before(async () => {
+    repository = new SuggestionProductRepository();
+    runs = new StubPreparationRepository();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, runs),
+      'https://images.example.com',
+    ).register(app, async (_request, reply) => {
+      if (!allowed) {
+        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
+      }
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    allowed = true;
+    repository.cards[0] = card(READY_ID, { titleOlx: 'Моя власна назва' });
+    runs.suggestions.set(READY_ID, [
+      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
+      pendingSuggestion(PRICE_SUGGESTION_ID, 'price', {
+        priceFrom: '2200.00',
+        priceTo: '2700.00',
+      }),
+    ]);
+  });
+
+  it('answers the saved card for an accepted suggestion (Checklist 3)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json<{ titleOlx: string }>().titleOlx, 'Назва від моделі');
+  });
+
+  it('answers price_suggestion_readonly for accepting a price suggestion (AC-26)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, PRICE_SUGGESTION_ID, 'accept'),
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.priceSuggestionReadonly);
+    assert.equal(repository.cards[0]?.price, '2499.00');
+  });
+
+  it('answers suggestion_already_resolved for a second decision (Checklist 6)', async () => {
+    const url = suggestionUrl(READY_ID, SUGGESTION_ID, 'accept');
+
+    const first = await app.inject({ method: 'POST', url });
+    const second = await app.inject({ method: 'POST', url });
+
+    assert.equal(first.statusCode, 200);
+    assert.equal(second.statusCode, 409);
+    assert.equal(second.json<{ code: string }>().code, apiErrorCodes.suggestionAlreadyResolved);
+  });
+
+  it('answers suggestion_not_found for a suggestion this card never had (Checklist 1)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, MISSING_SUGGESTION_ID, 'accept'),
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.suggestionNotFound);
+  });
+
+  it('answers the untouched card for a rejected suggestion (Checklist 3)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json<{ titleOlx: string }>().titleOlx, 'Моя власна назва');
+  });
+
+  it('puts both suggestion routes behind the session guard (Checklist 3)', async () => {
+    allowed = false;
+
+    const accepted = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
+    });
+    const rejected = await app.inject({
+      method: 'POST',
+      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
+    });
+
+    assert.equal(accepted.statusCode, 401);
+    assert.equal(rejected.statusCode, 401);
+    assert.equal(repository.cards[0]?.titleOlx, 'Моя власна назва');
   });
 });

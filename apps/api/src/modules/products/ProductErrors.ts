@@ -76,3 +76,35 @@ export class PreparationRateLimited extends AppError {
     });
   }
 }
+
+export class SuggestionNotFound extends AppError {
+  constructor(suggestionId: string) {
+    super({
+      code: apiErrorCodes.suggestionNotFound,
+      statusCode: 404,
+      message: 'Suggestion not found',
+      details: { suggestionId },
+    });
+  }
+}
+
+export class SuggestionAlreadyResolved extends AppError {
+  constructor(suggestionId: string) {
+    super({
+      code: apiErrorCodes.suggestionAlreadyResolved,
+      statusCode: 409,
+      message: 'Suggestion is already resolved',
+      details: { suggestionId },
+    });
+  }
+}
+
+export class PriceSuggestionReadonly extends AppError {
+  constructor() {
+    super({
+      code: apiErrorCodes.priceSuggestionReadonly,
+      statusCode: 409,
+      message: 'Price suggestions cannot be accepted directly; pick a value from the range instead',
+    });
+  }
+}

@@ -329,4 +329,64 @@ describe('preparation repository (postgres)', () => {
 
     assert.equal(await runs.findRun(otherProductId, runId), null);
   });
+
+  it('lists every suggestion of the card, oldest first, across its runs (Checklist 2)', async () => {
+    const productId = await seedProduct();
+    const otherProductId = await seedProduct();
+    await runs.finishRun(await seedRun(productId), {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_prom', value: 'Назва для Prom' }],
+    });
+    await runs.finishRun(await seedRun(productId), {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_olx', value: 'Назва для OLX' }],
+    });
+    await runs.finishRun(await seedRun(otherProductId), {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_prom', value: 'Назва чужої картки' }],
+    });
+
+    const found = await runs.findSuggestions(productId);
+
+    assert.deepEqual(
+      found.map(({ field }) => field),
+      ['title_prom', 'title_olx'],
+    );
+    assert.deepEqual(
+      found.map(({ resolution }) => resolution),
+      [null, null],
+    );
+  });
+
+  it('does not find a suggestion through another card (Checklist 3)', async () => {
+    const productId = await seedProduct();
+    const runId = await seedRun(productId);
+    await runs.finishRun(runId, {
+      status: 'succeeded',
+      suggestions: [{ field: 'seo_keywords', value: ['миша', 'logitech'] }],
+    });
+    const [suggestion] = await suggestionsOf(runId);
+    assert.ok(suggestion);
+    const otherProductId = await seedProduct();
+
+    assert.equal((await runs.findSuggestion(productId, suggestion.id))?.id, suggestion.id);
+    assert.equal(await runs.findSuggestion(otherProductId, suggestion.id), null);
+  });
+
+  it('records a decision once and refuses a second one (Checklist 6)', async () => {
+    const runId = await seedRun(await seedProduct());
+    await runs.finishRun(runId, {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_olx', value: 'Назва від моделі' }],
+    });
+    const [suggestion] = await suggestionsOf(runId);
+    assert.ok(suggestion);
+
+    assert.equal(await runs.resolveSuggestion(suggestion.id, 'accepted'), true);
+    assert.equal(await runs.resolveSuggestion(suggestion.id, 'rejected'), false);
+
+    const stored = await dataSource.getRepository(FieldSuggestion).findOneBy({ id: suggestion.id });
+    assert.equal(stored?.resolution, 'accepted');
+    assert.ok(stored.resolvedAt instanceof Date);
+  });
 });
