@@ -208,6 +208,13 @@ export class ProductForm {
     return status === 'queued' || status === 'running';
   });
 
+  /**
+   * Turned off until [T54]: measured 2026-09-20, `scope: price` returns an empty range for every
+   * item and costs $0.27-$0.77 a call, twenty times the texts of the whole card. The button is
+   * what spends the money, so the button is what goes; the code behind it stays for T54 to fix.
+   */
+  protected readonly priceLookupEnabled = false;
+
   protected readonly preparingNotice = computed(() =>
     this.poller.run()?.scope === 'price' ? 'Модель шукає ціну…' : 'Модель готує тексти…',
   );

@@ -160,16 +160,23 @@
           <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
         }
       </mat-form-field>
-      <app-suggestion-field
-        data-field="price"
-        label="Ціна від моделі"
-        [suggestion]="suggestionFor('price')"
-        [busy]="preparing()"
-        [canRewrite]="canLookUpPrice()"
-        rewriteHint="Спершу заповніть назву для Prom або для OLX."
-        [acceptable]="false"
-        (rewrite)="lookUpPrice()"
-      />
+      <!--
+        Half of the pair is hidden until T54: measured 2026-09-20, the lookup returns an empty
+        range for every item and costs $0.27-$0.77 a call — twenty times the texts of the whole
+        card. Every click buys nothing, so the entrance is closed rather than the code removed.
+      -->
+      @if (priceLookupEnabled) {
+        <app-suggestion-field
+          data-field="price"
+          label="Ціна від моделі"
+          [suggestion]="suggestionFor('price')"
+          [busy]="preparing()"
+          [canRewrite]="canLookUpPrice()"
+          rewriteHint="Спершу заповніть назву для Prom або для OLX."
+          [acceptable]="false"
+          (rewrite)="lookUpPrice()"
+        />
+      }
     </div>
 
     <div class="card-form__row">

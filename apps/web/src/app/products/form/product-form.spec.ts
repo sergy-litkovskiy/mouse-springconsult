@@ -706,7 +706,9 @@ describe('ProductForm', () => {
       await settle();
     });
 
-    it('keeps the price button unavailable until the card has a title (AC-24)', async () => {
+    // Skipped, not deleted: the price half is hidden until T54 makes the lookup return a range
+    // instead of an empty string. T54 turns the flag back on and these two go green again.
+    it.skip('keeps the price button unavailable until the card has a title (AC-24)', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -721,7 +723,7 @@ describe('ProductForm', () => {
       expect(button('price', 'rewrite')?.disabled).toBe(false);
     });
 
-    it('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
+    it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
       openWithPending(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
       await settle();
 
@@ -766,7 +768,7 @@ describe('ProductForm', () => {
       await settle();
 
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-      expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
+      // The price suggestion arrives in the read all the same; showing it comes back with T54.
     });
 
     it('explains a rate limit in Ukrainian rather than showing its code', async () => {
