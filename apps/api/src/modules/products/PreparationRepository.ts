@@ -177,6 +177,10 @@ export class PreparationRepository {
     });
   }
 
+  async closeStuckRuns(olderThanSeconds: number): Promise<number> {
+    throw new Error('Not implemented');
+  }
+
   /** Oldest first: the check on reading a card takes the latest suggestion of each field. */
   async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
     return this.dataSource

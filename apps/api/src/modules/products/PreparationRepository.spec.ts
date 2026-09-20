@@ -82,6 +82,16 @@ async function queuedRunId(productId: string): Promise<string> {
   return queued.id;
 }
 
+/** A full series of attempts of the preparation job, the threshold the sweep is asked about. */
+const STUCK_AFTER_SECONDS = 16 * 60;
+
+async function ageRun(runId: string, ageSeconds: number): Promise<void> {
+  await dataSource.query(
+    `update product_preparation_runs set created_at = now() - make_interval(secs => $2) where id = $1`,
+    [runId, ageSeconds],
+  );
+}
+
 async function countRuns(productId: string): Promise<number> {
   return dataSource.getRepository(PreparationRun).countBy({ productId });
 }
@@ -457,6 +467,72 @@ describe('preparation repository (postgres)', () => {
 
     assert.equal((await runs.findSuggestion(productId, suggestion.id))?.id, suggestion.id);
     assert.equal(await runs.findSuggestion(otherProductId, suggestion.id), null);
+  });
+
+  it('closes a running run older than a full series of attempts (AC-39)', async () => {
+    const runId = await seedRun(await seedProduct(), 'running');
+    await ageRun(runId, STUCK_AFTER_SECONDS + 60);
+
+    assert.equal(await runs.closeStuckRuns(STUCK_AFTER_SECONDS), 1);
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'failed');
+    assert.equal(stored.errorCode, 'preparation_failed');
+    assert.ok(stored.finishedAt instanceof Date);
+    assert.deepEqual(await suggestionsOf(runId), []);
+  });
+
+  it('closes a queued run whose job never reached the worker (AC-39)', async () => {
+    const runId = await seedRun(await seedProduct(), 'queued');
+    await ageRun(runId, STUCK_AFTER_SECONDS + 60);
+
+    assert.equal(await runs.closeStuckRuns(STUCK_AFTER_SECONDS), 1);
+
+    const stored = await loadRun(runId);
+    assert.equal(stored.status, 'failed');
+    assert.equal(stored.errorCode, 'preparation_failed');
+  });
+
+  it('leaves a run younger than the threshold alone (AC-40)', async () => {
+    const productId = await seedProduct();
+    const runningId = await seedRun(productId, 'running');
+    const queuedId = await seedRun(productId, 'queued');
+    await ageRun(runningId, STUCK_AFTER_SECONDS - 60);
+
+    assert.equal(await runs.closeStuckRuns(STUCK_AFTER_SECONDS), 0);
+
+    assert.equal((await loadRun(runningId)).status, 'running');
+    assert.equal((await loadRun(queuedId)).status, 'queued');
+  });
+
+  it('never changes a run that has already finished, whatever its age (AC-40)', async () => {
+    const productId = await seedProduct();
+    const succeededId = await seedRun(productId, 'running');
+    await runs.finishRun(succeededId, {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_prom', value: 'Назва для Prom' }],
+    });
+    const failedId = await seedRun(productId, 'running');
+    await runs.finishRun(failedId, {
+      status: 'failed',
+      errorCode: 'price_unavailable',
+      suggestions: [{ field: 'description_prom', value: 'Опис для Prom.' }],
+    });
+    await ageRun(succeededId, STUCK_AFTER_SECONDS + 60);
+    await ageRun(failedId, STUCK_AFTER_SECONDS + 60);
+
+    assert.equal(await runs.closeStuckRuns(STUCK_AFTER_SECONDS), 0);
+
+    const succeeded = await loadRun(succeededId);
+    assert.equal(succeeded.status, 'succeeded');
+    assert.equal(succeeded.errorCode, null);
+    const failed = await loadRun(failedId);
+    assert.equal(failed.status, 'failed');
+    assert.equal(failed.errorCode, 'price_unavailable');
+    assert.deepEqual(
+      (await suggestionsOf(failedId)).map(({ field }) => field),
+      ['description_prom'],
+    );
   });
 
   it('records a decision once and refuses a second one (Checklist 6)', async () => {
