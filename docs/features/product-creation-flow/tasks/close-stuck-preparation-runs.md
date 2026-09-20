@@ -6,7 +6,7 @@ delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1800
+context_budget: 2200
 blocked_by: [T29]
 blocks: [T32]
 updated_at: "2026-09-20"
