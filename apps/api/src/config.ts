@@ -29,6 +29,16 @@ const POLLING_INTERVAL_SECONDS = 1;
 /** Runs left behind by a dead attempt are a handful, so the sweep looking for them is rare. */
 const STUCK_SWEEP_INTERVAL_SECONDS = 60;
 
+/**
+ * pg-boss does not retry an attempt the moment `expireInSeconds` passes: `failJobsByTimeout` runs
+ * inside the monitor pass, which the supervise timer ticks and `monitorIntervalSeconds` gates. Both
+ * are pg-boss defaults, and they are pinned here rather than left implicit because the threshold of
+ * a stuck run is derived from them — a new default in a minor release would otherwise move the
+ * threshold without touching this file.
+ */
+const SUPERVISE_INTERVAL_SECONDS = 60;
+const MONITOR_INTERVAL_SECONDS = 60;
+
 export const config = {
   http: {
     host: '0.0.0.0',
@@ -102,20 +112,24 @@ export const config = {
     /** The api only enqueues and the worker takes one job at a time, so a small pool suffices. */
     poolSize: 4,
     pollingIntervalSeconds: POLLING_INTERVAL_SECONDS,
+    superviseIntervalSeconds: SUPERVISE_INTERVAL_SECONDS,
+    monitorIntervalSeconds: MONITOR_INTERVAL_SECONDS,
     preparation: {
       ...preparationJob,
       stuckSweepIntervalSeconds: STUCK_SWEEP_INTERVAL_SECONDS,
       /**
-       * Past this age a `queued` or `running` run was left behind by an attempt nobody closed: a
-       * full series of `retryLimit + 1` attempts of `expireInSeconds` each, the pauses between
-       * them (with `retryBackoff` every next pause doubles, so they sum to `retryDelaySeconds ×
-       * (2^retryLimit − 1)`), plus one polling interval and one sweep period of slack — ~16 min at
-       * the current values. Derived rather than written out, so that retuning the queue cannot
-       * drift away from the threshold; turning `retryBackoff` off would only leave it too
-       * generous, which errs on the side of the live run.
+       * Past this age a `queued` or `running` run was left behind by an attempt nobody closed. It
+       * is the longest a live series of attempts can take: `retryLimit + 1` attempts, each running
+       * up to `expireInSeconds` and then waiting to be noticed as expired (supervise tick plus the
+       * monitor gate), the pauses between them (with `retryBackoff` every next pause doubles, so
+       * they sum to `retryDelaySeconds × (2^retryLimit − 1)`), and a polling interval and a sweep
+       * period of slack — ~22 min at the current values. It has to be the worst case, not the
+       * typical one: closing a run whose attempt is still alive costs a paid model call that then
+       * has nowhere to land, while closing a dead one late costs a spinner nobody watches.
        */
       stuckAfterSeconds:
-        (preparationJob.retryLimit + 1) * preparationJob.expireInSeconds +
+        (preparationJob.retryLimit + 1) *
+          (preparationJob.expireInSeconds + SUPERVISE_INTERVAL_SECONDS + MONITOR_INTERVAL_SECONDS) +
         preparationJob.retryDelaySeconds * (2 ** preparationJob.retryLimit - 1) +
         POLLING_INTERVAL_SECONDS +
         STUCK_SWEEP_INTERVAL_SECONDS,
