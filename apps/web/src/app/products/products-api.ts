@@ -71,19 +71,34 @@ export class ProductsApi {
     productId: string,
     request: PreparationRunRequest,
   ): Observable<PreparationRunDto> {
-    throw new Error('Not implemented');
+    return this.http.post<PreparationRunDto>(
+      `${this.baseUrl}/${productId}/preparation-runs`,
+      request,
+      { withCredentials: true },
+    );
   }
 
   getPreparationRun(productId: string, runId: string): Observable<PreparationRunDto> {
-    throw new Error('Not implemented');
+    return this.http.get<PreparationRunDto>(
+      `${this.baseUrl}/${productId}/preparation-runs/${runId}`,
+      { withCredentials: true },
+    );
   }
 
   acceptSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
-    throw new Error('Not implemented');
+    return this.http.post<ProductCardRead>(
+      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/accept`,
+      null,
+      { withCredentials: true },
+    );
   }
 
   rejectSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
-    throw new Error('Not implemented');
+    return this.http.post<ProductCardRead>(
+      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/reject`,
+      null,
+      { withCredentials: true },
+    );
   }
 }
 
