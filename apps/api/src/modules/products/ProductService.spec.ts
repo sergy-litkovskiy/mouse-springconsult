@@ -296,7 +296,7 @@ class StubPreparationRepository extends PreparationRepository {
     resolution: SuggestionResolution,
   ): Promise<boolean> {
     const row = [...this.suggestions.values()].flat().find((each) => each.id === suggestionId);
-    if (row === undefined || row.resolution !== null) {
+    if (row?.resolution !== null) {
       return false;
     }
     row.resolution = resolution;
