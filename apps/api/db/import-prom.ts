@@ -4,7 +4,11 @@ import { config, env } from '../src/config.ts';
 import { createDataSource } from '../src/db.ts';
 import { ImageStorage, MediaService } from '../src/modules/media/index.ts';
 import {
+  FieldSuggestion,
   PreparationRepository,
+  PreparationRun,
+  Product,
+  ProductImage,
   ProductRepository,
   ProductService,
 } from '../src/modules/products/index.ts';
@@ -119,7 +123,9 @@ async function main(): Promise<void> {
   const limit = values.limit === undefined ? parsed.cards.length : Number(values.limit);
   const queue = parsed.cards.slice(0, limit);
 
-  const dataSource = createDataSource();
+  const dataSource = createDataSource({
+    entities: [Product, ProductImage, PreparationRun, FieldSuggestion],
+  });
   await dataSource.initialize();
   const service = new ProductService(
     new ProductRepository(dataSource),
