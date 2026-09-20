@@ -177,8 +177,21 @@ export class PreparationRepository {
     });
   }
 
+  /**
+   * The status guard is the same one `finishRun` carries, so the sweep and a handler that is
+   * finishing the very same run at that moment cannot both write an outcome.
+   */
   async closeStuckRuns(olderThanSeconds: number): Promise<number> {
-    throw new Error('Not implemented');
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(PreparationRun)
+      .set({ status: 'failed', errorCode: 'preparation_failed', finishedAt: new Date() })
+      .where('status in (:...unfinished)', { unfinished: UNFINISHED })
+      .andWhere('created_at < now() - make_interval(secs => :olderThanSeconds)', {
+        olderThanSeconds,
+      })
+      .execute();
+    return result.affected ?? 0;
   }
 
   /** Oldest first: the check on reading a card takes the latest suggestion of each field. */
