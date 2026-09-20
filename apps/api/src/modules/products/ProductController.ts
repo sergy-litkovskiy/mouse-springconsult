@@ -11,6 +11,7 @@ import {
   productCreateSchema,
   productListQuerySchema,
   productUpdateSchema,
+  type FieldSuggestion as FieldSuggestionResponse,
   type ProductCard,
   type ProductCardRead,
   type ProductImage as ProductImageResponse,
@@ -22,6 +23,7 @@ import { productConstraints } from '../../contracts/products-limits.ts';
 import { config } from '../../config.ts';
 import { AppError } from '../../errors.ts';
 import { FileTooLarge } from '../media/index.ts';
+import type { SuggestionField } from './FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
 import {
   ImageNotFound,
@@ -38,6 +40,16 @@ import type {
 } from './ProductService.ts';
 
 const productParamsSchema = z.object({ productId: z.uuid() });
+
+/** The column spells a field the way SQL does; the contract spells it the way the card does. */
+const suggestionFieldNames = {
+  title_prom: 'titleProm',
+  title_olx: 'titleOlx',
+  description_prom: 'descriptionProm',
+  description_olx: 'descriptionOlx',
+  seo_keywords: 'seoKeywords',
+  price: 'price',
+} as const satisfies Record<SuggestionField, FieldSuggestionResponse['field']>;
 
 /**
  * The session guard arrives ready-made from the composition root: how a session is recognised is
@@ -194,6 +206,13 @@ export class ProductController {
   private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
     return {
       ...this.toCardResponse(reading),
+      pendingSuggestions: reading.pendingSuggestions.map((suggestion) => ({
+        id: suggestion.id,
+        runId: suggestion.runId,
+        field: suggestionFieldNames[suggestion.field],
+        value: suggestion.value,
+        createdAt: suggestion.createdAt.toISOString(),
+      })),
       totalInputTokens: reading.tokens.inputTokens,
       totalOutputTokens: reading.tokens.outputTokens,
     };

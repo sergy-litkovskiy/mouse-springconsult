@@ -35,6 +35,8 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
+  /** What the reconciliation left for the human to decide: `resolution` still NULL (AC-11). */
+  readonly pendingSuggestions: readonly FieldSuggestion[];
 };
 
 /** Keywords past the ceiling are reported here rather than raised as an error (AC-07). */
@@ -154,11 +156,21 @@ export class ProductService {
       throw new ProductNotFound(id);
     }
 
-    return this.toCardReading(id, await this.applySuggestionsToUntouchedFields(id, product));
+    const reconciled = await this.applySuggestionsToUntouchedFields(id, product);
+
+    return this.toCardReading(id, reconciled.product, reconciled.pending);
   }
 
-  private async applySuggestionsToUntouchedFields(id: string, product: Product): Promise<Product> {
-    const { accepted, pending } = latestPerField(await this.preparations.findSuggestions(id));
+  /**
+   * The pending suggestions of the card come out of this very pass: they are what the check left
+   * undecided, so a second trip to the table would only ask again what is already in hand.
+   */
+  private async applySuggestionsToUntouchedFields(
+    id: string,
+    product: Product,
+  ): Promise<{ product: Product; pending: FieldSuggestion[] }> {
+    const suggestions = await this.preparations.findSuggestions(id);
+    const { accepted, pending } = latestPerField(suggestions);
 
     const changes: ProductChanges = {};
     const applied: FieldSuggestion[] = [];
@@ -172,8 +184,11 @@ export class ProductService {
       Object.assign(changes, suggested);
       applied.push(suggestion);
     }
+    const stillPending = suggestions.filter(
+      (suggestion) => suggestion.resolution === null && !applied.includes(suggestion),
+    );
     if (applied.length === 0) {
-      return product;
+      return { product, pending: stillPending };
     }
 
     for (const suggestion of applied) {
@@ -183,7 +198,7 @@ export class ProductService {
     if (saved === null) {
       throw new ProductNotFound(id);
     }
-    return saved;
+    return { product: saved, pending: stillPending };
   }
 
   /** The value reaches the card through the same save as a manual edit (AC-12). */
@@ -214,7 +229,12 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    return this.toCardReading(productId, product);
+    // Read back after the decision was written, so the answer names what is still undecided.
+    const pending = (await this.preparations.findSuggestions(productId)).filter(
+      (each) => each.resolution === null,
+    );
+
+    return this.toCardReading(productId, product, pending);
   }
 
   async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
@@ -232,14 +252,24 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    return this.toCardReading(productId, product);
+    // Read back after the decision was written, so the answer names what is still undecided.
+    const pending = (await this.preparations.findSuggestions(productId)).filter(
+      (each) => each.resolution === null,
+    );
+
+    return this.toCardReading(productId, product, pending);
   }
 
-  private async toCardReading(productId: string, product: Product): Promise<ProductCardReading> {
+  private async toCardReading(
+    productId: string,
+    product: Product,
+    pendingSuggestions: readonly FieldSuggestion[],
+  ): Promise<ProductCardReading> {
     return {
       product,
       isReady: this.isReady(product),
       tokens: await this.preparations.sumTokens(productId),
+      pendingSuggestions,
     };
   }
 

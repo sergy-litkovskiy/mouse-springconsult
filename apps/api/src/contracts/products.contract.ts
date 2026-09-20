@@ -158,10 +158,41 @@ export const productCardSchema = productSchema.extend({
 export type ProductCard = z.infer<typeof productCardSchema>;
 
 /**
+ * `field` is spelled the way the contract spells the card's own fields, while the column holds
+ * `title_olx`: the card controller maps between the two.
+ */
+export const fieldSuggestionSchema = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+  field: z.enum([
+    'titleProm',
+    'titleOlx',
+    'descriptionProm',
+    'descriptionOlx',
+    'seoKeywords',
+    'price',
+  ]),
+  /** Polymorphic by `field`, the way the JSONB column is: a text, a keyword list or a range. */
+  value: z.union([
+    z.string(),
+    z.array(z.string()).readonly(),
+    z.object({ priceFrom: priceDecimal, priceTo: priceDecimal }),
+  ]),
+  resolution: z.enum(['accepted', 'rejected']).nullable().optional(),
+  resolvedAt: z.iso.datetime().nullable().optional(),
+  createdAt: z.iso.datetime(),
+});
+
+export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
+
+/**
  * The cost of a card rides with the card itself and not with a list: it is a sum over the
  * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
+ * The suggestions still waiting for a decision ride along for the same reason: they are counted
+ * by the very read that reconciles them (AC-11), and a page of cards would count them per row.
  */
 export const productCardReadSchema = productCardSchema.extend({
+  pendingSuggestions: z.array(fieldSuggestionSchema),
   totalInputTokens: z.int().nonnegative(),
   totalOutputTokens: z.int().nonnegative(),
 });
