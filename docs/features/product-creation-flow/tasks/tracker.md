@@ -96,10 +96,11 @@ stage: "13"
 | T31 | [Вартість картки](add-card-cost-readout.md) | Done | T11, T26 | XS | Serhii | — |
 | T53 | [Непідтверджені пропозиції](expose-pending-suggestions.md) | Done | T26, T30 | S | Serhii | — |
 | T32 | [Фронт підготовки](add-preparation-ui.md) | In progress | T20, T29, T30, T31, T51, T52, T53 | M | Serhii | — |
-| T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50 | S | Serhii | — |
+| T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50, T54 | S | Serhii | — |
 | T51 | [Повтор після відмови](allow-retry-after-failed-run.md) | Done | T29 | S | Serhii | — |
 | T52 | [Завислі запуски](close-stuck-preparation-runs.md) | Done | T29 | S | Serhii | — |
 | T50 | [Помилки підготовки в каталозі](show-preparation-failures-in-catalog.md) | Blocked | T29, T32 | M | Serhii | — |
+| T54 | [Таймаут виклику моделі](bound-the-model-call-timeout.md) | Todo | T27 | S | Serhii | — |
 
 ## Готові до старту просто зараз
 
@@ -252,3 +253,10 @@ python3 .claude/skills/feature-break-tasks/references/gate-check.py \
 лінки — одним прогоном.
 
 Команди — скіл `mouse-commands`.
+
+**2026-09-20 додано T54** (знахідка живого прогону T32): `scope: price` з `web_search` не
+вклався у `expireInSeconds` (5 хв), і pg-boss запустив другу спробу поверх першої, яка ще
+працювала — `17:16:32 job started`, `17:21:49 job started retry_count: 1`. Клієнт Anthropic
+створюється без явного таймауту, тож його межа більша за термін задачі, і `retryLimit: 2`
+означає до трьох оплачених викликів на один запуск. Обхід T52 тут не рятує: він закриває
+запуск через ~22 хв, коли всі виклики вже оплачені. T33 тепер чекає й на неї.
