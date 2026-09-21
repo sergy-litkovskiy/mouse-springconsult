@@ -5,20 +5,13 @@
 
 ## Стек
 
-| Шар | Технологія |
-|---|---|
-| UI | Angular 22 (standalone, signals, zoneless) + Angular Material |
-| API | Node.js 26 (ESM, Fastify). Збирається `tsc` у `dist/` — декоратори TypeORM |
-| TypeScript | **6.0.3** — жорсткий пін: Angular 22 вимагає `>=6.0 <6.1` |
-| БД | PostgreSQL 18 + TypeORM (тільки в шарі репозиторіїв) |
-| Авторизація | JWT (`jose`, HS256) у httpOnly-cookie, argon2id для паролів |
-| Черга | pg-boss (поверх PostgreSQL, без Redis) |
-| Файли | Cloudflare R2 (S3 API, `@aws-sdk/client-s3`) |
-| Зображення | sharp |
-| AI | Anthropic Claude API — `claude-sonnet-5` |
-| Проксі/TLS | Caddy 2 |
-| Хостинг | Hetzner VPS, Docker Compose |
-| CI/CD | GitHub Actions |
+Версії й залежності — у `apps/*/package.json`, `docker-compose*.yml` і Dockerfile.
+З коду не виводиться:
+
+- **TypeScript 6.0.3** — жорсткий пін: Angular 22 вимагає `>=6.0 <6.1`.
+- UI — Angular 22 standalone, signals, **zoneless**.
+- `apps/api` збирається `tsc` у `dist/` через декоратори TypeORM (див. `apps/api/CLAUDE.md`).
+- Хостинг — Hetzner VPS.
 
 ## Структура репозиторію
 
