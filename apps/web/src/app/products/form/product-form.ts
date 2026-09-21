@@ -90,11 +90,23 @@ const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] =
   { value: 'new', label: 'Новий' },
 ];
 
+const REWRITABLE_FIELDS: readonly RewritableField[] = [
+  'titleProm',
+  'titleOlx',
+  'descriptionProm',
+  'descriptionOlx',
+  'seoKeywords',
+];
+
 function parseKeywords(text: string): string[] {
   return text
     .split(',')
     .map((keyword) => keyword.trim())
     .filter((keyword) => keyword !== '');
+}
+
+function fieldText(product: Product, field: RewritableField): string {
+  return field === 'seoKeywords' ? product.seoKeywords.join(', ') : product[field];
 }
 
 function keywordsBound(control: AbstractControl): ValidationErrors | null {
@@ -351,9 +363,7 @@ export class ProductForm {
       const card = await firstValueFrom(this.api.acceptSuggestion(id, suggestion.id));
       this.card.set(card);
       this.images.set(card.images);
-      this.form.controls[field].setValue(
-        field === 'seoKeywords' ? card.seoKeywords.join(', ') : card[field],
-      );
+      this.form.controls[field].setValue(fieldText(card, field));
       this.changed.set(true);
     } catch (error: unknown) {
       this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));
@@ -389,17 +399,10 @@ export class ProductForm {
       const card = await firstValueFrom(this.api.getById(id));
       this.card.set(card);
       this.images.set(card.images);
-      const texts: readonly RewritableField[] = [
-        'titleProm',
-        'titleOlx',
-        'descriptionProm',
-        'descriptionOlx',
-        'seoKeywords',
-      ];
-      for (const field of texts) {
+      for (const field of REWRITABLE_FIELDS) {
         const control = this.form.controls[field];
         if (!control.dirty) {
-          control.setValue(field === 'seoKeywords' ? card.seoKeywords.join(', ') : card[field]);
+          control.setValue(fieldText(card, field));
         }
       }
       this.changed.set(true);
