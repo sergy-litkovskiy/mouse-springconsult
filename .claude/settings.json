@@ -35,7 +35,8 @@
     "deny": [
       "Bash(git push)",
       "Bash(git push *)",
-      "Read(**/environment.prod.ts)"
+      "Read(**/environment.prod.ts)",
+      "Bash(git reset --hard *)"
     ]
   },
   "enabledPlugins": {
