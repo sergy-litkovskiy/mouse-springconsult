@@ -1,8 +1,10 @@
 import { HttpClient, type HttpResourceRequest } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
+import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.contract';
 import type {
   Product,
+  ProductCardRead,
   ProductCreateRequest,
   ProductImage,
   ProductListQuery,
@@ -25,8 +27,10 @@ export class ProductsApi {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
   }
 
-  getById(productId: string): Observable<Product> {
-    return this.http.get<Product>(`${this.baseUrl}/${productId}`, { withCredentials: true });
+  getById(productId: string): Observable<ProductCardRead> {
+    return this.http.get<ProductCardRead>(`${this.baseUrl}/${productId}`, {
+      withCredentials: true,
+    });
   }
 
   create(request: ProductCreateRequest): Observable<Product> {
@@ -63,6 +67,40 @@ export class ProductsApi {
     return this.http.delete<null>(`${this.baseUrl}/${productId}/images/${imageId}`, {
       withCredentials: true,
     });
+  }
+
+  startPreparationRun(
+    productId: string,
+    request: PreparationRunRequest,
+  ): Observable<PreparationRunDto> {
+    return this.http.post<PreparationRunDto>(
+      `${this.baseUrl}/${productId}/preparation-runs`,
+      request,
+      { withCredentials: true },
+    );
+  }
+
+  getPreparationRun(productId: string, runId: string): Observable<PreparationRunDto> {
+    return this.http.get<PreparationRunDto>(
+      `${this.baseUrl}/${productId}/preparation-runs/${runId}`,
+      { withCredentials: true },
+    );
+  }
+
+  acceptSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
+    return this.http.post<ProductCardRead>(
+      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/accept`,
+      null,
+      { withCredentials: true },
+    );
+  }
+
+  rejectSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
+    return this.http.post<ProductCardRead>(
+      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/reject`,
+      null,
+      { withCredentials: true },
+    );
   }
 }
 

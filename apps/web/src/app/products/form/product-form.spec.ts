@@ -10,10 +10,13 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { firstValueFrom } from 'rxjs';
+import type { PreparationRunDto } from '@contracts/ai.contract';
 import type { ApiError } from '@contracts/error.contract';
 import type {
+  FieldSuggestion,
   Product,
   ProductCard,
+  ProductCardRead,
   ProductImage,
   ProductUpdateResponse,
 } from '@contracts/products.contract';
@@ -80,8 +83,12 @@ describe('ProductForm', () => {
   let element: HTMLElement;
   let close: ReturnType<typeof vi.fn>;
 
+  /**
+   * The dialog is handed an identifier and reads the card itself, so a test that opens an existing
+   * card answers that read before anything else can happen.
+   */
   function open(product: ProductCard | null): void {
-    const data: ProductFormData = { product };
+    const data: ProductFormData = { productId: product?.id ?? null };
     close = vi.fn();
     TestBed.configureTestingModule({
       imports: [ProductForm],
@@ -95,6 +102,16 @@ describe('ProductForm', () => {
     fixture = TestBed.createComponent(ProductForm);
     http = TestBed.inject(HttpTestingController);
     element = fixture.nativeElement as HTMLElement;
+    if (product !== null) {
+      const read = http.expectOne(`/api/products/${product.id}`);
+      expect(read.request.method).toBe('GET');
+      read.flush(asRead(product));
+    }
+  }
+
+  /** The three fields a read carries and a row of the list does not (T31, T53). */
+  function asRead(card: ProductCard): ProductCardRead {
+    return { ...card, pendingSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
   }
 
   /**
@@ -588,5 +605,207 @@ describe('ProductForm', () => {
       expect(readiness()).toContain('Неготово');
       expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
+  });
+  describe('the preparation panel (T32)', () => {
+    const RUN_ID = '44444444-4444-4444-8444-444444444444';
+
+    const SUGGESTED_OLX_DESCRIPTION: FieldSuggestion = {
+      id: '55555555-5555-4555-8555-555555555555',
+      runId: RUN_ID,
+      field: 'descriptionOlx',
+      value: 'Продам мишу Logitech MX Master 3, повний комплект.',
+      resolution: null,
+      resolvedAt: null,
+      createdAt: '2026-09-20T09:00:35.000Z',
+    };
+
+    const SUGGESTED_PRICE: FieldSuggestion = {
+      ...SUGGESTED_OLX_DESCRIPTION,
+      id: '66666666-6666-4666-8666-666666666666',
+      field: 'price',
+      value: { priceFrom: '2100.00', priceTo: '2600.00' },
+    };
+
+    /** A card read that already carries suggestions nobody has decided on yet. */
+    function withPending(card: ProductCard, pending: readonly FieldSuggestion[]): ProductCardRead {
+      return { ...asRead(card), pendingSuggestions: [...pending] };
+    }
+
+    function openWithPending(card: ProductCard, pending: readonly FieldSuggestion[]): void {
+      const data: ProductFormData = { productId: card.id };
+      close = vi.fn();
+      TestBed.configureTestingModule({
+        imports: [ProductForm],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: MAT_DIALOG_DATA, useValue: data },
+          { provide: MatDialogRef, useValue: { close } },
+        ],
+      });
+      fixture = TestBed.createComponent(ProductForm);
+      http = TestBed.inject(HttpTestingController);
+      element = fixture.nativeElement as HTMLElement;
+      http.expectOne(`/api/products/${card.id}`).flush(withPending(card, pending));
+    }
+
+    function half(field: string): HTMLElement {
+      const found = element.querySelector<HTMLElement>(
+        `app-suggestion-field[data-field="${field}"]`,
+      );
+      if (found === null) {
+        throw new Error(`no paired half for ${field}`);
+      }
+      return found;
+    }
+
+    function button(field: string, action: 'rewrite' | 'accept'): HTMLButtonElement | null {
+      return half(field).querySelector<HTMLButtonElement>(`[data-testid="${action}"]`);
+    }
+
+    function suggestionText(field: string): string {
+      return (
+        half(field).querySelector('[data-testid="suggestion-value"]')?.textContent.trim() ?? ''
+      );
+    }
+
+    it('keeps «? -> AI» unavailable while the field is empty (AC-22)', async () => {
+      open(EMPTY_WITH_FRAME);
+      await settle();
+
+      expect(button('titleOlx', 'rewrite')?.disabled).toBe(true);
+
+      type('titleOlx', 'Logitech MX Master 3 бездротова');
+      await settle();
+
+      expect(button('titleOlx', 'rewrite')?.disabled).toBe(false);
+    });
+
+    it('rewrites the one field from its draft, without the photos (AC-21)', async () => {
+      open(EMPTY_WITH_FRAME);
+      await settle();
+
+      type('descriptionOlx', 'Продам мишу.');
+      await settle();
+      button('descriptionOlx', 'rewrite')?.click();
+      await settle();
+
+      const request = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({
+        scope: 'field',
+        field: 'descriptionOlx',
+        draftText: 'Продам мишу.',
+      });
+      request.flush(run('running'));
+      await settle();
+
+      http.expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`).flush(run('failed'));
+      await settle();
+      http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(EMPTY_WITH_FRAME));
+      await settle();
+    });
+
+    // Skipped, not deleted: the price half is hidden until T54 makes the lookup return a range
+    // instead of an empty string. T54 turns the flag back on and these two go green again.
+    it.skip('keeps the price button unavailable until the card has a title (AC-24)', async () => {
+      open(EMPTY_WITH_FRAME);
+      await settle();
+
+      type('descriptionOlx', 'Продам мишу, повний комплект.');
+      await settle();
+      // A description alone does not enable it: the server gates on a title (AC-27).
+      expect(button('price', 'rewrite')?.disabled).toBe(true);
+
+      type('titleOlx', 'Logitech MX Master 3 бездротова');
+      await settle();
+
+      expect(button('price', 'rewrite')?.disabled).toBe(false);
+    });
+
+    it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
+      openWithPending(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
+      await settle();
+
+      expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
+      // No «<- AI» beside the price at all: the admin types the number in by hand.
+      expect(button('price', 'accept')).toBeNull();
+      expect(field('price').value).toBe('');
+    });
+
+    it('shows a suggestion beside the field the admin wrote, not instead of it (AC-11)', async () => {
+      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+      await settle();
+
+      type('descriptionOlx', 'Мій власний текст.');
+      await settle();
+
+      expect(field('descriptionOlx').value).toBe('Мій власний текст.');
+      expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+
+      button('descriptionOlx', 'accept')?.click();
+      await settle();
+
+      const accepted = http.expectOne(
+        `/api/products/${CARD_ID}/suggestions/${SUGGESTED_OLX_DESCRIPTION.id}/accept`,
+      );
+      expect(accepted.request.method).toBe('POST');
+      accepted.flush(
+        asRead({
+          ...PUBLISHED_ON_PROM,
+          descriptionOlx: SUGGESTED_OLX_DESCRIPTION.value as string,
+        }),
+      );
+      await settle();
+
+      expect(field('descriptionOlx').value).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+      // Only that field moved: a suggestion decides nothing about the rest of the form.
+      expect(field('titleProm').value).toBe(PUBLISHED_ON_PROM.titleProm);
+    });
+
+    it('shows the suggestions of a card opened without a run of its own (AC-28)', async () => {
+      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
+      await settle();
+
+      expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+      // The price suggestion arrives in the read all the same; showing it comes back with T54.
+    });
+
+    it('explains a rate limit in Ukrainian rather than showing its code', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]')?.click();
+      await settle();
+
+      const refusal: ApiError = {
+        error: { code: 'preparation_rate_limited', message: 'Too many runs for this product' },
+      };
+      http
+        .expectOne(`/api/products/${CARD_ID}/preparation-runs`)
+        .flush(refusal, { status: 429, statusText: 'Too Many Requests' });
+      await settle();
+
+      expect(actionsAlert()).toBe(
+        'Забагато запусків підготовки для цієї картки. Спробуйте за годину.',
+      );
+      expect(actionsAlert()).not.toContain('preparation_rate_limited');
+    });
+
+    function run(status: PreparationRunDto['status']): PreparationRunDto {
+      return {
+        id: RUN_ID,
+        productId: CARD_ID,
+        scope: 'field',
+        status,
+        errorCode: status === 'failed' ? 'preparation_failed' : null,
+        model: 'claude-sonnet-5',
+        inputTokens: 0,
+        outputTokens: 0,
+        createdAt: '2026-09-20T09:00:00.000Z',
+        startedAt: null,
+        finishedAt: null,
+      };
+    }
   });
 });

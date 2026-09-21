@@ -2,20 +2,41 @@
   Картка товару
   <span
     class="readiness"
-    [class.readiness--ready]="ready"
-    [class.readiness--not-ready]="!ready"
-    [matTooltip]="missingFields"
+    [class.readiness--ready]="ready()"
+    [class.readiness--not-ready]="!ready()"
+    [matTooltip]="missingFields()"
     data-testid="readiness"
   >
-    <mat-icon aria-hidden="true">{{ ready ? 'check_circle' : 'pending' }}</mat-icon>
-    {{ ready ? 'Готово' : 'Неготово' }}
+    <mat-icon aria-hidden="true">{{ ready() ? 'check_circle' : 'pending' }}</mat-icon>
+    {{ ready() ? 'Готово' : 'Неготово' }}
   </span>
 </h2>
 
 <mat-dialog-content>
-  @if (saving()) {
+  @if (saving() || loading()) {
     <mat-progress-bar mode="indeterminate" />
   }
+
+  <div class="card-prepare">
+    <button
+      matButton="filled"
+      type="button"
+      data-testid="generate-all"
+      [disabled]="!canGenerateAll()"
+      (click)="generateAll()"
+    >
+      <mat-icon>auto_awesome</mat-icon>
+      Згенерувати все
+    </button>
+    @if (preparing()) {
+      <span class="card-prepare__state" role="status">{{ preparingNotice() }}</span>
+    }
+    @if (totalTokens(); as tokens) {
+      <span class="card-prepare__cost" data-testid="card-cost">
+        Витрачено токенів: {{ tokens.input }} вхідних, {{ tokens.output }} вихідних
+      </span>
+    }
+  </div>
 
   <app-product-gallery
     [images]="images()"
@@ -30,7 +51,7 @@
   }
 
   <form class="card-form" id="product-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для Prom</mat-label>
         <input matInput formControlName="titleProm" />
@@ -38,7 +59,20 @@
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
         }
       </mat-form-field>
+      <app-suggestion-field
+        data-field="titleProm"
+        label="Пропозиція для Prom"
+        [suggestion]="suggestionFor('titleProm')"
+        [busy]="preparing()"
+        [canRewrite]="canRewrite('titleProm')"
+        rewriteHint="Спершу напишіть текст у полі ліворуч."
+        [acceptable]="true"
+        (rewrite)="rewriteField('titleProm')"
+        (accept)="acceptSuggestion('titleProm')"
+      />
+    </div>
 
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для OLX</mat-label>
         <input matInput formControlName="titleOlx" />
@@ -46,31 +80,79 @@
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
         }
       </mat-form-field>
+      <app-suggestion-field
+        data-field="titleOlx"
+        label="Пропозиція для OLX"
+        [suggestion]="suggestionFor('titleOlx')"
+        [busy]="preparing()"
+        [canRewrite]="canRewrite('titleOlx')"
+        rewriteHint="Спершу напишіть текст у полі ліворуч."
+        [acceptable]="true"
+        (rewrite)="rewriteField('titleOlx')"
+        (accept)="acceptSuggestion('titleOlx')"
+      />
     </div>
 
-    <div class="card-form__pair">
+    <div class="card-form__paired">
       <!-- Not a mat-form-field: the editor is not a MatFormFieldControl, so the label is its own. -->
       <div class="card-form__description">
         <span class="card-form__label" aria-hidden="true">Опис для Prom</span>
         <app-prom-description-editor formControlName="descriptionProm" />
       </div>
+      <app-suggestion-field
+        data-field="descriptionProm"
+        label="Опис для Prom від моделі"
+        [suggestion]="suggestionFor('descriptionProm')"
+        [busy]="preparing()"
+        [canRewrite]="canRewrite('descriptionProm')"
+        rewriteHint="Спершу напишіть текст у полі ліворуч."
+        [acceptable]="true"
+        (rewrite)="rewriteField('descriptionProm')"
+        (accept)="acceptSuggestion('descriptionProm')"
+      />
+    </div>
 
+    <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Опис для OLX</mat-label>
         <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
       </mat-form-field>
+      <app-suggestion-field
+        data-field="descriptionOlx"
+        label="Опис для OLX від моделі"
+        [suggestion]="suggestionFor('descriptionOlx')"
+        [busy]="preparing()"
+        [canRewrite]="canRewrite('descriptionOlx')"
+        rewriteHint="Спершу напишіть текст у полі ліворуч."
+        [acceptable]="true"
+        (rewrite)="rewriteField('descriptionOlx')"
+        (accept)="acceptSuggestion('descriptionOlx')"
+      />
     </div>
 
-    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Ключові слова</mat-label>
-      <input matInput formControlName="seoKeywords" placeholder="миша, logitech, бездротова" />
-      <mat-hint>Через кому. Зберігаються перші {{ maxKeywords }}.</mat-hint>
-      @if (form.controls.seoKeywords.hasError('keywordLength')) {
-        <mat-error>Кожне слово — до {{ keywordMaxLength }} символів.</mat-error>
-      }
-    </mat-form-field>
+    <div class="card-form__paired">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Ключові слова</mat-label>
+        <input matInput formControlName="seoKeywords" placeholder="миша, logitech, бездротова" />
+        <mat-hint>Через кому. Зберігаються перші {{ maxKeywords }}.</mat-hint>
+        @if (form.controls.seoKeywords.hasError('keywordLength')) {
+          <mat-error>Кожне слово — до {{ keywordMaxLength }} символів.</mat-error>
+        }
+      </mat-form-field>
+      <app-suggestion-field
+        data-field="seoKeywords"
+        label="Ключові слова від моделі"
+        [suggestion]="suggestionFor('seoKeywords')"
+        [busy]="preparing()"
+        [canRewrite]="canRewrite('seoKeywords')"
+        rewriteHint="Спершу напишіть текст у полі ліворуч."
+        [acceptable]="true"
+        (rewrite)="rewriteField('seoKeywords')"
+        (accept)="acceptSuggestion('seoKeywords')"
+      />
+    </div>
 
-    <div class="card-form__row">
+    <div class="card-form__paired">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Ціна, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="price" placeholder="2499.00" />
@@ -78,7 +160,26 @@
           <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
         }
       </mat-form-field>
+      <!--
+        Half of the pair is hidden until T54: measured 2026-09-20, the lookup returns an empty
+        range for every item and costs $0.27-$0.77 a call — twenty times the texts of the whole
+        card. Every click buys nothing, so the entrance is closed rather than the code removed.
+      -->
+      @if (priceLookupEnabled) {
+        <app-suggestion-field
+          data-field="price"
+          label="Ціна від моделі"
+          [suggestion]="suggestionFor('price')"
+          [busy]="preparing()"
+          [canRewrite]="canLookUpPrice()"
+          rewriteHint="Спершу заповніть назву для Prom або для OLX."
+          [acceptable]="false"
+          (rewrite)="lookUpPrice()"
+        />
+      }
+    </div>
 
+    <div class="card-form__row">
       <mat-form-field appearance="outline">
         <mat-label>Категорія</mat-label>
         <input matInput formControlName="category" />
