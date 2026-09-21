@@ -77,6 +77,8 @@ export class Product {
 
 export type ProductPage = {
   readonly items: readonly Product[];
+  /** Failed preparation runs by card id; a card that never failed has no entry. */
+  readonly failedRuns: ReadonlyMap<string, number>;
   readonly total: number;
   readonly page: number;
   readonly pageSize: number;

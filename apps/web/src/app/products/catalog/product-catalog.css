@@ -158,3 +158,8 @@
   white-space: nowrap;
   font: var(--mat-sys-label-medium);
 }
+
+.failures-cell {
+  --mat-button-text-label-text-color: var(--mat-sys-error);
+  min-width: 3rem;
+}

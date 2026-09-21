@@ -799,6 +799,7 @@ describe('ProductForm', () => {
         scope: 'field',
         status,
         errorCode: status === 'failed' ? 'preparation_failed' : null,
+        errorDetail: null,
         model: 'claude-sonnet-5',
         inputTokens: 0,
         outputTokens: 0,

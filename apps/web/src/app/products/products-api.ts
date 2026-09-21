@@ -80,6 +80,15 @@ export class ProductsApi {
     );
   }
 
+  /** A request for `httpResource`, like the list: the dialog that shows it owns the lifecycle. */
+  failedRunsRequest(productId: string): HttpResourceRequest {
+    return {
+      url: `${this.baseUrl}/${productId}/preparation-runs`,
+      params: { status: 'failed' },
+      withCredentials: true,
+    };
+  }
+
   getPreparationRun(productId: string, runId: string): Observable<PreparationRunDto> {
     return this.http.get<PreparationRunDto>(
       `${this.baseUrl}/${productId}/preparation-runs/${runId}`,

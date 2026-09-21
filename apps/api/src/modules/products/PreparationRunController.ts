@@ -6,6 +6,7 @@ import type {
 } from 'fastify';
 import { z } from 'zod';
 import {
+  preparationRunListQuerySchema,
   preparationRunRequestSchema,
   type PreparationRunDto,
 } from '../../contracts/ai.contract.ts';
@@ -23,6 +24,7 @@ export class PreparationRunController {
 
   register(app: FastifyInstance, sessionGuard: preHandlerAsyncHookHandler): void {
     app.post('/:productId/preparation-runs', { preHandler: sessionGuard }, this.start);
+    app.get('/:productId/preparation-runs', { preHandler: sessionGuard }, this.listRuns);
     app.get('/:productId/preparation-runs/:runId', { preHandler: sessionGuard }, this.getRun);
   }
 
@@ -42,6 +44,22 @@ export class PreparationRunController {
     const { run, created } = await this.preparations.start(params.productId, body.data);
     reply.code(created ? 201 : 200);
     return toRunResponse(run);
+  };
+
+  private readonly listRuns = async (request: FastifyRequest): Promise<PreparationRunDto[]> => {
+    const params = parseParams(startParamsSchema, request.params);
+    const query = preparationRunListQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      throw new AppError({
+        code: apiErrorCodes.validationFailed,
+        statusCode: 400,
+        message: 'Query parameters are invalid',
+        details: { fields: z.flattenError(query.error).fieldErrors },
+      });
+    }
+
+    const runs = await this.preparations.listFailedRuns(params.productId);
+    return runs.map(toRunResponse);
   };
 
   private readonly getRun = async (request: FastifyRequest) => {
@@ -67,6 +85,7 @@ function toRunResponse(run: PreparationRun): PreparationRunDto {
     scope: run.scope,
     status: run.status,
     errorCode: run.errorCode,
+    errorDetail: run.errorDetail,
     model: run.model,
     inputTokens: run.inputTokens,
     outputTokens: run.outputTokens,

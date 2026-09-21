@@ -176,6 +176,11 @@ export const config = {
     },
     /** Additional frames upload without AI; recognition never sees more than this many. */
     maxFramesPerRequest: 3,
+    /**
+     * An SDK error can carry a whole response body in its message; the catalogue needs the reason,
+     * not the payload.
+     */
+    errorDetailMaxLength: 500,
   },
 } as const;
 

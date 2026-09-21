@@ -199,8 +199,15 @@ export const productCardReadSchema = productCardSchema.extend({
 
 export type ProductCardRead = z.infer<typeof productCardReadSchema>;
 
+export const productListItemSchema = productCardSchema.extend({
+  /** Every `failed` preparation run of the card, counted by the same query as the page (T50). */
+  failedRuns: z.int().nonnegative(),
+});
+
+export type ProductListItem = z.infer<typeof productListItemSchema>;
+
 export const productListSchema = z.object({
-  items: z.array(productCardSchema),
+  items: z.array(productListItemSchema),
   /** Total number of rows matching the filters, not the size of the page. */
   total: z.int().nonnegative(),
   page: z.int().positive(),

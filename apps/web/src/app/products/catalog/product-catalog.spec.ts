@@ -11,11 +11,13 @@ import { MatSelectHarness } from '@angular/material/select/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { ProductCard, ProductList } from '@contracts/products.contract';
+import type { PreparationRunDto } from '@contracts/ai.contract';
+import type { ProductCard, ProductList, ProductListItem } from '@contracts/products.contract';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm } from '../form/product-form';
 import { ImageViewer } from '../gallery/image-viewer';
+import { PreparationFailures } from './preparation-failures';
 import { ProductCatalog } from './product-catalog';
 
 function makeImage(id: string, position: number, isMain: boolean) {
@@ -28,7 +30,7 @@ function makeImage(id: string, position: number, isMain: boolean) {
   };
 }
 
-const MOUSE: ProductCard = {
+const MOUSE: ProductListItem = {
   id: '11111111-1111-4111-8111-111111111111',
   titleProm: 'Миша Logitech MX Master 3',
   descriptionProm: 'Бездротова миша у відмінному стані.',
@@ -46,11 +48,12 @@ const MOUSE: ProductCard = {
     makeImage('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 2, false),
   ],
   isReady: true,
+  failedRuns: 2,
   createdAt: '2026-08-01T09:00:00.000Z',
   updatedAt: '2026-08-01T09:00:00.000Z',
 };
 
-const KEYBOARD: ProductCard = {
+const KEYBOARD: ProductListItem = {
   ...MOUSE,
   id: '22222222-2222-4222-8222-222222222222',
   titleProm: 'Клавіатура Keychron K2',
@@ -61,11 +64,37 @@ const KEYBOARD: ProductCard = {
   condition: 'new',
   images: [],
   isReady: false,
+  failedRuns: 0,
+};
+
+const FAILED_PRICE_RUN: PreparationRunDto = {
+  id: '44444444-4444-4444-8444-444444444444',
+  productId: MOUSE.id,
+  scope: 'both',
+  status: 'failed',
+  errorCode: 'price_unavailable',
+  errorDetail: 'Price search refused',
+  model: 'claude-sonnet-5',
+  inputTokens: 1200,
+  outputTokens: 300,
+  createdAt: '2026-09-20T09:00:00.000Z',
+  startedAt: '2026-09-20T09:00:01.000Z',
+  finishedAt: '2026-09-20T09:00:40.000Z',
+};
+
+const FAILED_TEXTS_RUN: PreparationRunDto = {
+  ...FAILED_PRICE_RUN,
+  id: '55555555-5555-4555-8555-555555555555',
+  scope: 'texts',
+  errorCode: 'preparation_failed',
+  errorDetail: null,
+  createdAt: '2026-09-19T09:00:00.000Z',
+  finishedAt: '2026-09-19T09:05:00.000Z',
 };
 
 const PAGE: ProductList = { items: [MOUSE, KEYBOARD], total: 2, page: 1, pageSize: 20 };
 
-const EMPTY_CARD: ProductCard = {
+const EMPTY_CARD: ProductListItem = {
   ...MOUSE,
   id: '33333333-3333-4333-8333-333333333333',
   titleProm: '',
@@ -79,14 +108,14 @@ const EMPTY_CARD: ProductCard = {
   isReady: false,
 };
 
-const UNPRICED: ProductCard = {
+const UNPRICED: ProductListItem = {
   ...MOUSE,
   id: '44444444-4444-4444-8444-444444444444',
   price: '0.00',
   isReady: false,
 };
 
-const WITHOUT_OLX_DESCRIPTION: ProductCard = {
+const WITHOUT_OLX_DESCRIPTION: ProductListItem = {
   ...MOUSE,
   id: '55555555-5555-4555-8555-555555555555',
   descriptionOlx: '',
@@ -328,6 +357,56 @@ describe('ProductCatalog', () => {
     const dialogs = TestBed.inject(MatDialog).openDialogs;
     expect(dialogs.length).toBe(1);
     expect(dialogs[0]?.componentInstance).toBeInstanceOf(ImageViewer);
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
+  function failuresButton(row: number): HTMLButtonElement | null {
+    return rows()[row]?.querySelector<HTMLButtonElement>('[data-testid="failures"]') ?? null;
+  }
+
+  it('shows the failed-run count only in the row of a card that failed (AC-49)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    expect(failuresButton(0)?.textContent.trim()).toContain('2');
+    // An empty cell, not a zero: nothing to open and nothing to look at.
+    expect(failuresButton(1)).toBeNull();
+  });
+
+  it('opens the list of failures, not the card, and words them in Ukrainian (AC-49)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    failuresButton(0)?.click();
+    // Not `settle()`: the dialog's resource is still waiting for the answer flushed below.
+    await tick();
+
+    expect(dialogs().length).toBe(1);
+    expect(dialogs()[0]?.componentInstance).toBeInstanceOf(PreparationFailures);
+    const read = http.expectOne(
+      (request) => request.url === `/api/products/${MOUSE.id}/preparation-runs`,
+    );
+    expect(read.request.params.get('status')).toBe('failed');
+    read.flush([FAILED_PRICE_RUN, FAILED_TEXTS_RUN]);
+    await settle();
+
+    const items = [...document.querySelectorAll<HTMLElement>('[data-testid="failure"]')];
+    expect(items.length).toBe(2);
+    expect(items[0]?.textContent).toContain('Тексти й ціна');
+    expect(items[0]?.textContent).toContain('Ціну знайти не вдалося');
+    expect(items[0]?.querySelector('[data-testid="failure-detail"]')?.textContent).toBe(
+      'Price search refused',
+    );
+    expect(items[1]?.textContent).toContain('Підготовка не вдалася');
+    // A run that failed before the detail was recorded shows the Ukrainian text alone.
+    expect(items[1]?.querySelector('[data-testid="failure-detail"]')).toBeNull();
+    const dialogText = document.querySelector('mat-dialog-container')?.textContent ?? '';
+    expect(dialogText).not.toContain('price_unavailable');
+    expect(dialogText).not.toContain('preparation_failed');
+
     TestBed.inject(MatDialog).closeAll();
     await settle();
   });

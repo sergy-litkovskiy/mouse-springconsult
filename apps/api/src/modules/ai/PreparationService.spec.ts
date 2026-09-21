@@ -341,6 +341,7 @@ describe('preparation service (postgres)', () => {
       const run = await loadRun(job.runId);
       assert.equal(run.status, 'failed');
       assert.equal(run.errorCode, 'price_unavailable');
+      assert.equal(run.errorDetail, 'refused');
       assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
       assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens);
     });
@@ -524,11 +525,12 @@ describe('preparation service (postgres)', () => {
       const job = await textsJob();
 
       await assert.rejects(service.prepare(job), ModelAnswerUnavailable);
-      await service.abandon(job.runId);
+      await service.abandon(job.runId, new ModelAnswerUnavailable('refused'));
 
       const run = await loadRun(job.runId);
       assert.equal(run.status, 'failed');
       assert.equal(run.errorCode, 'preparation_failed');
+      assert.equal(run.errorDetail, 'refused');
       assert.notEqual(run.finishedAt, null);
       assert.equal(run.inputTokens, 0);
       assert.deepEqual(await suggestionsOf(job.runId), []);

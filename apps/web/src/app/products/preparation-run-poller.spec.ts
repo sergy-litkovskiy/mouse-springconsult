@@ -24,6 +24,7 @@ const RUNNING: PreparationRunDto = {
   scope: 'texts',
   status: 'running',
   errorCode: null,
+  errorDetail: null,
   model: 'claude-sonnet-5',
   inputTokens: 0,
   outputTokens: 0,

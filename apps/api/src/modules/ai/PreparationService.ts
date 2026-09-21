@@ -32,6 +32,11 @@ const SUGGESTION_FIELDS: Record<RewritableField, SuggestionField> = {
   seoKeywords: 'seo_keywords',
 };
 
+function errorDetail(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.slice(0, config.ai.errorDetailMaxLength);
+}
+
 function priceQuery(card: Product): string {
   // Text columns are NOT NULL with '' as the default, so "absent" in AC-27 is an empty string.
   const title = card.titleProm !== '' ? card.titleProm : card.titleOlx;
@@ -83,11 +88,12 @@ export class PreparationService {
       let price: PriceResult;
       try {
         price = await this.adapter.findPriceRange(priceQuery(card));
-      } catch {
+      } catch (error) {
         // The texts already paid for stay with the run; only the price is reported missing.
         await this.runs.finishRun(job.runId, {
           status: 'failed',
           errorCode: 'price_unavailable',
+          errorDetail: errorDetail(error),
           suggestions,
         });
         return;
@@ -105,11 +111,13 @@ export class PreparationService {
   /**
    * Called by the worker once the last retry of a job has failed: without it the run would stay
    * `running`, and the polling client would never learn that the preparation did not happen.
+   * `error` is the one the last attempt threw.
    */
-  async abandon(runId: string): Promise<void> {
+  async abandon(runId: string, error: unknown): Promise<void> {
     await this.runs.finishRun(runId, {
       status: 'failed',
       errorCode: 'preparation_failed',
+      errorDetail: errorDetail(error),
       suggestions: [],
     });
   }

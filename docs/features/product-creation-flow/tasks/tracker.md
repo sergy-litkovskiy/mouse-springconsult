@@ -16,9 +16,11 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** [T50](show-preparation-failures-in-catalog.md) — помилки підготовки
-в каталозі, [T54](bound-the-model-call-timeout.md) — пошук ціни (порожній діапазон,
+**Готові до старту:** [T54](bound-the-model-call-timeout.md) — пошук ціни (порожній діапазон,
 вартість, таймаут). Жодної незакритої залежності.
+
+2026-09-21 закрито [T50](show-preparation-failures-in-catalog.md) — помилки підготовки в
+каталозі. Нічого не розблоковано: T33 ще чекає на T54.
 
 **Чекає на них:** [T33](verify-delivery-2.md) — приймання поставки 2.
 
@@ -87,7 +89,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T31 | [Вартість картки](add-card-cost-readout.md) | Done | T11, T26 | XS | 2026-09-20 |
 | T32 | [Фронт підготовки](add-preparation-ui.md) | Done | T20, T29, T30, T31, T51, T52, T53 | M | 2026-09-20 |
 | T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50, T54 | S | — |
-| T50 | [Помилки підготовки в каталозі](show-preparation-failures-in-catalog.md) | Todo | T29, T32 | M | — |
+| T50 | [Помилки підготовки в каталозі](show-preparation-failures-in-catalog.md) | Done | T29, T32 | M | 2026-09-21 |
 | T51 | [Повтор після відмови](allow-retry-after-failed-run.md) | Done | T29 | S | 2026-09-20 |
 | T52 | [Завислі запуски](close-stuck-preparation-runs.md) | Done | T29 | S | 2026-09-20 |
 | T53 | [Непідтверджені пропозиції](expose-pending-suggestions.md) | Done | T26, T30 | S | 2026-09-20 |

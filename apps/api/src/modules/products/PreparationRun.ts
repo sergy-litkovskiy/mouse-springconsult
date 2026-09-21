@@ -34,6 +34,10 @@ export class PreparationRun {
   @Column({ name: 'error_code', type: 'varchar', length: 64, nullable: true })
   errorCode!: PreparationErrorCode | null;
 
+  /** The English message of the error that closed a failed run; null on the runs that failed before T50. */
+  @Column({ name: 'error_detail', type: 'text', nullable: true })
+  errorDetail!: string | null;
+
   /** Without it the tokens cannot be turned into money once a cost ceiling appears. */
   @Column({ name: 'model', type: 'varchar', length: 64 })
   model!: string;

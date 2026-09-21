@@ -41,6 +41,7 @@ import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductsApi } from '../products-api';
+import { runFailureMessages } from '../run-failure-messages';
 import { PromDescriptionEditor } from './prom-description-editor';
 import { SuggestionField } from './suggestion-field';
 
@@ -77,12 +78,6 @@ const PREPARATION_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNAVAILABLE_MODEL_MESSAGE = 'Модель зараз недоступна. Спробуйте ще раз трохи пізніше.';
-
-/** `errorCode` of a finished run, which is a different vocabulary from an HTTP failure. */
-const RUN_FAILURE_MESSAGES: Readonly<Record<string, string>> = {
-  price_unavailable: 'Ціну знайти не вдалося. Тексти на місці — спробуйте запросити ціну ще раз.',
-  preparation_failed: 'Підготовка не вдалася. Спробуйте ще раз.',
-};
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку. Спробуйте ще раз.';
 const UNKNOWN_READ_MESSAGE = 'Не вдалося прочитати картку. Закрийте вікно і спробуйте ще раз.';
@@ -277,7 +272,9 @@ export class ProductForm {
       }
       this.settledRunId = run.id;
       if (run.status === 'failed') {
-        this.formError.set(RUN_FAILURE_MESSAGES[run.errorCode ?? ''] ?? UNAVAILABLE_MODEL_MESSAGE);
+        this.formError.set(
+          run.errorCode === null ? UNAVAILABLE_MODEL_MESSAGE : runFailureMessages[run.errorCode],
+        );
       }
       // Even a failed run may have left texts behind: the price alone can be what went missing
       // (AC-10b), and the suggestions are counted by the read of the card, never by this screen.

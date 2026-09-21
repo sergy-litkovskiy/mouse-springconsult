@@ -72,6 +72,7 @@ erDiagram
         text idempotency_key
         varchar status
         varchar error_code
+        text error_detail
         varchar model
         integer input_tokens
         integer output_tokens
@@ -192,6 +193,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `idempotency_key` | TEXT | NOT NULL, UNIQUE серед незавершених і вдалих | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
 | `status` | VARCHAR(16) | NOT NULL, CHECK IN (`queued`,`running`,`succeeded`,`failed`) | Джерело для полінгу (сценарій 7, 8) |
 | `error_code` | VARCHAR(64) | NULL | Доменний код при `failed` — той самий, що фронт мапить у текст (AC-10). `price_unavailable` — часткова відмова `both`: тексти записані, ціни немає (AC-10b). `preparation_failed` — вичерпано `retryLimit` задачі, пропозицій немає (AC-10, [events.md](contracts/events.md)) |
+| `error_detail` | TEXT | NULL | Англійське повідомлення помилки, що закрила `failed`-запуск, обрізане до `config.ai.errorDetailMaxLength`. Каталог показує його дрібно під українським текстом за `error_code` ([T50](tasks/show-preparation-failures-in-catalog.md)). `null` у запусків, що впали до міграції |
 | `model` | VARCHAR(64) | NOT NULL | Без нього токени не перевести в гроші, коли зʼявиться стеля вартості (PRD §8) |
 | `input_tokens` | INTEGER | NOT NULL DEFAULT 0 | `usage` виклику — вимога `ai/CLAUDE.md` |
 | `output_tokens` | INTEGER | NOT NULL DEFAULT 0 | |
@@ -277,6 +279,7 @@ B-tree не обслуговує, а 50-100 карток на місяць ро�
 |---|---|---|
 | `− product_images.url` | **етап 13** | Нероздільна з правкою `ProductImage` і `ProductController`: без домену бакета в `config` адресу з ключа не скласти, а розділяти зміну на два коміти означає проміжний деплой, де щось одне не відповідає іншому |
 | `+ product_preparation_runs`, `+ product_field_suggestions` | **поставка 2**, `1789736913481-create-preparation-tables` | Створені після черги й `worker` (T25) — таблиця без процесу, що в неї пише, не мала сенсу раніше |
+| `+ product_preparation_runs.error_detail` | **поставка 2**, `1790004050193-add-preparation-run-error-detail` | Каталог показує відмови вже після того, як діалог картки закрили (T50), і сам код не пояснює, що саме пішло не так |
 
 ## Test fixtures
 

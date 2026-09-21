@@ -70,6 +70,7 @@ async function seedFailedRun(productId: string, idempotencyKey: string): Promise
   await runs.finishRun(run.id, {
     status: 'failed',
     errorCode: 'preparation_failed',
+    errorDetail: 'refused',
     suggestions: [],
   });
   return run.id;
@@ -218,12 +219,14 @@ describe('preparation repository (postgres)', () => {
     await runs.finishRun(runId, {
       status: 'failed',
       errorCode: 'price_unavailable',
+      errorDetail: 'price search refused',
       suggestions: [{ field: 'description_prom', value: 'Опис для Prom.' }],
     });
 
     const stored = await loadRun(runId);
     assert.equal(stored.status, 'failed');
     assert.equal(stored.errorCode, 'price_unavailable');
+    assert.equal(stored.errorDetail, 'price search refused');
     assert.ok(stored.finishedAt instanceof Date);
     assert.deepEqual(
       (await suggestionsOf(runId)).map(({ field }) => field),
@@ -478,6 +481,10 @@ describe('preparation repository (postgres)', () => {
     const stored = await loadRun(runId);
     assert.equal(stored.status, 'failed');
     assert.equal(stored.errorCode, 'preparation_failed');
+    assert.equal(
+      stored.errorDetail,
+      `Closed by the sweep: still unfinished after ${String(STUCK_AFTER_SECONDS)}s`,
+    );
     assert.ok(stored.finishedAt instanceof Date);
     assert.deepEqual(await suggestionsOf(runId), []);
   });
@@ -516,6 +523,7 @@ describe('preparation repository (postgres)', () => {
     await runs.finishRun(failedId, {
       status: 'failed',
       errorCode: 'price_unavailable',
+      errorDetail: 'price search refused',
       suggestions: [{ field: 'description_prom', value: 'Опис для Prom.' }],
     });
     await ageRun(succeededId, STUCK_AFTER_SECONDS + 60);
@@ -533,6 +541,23 @@ describe('preparation repository (postgres)', () => {
       (await suggestionsOf(failedId)).map(({ field }) => field),
       ['description_prom'],
     );
+  });
+
+  it('lists only the failed runs of the card, newest first (T50)', async () => {
+    const productId = await seedProduct();
+    const older = await seedFailedRun(productId, randomUUID());
+    await ageRun(older, 60);
+    const newer = await seedFailedRun(productId, randomUUID());
+    await seedRun(productId, 'succeeded');
+    await seedFailedRun(await seedProduct(), randomUUID());
+
+    const failed = await runs.findFailedRuns(productId);
+
+    assert.deepEqual(
+      failed.map((run) => run.id),
+      [newer, older],
+    );
+    assert.equal(failed[0]?.errorDetail, 'refused');
   });
 
   it('records a decision once and refuses a second one (Checklist 6)', async () => {

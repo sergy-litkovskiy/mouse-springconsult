@@ -70,6 +70,7 @@ function card(id: string, overrides: Partial<Product> = {}): Product {
 
 class StubProductRepository extends ProductRepository {
   readonly cards = [card(READY_ID), card(UNPRICED_ID, { price: '0.00' })];
+  readonly failedRuns = new Map<string, number>();
 
   constructor() {
     super(NO_DATA_SOURCE);
@@ -78,6 +79,7 @@ class StubProductRepository extends ProductRepository {
   override async list(criteria: ProductListCriteria): Promise<ProductPage> {
     return {
       items: this.cards,
+      failedRuns: this.failedRuns,
       total: this.cards.length,
       page: criteria.page,
       pageSize: criteria.pageSize,
@@ -182,6 +184,18 @@ describe('product controller: list', () => {
     for (const product of repository.cards) {
       assert.equal(readiness.get(product.id), service.isReady(product), product.id);
     }
+  });
+
+  it('puts the failed-run count of each card into its row, zero when it never failed (T50)', async () => {
+    repository.failedRuns.set(READY_ID, 3);
+
+    const response = await app.inject({ method: 'GET', url: '/' });
+    const counts = new Map(
+      response.json<ProductList>().items.map((row) => [row.id, row.failedRuns]),
+    );
+
+    assert.equal(counts.get(READY_ID), 3);
+    assert.equal(counts.get(UNPRICED_ID), 0);
   });
 });
 

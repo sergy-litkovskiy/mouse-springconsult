@@ -123,6 +123,15 @@ async function seedImage(productId: string, seed: ImageSeed = {}): Promise<strin
   return saved.id;
 }
 
+/** Raw SQL: this data source maps no runs, and the counter reads the table, not the entity. */
+async function seedRun(productId: string, status: string): Promise<void> {
+  await dataSource.query(
+    `insert into product_preparation_runs (product_id, scope, idempotency_key, status, model)
+     values ($1, 'texts', gen_random_uuid()::text, $2, 'claude-sonnet-5')`,
+    [productId, status],
+  );
+}
+
 describe('product repository (postgres)', () => {
   before(async () => {
     await prepareTestDatabase();
@@ -226,6 +235,20 @@ describe('product repository (postgres)', () => {
       ['products/first.jpg', 'products/second.jpg'],
     );
     assert.deepEqual(byId.get(withoutGallery)?.images, []);
+  });
+
+  it('counts the failed preparation runs of every card on the page (T50)', async () => {
+    const failing = await seedProduct({ titleProm: 'З відмовами' });
+    const clean = await seedProduct({ titleProm: 'Без відмов' });
+    for (const status of ['failed', 'failed', 'succeeded', 'running']) {
+      await seedRun(failing, status);
+    }
+    await seedRun(clean, 'succeeded');
+
+    const page = await products.list(BASE_CRITERIA);
+
+    assert.deepEqual([...page.failedRuns], [[failing, 2]]);
+    assert.equal(page.items.length, 2);
   });
 
   it('counts the rows behind the filter, not the size of the page', async () => {

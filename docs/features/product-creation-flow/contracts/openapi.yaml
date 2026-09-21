@@ -277,6 +277,31 @@ paths:
     parameters:
       - { $ref: "#/components/parameters/ProductId" }
 
+    get:
+      tags: [preparation]
+      summary: Невдалі запуски картки
+      description: >-
+        Список для попапу каталогу ([T50](../tasks/show-preparation-failures-in-catalog.md), AC-49).
+        Поки що вміє лише `status=failed`: інших фільтрів каталог не просить. Найновіші
+        першими; без пагінації, бо ліміт частоти запусків тримає їх кількість малою.
+      operationId: listFailedPreparationRuns
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string, enum: [failed] }
+      responses:
+        "200":
+          description: Невдалі запуски картки, порожній масив, якщо їх не було
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PreparationRun" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+        "404": { $ref: "#/components/responses/ProductNotFound" }
+
     post:
       tags: [preparation]
       summary: Запустити підготовку (тексти, ціна або обидва)
@@ -630,7 +655,18 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/Product" }
+          items:
+            allOf:
+              - { $ref: "#/components/schemas/Product" }
+              - type: object
+                required: [failedRuns]
+                properties:
+                  failedRuns:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                      Кількість запусків підготовки картки зі `status: failed` за весь час,
+                      порахована тим самим запитом, що й сторінка (AC-49).
         total: { type: integer, minimum: 0 }
         page: { type: integer, minimum: 1 }
         pageSize: { type: integer, minimum: 1 }
@@ -736,6 +772,12 @@ components:
             `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
             записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
             `preparation_failed` — усі спроби задачі впали, пропозицій немає (AC-10, events.md).
+        errorDetail:
+          type: [string, null]
+          description: >-
+            Лише при status=failed: англійське повідомлення помилки, що закрила запуск, до
+            500 символів. Технічна деталь під українським текстом за `errorCode`, не заміна
+            йому. `null` у запусків, що впали до T50.
         model: { type: string, example: claude-sonnet-5 }
         inputTokens: { type: integer, minimum: 0 }
         outputTokens: { type: integer, minimum: 0 }

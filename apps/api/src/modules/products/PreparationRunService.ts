@@ -79,6 +79,14 @@ export class PreparationRunService {
     return claim;
   }
 
+  /** Newest first; an unknown card is answered as missing rather than as a card with no failures. */
+  async listFailedRuns(productId: string): Promise<PreparationRun[]> {
+    if ((await this.products.findById(productId)) === null) {
+      throw new ProductNotFound(productId);
+    }
+    return this.runs.findFailedRuns(productId);
+  }
+
   /** A run looked up through another card is answered as missing, like the card itself would be. */
   async getRun(productId: string, runId: string): Promise<PreparationRun> {
     const run = await this.runs.findRun(productId, runId);
