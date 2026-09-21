@@ -29,6 +29,11 @@ export const preparationRunSchema = z.object({
   status: z.enum(['queued', 'running', 'succeeded', 'failed']),
   /** Only on `failed`: `price_unavailable` (texts kept, AC-10b) or `preparation_failed` (AC-10). */
   errorCode: z.enum(['price_unavailable', 'preparation_failed']).nullable(),
+  /**
+   * Only on `failed`, and null on runs that failed before it was recorded: the English message of
+   * the error behind `errorCode`, shown as a technical note under the Ukrainian text.
+   */
+  errorDetail: z.string().nullable(),
   model: z.string(),
   inputTokens: z.int().nonnegative(),
   outputTokens: z.int().nonnegative(),
@@ -38,3 +43,8 @@ export const preparationRunSchema = z.object({
 });
 
 export type PreparationRunDto = z.infer<typeof preparationRunSchema>;
+
+/** Only the failures can be listed so far: that is all the catalogue asks for (T50). */
+export const preparationRunListQuerySchema = z.object({ status: z.literal('failed') });
+
+export type PreparationRunListQuery = z.infer<typeof preparationRunListQuerySchema>;

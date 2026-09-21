@@ -35,6 +35,7 @@ export type RunOutcome =
   | {
       readonly status: 'failed';
       readonly errorCode: PreparationErrorCode;
+      readonly errorDetail: string;
       readonly suggestions: readonly SuggestionDraft[];
     };
 
@@ -67,6 +68,7 @@ export class PreparationRepository {
         ...draft,
         status: 'queued',
         errorCode: null,
+        errorDetail: null,
         inputTokens: 0,
         outputTokens: 0,
         startedAt: null,
@@ -94,6 +96,7 @@ export class PreparationRepository {
           ...draft,
           status: 'queued',
           errorCode: null,
+          errorDetail: null,
           inputTokens: 0,
           outputTokens: 0,
           startedAt: null,
@@ -130,6 +133,13 @@ export class PreparationRepository {
 
   async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
     return this.dataSource.getRepository(PreparationRun).findOneBy({ id: runId, productId });
+  }
+
+  async findFailedRuns(productId: string): Promise<PreparationRun[]> {
+    return this.dataSource.getRepository(PreparationRun).find({
+      where: { productId, status: 'failed' },
+      order: { createdAt: 'DESC', id: 'DESC' },
+    });
   }
 
   /**
@@ -171,6 +181,7 @@ export class PreparationRepository {
         {
           status: outcome.status,
           errorCode: outcome.status === 'failed' ? outcome.errorCode : null,
+          errorDetail: outcome.status === 'failed' ? outcome.errorDetail : null,
           finishedAt: new Date(),
         },
       );
@@ -185,7 +196,12 @@ export class PreparationRepository {
     const result = await this.dataSource
       .createQueryBuilder()
       .update(PreparationRun)
-      .set({ status: 'failed', errorCode: 'preparation_failed', finishedAt: new Date() })
+      .set({
+        status: 'failed',
+        errorCode: 'preparation_failed',
+        errorDetail: `Closed by the sweep: still unfinished after ${String(olderThanSeconds)}s`,
+        finishedAt: new Date(),
+      })
       .where('status in (:...unfinished)', { unfinished: UNFINISHED })
       .andWhere('created_at < now() - make_interval(secs => :olderThanSeconds)', {
         olderThanSeconds,

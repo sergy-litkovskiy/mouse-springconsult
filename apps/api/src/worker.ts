@@ -59,7 +59,7 @@ async function main(): Promise<void> {
         } catch (error) {
           // pg-boss retries a thrown job on its own; only the last attempt closes the run.
           if (job.retryCount >= job.retryLimit) {
-            await preparation.abandon(job.data.runId);
+            await preparation.abandon(job.data.runId, error);
           }
           log.error({ err: error, retryCount: job.retryCount }, 'job failed');
           throw error;

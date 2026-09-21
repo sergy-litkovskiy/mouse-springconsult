@@ -1,0 +1,42 @@
+<h2 mat-dialog-title class="failures-title">
+  <span class="failures-title__name">{{ data.title || 'Картка без назви' }}</span>
+</h2>
+
+<mat-dialog-content class="failures">
+  <p class="failures__lead">Невдалі запуски AI-підготовки</p>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Завантаження відмов" />
+  }
+
+  @if (loadError(); as message) {
+    <p class="failures__error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ message }}</span>
+      <button matButton type="button" (click)="retry()" [disabled]="loading()">
+        Спробувати ще раз
+      </button>
+    </p>
+  }
+
+  <ol class="failures__list">
+    @for (run of runs(); track run.id) {
+      <li class="failure" data-testid="failure">
+        <div class="failure__meta">
+          <span class="failure__scope">{{ scopeLabel(run) }}</span>
+          <time class="failure__time" [attr.datetime]="run.finishedAt ?? run.createdAt">
+            {{ time(run) }}
+          </time>
+        </div>
+        <p class="failure__message">{{ message(run) }}</p>
+        @if (run.errorDetail; as detail) {
+          <p class="failure__detail" data-testid="failure-detail">{{ detail }}</p>
+        }
+      </li>
+    }
+  </ol>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>Закрити</button>
+</mat-dialog-actions>

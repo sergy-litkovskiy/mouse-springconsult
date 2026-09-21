@@ -101,7 +101,13 @@ class StubProductRepository extends ProductRepository {
 
   override async list(criteria: ProductListCriteria): Promise<ProductPage> {
     this.lastCriteria = criteria;
-    return { items: [], total: 0, page: criteria.page, pageSize: criteria.pageSize };
+    return {
+      items: [],
+      failedRuns: new Map(),
+      total: 0,
+      page: criteria.page,
+      pageSize: criteria.pageSize,
+    };
   }
 
   override async findById(id: string): Promise<Product | null> {
@@ -384,7 +390,7 @@ describe('product service', () => {
 
     const page = await service.list({ ...BASE_QUERY, page: 2, pageSize: 5 });
 
-    assert.deepEqual(page, { items: [], total: 0, page: 2, pageSize: 5 });
+    assert.deepEqual(page, { items: [], failedRuns: new Map(), total: 0, page: 2, pageSize: 5 });
   });
 });
 

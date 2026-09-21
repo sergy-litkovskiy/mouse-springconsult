@@ -1,5 +1,6 @@
 import { In, type DataSource, type SelectQueryBuilder } from 'typeorm';
 import type { ProductSortDirection, ProductSortField } from '../../contracts/products-limits.ts';
+import { PREPARATION_RUNS_TABLE } from './PreparationRun.ts';
 import { Product, type ProductPage } from './Product.ts';
 import { ProductImage } from './ProductImage.ts';
 
@@ -68,6 +69,11 @@ const READINESS_EXPRESSION =
   ` product.descriptionProm <> '' and product.descriptionOlx <> '' and product.price > 0` +
   ` and exists (select 1 from product_images image where image.product_id = product.id)`;
 
+/** A scalar subquery rather than a join, so the page stays one row per card for LIMIT to count. */
+const FAILED_RUNS_EXPRESSION =
+  `(select count(*)::int from ${PREPARATION_RUNS_TABLE} run` +
+  ` where run.product_id = product.id and run.status = 'failed')`;
+
 function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilters): void {
   if (filters.title !== undefined) {
     query.andWhere('(product.titleProm ilike :title or product.titleOlx ilike :title)', {
@@ -111,21 +117,26 @@ export class ProductRepository {
     const query = this.dataSource.getRepository(Product).createQueryBuilder('product');
     applyFilters(query, criteria.filters);
 
-    const [products, total] = await query
+    const total = await query.getCount();
+    const { entities: products, raw } = await query
+      .addSelect(FAILED_RUNS_EXPRESSION, 'failed_runs')
       .orderBy(SORT_COLUMNS[criteria.sort], criteria.direction === 'asc' ? 'ASC' : 'DESC')
       // A tie on the sort column would otherwise let the same card show up on two
       // pages and another one on none: LIMIT without a total order is not stable.
       .addOrderBy('product.id', 'ASC')
       .skip((criteria.page - 1) * criteria.pageSize)
       .take(criteria.pageSize)
-      .getManyAndCount();
+      .getRawAndEntities<{ product_id: string; failed_runs: number }>();
 
     const galleries = await this.galleriesOf(products.map((product) => product.id));
     for (const product of products) {
       product.images = galleries.get(product.id) ?? [];
     }
 
-    return { items: products, total, page: criteria.page, pageSize: criteria.pageSize };
+    const failedRuns = new Map(
+      raw.filter((row) => row.failed_runs > 0).map((row) => [row.product_id, row.failed_runs]),
+    );
+    return { items: products, failedRuns, total, page: criteria.page, pageSize: criteria.pageSize };
   }
 
   async findById(id: string): Promise<Product | null> {

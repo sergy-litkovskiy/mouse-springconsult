@@ -121,6 +121,7 @@ describe('product list response contract', () => {
       images: [],
       createdAt: '2026-09-09T10:00:00.000Z',
       updatedAt: '2026-09-09T10:00:00.000Z',
+      failedRuns: 0,
     };
     const page = { total: 1, page: 1, pageSize: 20 };
 
@@ -129,6 +130,39 @@ describe('product list response contract', () => {
       true,
     );
     assert.equal(productListSchema.safeParse({ ...page, items: [row] }).success, false);
+  });
+
+  it('requires a non-negative failedRuns in every row of the list (T50)', () => {
+    const row = {
+      id: '0199c0de-0000-7000-8000-000000000001',
+      titleProm: 'Миша',
+      descriptionProm: 'Опис',
+      titleOlx: 'Миша',
+      descriptionOlx: 'Опис',
+      price: '2499.00',
+      seoKeywords: ['миша'],
+      category: 'Периферія',
+      publishedProm: false,
+      publishedOlx: false,
+      condition: 'used',
+      images: [],
+      createdAt: '2026-09-09T10:00:00.000Z',
+      updatedAt: '2026-09-09T10:00:00.000Z',
+      isReady: true,
+    };
+    const page = { total: 1, page: 1, pageSize: 20 };
+
+    for (const [failedRuns, valid] of [
+      [2, true],
+      [-1, false],
+      [undefined, false],
+    ] as const) {
+      assert.equal(
+        productListSchema.safeParse({ ...page, items: [{ ...row, failedRuns }] }).success,
+        valid,
+        String(failedRuns),
+      );
+    }
   });
 });
 

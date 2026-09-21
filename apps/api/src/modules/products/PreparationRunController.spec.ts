@@ -31,6 +31,7 @@ type RunBody = {
   scope: string;
   status: string;
   errorCode: string | null;
+  errorDetail: string | null;
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -93,6 +94,7 @@ function finishedRun(): PreparationRun {
     idempotencyKey: 'finished',
     status: 'failed',
     errorCode: 'price_unavailable',
+    errorDetail: 'Price search refused',
     model: 'claude-sonnet-5',
     inputTokens: 1200,
     outputTokens: 300,
@@ -121,6 +123,7 @@ class StubPreparationRepository extends PreparationRepository {
       id: `01931f2a-9999-7000-8000-${String(this.rows.length + 1).padStart(12, '0')}`,
       status: 'queued',
       errorCode: null,
+      errorDetail: null,
       inputTokens: 0,
       outputTokens: 0,
       createdAt: new Date('2026-09-19T11:00:00.000Z'),
@@ -141,6 +144,10 @@ class StubPreparationRepository extends PreparationRepository {
 
   override async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
     return this.rows.find((row) => row.id === runId && row.productId === productId) ?? null;
+  }
+
+  override async findFailedRuns(productId: string): Promise<PreparationRun[]> {
+    return this.rows.filter((row) => row.productId === productId && row.status === 'failed');
   }
 }
 
@@ -329,6 +336,7 @@ describe('preparation run controller', () => {
       scope: 'both',
       status: 'failed',
       errorCode: 'price_unavailable',
+      errorDetail: 'Price search refused',
       model: 'claude-sonnet-5',
       inputTokens: 1200,
       outputTokens: 300,
@@ -344,14 +352,63 @@ describe('preparation run controller', () => {
     assert.equal(response.statusCode, 404);
   });
 
-  it('puts both preparation routes behind the session guard (Checklist 3)', async () => {
+  async function listFailures(productId: string, query = '?status=failed') {
+    const app = await server();
+    return app.inject({ method: 'GET', url: `${runsUrl(productId)}${query}` });
+  }
+
+  it('lists the failed runs of the card with their error detail (T50)', async () => {
+    const response = await listFailures(CARD_ID);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(
+      response.json<RunBody[]>().map(({ id, errorCode, errorDetail }) => ({
+        id,
+        errorCode,
+        errorDetail,
+      })),
+      [
+        {
+          id: FINISHED_RUN_ID,
+          errorCode: 'price_unavailable',
+          errorDetail: 'Price search refused',
+        },
+      ],
+    );
+  });
+
+  it('answers an empty list for a card that never failed (T50)', async () => {
+    const response = await listFailures(BARE_CARD_ID);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), []);
+  });
+
+  it('refuses to list runs without status=failed as validation_failed (T50)', async () => {
+    for (const query of ['', '?status=succeeded']) {
+      const response = await listFailures(CARD_ID, query);
+
+      assert.equal(response.statusCode, 400, query);
+      assert.equal(response.json<{ code: string }>().code, apiErrorCodes.validationFailed, query);
+    }
+  });
+
+  it('answers product_not_found for the failures of a card that does not exist (T50)', async () => {
+    const response = await listFailures(MISSING_CARD_ID);
+
+    assert.equal(response.statusCode, 404);
+  });
+
+  it('puts every preparation route behind the session guard (Checklist 3, T50)', async () => {
     allowed = false;
 
     const started = await start(CARD_ID, { scope: 'texts' });
     const polled = await poll(CARD_ID, FINISHED_RUN_ID);
+    const listed = await listFailures(CARD_ID);
 
     assert.equal(started.statusCode, 401);
     assert.equal(polled.statusCode, 401);
+    assert.equal(listed.statusCode, 401);
     assert.deepEqual(queue.jobs, []);
   });
 });

@@ -1,0 +1,65 @@
+.failures-title__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failures__lead {
+  margin: 0 0 8px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.failures__error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-body-medium);
+}
+
+.failures__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.failure {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: var(--mat-sys-surface-container);
+}
+
+.failure__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  font: var(--mat-sys-label-large);
+}
+
+.failure__time {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.failure__message {
+  margin: 4px 0 0;
+  font: var(--mat-sys-body-medium);
+}
+
+/* A provider message is one long unbroken line often enough; it must wrap, not widen the dialog. */
+.failure__detail {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  font-family: ui-monospace, monospace;
+}

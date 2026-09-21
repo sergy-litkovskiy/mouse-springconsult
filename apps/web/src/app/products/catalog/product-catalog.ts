@@ -30,6 +30,7 @@ import type {
   ProductCard,
   ProductImage,
   ProductList,
+  ProductListItem,
   ProductListQuery,
 } from '@contracts/products.contract';
 import {
@@ -60,6 +61,7 @@ import { ImageViewer, type ImageViewerData } from '../gallery/image-viewer';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { ProductsApi } from '../products-api';
 import { itemsPaginatorIntl } from './items-paginator-intl';
+import { PreparationFailures, type PreparationFailuresData } from './preparation-failures';
 
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
@@ -195,7 +197,7 @@ export class ProductCatalog {
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
 
-  protected readonly products = computed<readonly ProductCard[]>(() =>
+  protected readonly products = computed<readonly ProductListItem[]>(() =>
     this.catalogue.hasValue() ? this.catalogue.value().items : [],
   );
   protected readonly total = computed(() =>
@@ -218,6 +220,7 @@ export class ProductCatalog {
   protected readonly columns = [
     'gallery',
     'readiness',
+    'failures',
     'titleProm',
     'titleOlx',
     'price',
@@ -360,6 +363,15 @@ export class ProductCatalog {
     this.dialog.open<ImageViewer, ImageViewerData>(ImageViewer, {
       data,
       width: '56rem',
+      maxWidth: '92vw',
+    });
+  }
+
+  protected openFailures(product: ProductListItem): void {
+    const data: PreparationFailuresData = { productId: product.id, title: product.titleProm };
+    this.dialog.open<PreparationFailures, PreparationFailuresData>(PreparationFailures, {
+      data,
+      width: '40rem',
       maxWidth: '92vw',
     });
   }

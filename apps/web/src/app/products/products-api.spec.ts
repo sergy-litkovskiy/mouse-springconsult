@@ -51,6 +51,7 @@ const QUEUED_RUN: PreparationRunDto = {
   scope: 'texts',
   status: 'queued',
   errorCode: null,
+  errorDetail: null,
   model: 'claude-sonnet-5',
   inputTokens: 0,
   outputTokens: 0,

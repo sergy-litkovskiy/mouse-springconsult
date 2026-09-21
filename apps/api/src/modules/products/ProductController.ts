@@ -16,6 +16,7 @@ import {
   type ProductCardRead,
   type ProductImage as ProductImageResponse,
   type ProductList,
+  type ProductListItem,
   type Product as ProductResponse,
   type ProductUpdateResponse,
 } from '../../contracts/products.contract.ts';
@@ -238,9 +239,10 @@ export class ProductController {
 
   private toListResponse(page: ProductPage): ProductList {
     return {
-      items: page.items.map((product) =>
-        this.toCardResponse({ product, isReady: this.products.isReady(product) }),
-      ),
+      items: page.items.map((product): ProductListItem => ({
+        ...this.toCardResponse({ product, isReady: this.products.isReady(product) }),
+        failedRuns: page.failedRuns.get(product.id) ?? 0,
+      })),
       total: page.total,
       page: page.page,
       pageSize: page.pageSize,
