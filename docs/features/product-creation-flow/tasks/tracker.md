@@ -12,17 +12,18 @@ stage: "13"
 у [_epic.md](_epic.md). Чим задача виявилась на ділі, що знайшло рев'ю і звідки взялись
 нові задачі — у [хроніці](../_audit/tracker-journal.md).
 
-**Статуси:** `Todo` · `Blocked` (чекає на deps) · `In progress` · `In review` · `Done`.
+**Статуси:** `Todo` · `Blocked` (чекає на deps) · `In progress` · `In review` · `Done` ·
+`Deferred` (відкладено рішенням власника; нічого не блокує й у план не входить).
 
 ## Зараз
 
-**Готові до старту:** [T54](bound-the-model-call-timeout.md) — пошук ціни (порожній діапазон,
-вартість, таймаут). Жодної незакритої залежності.
+**Готові до старту:** [T33](verify-delivery-2.md) — приймання поставки 2. Жодної незакритої
+залежності.
 
 2026-09-21 закрито [T50](show-preparation-failures-in-catalog.md) — помилки підготовки в
-каталозі. Нічого не розблоковано: T33 ще чекає на T54.
-
-**Чекає на них:** [T33](verify-delivery-2.md) — приймання поставки 2.
+каталозі. Того ж дня [T54](bound-the-model-call-timeout.md) відкладено: пошук ціни через AI
+задорогий, ціну вписують руками, код лишається на майбутнє. T33 більше на неї не чекає й
+приймає поставку 2 без пошуку ціни.
 
 ## Поставка 0 — узгодження документів
 
@@ -88,12 +89,12 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T30 | [Прийняття пропозицій](add-suggestion-resolution-endpoints.md) | Done | T29 | S | 2026-09-20 |
 | T31 | [Вартість картки](add-card-cost-readout.md) | Done | T11, T26 | XS | 2026-09-20 |
 | T32 | [Фронт підготовки](add-preparation-ui.md) | Done | T20, T29, T30, T31, T51, T52, T53 | M | 2026-09-20 |
-| T33 | [Приймання поставки 2](verify-delivery-2.md) | Blocked | T32, T50, T54 | S | — |
+| T33 | [Приймання поставки 2](verify-delivery-2.md) | Todo | T32, T50 | S | — |
 | T50 | [Помилки підготовки в каталозі](show-preparation-failures-in-catalog.md) | Done | T29, T32 | M | 2026-09-21 |
 | T51 | [Повтор після відмови](allow-retry-after-failed-run.md) | Done | T29 | S | 2026-09-20 |
 | T52 | [Завислі запуски](close-stuck-preparation-runs.md) | Done | T29 | S | 2026-09-20 |
 | T53 | [Непідтверджені пропозиції](expose-pending-suggestions.md) | Done | T26, T30 | S | 2026-09-20 |
-| T54 | [Пошук ціни: порожній діапазон, вартість, таймаут](bound-the-model-call-timeout.md) | Todo | T27 | M | — |
+| T54 | [Пошук ціни: порожній діапазон, вартість, таймаут](bound-the-model-call-timeout.md) | Deferred | T27 | M | — |
 
 ## Спільний DoD
 

@@ -1,18 +1,24 @@
 ---
 id: T54
 title: "Полагодити пошук ціни: порожній діапазон, вартість, таймаут"
-status: Todo
+status: Deferred
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: M
 context_budget: 3200
 blocked_by: [T27]
-blocks: [T33]
-updated_at: "2026-09-20"
+blocks: []
+updated_at: "2026-09-21"
 ---
 
 # T54 — Полагодити пошук ціни: порожній діапазон, вартість, таймаут
+
+> **Відкладено 2026-09-21 рішенням власника.** Пошук ціни через AI задорогий: кожен виклик
+> `scope: price` коштував $0,27–0,77 (див. замір нижче). Ціну `user` вписує руками (AC-12),
+> кнопку ціни в формі приховано ще з [T32](add-preparation-ui.md). Код `findPriceRange` і
+> області `price`/`both` лишаються в `api` на майбутнє. Задача більше нічого не блокує:
+> [T33](verify-delivery-2.md) приймає поставку 2 без пошуку ціни.
 
 ## Context
 

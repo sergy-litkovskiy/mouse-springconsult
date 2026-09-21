@@ -193,7 +193,6 @@ flowchart LR
   T30 --> T32
   T31 --> T32
   T32 --> T33
-  T54 --> T33
   T27 --> T54
   T29 --> T50
   T29 --> T51
@@ -424,7 +423,7 @@ T49 чекає на T47, бо імпортує перелік тегів з ко
 | [T54](bound-the-model-call-timeout.md) | Таймаут виклику моделі під термін задачі черги | T27 | S | Serhii |
 | [T32](add-preparation-ui.md) | Фронт підготовки: запуск, полінг, пропозиції, вартість | T20, T29, T30, T31, T51, T52, T53 | S | Serhii |
 | [T50](show-preparation-failures-in-catalog.md) | Кількість невдалих запусків у каталозі й попап з текстами помилок | T29, T32 | M | Serhii |
-| [T33](verify-delivery-2.md) | Прогін QG-1 з недосяжною моделлю, AC-10b, AC-11 | T32, T50, T54 | S | Serhii |
+| [T33](verify-delivery-2.md) | Прогін QG-1 з недосяжною моделлю, AC-11 | T32, T50 | S | Serhii |
 
 ## Estimation legend
 
