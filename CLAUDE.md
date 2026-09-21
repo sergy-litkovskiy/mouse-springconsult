@@ -157,7 +157,7 @@ CLI) — у skill `mouse-commands`, підвантажується під час
 
 - Conventional Commits: `type(scope): subject`. Scope — модуль (`products`, `ai`),
   застосунок (`web`, `api`) або slug фічі для `docs`.
-- У `main` не комітимо. Гілка — `<type>/<short-name>`, для story — `feat/t54-...`.
+- У `main` не комітимо. Гілка — `<type>:<short-name>`, для story — `feat:t54-...`.
 - PR відкриваємо одразу після першого чистого коміту.
 - `push`, `reset --hard`, `--force` не виконуємо — лише друкуємо команду для людини.
 - Файли додаємо поіменно, не `git add -A`. Не комітимо `.env` та секретні ключі.

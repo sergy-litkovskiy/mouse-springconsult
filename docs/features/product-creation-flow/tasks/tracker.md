@@ -17,7 +17,12 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** немає. Відкритих задач поставки 2 не лишилось; T54 відкладено.
+**Готові до старту:** T56, T57, T58, T59, T60, T61, T63, T64 — поставка 3, UI каталогу й форми.
+Порядок і інструменти — у [плані виконання](../execution-plan.md). T62 чекає на T59, T60 і T61,
+T65 — на T64, T66 — на T58 і T59.
+
+2026-09-21 заведено поставку 3 (T56–T66): десять правок UI каталогу й форми картки, які власник
+запросив після приймання поставки 2. Пункт 6 (кілька категорій) розрізано на `api` (T61) і фронт (T62).
 
 2026-09-21 закрито [T55](show-applied-suggestions-in-product-form.md): після «Згенерувати все»
 форма показує тексти, які `api` застосував сам, і «Зберегти» їх більше не стирає. Задача нічого
@@ -101,6 +106,25 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T53 | [Непідтверджені пропозиції](expose-pending-suggestions.md) | Done | T26, T30 | S | 2026-09-20 |
 | T54 | [Пошук ціни: порожній діапазон, вартість, таймаут](bound-the-model-call-timeout.md) | Deferred | T27 | M | — |
 | T55 | [Тексти, застосовані `api`, у формі](show-applied-suggestions-in-product-form.md) | Done | — | S | 2026-09-21 |
+
+## Поставка 3 — UI каталогу й форми
+
+Запит 2026-09-21 після приймання поставки 2. Ланцюжки в `blocked_by` — здебільшого спільні файли
+(`product-catalog.*`, `product-form.*`), а не смислові залежності; деталі — в [_epic.md](_epic.md).
+
+| ID | Задача | Статус | blocked_by | Est | Закрито |
+|----|--------|--------|------------|-----|---------|
+| T56 | [Підсвітка рядка каталогу](highlight-catalog-row-on-hover.md) | Todo | — | XS | — |
+| T57 | [Пагінатор над таблицею](add-top-catalog-paginator.md) | Todo | — | XS | — |
+| T58 | [Назви Prom/OLX у textarea](wrap-product-titles-in-textarea.md) | Todo | — | XS | — |
+| T59 | [Ключові слова як chips](edit-keywords-as-chips.md) | Todo | — | S | — |
+| T60 | [Вужчі фільтри-прапорці](narrow-catalog-flag-filters.md) | Todo | — | XS | — |
+| T61 | [Перелік категорій і фільтр за кількома в `api`](add-category-list-and-multi-filter.md) | Todo | — | S | — |
+| T62 | [Кілька категорій з автодоповненням](pick-catalog-categories-with-autocomplete.md) | Blocked | T59, T60, T61 | S | — |
+| T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Todo | — | S | — |
+| T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Todo | — | XS | — |
+| T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Blocked | T64 | S | — |
+| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59 | S | — |
 
 ## Спільний DoD
 
