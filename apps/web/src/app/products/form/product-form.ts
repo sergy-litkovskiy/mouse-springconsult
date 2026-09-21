@@ -376,8 +376,9 @@ export class ProductForm {
   }
 
   /**
-   * Re-reads the card without touching the fields: what the admin typed while the run was going
-   * stays (AC-11), and the suggestions arrive beside it.
+   * Re-reads the card and fills only the texts the admin has not touched: the server writes a text
+   * straight into an empty field (AC-05), and the form would otherwise save the blank over it. What
+   * the admin typed while the run was going stays (AC-11), and the suggestions arrive beside it.
    */
   private async reread(): Promise<void> {
     const id = this.productId();
@@ -388,6 +389,19 @@ export class ProductForm {
       const card = await firstValueFrom(this.api.getById(id));
       this.card.set(card);
       this.images.set(card.images);
+      const texts: readonly RewritableField[] = [
+        'titleProm',
+        'titleOlx',
+        'descriptionProm',
+        'descriptionOlx',
+        'seoKeywords',
+      ];
+      for (const field of texts) {
+        const control = this.form.controls[field];
+        if (!control.dirty) {
+          control.setValue(field === 'seoKeywords' ? card.seoKeywords.join(', ') : card[field]);
+        }
+      }
       this.changed.set(true);
     } catch {
       // The run is already reported; a failed re-read would only replace that message with a
