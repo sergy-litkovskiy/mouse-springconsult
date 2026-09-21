@@ -771,6 +771,110 @@ describe('ProductForm', () => {
       // The price suggestion arrives in the read all the same; showing it comes back with T54.
     });
 
+    describe('texts the server applied on its own (T55)', () => {
+      /** The card as the read after «Згенерувати все» returns it: every untouched field filled. */
+      const GENERATED: ProductCard = {
+        ...EMPTY_WITH_FRAME,
+        titleProm: 'Миша Logitech MX Master 3',
+        titleOlx: 'Logitech MX Master 3 бездротова',
+        descriptionProm: '<p>Бездротова миша у відмінному стані.</p>',
+        descriptionOlx: 'Продам мишу, повний комплект.',
+        seoKeywords: ['миша', 'logitech'],
+      };
+
+      function textsRun(status: PreparationRunDto['status']): PreparationRunDto {
+        return { ...run(status), scope: 'texts', errorCode: null };
+      }
+
+      async function startGenerateAll(): Promise<void> {
+        element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]')?.click();
+        await settle();
+        const started = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+        expect(started.request.body).toEqual({ scope: 'texts' });
+        started.flush(textsRun('running'));
+        await settle();
+      }
+
+      async function finishWith(card: ProductCard): Promise<void> {
+        http
+          .expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`)
+          .flush(textsRun('succeeded'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(withPending(card, []));
+        await settle();
+      }
+
+      async function promDescriptionHtml(): Promise<string> {
+        promHtmlMode().click();
+        await settle();
+        const area = element.querySelector<HTMLTextAreaElement>(
+          'app-prom-description-editor textarea',
+        );
+        if (area === null) {
+          throw new Error('the Prom description editor has no HTML mode');
+        }
+        return area.value;
+      }
+
+      it('shows the applied texts in the fields without a click (AC-05)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        await startGenerateAll();
+        await finishWith(GENERATED);
+
+        expect(field('titleProm').value).toBe(GENERATED.titleProm);
+        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
+        expect(field('descriptionOlx').value).toBe(GENERATED.descriptionOlx);
+        expect(field('seoKeywords').value).toBe('миша, logitech');
+        expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
+      });
+
+      it('saves the applied texts instead of erasing them (AC-05)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        await startGenerateAll();
+        await finishWith(GENERATED);
+        submit();
+        await settle();
+
+        const request = http.expectOne(`/api/products/${CARD_ID}`);
+        expect(request.request.method).toBe('PATCH');
+        const body = request.request.body as Record<string, unknown>;
+        expect({
+          titleProm: body['titleProm'],
+          titleOlx: body['titleOlx'],
+          descriptionProm: body['descriptionProm'],
+          descriptionOlx: body['descriptionOlx'],
+          seoKeywords: body['seoKeywords'],
+        }).toEqual({
+          titleProm: GENERATED.titleProm,
+          titleOlx: GENERATED.titleOlx,
+          descriptionProm: GENERATED.descriptionProm,
+          descriptionOlx: GENERATED.descriptionOlx,
+          seoKeywords: GENERATED.seoKeywords,
+        });
+        request.flush(answer(GENERATED));
+        await settle();
+      });
+
+      it('keeps a field edited during the run and fills the untouched ones (AC-11)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        await startGenerateAll();
+        type('descriptionOlx', 'Мій власний текст.');
+        await settle();
+        await finishWith(GENERATED);
+
+        expect(field('descriptionOlx').value).toBe('Мій власний текст.');
+        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
+        expect(field('seoKeywords').value).toBe('миша, logitech');
+        expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
+      });
+    });
+
     it('explains a rate limit in Ukrainian rather than showing its code', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
