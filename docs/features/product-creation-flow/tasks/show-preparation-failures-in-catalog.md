@@ -1,7 +1,7 @@
 ---
 id: T50
 title: "Помилки підготовки в каталозі"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: M
 context_budget: 1800
 blocked_by: [T29, T32]
 blocks: [T33]
-updated_at: "2026-09-19"
+updated_at: "2026-09-21"
 ---
 
 # T50 — Помилки підготовки в каталозі
