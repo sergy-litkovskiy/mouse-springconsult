@@ -54,7 +54,15 @@
     <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для Prom</mat-label>
-        <input matInput formControlName="titleProm" />
+        <textarea
+          #titlePromField
+          matInput
+          formControlName="titleProm"
+          cdkTextareaAutosize
+          [cdkAutosizeMinRows]="1"
+          (keydown.enter)="$event.preventDefault()"
+          (input)="keepOnOneLine(titlePromField, 'titleProm')"
+        ></textarea>
         @if (form.controls.titleProm.hasError('maxlength')) {
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
         }
@@ -75,7 +83,15 @@
     <div class="card-form__paired">
       <mat-form-field appearance="outline">
         <mat-label>Назва для OLX</mat-label>
-        <input matInput formControlName="titleOlx" />
+        <textarea
+          #titleOlxField
+          matInput
+          formControlName="titleOlx"
+          cdkTextareaAutosize
+          [cdkAutosizeMinRows]="1"
+          (keydown.enter)="$event.preventDefault()"
+          (input)="keepOnOneLine(titleOlxField, 'titleOlx')"
+        ></textarea>
         @if (form.controls.titleOlx.hasError('maxlength')) {
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
         }

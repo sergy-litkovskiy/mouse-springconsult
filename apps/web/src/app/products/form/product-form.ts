@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   type AbstractControl,
@@ -136,6 +137,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     ProductGallery,
     PromDescriptionEditor,
     SuggestionField,
+    TextFieldModule,
   ],
   /**
    * Not `providedIn: 'root'`: the poller must die with the dialog. A timer left running polls a
@@ -337,6 +339,15 @@ export class ProductForm {
   /** The price never reads the draft — it searches the web, so it is a scope of its own. */
   protected lookUpPrice(): Promise<void> {
     return this.startRun({ scope: 'price' });
+  }
+
+  /**
+   * The marketplaces take a title without line breaks, so the textarea wraps only visually: a
+   * pasted break becomes a space before the value reaches the control (AC-52).
+   */
+  protected keepOnOneLine(field: HTMLTextAreaElement, title: 'titleProm' | 'titleOlx'): void {
+    field.value = field.value.replaceAll('\n', ' ');
+    this.form.controls[title].setValue(field.value);
   }
 
   protected canRewrite(field: RewritableField): boolean {
