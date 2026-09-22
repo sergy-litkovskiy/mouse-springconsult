@@ -117,7 +117,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 
 | ID | Задача | Статус | blocked_by | Est | Закрито |
 |----|--------|--------|------------|-----|---------|
-| T56 | [Підсвітка рядка каталогу](highlight-catalog-row-on-hover.md) | Done | — | XS | — |
+| T56 | [Підсвітка рядка каталогу](highlight-catalog-row-on-hover.md) | Done | — | XS | 2026-09-22 |
 | T57 | [Пагінатор над таблицею](add-top-catalog-paginator.md) | Todo | — | XS | — |
 | T58 | [Назви Prom/OLX у textarea](wrap-product-titles-in-textarea.md) | Todo | — | XS | — |
 | T59 | [Ключові слова як chips](edit-keywords-as-chips.md) | Todo | — | S | — |
