@@ -61,10 +61,7 @@
           cdkTextareaAutosize
           [cdkAutosizeMinRows]="1"
           (keydown.enter)="$event.preventDefault()"
-          (input)="
-            titlePromField.value = titlePromField.value.replaceAll('\n', ' ');
-            form.controls.titleProm.setValue(titlePromField.value)
-          "
+          (input)="keepOnOneLine(titlePromField, 'titleProm')"
         ></textarea>
         @if (form.controls.titleProm.hasError('maxlength')) {
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>
@@ -93,10 +90,7 @@
           cdkTextareaAutosize
           [cdkAutosizeMinRows]="1"
           (keydown.enter)="$event.preventDefault()"
-          (input)="
-            titleOlxField.value = titleOlxField.value.replaceAll('\n', ' ');
-            form.controls.titleOlx.setValue(titleOlxField.value)
-          "
+          (input)="keepOnOneLine(titleOlxField, 'titleOlx')"
         ></textarea>
         @if (form.controls.titleOlx.hasError('maxlength')) {
           <mat-error>Довше за {{ titleMaxLength }} символів.</mat-error>

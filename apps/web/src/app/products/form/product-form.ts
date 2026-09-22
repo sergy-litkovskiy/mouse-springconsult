@@ -341,6 +341,15 @@ export class ProductForm {
     return this.startRun({ scope: 'price' });
   }
 
+  /**
+   * The marketplaces take a title without line breaks, so the textarea wraps only visually: a
+   * pasted break becomes a space before the value reaches the control (AC-52).
+   */
+  protected keepOnOneLine(field: HTMLTextAreaElement, title: 'titleProm' | 'titleOlx'): void {
+    field.value = field.value.replaceAll('\n', ' ');
+    this.form.controls[title].setValue(field.value);
+  }
+
   protected canRewrite(field: RewritableField): boolean {
     return this.productId() !== null && !this.preparing() && this.draft()[field].trim() !== '';
   }
