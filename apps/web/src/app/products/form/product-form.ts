@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { TextFieldModule } from '@angular/cdk/text-field';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   type AbstractControl,
@@ -136,6 +137,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     ProductGallery,
     PromDescriptionEditor,
     SuggestionField,
+    TextFieldModule,
   ],
   /**
    * Not `providedIn: 'root'`: the poller must die with the dialog. A timer left running polls a
