@@ -1,7 +1,7 @@
 ---
 id: T58
 title: "Назви для Prom і OLX у багаторядковому полі"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: []
 blocks: [T66]
-updated_at: "2026-09-21"
+updated_at: "2026-09-22"
 ---
 
 # T58 — Назви для Prom і OLX у багаторядковому полі
@@ -75,9 +75,9 @@ Prom» і «Назва для OLX» у формі картки — одноря�
 
 ## DoD
 
-- [ ] AC-52: назви видно повністю, у значенні немає переносів.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): wrap long product titles in the card form`.
+- [x] AC-52: назви видно повністю, у значенні немає переносів.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): wrap long product titles in the card form`.
 
 ## Links
 

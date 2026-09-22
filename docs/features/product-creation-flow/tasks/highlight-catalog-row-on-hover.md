@@ -1,7 +1,7 @@
 ---
 id: T56
 title: "Підсвітка рядка каталогу під курсором"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: []
-updated_at: "2026-09-21"
+updated_at: "2026-09-22"
 ---
 
 # T56 — Підсвітка рядка каталогу під курсором
@@ -76,9 +76,9 @@ Angular Material 22, а не писати з пам'яті. Текст рядк�
 
 ## DoD
 
-- [ ] AC-50: рядок під курсором підсвічено, контраст ≥ 4.5:1.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): highlight the catalog row under the pointer`.
+- [x] AC-50: рядок під курсором підсвічено, контраст ≥ 4.5:1.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): highlight the catalog row under the pointer`.
 
 ## Links
 
