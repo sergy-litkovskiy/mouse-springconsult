@@ -28,5 +28,4 @@ backups/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
 
-# Prom product exports: they carry personal notes and are imported, not versioned
-export-products-*.csv
+.claude/worktrees/
