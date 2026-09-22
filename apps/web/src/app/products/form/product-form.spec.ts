@@ -5,7 +5,9 @@ import {
   type TestRequest,
 } from '@angular/common/http/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
@@ -555,6 +557,77 @@ describe('ProductForm', () => {
     type('seoKeywords', 'миша');
     await settle();
     expect(saveButton().disabled).toBe(false);
+  });
+
+  describe('the two titles (AC-52)', () => {
+    const TITLES = ['titleProm', 'titleOlx'] as const;
+    const LONG_TITLE =
+      'Миша Logitech MX Master 3 бездротова, графітова, з зарядним кабелем USB-C, ' +
+      'коробкою та приймачем Unifying, у відмінному стані після одного року використання';
+
+    for (const name of TITLES) {
+      it(`shows the whole ${name} in a field that grows with the text (AC-52)`, async () => {
+        open({ ...PUBLISHED_ON_PROM, [name]: LONG_TITLE });
+        await settle();
+
+        const title = field(name);
+        expect(title).toBeInstanceOf(HTMLTextAreaElement);
+        expect(title.value).toBe(LONG_TITLE);
+        const autosize = fixture.debugElement
+          .query(By.css(`[formcontrolname="${name}"]`))
+          .injector.get(CdkTextareaAutosize, null);
+        expect(autosize, `${name} does not grow with its text`).not.toBeNull();
+        expect(autosize?.minRows).toBe(1);
+      });
+
+      it(`turns a pasted line break in ${name} into a space and saves one line (AC-52)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        type(name, 'a\nb');
+        await settle();
+
+        expect(field(name).value).toBe('a b');
+        submit();
+        await settle();
+        const request = http.expectOne(`/api/products/${CARD_ID}`);
+        expect((request.request.body as Record<string, unknown>)[name]).toBe('a b');
+        request.flush(answer(PUBLISHED_ON_PROM));
+        await settle();
+      });
+
+      it(`adds nothing to ${name} on Enter (AC-52)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        const before = field(name).value;
+
+        const enter = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        });
+        field(name).dispatchEvent(enter);
+        await settle();
+
+        // jsdom never inserts the line break itself, so the prevented default is what a browser
+        // would have turned into one.
+        expect(enter.defaultPrevented).toBe(true);
+        expect(field(name).value).toBe(before);
+      });
+    }
+
+    it('still refuses a title of 201 characters in the multi-line field (AC-52)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      expect(field('titleOlx')).toBeInstanceOf(HTMLTextAreaElement);
+      type('titleOlx', 'x'.repeat(201));
+      field('titleOlx').dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect(element.textContent).toContain('Довше за 200 символів.');
+      expect(saveButton().disabled).toBe(true);
+    });
   });
 
   describe('the gaps behind the readiness badge (AC-15)', () => {
