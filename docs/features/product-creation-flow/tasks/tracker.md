@@ -17,9 +17,13 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T57, T58, T59, T60, T61, T63, T64 — поставка 3, UI каталогу й форми.
+**Готові до старту:** T57, T59, T60, T61, T63, T64 — поставка 3, UI каталогу й форми.
 Порядок і інструменти — у [плані виконання](../execution-plan.md). T62 чекає на T59, T60 і T61,
-T65 — на T64, T66 — на T58 і T59.
+T65 — на T64, T66 — на T59.
+
+2026-09-22 закрито [T58](wrap-product-titles-in-textarea.md): назви для Prom і OLX у формі — `textarea`,
+що росте з текстом; перенос зі вставки стає пробілом, `Enter` нічого не додає. T66 лишається `Blocked`:
+вона чекає ще на T59.
 
 2026-09-22 закрито [T56](highlight-catalog-row-on-hover.md): рядок каталогу під курсором
 підсвічено токеном `--mat-sys-surface-container`. Задача нічого не розблоковує: залежних у неї немає.
@@ -119,7 +123,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 |----|--------|--------|------------|-----|---------|
 | T56 | [Підсвітка рядка каталогу](highlight-catalog-row-on-hover.md) | Done | — | XS | 2026-09-22 |
 | T57 | [Пагінатор над таблицею](add-top-catalog-paginator.md) | Todo | — | XS | — |
-| T58 | [Назви Prom/OLX у textarea](wrap-product-titles-in-textarea.md) | Todo | — | XS | — |
+| T58 | [Назви Prom/OLX у textarea](wrap-product-titles-in-textarea.md) | Done | — | XS | 2026-09-22 |
 | T59 | [Ключові слова як chips](edit-keywords-as-chips.md) | Todo | — | S | — |
 | T60 | [Вужчі фільтри-прапорці](narrow-catalog-flag-filters.md) | Todo | — | XS | — |
 | T61 | [Перелік категорій і фільтр за кількома в `api`](add-category-list-and-multi-filter.md) | Todo | — | S | — |
