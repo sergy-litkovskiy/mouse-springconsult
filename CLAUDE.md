@@ -158,6 +158,15 @@ CLI) — у skill `mouse-commands`, підвантажується під час
 - Conventional Commits: `type(scope): subject`. Scope — модуль (`products`, `ai`),
   застосунок (`web`, `api`) або slug фічі для `docs`.
 - У `main` не комітимо. Гілка — `<type>-<short-name>`, для story — `feat-t54-...`.
-- PR відкриваємо одразу після першого чистого коміту.
 - `push`, `reset --hard`, `--force` не виконуємо — лише друкуємо команду для людини.
 - Файли додаємо поіменно, не `git add -A`. Не комітимо `.env` та секретні ключі.
+
+## Pull requests
+
+- Платформа — GitHub, `gh` CLI. PR відкриваємо одразу після першого чистого коміту,
+  як `--draft`, поки робота не завершена; `gh pr ready` — коли завершена.
+- `gh pr create` вимагає запушеної гілки, а `push` робить людина (див. «Git»):
+  друкуємо `git push -u origin <branch>`, чекаємо підтвердження, тоді створюємо PR.
+- Заголовок — у форматі коміта, англійською: `type(scope): subject`.
+- Тіло — англійською, за розділами `.github/pull_request_template.md`; передаємо
+  через `--body-file`: з `--body` шаблон `gh` не підставляє.
