@@ -71,6 +71,11 @@
   overflow: hidden;
 }
 
+.catalog__top-paginator {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
 .catalog__scroll {
   overflow-x: auto;
 }
