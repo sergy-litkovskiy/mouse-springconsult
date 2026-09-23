@@ -39,17 +39,24 @@
 
 ## Що лишилось
 
-### Поставка 3 — UI каталогу й форми (T56–T66)
+### Поставка 3 — UI каталогу й форми (T56–T74)
 
-Запит 2026-09-21. Граф ([_epic.md](tasks/_epic.md)) лишає вісім задач незалежними, але вони
-правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
+Запит 2026-09-21, T67–T74 — запит 2026-09-23. Граф ([_epic.md](tasks/_epic.md)) лишає тринадцять
+задач незалежними, а ланцюжки має лише для T62, T65 і AI-кнопок поля (T67, T71 → T72 → T73 → T66,
+T74). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
 
 - **каталог** (`product-catalog.*`): T56 → T60 → T57 → T64 → T65 — спершу чиста верстка
   (`goal`), потім правки з тестами, наприкінці найбільша й найризикованіша T65;
 - **`api`** (`productListQuerySchema`): T61, потім T63 — обидві правлять ту саму схему, і T63
   вливається в уже змінений контракт, а не конфліктує з ним;
-- **форма** (`product-form.*`): T58 → T59 → T66;
-- **T62** — після T59 (патерн chips), T60 (рядки CSS панелі) і T61 (перелік категорій).
+- **форма** (`product-form.*`, `suggestion-field.*`): T58 → T59 → T69 → T70 → T73 → T74 → T66.
+  T69 і T70 — дрібні правки шаблону, тож ідуть першими й дають наступним уже зсунуті блоки. T66
+  стоїть останньою, бо її спінер замінює обидві кнопки запуску з T73 у вже переробленому T74
+  `app-suggestion-field`. T68 править лише `prom-description-editor.*`, тож іде паралельно з будь-чим;
+- **T62** — після T59 (патерн chips), T60 (рядки CSS панелі) і T61 (перелік категорій);
+- **`ai`** (`AnthropicAdapter.ts`, `PreparationService.ts`, `PreparationRunService.ts`):
+  T67 → T71 → T72, додані 2026-09-23. Усі три правлять вхід моделі й ключ ідемпотентності поля,
+  тож ідуть по черзі. З доріжкою форми ця доріжка сходиться на T73: кнопкам потрібен `mode` з T72.
 
 T62 і фронтова половина T63 теж правлять `product-catalog.*`, тож у доріжці каталогу вони
 стають між T60 і T57. Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно
@@ -67,13 +74,21 @@ T62 і фронтова половина T63 теж правлять `product-ca
 | 8 | T57 | Верхній пагінатор | `tdd` | `pw` | — | XS, але поведінка «два подання одного стану» тестується через `MatPaginatorHarness`. `PRD.md §5` — руками |
 | 9 | T64 | Іконки публікації | `tdd` | `pw` | — | XS: тест на `aria-label` іконок, а не на колір. `PRD.md §5` — руками |
 | 10 | T65 | Ціна й стан у комірці | `tdd·r` | `pw`: успіх, хибна ціна, 422 через `route`, `Esc` | — | Запис грошей: тести переглянути до GREEN — тіло `PATCH` з одним полем, жодного запиту для невалідної ціни, клік у режимі редагування не відкриває форму. Не `cpr`: код лише на фронті, маршрут і валідація `api` не змінюються. `PRD.md §5` — руками |
-| 11 | T66 | Локальний лоадер AI | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Поле запуску форма бере з власного запиту, бо `PreparationRunDto` його не несе; контракт не змінюється. Ціна (T54) прихована, `pw` її не перевіряє. `PRD.md §5` — руками |
+| 11 | T67 | Назви з «Згенерувати все» | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Правка наявних `.ts` в `ai`, нових файлів немає. Тести на двійнику адаптера, без мережі. Нормалізацію назви (перенос → пробіл, обрізання по слову до 200) тест фіксує для обох областей, `texts` і `field`: без неї пропозиція, яку `api` застосовує в порожнє поле, падає на `varchar(200)`. Не `cpr`: ні сесій, ні грошей. `PRD.md` (US-03, AC-05, AC-61) і `sad.md §6` сценарій 7 — руками |
+| 12 | T68 | Опис Prom після відкриття | `tdd` | **до** кроку А — відтворення `pw` (крок 1 story); після — `pw` повторно | — | Дефект, гіпотеза — гонка `writeValue` із завантаженням Tiptap. Якщо `pw` її не підтвердив, задача йде в `plan`, а не в `/tdd`: тест на непідтверджену причину зафіксує не той дефект. `PRD.md §5` — руками |
+| 13 | T69 | «Згенерувати все» під галереєю | `goal` | `pw` | — | Верстка без поведінки, DoD вимірюваний (умова нижче). Тести форми мають лишитися зеленими без правок |
+| 14 | T70 | ID з копіюванням | `tdd` | `pw`: `navigator.clipboard.readText()` | — | Правка наявних `product-form.*`, нових файлів немає. `Clipboard` з `@angular/cdk`, пакет уже є. `PRD.md §5` — руками |
+| 15 | T71 | Чернетка без тегів | `tdd` | — | — | Новий лише `draftPlainText.ts` (+ spec), решта — наявні `.ts`. Тест фіксує, що чистка стоїть до хешу. Живого виклику не потрібно: вхід моделі видно в двійнику адаптера. `openapi.yaml` (опис `409`) і `PRD.md §5` — руками |
+| 16 | T72 | Режими `improve` і `prompt` | `tdd` | `pw` — два платні виклики `field`, ≈ $0,01 разом; суму назвати до й після | — | Промпти тестуються на двійнику адаптера: майданчик у тексті, відсутність `web_search`. `mode` у хеші й читання старої задачі без `mode` — під тест. Кнопок ще немає, тож `pw` шле `POST` з `mode` напряму. `openapi.yaml`, `sad.md` (S7, сценарій 10) і `PRD.md` (US-10, AC-21, AC-22, AC-66, AC-67) — руками |
+| 17 | T73 | Три кнопки AI | `tdd` | `pw` — знімок tonal-кнопок, тултіпи, один платний виклик ≈ $0,005 | — | Правка наявних `suggestion-field.*` і `product-form.*`. Наявність tonal у `matIconButton` і назви іконок звірити з документацією до старту, бо агенти писатимуть їх з пам'яті. Тести на старі `aria-label` RED переписує, а не видаляє. `PRD.md §5` — руками |
+| 18 | T74 | Остання пропозиція на поле | `tdd·r` | `pw` без платних викликів | — | Змінюється контракт читання картки, і від нього залежить AC-11: тести переглянути до GREEN, бо звірка має поводитись як раніше. Тести T53 і T55 RED переписує на `latestSuggestions`, а не видаляє. Не `cpr`: ні сесій, ні грошей. `openapi.yaml`, `sad.md` сценарій 9, `PRD.md` і excerpt-и закритих T53 і T55 — руками, і після них gate-check теки `tasks/` |
+| 19 | T66 | Локальний лоадер AI | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Спінер замінює обидві кнопки запуску поля з T73, стрілка лише вимикається. Поле запуску форма бере з власного запиту, бо `PreparationRunDto` його не несе; контракт не змінюється. Ціна (T54) прихована, `pw` її не перевіряє. `PRD.md §5` — руками |
 
 Кроки `PRD.md §5` і `openapi.yaml` у story агенти `/tdd` не роблять: вони правлять лише код.
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
 done», тож їх робить сам цикл.
 
-**Готові умови `/goal` для T56 і T60** — за шаблоном нижче:
+**Готові умови `/goal` для T56, T60 і T69** — за шаблоном нижче:
 
 ```
 /goal docs/features/product-creation-flow/tasks/highlight-catalog-row-on-hover.md: every Checklist item is done, with playwright-cli on /products the computed `background-color` of a hovered `.catalog__row` differs from that of a row without the pointer and the row text has a contrast of at least 4.5:1 against it, `git diff -U0 -- apps/web/src/app/products/catalog/product-catalog.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
@@ -81,6 +96,10 @@ done», тож їх робить сам цикл.
 
 ```
 /goal docs/features/product-creation-flow/tasks/narrow-catalog-flag-filters.md: every Checklist item is done, with playwright-cli on /products at 1280 px the three fields labelled «Опубл. на Prom», «Опубл. на OLX» and «Картка готова» are each narrower than 168 px and every `mat-label` inside them has `scrollWidth <= clientWidth` both empty and with «Так» selected, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, screenshots at both widths are saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/move-generate-all-below-gallery.md: every Checklist item is done, with playwright-cli on an open card with one frame `[data-testid="generate-all"]` follows `app-product-gallery` and precedes `[data-field="titleProm"]` in document order (`compareDocumentPosition`), a screenshot of the dialog is saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 ## Відкладено
