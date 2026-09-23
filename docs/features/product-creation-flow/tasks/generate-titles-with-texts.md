@@ -8,7 +8,7 @@ owner: "Serhii"
 estimate: S
 context_budget: 3000
 blocked_by: []
-blocks: []
+blocks: [T72]
 updated_at: "2026-09-23"
 ---
 
