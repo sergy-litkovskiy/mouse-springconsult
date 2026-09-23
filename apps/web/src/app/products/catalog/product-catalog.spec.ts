@@ -7,6 +7,7 @@ import {
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatPaginatorHarness } from '@angular/material/paginator/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
@@ -1050,5 +1051,121 @@ describe('ProductCatalog', () => {
 
     expect(rows().length).toBe(1);
     expect(element.querySelector('[data-testid="delete-error"]')).toBeNull();
+  });
+
+  const PAGINATOR_LABELS = {
+    top: 'Верхній пагінатор каталогу',
+    bottom: 'Нижній пагінатор каталогу',
+  } as const;
+
+  function paginator(position: keyof typeof PAGINATOR_LABELS): Promise<MatPaginatorHarness> {
+    return TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
+      MatPaginatorHarness.with({ selector: `[aria-label="${PAGINATOR_LABELS[position]}"]` }),
+    );
+  }
+
+  async function paginatorState(
+    position: keyof typeof PAGINATOR_LABELS,
+  ): Promise<{ range: string; pageSize: number }> {
+    const found = await paginator(position);
+    return { range: await found.getRangeLabel(), pageSize: await found.getPageSize() };
+  }
+
+  it('shows the same page, size and total above the table and below it (AC-51)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    const all = await TestbedHarnessEnvironment.loader(harness.fixture).getAllHarnesses(
+      MatPaginatorHarness,
+    );
+    expect(all.length).toBe(2);
+
+    expect(await paginatorState('top')).toEqual({ range: '1–20 з 100', pageSize: 20 });
+    expect(await paginatorState('bottom')).toEqual({ range: '1–20 з 100', pageSize: 20 });
+
+    const top = element.querySelector(`mat-paginator[aria-label="${PAGINATOR_LABELS.top}"]`);
+    const bottom = element.querySelector(`mat-paginator[aria-label="${PAGINATOR_LABELS.bottom}"]`);
+    const table = element.querySelector('table');
+    expect(top?.compareDocumentPosition(table!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(table?.compareDocumentPosition(bottom!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('moves the URL, the request and the bottom paginator to the page chosen above (AC-51)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    // The harness waits for the app to settle after the click, and the app cannot settle until
+    // the request the click started is answered — so the answer goes out before the await.
+    const moving = (await paginator('top')).goToNextPage();
+    await tick();
+
+    expect(TestBed.inject(Router).url).toBe('/products?page=2');
+    const request = expectRequest();
+    expect(request.request.params.get('page')).toBe('2');
+    request.flush({ ...PAGE, page: 2, total: 100 });
+    await moving;
+    await settle();
+
+    expect(await paginatorState('bottom')).toEqual({ range: '21–40 з 100', pageSize: 20 });
+    expect(await paginatorState('top')).toEqual({ range: '21–40 з 100', pageSize: 20 });
+  });
+
+  it('moves the URL, the request and the bottom paginator to the size chosen above (AC-51)', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    const resizing = (await paginator('top')).setPageSize(10);
+    await tick();
+
+    expect(TestBed.inject(Router).url).toBe('/products?pageSize=10');
+    const request = expectRequest();
+    expect(request.request.params.get('pageSize')).toBe('10');
+    request.flush({ ...PAGE, pageSize: 10, total: 100 });
+    await resizing;
+    await settle();
+
+    expect(await paginatorState('bottom')).toEqual({ range: '1–10 з 100', pageSize: 10 });
+    expect(await paginatorState('top')).toEqual({ range: '1–10 з 100', pageSize: 10 });
+  });
+
+  it('reopens both paginators on the page and size a reloaded address carries (AC-51)', async () => {
+    await open('/products?page=2&pageSize=10');
+    expectRequest().flush({ ...PAGE, page: 2, pageSize: 10, total: 100 });
+    await settle();
+
+    expect(await paginatorState('top')).toEqual({ range: '11–20 з 100', pageSize: 10 });
+    expect(await paginatorState('bottom')).toEqual({ range: '11–20 з 100', pageSize: 10 });
+  });
+
+  it('keeps the current rows and total on screen while the next page loads, with the loader inside the table', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    const moving = (await paginator('top')).goToNextPage();
+    await tick();
+
+    // An emptied table shrinks the page and the filters jump with it until the answer arrives.
+    expect(rows().length).toBe(2);
+    const ranges = [...element.querySelectorAll('.mat-mdc-paginator-range-label')].map((label) =>
+      label.textContent.trim(),
+    );
+    expect(ranges).toEqual(['21–40 з 100', '21–40 з 100']);
+    expect(element.querySelector('.catalog__scroll mat-progress-bar')).not.toBeNull();
+    expect(element.querySelectorAll('mat-progress-bar').length).toBe(1);
+    // The one change outside the table the admin should see: the filters wait for the answer.
+    const filterButtons = [
+      ...element.querySelectorAll<HTMLButtonElement>('.filters__actions button'),
+    ];
+    expect(filterButtons.map((button) => button.disabled)).toEqual([true, true]);
+
+    expectRequest().flush({ ...PAGE, page: 2, total: 100 });
+    await moving;
+    await settle();
+
+    expect(element.querySelector('mat-progress-bar')).toBeNull();
   });
 });

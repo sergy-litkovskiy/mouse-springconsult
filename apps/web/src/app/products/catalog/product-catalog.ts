@@ -7,6 +7,10 @@ import {
   effect,
   inject,
   input,
+  linkedSignal,
+  type Resource,
+  resourceFromSnapshots,
+  type ResourceSnapshot,
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -85,6 +89,22 @@ function isProductNotFound(error: unknown): boolean {
     (error.error as { error?: { code?: string } } | null)?.error?.code ===
       apiErrorCodes.productNotFound
   );
+}
+
+/**
+ * A resource whose params change drops its value until the new answer arrives. For the table
+ * that means an empty page for the length of a request: the page shrinks under the filters and
+ * grows back. The recipe is Angular's own ("Resource composition with snapshots").
+ */
+function withPreviousValue<T>(input: Resource<T>): Resource<T> {
+  const derived = linkedSignal<ResourceSnapshot<T>, ResourceSnapshot<T>>({
+    source: input.snapshot,
+    computation: (snapshot, previous) =>
+      snapshot.status === 'loading' && previous !== undefined && previous.value.status !== 'error'
+        ? { status: 'loading', value: previous.value.value }
+        : snapshot,
+  });
+  return resourceFromSnapshots(derived);
 }
 
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
@@ -196,13 +216,12 @@ export class ProductCatalog {
   }));
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
+  private readonly shown = withPreviousValue(this.catalogue);
 
   protected readonly products = computed<readonly ProductListItem[]>(() =>
-    this.catalogue.hasValue() ? this.catalogue.value().items : [],
+    this.shown.hasValue() ? this.shown.value().items : [],
   );
-  protected readonly total = computed(() =>
-    this.catalogue.hasValue() ? this.catalogue.value().total : 0,
-  );
+  protected readonly total = computed(() => (this.shown.hasValue() ? this.shown.value().total : 0));
   protected readonly loading = this.catalogue.isLoading;
   protected readonly loadError = computed(() => {
     const error = this.catalogue.error();

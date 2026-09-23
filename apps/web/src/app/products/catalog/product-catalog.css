@@ -71,8 +71,27 @@
   overflow: hidden;
 }
 
+.catalog__top-paginator {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
 .catalog__scroll {
+  position: relative;
   overflow-x: auto;
+}
+
+/* Out of the flow: a bar that pushes the rows down is the jump the kept rows are there to avoid. */
+.catalog__loader {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+}
+
+.catalog__scroll--loading table {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 150ms;
 }
 
 .catalog__scroll table {
