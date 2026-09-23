@@ -1139,4 +1139,28 @@ describe('ProductCatalog', () => {
     expect(await paginatorState('top')).toEqual({ range: '11–20 з 100', pageSize: 10 });
     expect(await paginatorState('bottom')).toEqual({ range: '11–20 з 100', pageSize: 10 });
   });
+
+  it('keeps the current rows and total on screen while the next page loads, with the loader inside the table', async () => {
+    await open();
+    expectRequest().flush({ ...PAGE, total: 100 });
+    await settle();
+
+    const moving = (await paginator('top')).goToNextPage();
+    await tick();
+
+    // An emptied table shrinks the page and the filters jump with it until the answer arrives.
+    expect(rows().length).toBe(2);
+    const ranges = [...element.querySelectorAll('.mat-mdc-paginator-range-label')].map((label) =>
+      label.textContent.trim(),
+    );
+    expect(ranges).toEqual(['21–40 з 100', '21–40 з 100']);
+    expect(element.querySelector('.catalog__scroll mat-progress-bar')).not.toBeNull();
+    expect(element.querySelectorAll('mat-progress-bar').length).toBe(1);
+
+    expectRequest().flush({ ...PAGE, page: 2, total: 100 });
+    await moving;
+    await settle();
+
+    expect(element.querySelector('mat-progress-bar')).toBeNull();
+  });
 });
