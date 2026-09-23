@@ -120,6 +120,15 @@
       </p>
     }
 
+    <mat-paginator
+      aria-label="Верхній пагінатор каталогу"
+      [length]="total()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      (page)="changePage($event)"
+    />
+
     <div class="catalog__scroll">
       <table
         mat-table
@@ -274,6 +283,7 @@
     }
 
     <mat-paginator
+      aria-label="Нижній пагінатор каталогу"
       [length]="total()"
       [pageIndex]="pageIndex()"
       [pageSize]="pageSize()"
