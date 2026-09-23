@@ -1,7 +1,7 @@
 ---
 id: T57
 title: "Пагінатор над таблицею каталогу"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: []
-updated_at: "2026-09-21"
+updated_at: "2026-09-23"
 ---
 
 # T57 — Пагінатор над таблицею каталогу
@@ -74,9 +74,9 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-51: два пагінатори, спільний стан.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): add a paginator above the catalog table`.
+- [x] AC-51: два пагінатори, спільний стан.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): add a paginator above the catalog table`.
 
 ## Links
 
