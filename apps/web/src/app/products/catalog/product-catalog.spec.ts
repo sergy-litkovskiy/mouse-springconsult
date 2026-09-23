@@ -1156,6 +1156,11 @@ describe('ProductCatalog', () => {
     expect(ranges).toEqual(['21–40 з 100', '21–40 з 100']);
     expect(element.querySelector('.catalog__scroll mat-progress-bar')).not.toBeNull();
     expect(element.querySelectorAll('mat-progress-bar').length).toBe(1);
+    // The one change outside the table the admin should see: the filters wait for the answer.
+    const filterButtons = [
+      ...element.querySelectorAll<HTMLButtonElement>('.filters__actions button'),
+    ];
+    expect(filterButtons.map((button) => button.disabled)).toEqual([true, true]);
 
     expectRequest().flush({ ...PAGE, page: 2, total: 100 });
     await moving;

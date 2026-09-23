@@ -99,10 +99,6 @@
   </mat-card>
 
   <mat-card class="catalog__table" appearance="outlined">
-    @if (loading()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Завантаження каталогу" />
-    }
-
     @if (loadError(); as message) {
       <p class="catalog__error" role="alert">
         <mat-icon aria-hidden="true">error_outline</mat-icon>
@@ -130,7 +126,18 @@
       (page)="changePage($event)"
     />
 
-    <div class="catalog__scroll">
+    <div
+      class="catalog__scroll"
+      [class.catalog__scroll--loading]="loading()"
+      [attr.aria-busy]="loading()"
+    >
+      @if (loading()) {
+        <mat-progress-bar
+          class="catalog__loader"
+          mode="indeterminate"
+          aria-label="Завантаження каталогу"
+        />
+      }
       <table
         mat-table
         [dataSource]="products()"
