@@ -618,6 +618,18 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
+    it('keeps the applied title while the field holds more characters than the API accepts (AC-57)', async () => {
+      await open('/products?title=миш');
+      expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
+      await settle();
+
+      type('title', 'м'.repeat(201));
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('title')).toBe('миш');
+    });
+
     it('opens a saved address with a two-character title or description without either filter (AC-57)', async () => {
       await open('/products?title=ми&description=%20ab%20');
       const request = expectRequest();

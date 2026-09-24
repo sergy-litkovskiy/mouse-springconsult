@@ -311,6 +311,9 @@ export class ProductCatalog {
       this.filters.controls[name].valueChanges
         .pipe(debounceTime(300), takeUntilDestroyed())
         .subscribe((value) => {
+          if (this.filters.controls[name].invalid) {
+            return;
+          }
           const cleaned = value.trim();
           if (cleaned !== '' && cleaned.length < productConstraints.textFilterMinLength) {
             return;
