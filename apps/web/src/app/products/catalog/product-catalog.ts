@@ -56,8 +56,8 @@ import {
   toPageSize,
   toPriceFilter,
   toFlagFilter,
-  textFilter,
   toCategoryFilter,
+  toSearchFilter,
   toSortDirection,
   toSortField,
 } from './product-catalog-query';
@@ -168,16 +168,10 @@ export class ProductCatalog {
     { transform: toSortDirection },
   );
   readonly title = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(
-      productConstraints.textFilterMinLength,
-      productConstraints.titleMaxLength,
-    ),
+    transform: toSearchFilter,
   });
   readonly description = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(
-      productConstraints.textFilterMinLength,
-      productConstraints.titleMaxLength,
-    ),
+    transform: toSearchFilter,
   });
   readonly priceMin = input<string | undefined, string | undefined>(undefined, {
     transform: toPriceFilter,

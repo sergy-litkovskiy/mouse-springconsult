@@ -41,7 +41,7 @@ export function toSortDirection(value: string | undefined): ProductSortDirection
 }
 
 /** A factory because the bounds differ per field and an `input()` transform takes only the value. */
-export function textFilter(
+function textFilter(
   minLength: number,
   maxLength: number,
 ): (value: string | undefined) => string | undefined {
@@ -50,6 +50,11 @@ export function textFilter(
     return cleaned.length < minLength || cleaned.length > maxLength ? undefined : cleaned;
   };
 }
+
+export const toSearchFilter = textFilter(
+  productConstraints.textFilterMinLength,
+  productConstraints.titleMaxLength,
+);
 
 const categoryText = textFilter(1, productConstraints.categoryMaxLength);
 
