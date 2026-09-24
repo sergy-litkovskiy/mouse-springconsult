@@ -4,6 +4,11 @@
 межі модулів бекенду). Дотримуємось
 [офіційного style guide Angular](https://angular.dev/style-guide).
 
+**Іменування файлів** (style guide 20+): kebab-case і **без** суфіксів `.component.ts` /
+`.service.ts` — клас `ProductCatalog` лежить у `product-catalog.ts`, `ProductsApi` — у
+`products-api.ts`, `authGuard` — у `auth-guard.ts`. Шаблон і стилі — поруч:
+`product-catalog.html`, `product-catalog.css`.
+
 10. Групуємо **за фічею**, а не за типом коду. Каталогів `components/`, `services/`,
     `directives/`, `pipes/`, `utils/`, `ui/`, `data-access/` не створюємо — це прямий
     анти-патерн з гайду.
