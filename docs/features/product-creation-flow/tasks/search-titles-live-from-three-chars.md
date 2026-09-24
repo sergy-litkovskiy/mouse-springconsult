@@ -1,7 +1,7 @@
 ---
 id: T63
 title: "Живий пошук за назвою й описом від трьох символів"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2000
 blocked_by: []
 blocks: []
-updated_at: "2026-09-21"
+updated_at: "2026-09-24"
 ---
 
 # T63 — Живий пошук за назвою й описом від трьох символів
@@ -59,10 +59,13 @@ updated_at: "2026-09-21"
     TitleFilter:
       name: title
       in: query
-      description: Підрядок, без урахування регістру, по обох заголовках
-      schema: { type: string, maxLength: 200 }
+      description: Підрядок, без урахування регістру, по обох заголовках; від 3 символів після trim
+      schema: { type: string, minLength: 3, maxLength: 200 }
     DescriptionFilter:
       name: description
+      in: query
+      description: Підрядок, без урахування регістру, по обох описах; від 3 символів після trim
+      schema: { type: string, minLength: 3, maxLength: 200 }
 ```
 
 ## Acceptance criteria
@@ -102,10 +105,10 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-57: живий пошук від трьох символів, кирилиця без регістру доведена тестом.
-- [ ] `api` і `web`: тести, `typecheck`, `lint` зелені.
-- [ ] `openapi.yaml` і `PRD.md §5` оновлено.
-- [ ] Коміт: `feat(products): search titles and descriptions live from three characters`.
+- [x] AC-57: живий пошук від трьох символів, кирилиця без регістру доведена тестом.
+- [x] `api` і `web`: тести, `typecheck`, `lint` зелені.
+- [x] `openapi.yaml` і `PRD.md §5` оновлено.
+- [x] Коміт: `feat(products): search titles and descriptions live from three characters`.
 
 ## Links
 

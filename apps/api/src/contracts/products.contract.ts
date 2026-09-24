@@ -61,7 +61,11 @@ const booleanFlag = z
   .transform((value) => value === 'true')
   .or(z.boolean());
 
-const trimmedFilter = z.string().trim().min(1).max(productConstraints.titleMaxLength);
+const trimmedFilter = z
+  .string()
+  .trim()
+  .min(productConstraints.textFilterMinLength)
+  .max(productConstraints.titleMaxLength);
 
 export const productListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(productPagination.defaultPage),

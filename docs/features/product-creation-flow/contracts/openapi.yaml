@@ -523,12 +523,13 @@ components:
     TitleFilter:
       name: title
       in: query
-      description: Підрядок, без урахування регістру, по обох заголовках
-      schema: { type: string, maxLength: 200 }
+      description: Підрядок, без урахування регістру, по обох заголовках; від 3 символів після trim
+      schema: { type: string, minLength: 3, maxLength: 200 }
     DescriptionFilter:
       name: description
       in: query
-      schema: { type: string, maxLength: 200 }
+      description: Підрядок, без урахування регістру, по обох описах; від 3 символів після trim
+      schema: { type: string, minLength: 3, maxLength: 200 }
     PriceMin:
       name: priceMin
       in: query
