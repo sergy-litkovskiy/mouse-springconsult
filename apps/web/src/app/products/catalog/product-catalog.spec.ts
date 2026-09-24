@@ -541,6 +541,97 @@ describe('ProductCatalog', () => {
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(0);
   });
 
+  describe('live search by title and description (AC-57)', () => {
+    const DEBOUNCE_MS = 300;
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function urlParam(name: string): string | undefined {
+      const router = TestBed.inject(Router);
+      return router.parseUrl(router.url).queryParamMap.get(name) ?? undefined;
+    }
+
+    async function waitOutDebounce(): Promise<void> {
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+      await tick();
+    }
+
+    it('applies a title of three characters by itself once the typing pauses (AC-57)', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('title', 'мИШ');
+      await tick();
+      http.expectNone((request) => request.url === '/api/products');
+
+      await waitOutDebounce();
+
+      expect(urlParam('title')).toBe('мИШ');
+      const request = expectRequest();
+      expect(request.request.params.get('title')).toBe('мИШ');
+      request.flush({ ...PAGE, items: [MOUSE], total: 1 });
+      await settle();
+
+      expect(element.querySelectorAll('tr[mat-row]').length).toBe(1);
+    });
+
+    it('applies a description of three characters by itself once the typing pauses (AC-57)', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('description', 'бездротов');
+      await waitOutDebounce();
+
+      expect(urlParam('description')).toBe('бездротов');
+      const request = expectRequest();
+      expect(request.request.params.get('description')).toBe('бездротов');
+      request.flush({ ...PAGE, items: [MOUSE], total: 1 });
+      await settle();
+    });
+
+    it('keeps the table and the URL on two characters and drops the filter on an empty field (AC-57)', async () => {
+      await open('/products?title=миш');
+      expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
+      await settle();
+
+      type('title', 'ми');
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('title')).toBe('миш');
+
+      type('title', '');
+      await waitOutDebounce();
+
+      expect(urlParam('title')).toBeUndefined();
+      const request = expectRequest();
+      expect(request.request.params.has('title')).toBe(false);
+      request.flush(PAGE);
+      await settle();
+    });
+
+    it('opens a saved address with a two-character title or description without either filter (AC-57)', async () => {
+      await open('/products?title=ми&description=%20ab%20');
+      const request = expectRequest();
+
+      expect(request.request.params.has('title')).toBe(false);
+      expect(request.request.params.has('description')).toBe(false);
+
+      request.flush(PAGE);
+      await settle();
+
+      expect(element.querySelectorAll('tr[mat-row]').length).toBe(2);
+    });
+  });
+
   function publishedSelect(name: 'publishedProm' | 'publishedOlx'): Promise<MatSelectHarness> {
     return TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
       MatSelectHarness.with({ selector: `[formcontrolname="${name}"]` }),
