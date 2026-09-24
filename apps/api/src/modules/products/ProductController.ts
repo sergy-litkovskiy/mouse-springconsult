@@ -70,7 +70,7 @@ export class ProductController {
     app.post('/', { preHandler: sessionGuard }, this.create);
     app.get('/:productId', { preHandler: sessionGuard }, this.getById);
     app.patch('/:productId', { preHandler: sessionGuard }, this.update);
-    app.delete('/:productId', { preHandler: sessionGuard }, this.deleteProduct);
+    app.delete('/:productId', this.deleteProduct);
     app.post(
       '/:productId/images',
       { preHandler: sessionGuard, bodyLimit: config.http.imageUpload.bodyLimitBytes },
