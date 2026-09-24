@@ -77,9 +77,9 @@ const FAILED_RUNS_EXPRESSION =
 
 function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilters): void {
   if (filters.title !== undefined) {
-    query.andWhere(
-      `(product.titleProm ilike '%${filters.title}%' or product.titleOlx ilike '%${filters.title}%')`,
-    );
+    query.andWhere('(product.titleProm ilike :title or product.titleOlx ilike :title)', {
+      title: toLikePattern(filters.title),
+    });
   }
   if (filters.description !== undefined) {
     query.andWhere(
