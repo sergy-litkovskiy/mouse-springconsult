@@ -115,7 +115,7 @@ describe('product list query contract', () => {
     const longest = 'к'.repeat(productConstraints.categoryMaxLength);
     const tooLong = 'к'.repeat(productConstraints.categoryMaxLength + 1);
     const twenty = Array.from(
-      { length: 20 },
+      { length: productConstraints.categoryFilterMaxItems },
       (_, i) => `${longest.slice(0, -3)}${String(i).padStart(3, '0')}`,
     );
 
@@ -131,6 +131,18 @@ describe('product list query contract', () => {
       assert.equal(result.success, false);
       assert.equal(result.error.issues[0]?.path[0], 'category');
     }
+  });
+
+  it('counts a repeated category once, so a link that spells it past the bound still works', () => {
+    const repeats = Array.from(
+      { length: productConstraints.categoryFilterMaxItems + 1 },
+      () => 'Миші',
+    );
+    const parsed: Record<string, unknown> = productListQuerySchema.parse({
+      category: [...repeats, ' Миші ', 'Клавіатури'],
+    });
+
+    assert.deepEqual(parsed['category'], ['Миші', 'Клавіатури']);
   });
 
   it('leaves an absent filter absent instead of inventing a default', () => {

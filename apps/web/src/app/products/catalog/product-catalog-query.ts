@@ -48,6 +48,19 @@ export function textFilter(maxLength: number): (value: string | undefined) => st
   };
 }
 
+const categoryText = textFilter(productConstraints.categoryMaxLength);
+
+/**
+ * The router hands a repeated `?category=` over as an array, the form the API documents. Until the
+ * filter takes several categories (T62) the first one is the filter; a string method called on
+ * the array would take the whole catalogue down instead.
+ */
+export function toCategoryFilter(
+  value: string | readonly string[] | undefined,
+): string | undefined {
+  return categoryText(typeof value === 'object' ? value[0] : value);
+}
+
 /**
  * The same expression the backend validates with, applied here so that "1000.555" is dropped by
  * the page that produced it instead of coming back as a `validation_failed` that names no field.

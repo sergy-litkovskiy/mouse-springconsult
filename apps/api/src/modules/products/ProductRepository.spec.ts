@@ -278,6 +278,23 @@ describe('product repository (postgres)', () => {
     assert.deepEqual(await products.listCategories(), ['Клавіатури', 'Миші']);
   });
 
+  it('orders categories by the Ukrainian alphabet, not by code point (AC-55)', async () => {
+    // Code points put І (U+0406) and Є (U+0404) before А (U+0410), Ґ (U+0490) after Я,
+    // and every lowercase letter after every capital.
+    for (const category of ['Яблука', 'Іграшки', 'Ґаджети', 'Єноти', 'аудіо', 'Аксесуари']) {
+      await seedProduct({ category });
+    }
+
+    assert.deepEqual(await products.listCategories(), [
+      'Аксесуари',
+      'аудіо',
+      'Ґаджети',
+      'Єноти',
+      'Іграшки',
+      'Яблука',
+    ]);
+  });
+
   it('lists the cards of any of several categories and counts only them (AC-55)', async () => {
     const [mouse, keyboard, otherMouse] = [
       await seedProduct({ category: 'Миші' }),

@@ -57,6 +57,7 @@ import {
   toPriceFilter,
   toFlagFilter,
   textFilter,
+  toCategoryFilter,
   toSortDirection,
   toSortField,
 } from './product-catalog-query';
@@ -178,8 +179,8 @@ export class ProductCatalog {
   readonly priceMax = input<string | undefined, string | undefined>(undefined, {
     transform: toPriceFilter,
   });
-  readonly category = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(productConstraints.categoryMaxLength),
+  readonly category = input<string | undefined, string | readonly string[] | undefined>(undefined, {
+    transform: toCategoryFilter,
   });
   readonly publishedProm = input<boolean | undefined, string | undefined>(undefined, {
     transform: toFlagFilter,

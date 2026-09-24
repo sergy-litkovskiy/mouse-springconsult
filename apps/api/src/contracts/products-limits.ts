@@ -5,6 +5,8 @@
 export const productConstraints = {
   titleMaxLength: 200,
   categoryMaxLength: 120,
+  /** How many categories one list request may filter by; the catalogue caps its chips at the same number. */
+  categoryFilterMaxItems: 20,
   keywordMaxLength: 60,
   maxKeywords: 30,
   maxImagesPerProduct: 10,

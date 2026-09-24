@@ -245,6 +245,26 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
+  it('sends the category from the address bar as a filter (AC-55)', async () => {
+    await open('/products?category=Миші');
+    const request = expectRequest();
+
+    expect(request.request.params.getAll('category')).toEqual(['Миші']);
+
+    request.flush(PAGE);
+    await settle();
+  });
+
+  it('filters by the first of repeated categories instead of failing to render', async () => {
+    await open('/products?category=Миші&category=Клавіатури');
+    const request = expectRequest();
+
+    expect(request.request.params.getAll('category')).toEqual(['Миші']);
+
+    request.flush(PAGE);
+    await settle();
+  });
+
   it('drops a filter the address bar made longer than the contract allows', async () => {
     await open(`/products?category=${'я'.repeat(200)}`);
     const request = expectRequest();

@@ -145,9 +145,12 @@ export class ProductRepository {
       .getRepository(Product)
       .createQueryBuilder('product')
       .select('product.category', 'category')
-      .distinct(true)
       .where("product.category <> ''")
-      .orderBy('product.category', 'ASC')
+      // GROUP BY rather than DISTINCT: Postgres refuses an ORDER BY expression that is not in the
+      // select list of a DISTINCT. The collation is explicit because the Alpine image's default one
+      // compares code points, which puts «Іграшки» before «Аксесуари» and «Ґаджети» after «Я».
+      .groupBy('product.category')
+      .orderBy('product.category COLLATE "uk-x-icu"', 'ASC')
       .getRawMany<{ category: string }>();
     return rows.map((row) => row.category);
   }
