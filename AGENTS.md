@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Спільні правила для агентів-рев'юерів цього репо. Файл читають Codex (OpenAI) і
-Copilot (GitHub); Claude Code його сам не підвантажує — у нього `CLAUDE.md`.
+Copilot (GitHub); Claude Code — через імпорт `@AGENTS.md` у кореневому `CLAUDE.md`.
 Тримай правила короткими: що довший файл, то слабший сигнал.
 
 ## Project context
