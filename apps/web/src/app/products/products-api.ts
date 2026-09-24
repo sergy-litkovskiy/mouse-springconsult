@@ -113,6 +113,8 @@ export class ProductsApi {
   }
 }
 
+type QueryParamValue = string | number | boolean | readonly string[];
+
 /**
  * Every field the query holds becomes a parameter, including fields the contract grows later: a
  * hand-written list of `if`s compiles just as well and silently drops the new filter.
@@ -120,12 +122,9 @@ export class ProductsApi {
  * A filter that was not set is not sent at all — an empty parameter would arrive as an empty
  * string and be rejected as invalid rather than understood as "no filter".
  */
-function toParams(
-  query: ProductListQuery,
-): Record<string, string | number | boolean | readonly string[]> {
-  const params: Record<string, string | number | boolean | readonly string[]> = {};
-  const entries: [string, string | number | boolean | readonly string[] | undefined][] =
-    Object.entries(query);
+function toParams(query: ProductListQuery): Record<string, QueryParamValue> {
+  const params: Record<string, QueryParamValue> = {};
+  const entries: [string, QueryParamValue | undefined][] = Object.entries(query);
   for (const [key, value] of entries) {
     if (value !== undefined) {
       params[key] = value;
