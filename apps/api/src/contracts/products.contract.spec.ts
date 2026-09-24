@@ -96,6 +96,55 @@ describe('product list query contract', () => {
     assert.equal(productListQuerySchema.safeParse({ title: '   ' }).success, false);
   });
 
+  it('reads a single category as a list of one, so a saved address keeps working (AC-55)', () => {
+    // Fastify hands over one `?category=` as a string and several as an array.
+    const parsed: Record<string, unknown> = productListQuerySchema.parse({ category: ' Миші ' });
+
+    assert.deepEqual(parsed['category'], ['Миші']);
+  });
+
+  it('reads a repeated category as a list, each value trimmed (AC-55)', () => {
+    const parsed: Record<string, unknown> = productListQuerySchema.parse({
+      category: [' Миші', 'Клавіатури '],
+    });
+
+    assert.deepEqual(parsed['category'], ['Миші', 'Клавіатури']);
+  });
+
+  it('takes up to twenty categories of up to 120 characters and refuses anything past that (AC-55)', () => {
+    const longest = 'к'.repeat(productConstraints.categoryMaxLength);
+    const tooLong = 'к'.repeat(productConstraints.categoryMaxLength + 1);
+    const twenty = Array.from(
+      { length: productConstraints.categoryFilterMaxItems },
+      (_, i) => `${longest.slice(0, -3)}${String(i).padStart(3, '0')}`,
+    );
+
+    assert.equal(productListQuerySchema.safeParse({ category: twenty }).success, true);
+    assert.equal(
+      productListQuerySchema.safeParse({ category: [...twenty, 'Миші'] }).success,
+      false,
+    );
+    assert.equal(productListQuerySchema.safeParse({ category: ['Миші', '   '] }).success, false);
+
+    for (const category of [tooLong, ['Миші', tooLong]]) {
+      const result = productListQuerySchema.safeParse({ category });
+      assert.equal(result.success, false);
+      assert.equal(result.error.issues[0]?.path[0], 'category');
+    }
+  });
+
+  it('counts a repeated category once, so a link that spells it past the bound still works', () => {
+    const repeats = Array.from(
+      { length: productConstraints.categoryFilterMaxItems + 1 },
+      () => 'Миші',
+    );
+    const parsed: Record<string, unknown> = productListQuerySchema.parse({
+      category: [...repeats, ' Миші ', 'Клавіатури'],
+    });
+
+    assert.deepEqual(parsed['category'], ['Миші', 'Клавіатури']);
+  });
+
   it('leaves an absent filter absent instead of inventing a default', () => {
     const parsed = productListQuerySchema.parse({ page: '1' });
 

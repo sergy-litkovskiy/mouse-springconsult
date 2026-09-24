@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.contract';
@@ -94,6 +94,24 @@ describe('ProductsApi', () => {
 
   afterEach(() => {
     http.verify();
+  });
+
+  it('sends every category of the list as a parameter of its own (AC-55)', () => {
+    const { url, params } = api.listRequest({
+      page: 1,
+      pageSize: 20,
+      sort: 'titleProm',
+      direction: 'asc',
+      category: ['Миші', 'Клавіатури'],
+    });
+
+    // The same HttpParams `fromObject` path httpResource takes with these params.
+    TestBed.inject(HttpClient).get(url, { params }).subscribe();
+    const request = http.expectOne((each) => each.url === url);
+
+    // A joined "Миші,Клавіатури" would be looked up by the API as one category with a comma.
+    expect(request.request.params.getAll('category')).toEqual(['Миші', 'Клавіатури']);
+    request.flush({});
   });
 
   it('reads one card by its id (getProduct)', async () => {

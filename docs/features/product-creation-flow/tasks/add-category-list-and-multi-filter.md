@@ -1,7 +1,7 @@
 ---
 id: T61
 title: "api: перелік категорій і фільтр за кількома категоріями"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2200
 blocked_by: []
 blocks: [T62]
-updated_at: "2026-09-21"
+updated_at: "2026-09-24"
 ---
 
 # T61 — api: перелік категорій і фільтр за кількома категоріями
@@ -23,15 +23,18 @@ updated_at: "2026-09-21"
 ([T62](pick-catalog-categories-with-autocomplete.md)). Для цього `api` має:
 
 1. **Віддати перелік категорій.** `GET /products/categories` — `DISTINCT` непорожніх
-   `products.category`, відсортованих за алфавітом (`COLLATE` бази), масив рядків. Без
+   `products.category`, відсортованих за українським алфавітом (колація ICU `uk-x-icu`: типова
+   колація бази на Alpine порівнює кодові точки), масив рядків. Без
    пагінації: категорій десятки, не тисячі. Маршрут під `sessionGuard`, як і решта `/products`.
    Статичний сегмент `categories` не має потрапити в `/:productId` — find-my-way у Fastify віддає
    перевагу статичному маршруту, але перевірити це смоуком, а реєструвати маршрут поруч із `/`.
 2. **Фільтрувати за кількома.** `category` у запиті списку стає масивом: повторюваний
    query-параметр `?category=A&category=B`. Один параметр Fastify віддає рядком, кілька —
-   масивом, тож схема приймає обидва й нормалізує до масиву (1–20 елементів, кожен 1–120
-   символів після `trim`). Умова в репозиторії — `product.category IN (:...categories)`, разом
-   з іншими фільтрами через AND. Порожній масив чи відсутній параметр — без фільтра.
+   масивом, тож схема приймає обидва й нормалізує до масиву (1–20 різних елементів, кожен 1–120
+   символів після `trim`; повтори рахуються один раз). Умова в репозиторії —
+   `product.category IN (:...categories)`, разом з іншими фільтрами через AND. Відсутній параметр —
+   без фільтра; порожнє значення `?category=` — `400`, як і записано в AC-56
+   [T62](pick-catalog-categories-with-autocomplete.md).
 
 Зворотна сумісність: збережена адреса з одним `category=A` працює як раніше.
 
@@ -60,15 +63,18 @@ updated_at: "2026-09-21"
 
 ## API contract excerpt
 
-Чинний параметр, який задача перетворює на масив:
+Параметр після задачі — масив (до неї був `schema: { type: string, maxLength: 120 }`):
 
 ```yaml
         - { $ref: "#/components/parameters/CategoryFilter" }
     CategoryFilter:
       name: category
       in: query
-      schema: { type: string, maxLength: 120 }
-        category: { type: string, maxLength: 120 }
+      style: form
+      explode: true
+        minItems: 1
+        maxItems: 20
+        items: { type: string, minLength: 1, maxLength: 120 }
 ```
 
 ## Acceptance criteria
@@ -109,10 +115,10 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-55: перелік категорій і фільтр за кількома, збережені адреси з однією категорією працюють.
-- [ ] `api`: `typecheck` · `lint` · `test` · `deps:check` зелені; смоук `401` пройдено.
-- [ ] `openapi.yaml` і `PRD.md §5` оновлено.
-- [ ] Коміт: `feat(products): list categories and filter by several of them`.
+- [x] AC-55: перелік категорій і фільтр за кількома, збережені адреси з однією категорією працюють.
+- [x] `api`: `typecheck` · `lint` · `test` · `deps:check` зелені; смоук `401` пройдено.
+- [x] `openapi.yaml` і `PRD.md §5` оновлено.
+- [x] Коміт: `feat(products): list categories and filter by several of them`.
 
 ## Links
 

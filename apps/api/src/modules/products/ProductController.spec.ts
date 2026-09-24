@@ -199,6 +199,71 @@ describe('product controller: list', () => {
   });
 });
 
+class CategoryRepository extends StubProductRepository {
+  readonly categories = ['Клавіатури', 'Миші'];
+  lastCriteria: ProductListCriteria | undefined;
+
+  override async listCategories(): Promise<string[]> {
+    return this.categories;
+  }
+
+  override async list(criteria: ProductListCriteria): Promise<ProductPage> {
+    this.lastCriteria = criteria;
+    return super.list(criteria);
+  }
+}
+
+describe('product controller: categories', () => {
+  const repository = new CategoryRepository();
+  let app: FastifyInstance;
+  let allowed = true;
+
+  before(async () => {
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, new StubPreparationRepository()),
+      'https://images.example.com',
+    ).register(app, async (_request, reply) => {
+      if (!allowed) {
+        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
+      }
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  it('answers the category list rather than reading categories as a card id (AC-55)', async () => {
+    const response = await app.inject({ method: 'GET', url: '/categories' });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), ['Клавіатури', 'Миші']);
+  });
+
+  it('puts the category list route behind the session guard (AC-55)', async () => {
+    allowed = false;
+    try {
+      const response = await app.inject({ method: 'GET', url: '/categories' });
+
+      assert.equal(response.statusCode, 401);
+    } finally {
+      allowed = true;
+    }
+  });
+
+  it('hands a repeated category to the service as a list (AC-55)', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/?category=${encodeURIComponent('Миші')}&category=${encodeURIComponent('Клавіатури')}`,
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(repository.lastCriteria?.filters.category, ['Миші', 'Клавіатури']);
+  });
+});
+
 const FRONT_ID = '01931f2a-4444-7000-8000-000000000001';
 const BACK_ID = '01931f2a-4444-7000-8000-000000000002';
 

@@ -550,6 +550,26 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** значення потрапляє в поле
 **Then** переносу в значенні немає (вставлений перенос став пробілом, `Enter` нічого не додав), а «Зберегти» надсилає назву одним рядком; межа 200 символів і помилка `maxlength` працюють як раніше
 
+### AC-55 (US-07) — happy path
+
+Запит 2026-09-21, [T61](tasks/add-category-list-and-multi-filter.md).
+
+**Given** у базі картки з категоріями «Миші», «Клавіатури», «Миші» і одна без категорії
+**When** `user` запитує `GET /products/categories`
+**Then** відповідь `200` — `["Клавіатури", "Миші"]`: без дублів, без порожнього рядка, за алфавітом
+
+### AC-55 (US-07) — happy path (фільтр)
+
+**Given** ті самі картки
+**When** `user` запитує `GET /products?category=Миші&category=Клавіатури`
+**Then** у відповіді всі три картки з цими категоріями, `total` = 3; `?category=Миші` дає дві, як і раніше
+
+### AC-55 (US-07) — error
+
+**Given** запит без сесії або `category` довша за 120 символів
+**When** `api` приймає `GET /products/categories` чи `GET /products?category=…`
+**Then** без сесії — `401 not_authenticated`, задовга категорія — `400` з полем `category` у `details`
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

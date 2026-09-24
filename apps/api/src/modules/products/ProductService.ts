@@ -143,6 +143,10 @@ export class ProductService {
     return this.products.list(criteria);
   }
 
+  async listCategories(): Promise<string[]> {
+    return this.products.listCategories();
+  }
+
   /**
    * Reading writes here, and that is the choice of sad.md §6, scenario 9: the check against the
    * last accepted suggestion lives on the read of the card. While a field still holds what was

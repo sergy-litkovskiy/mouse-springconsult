@@ -103,6 +103,27 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/NotAuthenticated" }
 
+  /products/categories:
+    get:
+      tags: [products]
+      summary: Перелік категорій, що вже є в картках
+      description: >-
+        Кожна непорожня `products.category` один раз, за українським алфавітом (колація ICU
+        `uk-x-icu`, а не типова колація бази, яка на Alpine порівнює кодові точки), без
+        пагінації: категорій десятки, не тисячі (AC-55). Статичний сегмент `categories` не
+        потрапляє в `/products/{productId}`.
+      operationId: listProductCategories
+      responses:
+        "200":
+          description: Категорії за алфавітом
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+              example: ["Клавіатури", "Миші"]
+        "401": { $ref: "#/components/responses/NotAuthenticated" }
+
   /products/{productId}:
     parameters:
       - { $ref: "#/components/parameters/ProductId" }
@@ -519,7 +540,19 @@ components:
     CategoryFilter:
       name: category
       in: query
-      schema: { type: string, maxLength: 120 }
+      description: >-
+        Повторюваний параметр: `?category=A&category=B` дає картки будь-якої з категорій (AC-55).
+        Один `?category=A` читається як список з одного, тож збережені адреси працюють як раніше.
+        Повтори рахуються один раз: `maxItems` обмежує кількість різних категорій. Порожнє
+        значення `?category=` — `400`, а не «без фільтра».
+        Комбінується з іншими фільтрами через AND.
+      style: form
+      explode: true
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 20
+        items: { type: string, minLength: 1, maxLength: 120 }
     PublishedProm:
       name: publishedProm
       in: query

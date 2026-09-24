@@ -79,7 +79,21 @@ export const productListQuerySchema = z.object({
   /** Inclusive bounds, decimal strings like the price itself. Nothing is coerced. */
   priceMin: priceDecimal.optional(),
   priceMax: priceDecimal.optional(),
-  category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
+  /**
+   * Fastify hands over one `?category=` as a string and a repeated one as an array; a single
+   * value is read as a list of one, so an address saved before the filter took several still works.
+   * A repeat counts once: the bound is on distinct categories, not on how often a link spells one.
+   */
+  category: z
+    .preprocess(
+      (value) => (typeof value === 'string' ? [value] : value),
+      z
+        .array(z.string().trim().min(1).max(productConstraints.categoryMaxLength))
+        .min(1)
+        .transform((list) => [...new Set(list)])
+        .pipe(z.array(z.string()).max(productConstraints.categoryFilterMaxItems)),
+    )
+    .optional(),
   publishedProm: booleanFlag.optional(),
   publishedOlx: booleanFlag.optional(),
   /** The derived readiness of the card, the same predicate as `isReady` (ADR 0009). */
@@ -215,6 +229,11 @@ export const productListSchema = z.object({
 });
 
 export type ProductList = z.infer<typeof productListSchema>;
+
+/** Every non-empty category in use, once each, in Ukrainian alphabetical order. */
+export const productCategoryListSchema = z.array(z.string());
+
+export type ProductCategoryList = z.infer<typeof productCategoryListSchema>;
 
 export const productUpdateResponseSchema = productCardSchema.extend({
   /**

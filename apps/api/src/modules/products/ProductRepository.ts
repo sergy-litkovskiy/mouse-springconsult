@@ -14,7 +14,8 @@ export type ProductFilters = {
   /** Inclusive bounds as decimal strings; SQL compares them against the column. */
   readonly priceMin?: string | undefined;
   readonly priceMax?: string | undefined;
-  readonly category?: string | undefined;
+  /** Any of these: a card matches when its category is one of the list. */
+  readonly category?: readonly string[] | undefined;
   readonly publishedProm?: boolean | undefined;
   readonly publishedOlx?: boolean | undefined;
   readonly ready?: boolean | undefined;
@@ -95,7 +96,7 @@ function applyFilters(query: SelectQueryBuilder<Product>, filters: ProductFilter
     query.andWhere('product.price <= :priceMax', { priceMax: filters.priceMax });
   }
   if (filters.category !== undefined) {
-    query.andWhere('product.category = :category', { category: filters.category });
+    query.andWhere('product.category in (:...categories)', { categories: filters.category });
   }
   if (filters.publishedProm !== undefined) {
     query.andWhere('product.publishedProm = :publishedProm', {
@@ -137,6 +138,21 @@ export class ProductRepository {
       raw.filter((row) => row.failed_runs > 0).map((row) => [row.product_id, row.failed_runs]),
     );
     return { items: products, failedRuns, total, page: criteria.page, pageSize: criteria.pageSize };
+  }
+
+  async listCategories(): Promise<string[]> {
+    const rows = await this.dataSource
+      .getRepository(Product)
+      .createQueryBuilder('product')
+      .select('product.category', 'category')
+      .where("product.category <> ''")
+      // GROUP BY rather than DISTINCT: Postgres refuses an ORDER BY expression that is not in the
+      // select list of a DISTINCT. The collation is explicit because the Alpine image's default one
+      // compares code points, which puts «Іграшки» before «Аксесуари» and «Ґаджети» after «Я».
+      .groupBy('product.category')
+      .orderBy('product.category COLLATE "uk-x-icu"', 'ASC')
+      .getRawMany<{ category: string }>();
+    return rows.map((row) => row.category);
   }
 
   async findById(id: string): Promise<Product | null> {
