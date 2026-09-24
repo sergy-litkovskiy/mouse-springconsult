@@ -96,6 +96,20 @@ describe('product list query contract', () => {
     assert.equal(productListQuerySchema.safeParse({ title: '   ' }).success, false);
   });
 
+  it('takes a text filter of three characters and refuses two, counted after trimming (AC-57)', () => {
+    const three = productListQuerySchema.parse({ title: '  мИШ  ', description: ' опи ' });
+    assert.equal(three.title, 'мИШ');
+    assert.equal(three.description, 'опи');
+
+    for (const field of ['title', 'description'] as const) {
+      for (const value of ['ab', ' ab ', 'м']) {
+        const result = productListQuerySchema.safeParse({ [field]: value });
+        assert.equal(result.success, false, `${field}=${JSON.stringify(value)} must be rejected`);
+        assert.equal(result.error.issues[0]?.path[0], field);
+      }
+    }
+  });
+
   it('reads a single category as a list of one, so a saved address keeps working (AC-55)', () => {
     // Fastify hands over one `?category=` as a string and several as an array.
     const parsed: Record<string, unknown> = productListQuerySchema.parse({ category: ' Миші ' });

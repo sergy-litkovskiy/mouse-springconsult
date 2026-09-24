@@ -40,15 +40,23 @@ export function toSortDirection(value: string | undefined): ProductSortDirection
   return isSortDirection(value) ? value : productSortDefaults.direction;
 }
 
-/** A factory because the bound differs per field and an `input()` transform takes only the value. */
-export function textFilter(maxLength: number): (value: string | undefined) => string | undefined {
+/** A factory because the bounds differ per field and an `input()` transform takes only the value. */
+function textFilter(
+  minLength: number,
+  maxLength: number,
+): (value: string | undefined) => string | undefined {
   return (value) => {
     const cleaned = value?.trim() ?? '';
-    return cleaned === '' || cleaned.length > maxLength ? undefined : cleaned;
+    return cleaned.length < minLength || cleaned.length > maxLength ? undefined : cleaned;
   };
 }
 
-const categoryText = textFilter(productConstraints.categoryMaxLength);
+export const toSearchFilter = textFilter(
+  productConstraints.textFilterMinLength,
+  productConstraints.titleMaxLength,
+);
+
+const categoryText = textFilter(1, productConstraints.categoryMaxLength);
 
 /**
  * The router hands a repeated `?category=` over as an array, the form the API documents. Until the

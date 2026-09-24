@@ -4,6 +4,8 @@
  */
 export const productConstraints = {
   titleMaxLength: 200,
+  /** The title and description filters, counted after trimming: fewer characters match too much to narrow anything. */
+  textFilterMinLength: 3,
   categoryMaxLength: 120,
   /** How many categories one list request may filter by; the catalogue caps its chips at the same number. */
   categoryFilterMaxItems: 20,

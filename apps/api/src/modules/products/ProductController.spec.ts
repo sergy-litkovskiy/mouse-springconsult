@@ -264,6 +264,40 @@ describe('product controller: categories', () => {
   });
 });
 
+describe('product controller: text filters', () => {
+  const repository = new CategoryRepository();
+  let app: FastifyInstance;
+
+  before(async () => {
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, new StubPreparationRepository()),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this spec is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    repository.lastCriteria = undefined;
+  });
+
+  for (const url of ['/?title=ab', '/?description=%20ab%20']) {
+    it(`answers validation_failed for ${url} without reaching the list (AC-57)`, async () => {
+      const response = await app.inject({ method: 'GET', url });
+
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.json<{ code: string }>().code, apiErrorCodes.validationFailed);
+      assert.equal(repository.lastCriteria, undefined);
+    });
+  }
+});
+
 const FRONT_ID = '01931f2a-4444-7000-8000-000000000001';
 const BACK_ID = '01931f2a-4444-7000-8000-000000000002';
 

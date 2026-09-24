@@ -181,6 +181,33 @@ describe('product repository (postgres)', () => {
     assert.equal(page.total, 2);
   });
 
+  it('matches mixed-case Cyrillic in a title and in a description (AC-57)', async () => {
+    // ILIKE folds case by the database LC_CTYPE; under C/POSIX it would not fold Cyrillic.
+    const noMatch = { titleOlx: 'Logitech', descriptionProm: 'Опис.', descriptionOlx: 'Опис.' };
+    await seedProduct({ ...noMatch, titleProm: 'Миша Logitech' });
+    await seedProduct({
+      ...noMatch,
+      titleProm: 'Клавіатура Logitech',
+      descriptionOlx: 'Бездротова МИША в комплекті.',
+    });
+    await seedProduct({ ...noMatch, titleProm: 'Монітор Dell' });
+
+    const byTitle = await products.list({ ...BASE_CRITERIA, filters: { title: 'мИШ' } });
+    const byDescription = await products.list({
+      ...BASE_CRITERIA,
+      filters: { description: 'мИШ' },
+    });
+
+    assert.deepEqual(
+      byTitle.items.map((item) => item.titleProm),
+      ['Миша Logitech'],
+    );
+    assert.deepEqual(
+      byDescription.items.map((item) => item.titleProm),
+      ['Клавіатура Logitech'],
+    );
+  });
+
   it('compares a price as a number and not as a string', async () => {
     // Lexicographically "999.00" is greater than "1000.00": the bound is a string on the
     // way in, so this is the test that it stops being one the moment SQL sees it.
