@@ -225,6 +225,11 @@ export const productListSchema = z.object({
 
 export type ProductList = z.infer<typeof productListSchema>;
 
+/** Every non-empty category in use, once each, in the database's alphabetical order. */
+export const productCategoryListSchema = z.array(z.string());
+
+export type ProductCategoryList = z.infer<typeof productCategoryListSchema>;
+
 export const productUpdateResponseSchema = productCardSchema.extend({
   /**
    * How many keywords past the ceiling of thirty this save threw away (AC-07): going over

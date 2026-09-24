@@ -14,6 +14,7 @@ import {
   type FieldSuggestion as FieldSuggestionResponse,
   type ProductCard,
   type ProductCardRead,
+  type ProductCategoryList,
   type ProductImage as ProductImageResponse,
   type ProductList,
   type ProductListItem,
@@ -65,6 +66,7 @@ export class ProductController {
 
   register(app: FastifyInstance, sessionGuard: preHandlerAsyncHookHandler): void {
     app.get('/', { preHandler: sessionGuard }, this.list);
+    app.get('/categories', { preHandler: sessionGuard }, this.listCategories);
     app.post('/', { preHandler: sessionGuard }, this.create);
     app.get('/:productId', { preHandler: sessionGuard }, this.getById);
     app.patch('/:productId', { preHandler: sessionGuard }, this.update);
@@ -90,6 +92,9 @@ export class ProductController {
 
   // An arrow field rather than a method: Fastify calls the handler on its own, and a
   // method handed over as a value would lose `this`.
+  private readonly listCategories = async (): Promise<ProductCategoryList> =>
+    this.products.listCategories();
+
   private readonly list = async (request: FastifyRequest): Promise<ProductList> => {
     const parsed = productListQuerySchema.safeParse(request.query);
     if (!parsed.success) {
