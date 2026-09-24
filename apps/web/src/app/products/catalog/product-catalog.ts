@@ -13,7 +13,7 @@ import {
   type ResourceSnapshot,
   signal,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -28,7 +28,7 @@ import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom, map } from 'rxjs';
+import { debounceTime, firstValueFrom, map } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
   ProductCard,
@@ -168,10 +168,16 @@ export class ProductCatalog {
     { transform: toSortDirection },
   );
   readonly title = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(productConstraints.titleMaxLength),
+    transform: textFilter(
+      productConstraints.textFilterMinLength,
+      productConstraints.titleMaxLength,
+    ),
   });
   readonly description = input<string | undefined, string | undefined>(undefined, {
-    transform: textFilter(productConstraints.titleMaxLength),
+    transform: textFilter(
+      productConstraints.textFilterMinLength,
+      productConstraints.titleMaxLength,
+    ),
   });
   readonly priceMin = input<string | undefined, string | undefined>(undefined, {
     transform: toPriceFilter,
@@ -303,6 +309,28 @@ export class ProductCatalog {
         ready: flagControlValue(applied.ready),
       });
     });
+
+    // The two text fields apply themselves once typing pauses; the rest of the panel waits for
+    // the button. A value equal to the applied one is skipped: the effect above writes the URL
+    // back into the form, and navigating on that echo would drop the page the admin is on.
+    for (const name of ['title', 'description'] as const) {
+      this.filters.controls[name].valueChanges
+        .pipe(debounceTime(300), takeUntilDestroyed())
+        .subscribe((value) => {
+          const cleaned = value.trim();
+          if (cleaned !== '' && cleaned.length < productConstraints.textFilterMinLength) {
+            return;
+          }
+          if ((cleaned === '' ? undefined : cleaned) === this[name]()) {
+            return;
+          }
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParamsHandling: 'merge',
+            queryParams: { page: null, [name]: asQueryParam(value) },
+          });
+        });
+    }
   }
 
   protected applyFilters(): void {
