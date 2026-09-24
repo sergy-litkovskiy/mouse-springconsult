@@ -79,7 +79,16 @@ export const productListQuerySchema = z.object({
   /** Inclusive bounds, decimal strings like the price itself. Nothing is coerced. */
   priceMin: priceDecimal.optional(),
   priceMax: priceDecimal.optional(),
-  category: z.string().trim().min(1).max(productConstraints.categoryMaxLength).optional(),
+  /**
+   * Fastify hands over one `?category=` as a string and a repeated one as an array; a single
+   * value is read as a list of one, so an address saved before the filter took several still works.
+   */
+  category: z
+    .preprocess(
+      (value) => (typeof value === 'string' ? [value] : value),
+      z.array(z.string().trim().min(1).max(productConstraints.categoryMaxLength)).min(1).max(20),
+    )
+    .optional(),
   publishedProm: booleanFlag.optional(),
   publishedOlx: booleanFlag.optional(),
   /** The derived readiness of the card, the same predicate as `isReady` (ADR 0009). */

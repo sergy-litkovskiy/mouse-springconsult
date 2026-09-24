@@ -120,9 +120,12 @@ export class ProductsApi {
  * A filter that was not set is not sent at all — an empty parameter would arrive as an empty
  * string and be rejected as invalid rather than understood as "no filter".
  */
-function toParams(query: ProductListQuery): Record<string, string | number | boolean> {
-  const params: Record<string, string | number | boolean> = {};
-  const entries: [string, string | number | boolean | undefined][] = Object.entries(query);
+function toParams(
+  query: ProductListQuery,
+): Record<string, string | number | boolean | readonly string[]> {
+  const params: Record<string, string | number | boolean | readonly string[]> = {};
+  const entries: [string, string | number | boolean | readonly string[] | undefined][] =
+    Object.entries(query);
   for (const [key, value] of entries) {
     if (value !== undefined) {
       params[key] = value;

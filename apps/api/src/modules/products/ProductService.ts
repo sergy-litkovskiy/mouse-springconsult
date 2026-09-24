@@ -144,7 +144,7 @@ export class ProductService {
   }
 
   async listCategories(): Promise<string[]> {
-    throw new Error('Not implemented');
+    return this.products.listCategories();
   }
 
   /**

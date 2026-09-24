@@ -207,13 +207,17 @@ export class ProductCatalog {
     ready: this.ready(),
   }));
 
-  private readonly query = computed<ProductListQuery>(() => ({
-    page: this.page(),
-    pageSize: this.pageSize(),
-    sort: this.sort(),
-    direction: this.direction(),
-    ...this.appliedFilters(),
-  }));
+  private readonly query = computed<ProductListQuery>(() => {
+    const category = this.category();
+    return {
+      page: this.page(),
+      pageSize: this.pageSize(),
+      sort: this.sort(),
+      direction: this.direction(),
+      ...this.appliedFilters(),
+      category: category === undefined ? undefined : [category],
+    };
+  });
 
   private readonly catalogue = httpResource<ProductList>(() => this.api.listRequest(this.query()));
   private readonly shown = withPreviousValue(this.catalogue);
