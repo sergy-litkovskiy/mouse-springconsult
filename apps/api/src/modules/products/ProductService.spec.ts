@@ -365,7 +365,7 @@ describe('product service', () => {
       description: 'бездротова',
       priceMin: '100.00',
       priceMax: '5000.00',
-      category: ['Периферія'] as unknown as ProductListQuery['category'],
+      category: ['Периферія'],
       publishedProm: true,
       publishedOlx: false,
     });

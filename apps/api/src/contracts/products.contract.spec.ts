@@ -129,7 +129,7 @@ describe('product list query contract', () => {
     for (const category of [tooLong, ['Миші', tooLong]]) {
       const result = productListQuerySchema.safeParse({ category });
       assert.equal(result.success, false);
-      assert.equal(result.error?.issues[0]?.path[0], 'category');
+      assert.equal(result.error.issues[0]?.path[0], 'category');
     }
   });
 

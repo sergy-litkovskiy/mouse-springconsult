@@ -8,7 +8,6 @@ import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
   type ProductChanges,
-  type ProductFilters,
   type ProductListCriteria,
 } from './ProductRepository.ts';
 import { ImageNotFound } from './ProductErrors.ts';
@@ -80,9 +79,8 @@ const NO_MEDIA = undefined as unknown as MediaService;
 /** Nor for what reads the cost of a card: this data source holds no runs table. */
 const NO_PREPARATIONS = undefined as unknown as PreparationRepository;
 
-/** Cast because `ProductFilters.category` grows into a list together with the contract (T61). */
 function byCategories(...categories: string[]): ProductListCriteria {
-  return { ...BASE_CRITERIA, filters: { category: categories } as unknown as ProductFilters };
+  return { ...BASE_CRITERIA, filters: { category: categories } };
 }
 
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
