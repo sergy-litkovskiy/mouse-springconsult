@@ -139,6 +139,10 @@ export class ProductRepository {
     return { items: products, failedRuns, total, page: criteria.page, pageSize: criteria.pageSize };
   }
 
+  async listCategories(): Promise<string[]> {
+    throw new Error('Not implemented');
+  }
+
   async findById(id: string): Promise<Product | null> {
     const product = await this.dataSource.getRepository(Product).findOneBy({ id });
     if (product === null) {

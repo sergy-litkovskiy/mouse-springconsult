@@ -8,6 +8,7 @@ import { PRODUCT_IMAGES_TABLE, ProductImage } from './ProductImage.ts';
 import {
   ProductRepository,
   type ProductChanges,
+  type ProductFilters,
   type ProductListCriteria,
 } from './ProductRepository.ts';
 import { ImageNotFound } from './ProductErrors.ts';
@@ -78,6 +79,11 @@ const NO_MEDIA = undefined as unknown as MediaService;
 
 /** Nor for what reads the cost of a card: this data source holds no runs table. */
 const NO_PREPARATIONS = undefined as unknown as PreparationRepository;
+
+/** Cast because `ProductFilters.category` grows into a list together with the contract (T61). */
+function byCategories(...categories: string[]): ProductListCriteria {
+  return { ...BASE_CRITERIA, filters: { category: categories } as unknown as ProductFilters };
+}
 
 /** A well-formed uuid that belongs to no row: the argument a lookup is supposed to miss. */
 const MISSING_ID = '01931f2a-0000-7000-8000-000000000000';
@@ -264,6 +270,47 @@ describe('product repository (postgres)', () => {
 
     assert.equal(page.total, 3);
     assert.equal(page.items.length, 2);
+  });
+
+  it('lists every non-empty category once, in alphabetical order (AC-55)', async () => {
+    for (const category of ['Миші', 'Клавіатури', 'Миші', '']) {
+      await seedProduct({ category });
+    }
+
+    assert.deepEqual(await products.listCategories(), ['Клавіатури', 'Миші']);
+  });
+
+  it('lists the cards of any of several categories and counts only them (AC-55)', async () => {
+    const [mouse, keyboard, otherMouse] = [
+      await seedProduct({ category: 'Миші' }),
+      await seedProduct({ category: 'Клавіатури' }),
+      await seedProduct({ category: 'Миші' }),
+    ];
+    await seedProduct({ category: 'Монітори' });
+    await seedProduct({ category: '' });
+
+    const page = await products.list(byCategories('Миші', 'Клавіатури'));
+
+    assert.equal(page.total, 3);
+    assert.deepEqual(
+      page.items.map((product) => product.id).sort(),
+      [mouse, keyboard, otherMouse].sort(),
+    );
+  });
+
+  it('lists the cards of a single category as before (AC-55)', async () => {
+    await seedProduct({ category: 'Миші' });
+    await seedProduct({ category: 'Клавіатури' });
+    await seedProduct({ category: 'Миші' });
+    await seedProduct({ category: '' });
+
+    const page = await products.list(byCategories('Миші'));
+
+    assert.equal(page.total, 2);
+    assert.deepEqual(
+      page.items.map((product) => product.category),
+      ['Миші', 'Миші'],
+    );
   });
 
   it('lists only the ready cards and counts only them (AC-29)', async () => {

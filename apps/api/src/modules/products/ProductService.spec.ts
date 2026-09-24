@@ -114,6 +114,12 @@ class StubProductRepository extends ProductRepository {
     return this.stored?.id === id ? this.stored : null;
   }
 
+  categories: string[] = [];
+
+  override async listCategories(): Promise<string[]> {
+    return this.categories;
+  }
+
   override async create(draft: ProductDraft): Promise<Product> {
     this.lastDraft = draft;
     return readyCard({ images: [] });
@@ -359,7 +365,7 @@ describe('product service', () => {
       description: 'бездротова',
       priceMin: '100.00',
       priceMax: '5000.00',
-      category: 'Периферія',
+      category: ['Периферія'] as unknown as ProductListQuery['category'],
       publishedProm: true,
       publishedOlx: false,
     });
@@ -369,7 +375,7 @@ describe('product service', () => {
       description: 'бездротова',
       priceMin: '100.00',
       priceMax: '5000.00',
-      category: 'Периферія',
+      category: ['Периферія'],
       publishedProm: true,
       publishedOlx: false,
     });
@@ -391,6 +397,13 @@ describe('product service', () => {
     const page = await service.list({ ...BASE_QUERY, page: 2, pageSize: 5 });
 
     assert.deepEqual(page, { items: [], failedRuns: new Map(), total: 0, page: 2, pageSize: 5 });
+  });
+
+  it('returns the categories the repository lists (AC-55)', async () => {
+    const { service, repository } = setup();
+    repository.categories = ['Клавіатури', 'Миші'];
+
+    assert.deepEqual(await service.listCategories(), ['Клавіатури', 'Миші']);
   });
 });
 
