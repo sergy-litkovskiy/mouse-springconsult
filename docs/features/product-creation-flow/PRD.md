@@ -570,6 +570,26 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `api` приймає `GET /products/categories` чи `GET /products?category=…`
 **Then** без сесії — `401 not_authenticated`, задовга категорія — `400` з полем `category` у `details`
 
+### AC-57 (US-07) — happy path
+
+Запит 2026-09-21, [T63](tasks/search-titles-live-from-three-chars.md).
+
+**Given** у базі картки «Миша Logitech» і «Клавіатура Logitech»
+**When** `user` вводить у поле «Назва» `мИШ` і не тисне «Застосувати»
+**Then** через ~300 мс таблиця показує лише «Миша Logitech», а URL містить `title=мИШ`
+
+### AC-57 (US-07) — edge case
+
+**Given** у полі «Назва» був фільтр `миш`
+**When** `user` стирає поле до `ми`, а потім повністю
+**Then** на `ми` таблиця й URL не змінюються, на порожньому полі фільтр знято; збережена адреса `/products?title=ми` відкривається без помилки й без фільтра за назвою
+
+### AC-57 (US-07) — error
+
+**Given** запит до `api` в обхід форми
+**When** `GET /products?title=ab` або `GET /products?description=%20ab%20`
+**Then** відповідь `400` з полем `title` чи `description` у `details`
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
