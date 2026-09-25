@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: XS
 context_budget: 1200
 blocked_by: []
-blocks: []
-updated_at: "2026-09-23"
+blocks: [T77]
+updated_at: "2026-09-25"
 ---
 
 # T69 — «Згенерувати все» між галереєю й полями форми
