@@ -192,3 +192,17 @@
   --mat-button-text-label-text-color: var(--mat-sys-error);
   min-width: 3rem;
 }
+
+.mat-column-publishedProm,
+.mat-column-publishedOlx {
+  text-align: center;
+}
+
+.published-flag {
+  vertical-align: middle;
+  color: var(--mat-sys-outline);
+}
+
+.published-flag--on {
+  color: var(--app-success);
+}

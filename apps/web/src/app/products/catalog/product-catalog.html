@@ -230,14 +230,31 @@
         <ng-container matColumnDef="publishedProm">
           <th mat-header-cell *matHeaderCellDef scope="col">Prom</th>
           <td mat-cell *matCellDef="let product">
-            {{ product.publishedProm ? 'Опубліковано' : 'Ні' }}
+            @let promLabel =
+              product.publishedProm ? 'Опубліковано на Prom' : 'Не опубліковано на Prom';
+            <mat-icon
+              aria-hidden="false"
+              class="published-flag"
+              [class.published-flag--on]="product.publishedProm"
+              [attr.aria-label]="promLabel"
+              [matTooltip]="promLabel"
+              >check_circle</mat-icon
+            >
           </td>
         </ng-container>
 
         <ng-container matColumnDef="publishedOlx">
           <th mat-header-cell *matHeaderCellDef scope="col">OLX</th>
           <td mat-cell *matCellDef="let product">
-            {{ product.publishedOlx ? 'Опубліковано' : 'Ні' }}
+            @let olxLabel = product.publishedOlx ? 'Опубліковано на OLX' : 'Не опубліковано на OLX';
+            <mat-icon
+              aria-hidden="false"
+              class="published-flag"
+              [class.published-flag--on]="product.publishedOlx"
+              [attr.aria-label]="olxLabel"
+              [matTooltip]="olxLabel"
+              >check_circle</mat-icon
+            >
           </td>
         </ng-container>
 

@@ -650,6 +650,20 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `GET /products?title=ab` або `GET /products?description=%20ab%20`
 **Then** відповідь `400` з полем `title` чи `description` у `details`
 
+### AC-58 (US-07) — happy path
+
+Запит 2026-09-21, [T64](tasks/show-published-as-icons.md).
+
+**Given** картка опублікована на Prom і не опублікована на OLX
+**When** `user` дивиться на її рядок у каталозі
+**Then** у колонці «Prom» — зелена `check_circle`, у колонці «OLX» — сіра, тексту `Опубліковано` / `Ні` в клітинках немає
+
+### AC-58 (US-07) — accessibility
+
+**Given** той самий рядок
+**When** `user` наводить курсор на іконку або скрінрідер читає клітинку
+**Then** підказка й `aria-label` кажуть «Опубліковано на Prom» / «Не опубліковано на OLX», а сіра іконка має контраст з тлом не нижчий за 3:1
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
