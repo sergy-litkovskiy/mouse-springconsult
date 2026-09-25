@@ -1,7 +1,7 @@
 ---
 id: T59
 title: "Ключові слова як chips"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2000
 blocked_by: []
 blocks: [T62, T66]
-updated_at: "2026-09-21"
+updated_at: "2026-09-25"
 ---
 
 # T59 — Ключові слова як chips
@@ -98,9 +98,9 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-53: слова як chips, межі AC-07 і поведінка T55 збережені.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): edit keywords as chips in the card form`.
+- [x] AC-53: слова як chips, межі AC-07 і поведінка T55 збережені.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): edit keywords as chips in the card form`.
 
 ## Links
 
