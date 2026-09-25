@@ -110,6 +110,10 @@ function withPreviousValue<T>(input: Resource<T>): Resource<T> {
   return resourceFromSnapshots(derived);
 }
 
+function sameCategories(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((category, index) => category === b[index]);
+}
+
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
   new: 'Новий',
   used: 'Вживаний',
@@ -196,6 +200,12 @@ export class ProductCatalog {
     transform: toFlagFilter,
   });
 
+  // Repeated query parameters reach the input as a new array on every navigation, even when
+  // the categories are the same; without the comparison each one would rewrite the panel.
+  private readonly appliedCategories = computed(() => this.category(), {
+    equal: sameCategories,
+  });
+
   /**
    * Apart from paging and ordering, because the form mirrors these and only these: a click on
    * the paginator or a sort header is not a reason to wipe text the admin has typed into a
@@ -206,14 +216,14 @@ export class ProductCatalog {
     description: this.description(),
     priceMin: this.priceMin(),
     priceMax: this.priceMax(),
-    category: this.category(),
+    category: this.appliedCategories(),
     publishedProm: this.publishedProm(),
     publishedOlx: this.publishedOlx(),
     ready: this.ready(),
   }));
 
   private readonly query = computed<ProductListQuery>(() => {
-    const category = this.category();
+    const category = this.appliedCategories();
     return {
       page: this.page(),
       pageSize: this.pageSize(),
@@ -296,12 +306,15 @@ export class ProductCatalog {
   private readonly categoryText = toSignal(this.filters.controls.category.valueChanges, {
     initialValue: '',
   });
-  protected readonly pickedCategories = linkedSignal(() => this.category());
+  protected readonly pickedCategories = linkedSignal(() => this.appliedCategories());
   protected readonly categorySuggestions = computed(() => {
-    const text = this.categoryText().toLowerCase();
+    const text = this.categoryText().toLocaleLowerCase('uk');
     const picked = this.pickedCategories();
+    if (picked.length >= productConstraints.categoryFilterMaxItems) {
+      return [];
+    }
     return this.categories().filter(
-      (category) => category.toLowerCase().includes(text) && !picked.includes(category),
+      (category) => category.toLocaleLowerCase('uk').includes(text) && !picked.includes(category),
     );
   });
 
