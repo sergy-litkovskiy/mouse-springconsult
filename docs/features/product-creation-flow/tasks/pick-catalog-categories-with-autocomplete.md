@@ -1,7 +1,7 @@
 ---
 id: T62
 title: "Фільтр категорій: кілька значень з автодоповненням"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2000
 blocked_by: [T59, T60, T61]
 blocks: []
-updated_at: "2026-09-21"
+updated_at: "2026-09-25"
 ---
 
 # T62 — Фільтр категорій: кілька значень з автодоповненням
@@ -105,9 +105,9 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-56: кілька категорій з автодоповненням, стан у URL.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): pick several catalog categories with autocomplete`.
+- [x] AC-56: кілька категорій з автодоповненням, стан у URL.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): pick several catalog categories with autocomplete`.
 
 ## Links
 
