@@ -1,0 +1,112 @@
+name: Prepare release
+
+# Run by hand: Actions → Prepare release → Run workflow. Opens a Release-PR with the
+# version bump and a CHANGELOG section curated by Claude; release.yml takes over on merge.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compute the next version
+        id: version
+        run: |
+          next=$(scripts/next-version.sh)
+          previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*')
+          if [ "v$next" = "$previous" ]; then
+            echo "::notice::Nothing to release since $previous: no feat, fix or perf commits"
+            exit 0
+          fi
+          echo "previous=$previous" >>"$GITHUB_OUTPUT"
+          echo "next=$next" >>"$GITHUB_OUTPUT"
+
+      - name: Curate the changelog section
+        if: steps.version.outputs.next != ''
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          prompt=$(cat .github/prompts/changelog.md)
+          git log "$PREVIOUS..HEAD" --no-merges --format='- %s' >"$RUNNER_TEMP/commits.md"
+          # Outside the checkout, so the session does not load the repo's CLAUDE.md:
+          # the prompt carries everything the curation needs.
+          (cd "$RUNNER_TEMP" && claude -p "$prompt" --model claude-sonnet-5 --max-turns 2 --tools "" <commits.md) \
+            >"$RUNNER_TEMP/raw.md"
+          awk '
+            { lines[++n] = $0; if ($0 ~ /[^[:space:]]/) { if (!first) first = n; last = n } }
+            END { if (first) for (i = first; i <= last; i++) print lines[i] }
+          ' "$RUNNER_TEMP/raw.md" >"$RUNNER_TEMP/section.md"
+          if ! head -n 1 "$RUNNER_TEMP/section.md" | grep -q '^### '; then
+            echo "::error::Claude did not answer with changelog sections"
+            cat "$RUNNER_TEMP/raw.md"
+            exit 1
+          fi
+
+      - name: Open the Release-PR
+        if: steps.version.outputs.next != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.next }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          branch="chore-release-v$VERSION"
+          git switch -c "$branch"
+          scripts/bump-version.sh "$VERSION"
+          awk -v header="## [$VERSION] - $(date -u +%F)" -v section="$RUNNER_TEMP/section.md" '
+            { print }
+            /^## \[Unreleased\]/ && !done {
+              print ""
+              print header
+              print ""
+              while ((getline line <section) > 0) print line
+              done = 1
+            }
+            END { if (!done) exit 1 }
+          ' CHANGELOG.md >CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md apps/api/package.json apps/api/package-lock.json \
+            apps/web/package.json apps/web/package-lock.json
+          git commit -m "chore(release): v$VERSION"
+          git push origin "$branch"
+
+          {
+            echo "## What's Changed"
+            echo
+            echo "Release v$VERSION: the version of both apps and this CHANGELOG section."
+            echo
+            cat "$RUNNER_TEMP/section.md"
+            echo
+            echo "## Why"
+            echo
+            echo "\`scripts/next-version.sh\` counted the Conventional Commits since $PREVIOUS."
+            echo
+            echo "## How to Check"
+            echo
+            echo "- Every item is visible to an admin and none is invented; edit CHANGELOG.md in this PR if not."
+            echo "- On merge \`release.yml\` tags v$VERSION and drafts the GitHub Release; publish the draft by hand."
+            echo
+            echo "## Related Story"
+            echo
+            echo "None"
+          } >"$RUNNER_TEMP/pr-body.md"
+          gh pr create --base main --head "$branch" --title "chore(release): v$VERSION" \
+            --body-file "$RUNNER_TEMP/pr-body.md"
