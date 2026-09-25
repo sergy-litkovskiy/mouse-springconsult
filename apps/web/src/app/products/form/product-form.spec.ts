@@ -4,10 +4,16 @@ import {
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
+import { TestKey } from '@angular/cdk/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import {
+  MatChipGridHarness,
+  MatChipInputHarness,
+  type MatChipRowHarness,
+} from '@angular/material/chips/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
@@ -183,6 +189,81 @@ describe('ProductForm', () => {
     return button;
   }
 
+  async function keywordGrid(): Promise<MatChipGridHarness> {
+    return TestbedHarnessEnvironment.loader(fixture).getHarness(MatChipGridHarness);
+  }
+
+  async function keywords(): Promise<string[]> {
+    const rows = await (await keywordGrid()).getRows();
+    return Promise.all(rows.map((row) => row.getText()));
+  }
+
+  function keywordInput(): HTMLInputElement {
+    const found = element.querySelector<HTMLInputElement>('.mat-mdc-chip-input');
+    if (found === null) {
+      throw new Error('the keywords have no chip input');
+    }
+    return found;
+  }
+
+  /**
+   * The comma goes in by hand: the harness has no key for it and types a character with the code
+   * of the character itself, never the 188 a browser reports.
+   */
+  async function addKeyword(text: string, separator: 'Enter' | ',' = 'Enter'): Promise<void> {
+    const input = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatChipInputHarness);
+    await input.setValue(text);
+    if (separator === 'Enter') {
+      await input.sendSeparatorKey(TestKey.ENTER);
+    } else {
+      keywordInput().dispatchEvent(
+        new KeyboardEvent('keydown', { key: ',', keyCode: 188, bubbles: true, cancelable: true }),
+      );
+    }
+    await settle();
+  }
+
+  /**
+   * jsdom has no clipboard, so the event carries the text itself. A field that does not take the
+   * paste gets the text the way a browser would insert it, and Enter ends it.
+   */
+  async function pasteKeywords(text: string): Promise<void> {
+    const input = keywordInput();
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', { value: { getData: () => text } });
+    input.dispatchEvent(paste);
+    if (!paste.defaultPrevented) {
+      input.value += text;
+      input.dispatchEvent(new Event('input'));
+    }
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true, cancelable: true }),
+    );
+    await settle();
+  }
+
+  async function keywordRow(index: number): Promise<MatChipRowHarness> {
+    const row = (await (await keywordGrid()).getRows())[index];
+    if (row === undefined) {
+      throw new Error(`no keyword chip #${String(index)}`);
+    }
+    return row;
+  }
+
+  async function editKeyword(index: number, text: string): Promise<void> {
+    const row = await keywordRow(index);
+    await row.startEditing();
+    await settle();
+    await (await row.getEditInput()).setValue(text);
+    await row.finishEditing();
+    await settle();
+  }
+
+  async function removeKeyword(index: number): Promise<void> {
+    await (await (await keywordRow(index)).getRemoveButton()).click();
+    await settle();
+  }
+
   async function toggle(label: string): Promise<MatSlideToggleHarness> {
     const loader = TestbedHarnessEnvironment.loader(fixture);
     return loader.getHarness(MatSlideToggleHarness.with({ label }));
@@ -224,14 +305,7 @@ describe('ProductForm', () => {
       open(WITHOUT_FRAMES);
       await settle();
 
-      for (const name of [
-        'titleProm',
-        'titleOlx',
-        'descriptionOlx',
-        'seoKeywords',
-        'price',
-        'category',
-      ]) {
+      for (const name of ['titleProm', 'titleOlx', 'descriptionOlx', 'price', 'category']) {
         expect(field(name).disabled, name).toBe(true);
       }
       expect(promHtmlMode().disabled).toBe(true);
@@ -288,7 +362,8 @@ describe('ProductForm', () => {
     type('titleOlx', 'Logitech MX Master 3 бездротова');
     await typePromDescription('Бездротова миша у відмінному стані.');
     type('descriptionOlx', 'Продам мишу, повний комплект.');
-    type('seoKeywords', 'миша, logitech');
+    await addKeyword('миша');
+    await addKeyword('logitech');
     type('price', '2499.00');
     type('category', 'Периферія');
     await settle();
@@ -550,13 +625,117 @@ describe('ProductForm', () => {
     await settle();
     expect(saveButton().disabled).toBe(false);
 
-    type('seoKeywords', 'x'.repeat(61));
-    await settle();
+    await addKeyword('x'.repeat(61));
     expect(saveButton().disabled).toBe(true);
 
-    type('seoKeywords', 'миша');
-    await settle();
+    await removeKeyword(2);
     expect(saveButton().disabled).toBe(false);
+  });
+
+  describe('the keywords as chips (AC-53)', () => {
+    it('shows every keyword of the card as a chip of its own (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      expect(await keywords()).toEqual(['миша', 'logitech']);
+    });
+
+    it('adds a keyword on Enter and another on a comma, emptying the input each time (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await addKeyword('бездротова');
+      expect(keywordInput().value).toBe('');
+      await addKeyword('mx master 3', ',');
+      expect(keywordInput().value).toBe('');
+
+      expect(await keywords()).toEqual(['миша', 'logitech', 'бездротова', 'mx master 3']);
+    });
+
+    it('edits a keyword in place on a double click (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      expect(await (await keywordRow(1)).isEditable()).toBe(true);
+      await editKeyword(1, 'logitech mx');
+
+      expect(await keywords()).toEqual(['миша', 'logitech mx']);
+    });
+
+    it('removes a keyword with its cross (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await removeKeyword(0);
+
+      expect(await keywords()).toEqual(['logitech']);
+    });
+
+    it('saves the keywords as an array in the order shown on screen (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await addKeyword('бездротова');
+      await editKeyword(1, 'logitech mx master 3');
+      await removeKeyword(0);
+      expect(await keywords()).toEqual(['logitech mx master 3', 'бездротова']);
+      submit();
+      await settle();
+
+      const request = http.expectOne(`/api/products/${CARD_ID}`);
+      expect(request.request.method).toBe('PATCH');
+      expect((request.request.body as Record<string, unknown>)['seoKeywords']).toEqual([
+        'logitech mx master 3',
+        'бездротова',
+      ]);
+      request.flush(answer(PUBLISHED_ON_PROM));
+      await settle();
+    });
+
+    it('splits a pasted line on commas and adds no blank or repeated keyword (AC-53)', async () => {
+      open(EMPTY_WITH_FRAME);
+      await settle();
+
+      await pasteKeywords('миша, миша, , logitech');
+
+      expect(await keywords()).toEqual(['миша', 'logitech']);
+      expect(keywordInput().value).toBe('');
+    });
+
+    it('adds neither a blank keyword nor one already on the list (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await addKeyword('   ');
+      await addKeyword('миша', ',');
+      await addKeyword(' logitech ');
+
+      expect(await keywords()).toEqual(['миша', 'logitech']);
+    });
+
+    it('shows the length error for a keyword over 60 characters and sends nothing (AC-53, AC-07)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await addKeyword('x'.repeat(61));
+      keywordInput().dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect(element.textContent).toContain('Кожне слово — до 60 символів.');
+      expect(saveButton().disabled).toBe(true);
+      submit();
+      await settle();
+      http.expectNone(`/api/products/${CARD_ID}`);
+    });
+
+    it('keeps the chips and their input unavailable until the first frame (AC-53, AC-20)', async () => {
+      open(WITHOUT_FRAMES);
+      await settle();
+
+      const loader = TestbedHarnessEnvironment.loader(fixture);
+      expect(await (await keywordGrid()).isDisabled()).toBe(true);
+      expect(await (await loader.getHarness(MatChipInputHarness)).isDisabled()).toBe(true);
+    });
   });
 
   describe('the two titles (AC-52)', () => {
@@ -699,6 +878,13 @@ describe('ProductForm', () => {
       value: { priceFrom: '2100.00', priceTo: '2600.00' },
     };
 
+    const SUGGESTED_KEYWORDS: FieldSuggestion = {
+      ...SUGGESTED_OLX_DESCRIPTION,
+      id: '77777777-7777-4777-8777-777777777777',
+      field: 'seoKeywords',
+      value: ['бездротова миша', 'logitech mx master 3'],
+    };
+
     /** A card read that already carries suggestions nobody has decided on yet. */
     function withPending(card: ProductCard, pending: readonly FieldSuggestion[]): ProductCardRead {
       return { ...asRead(card), pendingSuggestions: [...pending] };
@@ -836,6 +1022,68 @@ describe('ProductForm', () => {
       expect(field('titleProm').value).toBe(PUBLISHED_ON_PROM.titleProm);
     });
 
+    it('keeps «? -> AI» for the keywords unavailable until there is a chip (AC-53, AC-22)', async () => {
+      open(EMPTY_WITH_FRAME);
+      await settle();
+
+      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(true);
+
+      await addKeyword('миша');
+
+      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(false);
+    });
+
+    it('rewrites the keywords from their chips joined with commas (AC-53, AC-21)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await addKeyword('бездротова');
+      button('seoKeywords', 'rewrite')?.click();
+      await settle();
+
+      const request = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+      expect(request.request.body).toEqual({
+        scope: 'field',
+        field: 'seoKeywords',
+        draftText: 'миша, logitech, бездротова',
+      });
+      request.flush(run('running'));
+      await settle();
+
+      http.expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`).flush(run('failed'));
+      await settle();
+      http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+      await settle();
+    });
+
+    it('puts an accepted keyword suggestion into the chips and saves it as an array (AC-53)', async () => {
+      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_KEYWORDS]);
+      await settle();
+
+      button('seoKeywords', 'accept')?.click();
+      await settle();
+
+      http.expectOne(`/api/products/${CARD_ID}/suggestions/${SUGGESTED_KEYWORDS.id}/accept`).flush(
+        asRead({
+          ...PUBLISHED_ON_PROM,
+          seoKeywords: ['бездротова миша', 'logitech mx master 3'],
+        }),
+      );
+      await settle();
+
+      expect(await keywords()).toEqual(['бездротова миша', 'logitech mx master 3']);
+
+      submit();
+      await settle();
+      const request = http.expectOne(`/api/products/${CARD_ID}`);
+      expect((request.request.body as Record<string, unknown>)['seoKeywords']).toEqual([
+        'бездротова миша',
+        'logitech mx master 3',
+      ]);
+      request.flush(answer(PUBLISHED_ON_PROM));
+      await settle();
+    });
+
     it('shows the suggestions of a card opened without a run of its own (AC-28)', async () => {
       openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
       await settle();
@@ -899,7 +1147,7 @@ describe('ProductForm', () => {
         expect(field('titleProm').value).toBe(GENERATED.titleProm);
         expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
         expect(field('descriptionOlx').value).toBe(GENERATED.descriptionOlx);
-        expect(field('seoKeywords').value).toBe('миша, logitech');
+        expect(await keywords()).toEqual(['миша', 'logitech']);
         expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
       });
 
@@ -943,8 +1191,37 @@ describe('ProductForm', () => {
 
         expect(field('descriptionOlx').value).toBe('Мій власний текст.');
         expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
-        expect(field('seoKeywords').value).toBe('миша, logitech');
+        expect(await keywords()).toEqual(['миша', 'logitech']);
         expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
+      });
+
+      it('keeps the keywords the admin changed during the run (AC-53, AC-11)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+        expect(await keywords()).toEqual([]);
+
+        await startGenerateAll();
+        await addKeyword('моє слово');
+        await finishWith(GENERATED);
+
+        expect(await keywords()).toEqual(['моє слово']);
+        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
+      });
+
+      // Leaving the chip input hands the grid's list back to the form, so the control is marked
+      // dirty with the very list it already held.
+      it('fills the keywords the admin only passed through during the run (AC-53, AC-05)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+        expect(await keywords()).toEqual([]);
+
+        await startGenerateAll();
+        keywordInput().dispatchEvent(new Event('focus'));
+        keywordInput().dispatchEvent(new Event('blur'));
+        await settle();
+        await finishWith(GENERATED);
+
+        expect(await keywords()).toEqual(['миша', 'logitech']);
       });
     });
 
