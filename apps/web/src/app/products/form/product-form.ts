@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -16,6 +17,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import {
+  type MatChipEditedEvent,
+  type MatChipInputEvent,
+  MatChipsModule,
+} from '@angular/material/chips';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -106,12 +112,12 @@ function parseKeywords(text: string): string[] {
     .filter((keyword) => keyword !== '');
 }
 
-function fieldText(product: Product, field: RewritableField): string {
+function fieldText(product: Pick<Product, RewritableField>, field: RewritableField): string {
   return field === 'seoKeywords' ? product.seoKeywords.join(', ') : product[field];
 }
 
 function keywordsBound(control: AbstractControl): ValidationErrors | null {
-  const tooLong = parseKeywords(control.value as string).some(
+  const tooLong = (control.value as string[]).some(
     (keyword) => keyword.length > productConstraints.keywordMaxLength,
   );
   return tooLong ? { keywordLength: true } : null;
@@ -126,6 +132,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatChipsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
@@ -180,6 +187,7 @@ export class ProductForm {
   protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
   protected readonly keywordMaxLength = productConstraints.keywordMaxLength;
   protected readonly maxKeywords = productConstraints.maxKeywords;
+  protected readonly keywordSeparators = [ENTER, COMMA];
   protected readonly conditionOptions = CONDITION_OPTIONS;
 
   /**
@@ -191,7 +199,7 @@ export class ProductForm {
     titleOlx: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
     descriptionProm: [''],
     descriptionOlx: [''],
-    seoKeywords: ['', [keywordsBound]],
+    seoKeywords: this.formBuilder.nonNullable.control<string[]>([], [keywordsBound]),
     price: ['', [priceBound]],
     category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
     condition: this.formBuilder.nonNullable.control<ProductCondition>('used'),
@@ -333,7 +341,7 @@ export class ProductForm {
 
   /** One field, rewritten from the draft on the left, without the photos (ADR 0015, AC-21). */
   protected rewriteField(field: RewritableField): Promise<void> {
-    return this.startRun({ scope: 'field', field, draftText: this.draft()[field] });
+    return this.startRun({ scope: 'field', field, draftText: fieldText(this.draft(), field) });
   }
 
   /** The price never reads the draft — it searches the web, so it is a scope of its own. */
@@ -350,8 +358,44 @@ export class ProductForm {
     this.form.controls[title].setValue(field.value);
   }
 
+  /**
+   * A pasted line arrives whole on Enter or when the field is left, so it is split on commas here,
+   * not by a separator key.
+   */
+  protected addKeywords(event: MatChipInputEvent): void {
+    const keywords = [...this.form.controls.seoKeywords.value];
+    for (const keyword of parseKeywords(event.value)) {
+      if (!keywords.includes(keyword)) {
+        keywords.push(keyword);
+      }
+    }
+    this.form.controls.seoKeywords.setValue(keywords);
+    event.chipInput.clear();
+  }
+
+  /** An edit down to nothing or into another keyword drops the chip, as adding would refuse it. */
+  protected editKeyword(index: number, event: MatChipEditedEvent): void {
+    const keywords = this.form.controls.seoKeywords.value;
+    const edited = event.value.trim();
+    const dropped =
+      edited === '' || keywords.some((keyword, at) => at !== index && keyword === edited);
+    this.form.controls.seoKeywords.setValue(
+      dropped
+        ? keywords.filter((_, at) => at !== index)
+        : keywords.map((keyword, at) => (at === index ? edited : keyword)),
+    );
+  }
+
+  protected removeKeyword(index: number): void {
+    this.form.controls.seoKeywords.setValue(
+      this.form.controls.seoKeywords.value.filter((_, at) => at !== index),
+    );
+  }
+
   protected canRewrite(field: RewritableField): boolean {
-    return this.productId() !== null && !this.preparing() && this.draft()[field].trim() !== '';
+    return (
+      this.productId() !== null && !this.preparing() && fieldText(this.draft(), field).trim() !== ''
+    );
   }
 
   protected suggestionFor(field: string): FieldSuggestion | null {
@@ -374,7 +418,11 @@ export class ProductForm {
       const card = await firstValueFrom(this.api.acceptSuggestion(id, suggestion.id));
       this.card.set(card);
       this.images.set(card.images);
-      this.form.controls[field].setValue(fieldText(card, field));
+      if (field === 'seoKeywords') {
+        this.form.controls.seoKeywords.setValue(card.seoKeywords);
+      } else {
+        this.form.controls[field].setValue(card[field]);
+      }
       this.changed.set(true);
     } catch (error: unknown) {
       this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));
@@ -400,6 +448,9 @@ export class ProductForm {
    * Re-reads the card and fills only the texts the admin has not touched: the server writes a text
    * straight into an empty field (AC-05), and the form would otherwise save the blank over it. What
    * the admin typed while the run was going stays (AC-11), and the suggestions arrive beside it.
+   *
+   * The keywords are compared with the card as read rather than asked whether they are dirty: the
+   * chip grid hands its list back to the form on every blur, so merely passing through marks them.
    */
   private async reread(): Promise<void> {
     const id = this.productId();
@@ -407,13 +458,24 @@ export class ProductForm {
       return;
     }
     try {
+      const read = this.card()?.seoKeywords ?? [];
       const card = await firstValueFrom(this.api.getById(id));
       this.card.set(card);
       this.images.set(card.images);
       for (const field of REWRITABLE_FIELDS) {
+        if (field === 'seoKeywords') {
+          const keywords = this.form.controls.seoKeywords;
+          if (
+            keywords.value.length === read.length &&
+            keywords.value.every((keyword, at) => keyword === read[at])
+          ) {
+            keywords.setValue(card.seoKeywords);
+          }
+          continue;
+        }
         const control = this.form.controls[field];
         if (!control.dirty) {
-          control.setValue(fieldText(card, field));
+          control.setValue(card[field]);
         }
       }
       this.changed.set(true);
@@ -460,7 +522,7 @@ export class ProductForm {
     const changes: ProductUpdate = {
       descriptionProm: value.descriptionProm,
       descriptionOlx: value.descriptionOlx,
-      seoKeywords: parseKeywords(value.seoKeywords),
+      seoKeywords: value.seoKeywords,
       price: price === '' ? UNPRICED : price,
       condition: value.condition,
       publishedProm: value.publishedProm,
@@ -503,7 +565,7 @@ export class ProductForm {
         titleOlx: product.titleOlx,
         descriptionProm: product.descriptionProm,
         descriptionOlx: product.descriptionOlx,
-        seoKeywords: product.seoKeywords.join(', '),
+        seoKeywords: product.seoKeywords,
         price: product.price === UNPRICED ? '' : product.price,
         category: product.category,
         condition: product.condition,

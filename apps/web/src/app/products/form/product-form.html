@@ -149,7 +149,28 @@
     <div class="card-form__paired">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Ключові слова</mat-label>
-        <input matInput formControlName="seoKeywords" placeholder="миша, logitech, бездротова" />
+        <mat-chip-grid #keywordGrid formControlName="seoKeywords">
+          @for (keyword of form.controls.seoKeywords.value; track $index) {
+            <mat-chip-row
+              [value]="keyword"
+              [editable]="true"
+              (edited)="editKeyword($index, $event)"
+              (removed)="removeKeyword($index)"
+            >
+              {{ keyword }}
+              <button matChipRemove type="button" [attr.aria-label]="'Прибрати ' + keyword">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip-row>
+          }
+        </mat-chip-grid>
+        <input
+          [matChipInputFor]="keywordGrid"
+          [matChipInputSeparatorKeyCodes]="keywordSeparators"
+          [matChipInputAddOnBlur]="true"
+          (matChipInputTokenEnd)="addKeywords($event)"
+          placeholder="миша, logitech, бездротова"
+        />
         <mat-hint>Через кому. Зберігаються перші {{ maxKeywords }}.</mat-hint>
         @if (form.controls.seoKeywords.hasError('keywordLength')) {
           <mat-error>Кожне слово — до {{ keywordMaxLength }} символів.</mat-error>
