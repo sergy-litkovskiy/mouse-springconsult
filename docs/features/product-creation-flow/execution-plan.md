@@ -39,9 +39,9 @@
 
 ## Що лишилось
 
-### Поставка 3 — UI каталогу й форми (T56–T74)
+### Поставка 3 — UI каталогу й форми (T56–T76)
 
-Запит 2026-09-21, T67–T74 — запит 2026-09-23. Граф ([_epic.md](tasks/_epic.md)) лишає тринадцять
+Запит 2026-09-21, T67–T74 — запит 2026-09-23, T75–T76 — 2026-09-25. Граф ([_epic.md](tasks/_epic.md)) лишає п'ятнадцять
 задач незалежними, а ланцюжки має лише для T62, T65 і AI-кнопок поля (T67, T71 → T72 → T73 → T66,
 T74). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
 
@@ -56,7 +56,9 @@ T74). Задачі правлять одні й ті самі файли, тож
 - **T62** — після T59 (патерн chips), T60 (рядки CSS панелі) і T61 (перелік категорій);
 - **`ai`** (`AnthropicAdapter.ts`, `PreparationService.ts`, `PreparationRunService.ts`):
   T67 → T71 → T72, додані 2026-09-23. Усі три правлять вхід моделі й ключ ідемпотентності поля,
-  тож ідуть по черзі. З доріжкою форми ця доріжка сходиться на T73: кнопкам потрібен `mode` з T72.
+  тож ідуть по черзі. З доріжкою форми ця доріжка сходиться на T73: кнопкам потрібен `mode` з T72;
+- **T75, T76** — поза доріжками: правлять лише `styles.css` і `product-gallery.css`, яких не
+  чіпає жодна відкрита задача, тож їх можна взяти будь-коли.
 
 T62 і фронтова половина T63 теж правлять `product-catalog.*`, тож у доріжці каталогу вони
 стають між T60 і T57. Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно
@@ -83,12 +85,14 @@ T62 і фронтова половина T63 теж правлять `product-ca
 | 17 | T73 | Три кнопки AI | `tdd` | `pw` — знімок tonal-кнопок, тултіпи, один платний виклик ≈ $0,005 | — | Правка наявних `suggestion-field.*` і `product-form.*`. Наявність tonal у `matIconButton` і назви іконок звірити з документацією до старту, бо агенти писатимуть їх з пам'яті. Тести на старі `aria-label` RED переписує, а не видаляє. `PRD.md §5` — руками |
 | 18 | T74 | Остання пропозиція на поле | `tdd·r` | `pw` без платних викликів | — | Змінюється контракт читання картки, і від нього залежить AC-11: тести переглянути до GREEN, бо звірка має поводитись як раніше. Тести T53 і T55 RED переписує на `latestSuggestions`, а не видаляє. Не `cpr`: ні сесій, ні грошей. `openapi.yaml`, `sad.md` сценарій 9, `PRD.md` і excerpt-и закритих T53 і T55 — руками, і після них gate-check теки `tasks/` |
 | 19 | T66 | Локальний лоадер AI | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Спінер замінює обидві кнопки запуску поля з T73, стрілка лише вимикається. Поле запуску форма бере з власного запиту, бо `PreparationRunDto` його не несе; контракт не змінюється. Ціна (T54) прихована, `pw` її не перевіряє. `PRD.md §5` — руками |
+| 20 | T75 | Компактніший шрифт | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getComputedStyle` дає розмір шрифту (умова нижче). Назви токенів звір із prebuilt-темою в контейнері до старту `/goal`, бо цикл писатиме їх з пам'яті. Чи текст лишився читабельним, оцінюєш сам на знімках |
+| 21 | T76 | Кадри картки 120×120 | `goal` | `pw` на 1280 і 360 px | — | Та сама природа: один трек сітки, розмір кадру міряє `getBoundingClientRect` (умова нижче). Тести галереї мають лишитися зеленими без правок |
 
 Кроки `PRD.md §5` і `openapi.yaml` у story агенти `/tdd` не роблять: вони правлять лише код.
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
 done», тож їх робить сам цикл.
 
-**Готові умови `/goal` для T56, T60 і T69** — за шаблоном нижче:
+**Готові умови `/goal` для T56, T60, T69, T75 і T76** — за шаблоном нижче:
 
 ```
 /goal docs/features/product-creation-flow/tasks/highlight-catalog-row-on-hover.md: every Checklist item is done, with playwright-cli on /products the computed `background-color` of a hovered `.catalog__row` differs from that of a row without the pointer and the row text has a contrast of at least 4.5:1 against it, `git diff -U0 -- apps/web/src/app/products/catalog/product-catalog.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
@@ -100,6 +104,14 @@ done», тож їх робить сам цикл.
 
 ```
 /goal docs/features/product-creation-flow/tasks/move-generate-all-below-gallery.md: every Checklist item is done, with playwright-cli on an open card with one frame `[data-testid="generate-all"]` follows `app-product-gallery` and precedes `[data-field="titleProm"]` in document order (`compareDocumentPosition`), a screenshot of the dialog is saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/compact-app-typography.md: every Checklist item is done, with playwright-cli on /products at 1280 px the computed `font-size` of `body` is 13px and of `.catalog__header h1` is 20px, on an open card the computed `font-size` of `textarea[formcontrolname="titleProm"]` is 14px and no `mat-label` or `mat-hint` has a computed `font-size` below 11px, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth` on /products and with the card open, screenshots of the catalogue and the open card at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/shrink-card-gallery-frames.md: every Checklist item is done, with playwright-cli on an open card with at least two frames every `.gallery__item` has a `getBoundingClientRect()` width and height of 120 px at 1280 px and at 360 px, at 360 px the dialog has no horizontal scroll, a screenshot of the gallery at both widths is saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 ## Відкладено
