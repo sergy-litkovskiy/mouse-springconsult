@@ -192,3 +192,12 @@
   --mat-button-text-label-text-color: var(--mat-sys-error);
   min-width: 3rem;
 }
+
+.published-flag {
+  color: var(--mat-sys-outline);
+}
+
+/* Material 3 has no success role; the green matches the success snack bar in `styles.css`. */
+.published-flag--on {
+  color: #2e7d32;
+}
