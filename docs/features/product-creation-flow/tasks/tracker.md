@@ -17,9 +17,13 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T60, T64, T67, T68, T69, T70, T71 — поставка 3, UI каталогу
-й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). T62 чекає на T60,
-T65 — на T64. Ланцюжок AI-кнопок: T72 чекає на T67 і T71, T73 — на T72, T74 — на T73, T66 — на T73.
+**Готові до старту:** T62, T64, T67, T68, T69, T70, T71 — поставка 3, UI каталогу
+й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). T65 чекає на T64. Ланцюжок AI-кнопок: T72 чекає на T67 і T71, T73 — на T72, T74 — на T73, T66 — на T73.
+
+2026-09-25 закрито [T60](narrow-catalog-flag-filters.md): три фільтри-прапорці каталогу звужено
+до 7.75rem (124 px), поле закінчується за найдовшою міткою. Для цього у `styles.css` знято обмеження
+Material на виріз рамки `mat-select` (`calc(100% - 60px)`): мітка прапорця завжди плаває, тож
+обмеження лише обрізало її. Розблокувала T62: T59 і T61 уже закриті.
 
 2026-09-25 закрито [T59](edit-keywords-as-chips.md): ключові слова у формі — chips з додаванням
 через `Enter` чи кому, редагуванням і видаленням; `pw` знайшов три прогалини поза тестами RED
@@ -158,9 +162,9 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T57 | [Пагінатор над таблицею](add-top-catalog-paginator.md) | Done | — | XS | 2026-09-23 |
 | T58 | [Назви Prom/OLX у textarea](wrap-product-titles-in-textarea.md) | Done | — | XS | 2026-09-22 |
 | T59 | [Ключові слова як chips](edit-keywords-as-chips.md) | Done | — | S | 2026-09-25 |
-| T60 | [Вужчі фільтри-прапорці](narrow-catalog-flag-filters.md) | Todo | — | XS | — |
+| T60 | [Вужчі фільтри-прапорці](narrow-catalog-flag-filters.md) | Done | — | XS | 2026-09-25 |
 | T61 | [Перелік категорій і фільтр за кількома в `api`](add-category-list-and-multi-filter.md) | Done | — | S | 2026-09-24 |
-| T62 | [Кілька категорій з автодоповненням](pick-catalog-categories-with-autocomplete.md) | Blocked | T59, T60, T61 | S | — |
+| T62 | [Кілька категорій з автодоповненням](pick-catalog-categories-with-autocomplete.md) | Todo | T59, T60, T61 | S | — |
 | T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Done | — | S | 2026-09-24 |
 | T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Todo | — | XS | — |
 | T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Blocked | T64 | S | — |

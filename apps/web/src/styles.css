@@ -35,6 +35,16 @@ body {
   color: var(--mat-sys-outline);
 }
 
+/*
+ * Material stops a select's notch 60px short of the field, so a resting label never runs under
+ * the arrow. A catalogue flag always shows a value, so its label always floats above the arrow
+ * and the limit only cuts it off. Material's own selector plus our class, to outrank it.
+ */
+.filters__field--flag.mat-mdc-form-field-type-mat-select.mat-form-field-appearance-outline
+  .mdc-notched-outline__notch {
+  max-width: none;
+}
+
 /* One palette for the readiness badge in the catalogue and in the open card. */
 .readiness--not-ready {
   background-color: var(--mat-sys-surface-container-high);

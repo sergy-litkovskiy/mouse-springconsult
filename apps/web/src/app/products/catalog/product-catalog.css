@@ -43,13 +43,18 @@
   flex: 2 1 17rem;
 }
 
-/*
- * Half of 13rem was the ask, but at 6.5rem the floated «Публікація Prom» is cut off, so the
- * longest label sets the width. `min-width: max-content` does not help here: the Material infix
- * declares a fixed width and would make the field wider than before.
- */
 .filters__field--narrow {
   flex: 0 1 10.5rem;
+}
+
+/*
+ * The longest label sets the width: the floated «Опубл. на Prom» notch is 100px, with a 12px
+ * border on each side. It fits only because `styles.css` lifts the select notch limit.
+ * `min-width: max-content` does not help here: the Material infix declares a fixed width and
+ * would make the field wider than before.
+ */
+.filters__field--flag {
+  flex: 0 1 7.75rem;
 }
 
 .filters__actions {
