@@ -46,9 +46,17 @@ jobs:
               exit 1
             fi
           done
+          # A release body renders every newline as <br>, so a list item wrapped in
+          # CHANGELOG.md is glued back into one line; a nested item stays on its own.
           awk '
             /^## \[[0-9]+\.[0-9]+\.[0-9]+\]/ { if (found) exit; found = 1; next }
-            found { lines[++n] = $0; if ($0 ~ /[^[:space:]]/) { if (!first) first = n; last = n } }
+            !found { next }
+            /^[[:space:]]+[^-*+[:space:]]/ && n && lines[n] != "" {
+              sub(/^[[:space:]]+/, "")
+              lines[n] = lines[n] " " $0
+              next
+            }
+            { lines[++n] = $0; if ($0 ~ /[^[:space:]]/) { if (!first) first = n; last = n } }
             END { if (first) for (i = first; i <= last; i++) print lines[i] }
           ' CHANGELOG.md >"$RUNNER_TEMP/section.md"
           if [ ! -s "$RUNNER_TEMP/section.md" ]; then
