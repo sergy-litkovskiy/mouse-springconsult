@@ -17,8 +17,12 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T65, T67, T68, T69, T70, T71 — поставка 3, UI каталогу
+**Готові до старту:** T65, T67, T68, T69, T70, T71, T75, T76 — поставка 3, UI каталогу
 й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок: T72 чекає на T67 і T71, T73 — на T72, T74 — на T73, T66 — на T73.
+
+2026-09-25 заведено [T75](compact-app-typography.md) і [T76](shrink-card-gallery-frames.md) за двома
+правками власника: шкала шрифту на крок менша через токени Material у `:root`, кадри галереї картки —
+рівно 120×120 px замість ~150. Обидві незалежні: правлять лише `styles.css` і `product-gallery.css`.
 
 2026-09-25 закрито [T64](show-published-as-icons.md): колонки «Prom» і «OLX» каталогу показують
 `check_circle` — зелену, якщо картку опубліковано, і сіру, якщо ні, з `aria-label` і підказкою.
@@ -167,7 +171,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 
 ## Поставка 3 — UI каталогу й форми
 
-Запит 2026-09-21 після приймання поставки 2; T67–T74 додано 2026-09-23. Ланцюжки в `blocked_by` — здебільшого спільні файли
+Запит 2026-09-21 після приймання поставки 2; T67–T74 додано 2026-09-23, T75–T76 — 2026-09-25. Ланцюжки в `blocked_by` — здебільшого спільні файли
 (`product-catalog.*`, `product-form.*`), а не смислові залежності; деталі — в [_epic.md](_epic.md).
 
 | ID | Задача | Статус | blocked_by | Est | Закрито |
@@ -180,7 +184,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T61 | [Перелік категорій і фільтр за кількома в `api`](add-category-list-and-multi-filter.md) | Done | — | S | 2026-09-24 |
 | T62 | [Кілька категорій з автодоповненням](pick-catalog-categories-with-autocomplete.md) | Done | T59, T60, T61 | S | 2026-09-25 |
 | T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Done | — | S | 2026-09-24 |
-| T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Done | — | XS | — |
+| T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Done | — | XS | 2026-09-25 |
 | T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Todo | T64 | S | — |
 | T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59, T73 | S | — |
 | T67 | [Назви Prom/OLX із «Згенерувати все»](generate-titles-with-texts.md) | Todo | — | S | — |
@@ -191,6 +195,8 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Blocked | T67, T71 | S | — |
 | T73 | [Три кнопки AI біля поля](add-improve-button-and-tonal-ai-actions.md) | Blocked | T72 | S | — |
 | T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Blocked | T73 | S | — |
+| T75 | [Компактніший шрифт](compact-app-typography.md) | Todo | — | XS | — |
+| T76 | [Кадри картки 120×120](shrink-card-gallery-frames.md) | Todo | — | XS | — |
 
 ## Спільний DoD
 
