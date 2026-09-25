@@ -15,8 +15,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,7 +30,7 @@ import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { debounceTime, firstValueFrom, map } from 'rxjs';
+import { catchError, debounceTime, firstValueFrom, map, of } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
   ProductCard,
@@ -130,8 +132,10 @@ const priceFormat = new Intl.NumberFormat('uk-UA', {
   imports: [
     NgOptimizedImage,
     ReactiveFormsModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatCardModule,
+    MatChipsModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -179,7 +183,7 @@ export class ProductCatalog {
   readonly priceMax = input<string | undefined, string | undefined>(undefined, {
     transform: toPriceFilter,
   });
-  readonly category = input<string | undefined, string | readonly string[] | undefined>(undefined, {
+  readonly category = input<string[], string | readonly string[] | undefined>([], {
     transform: toCategoryFilter,
   });
   readonly publishedProm = input<boolean | undefined, string | undefined>(undefined, {
@@ -216,7 +220,7 @@ export class ProductCatalog {
       sort: this.sort(),
       direction: this.direction(),
       ...this.appliedFilters(),
-      category: category === undefined ? undefined : [category],
+      category: category.length === 0 ? undefined : category,
     };
   });
 
@@ -239,7 +243,6 @@ export class ProductCatalog {
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
-  protected readonly categoryMaxLength = productConstraints.categoryMaxLength;
   // The two publication columns stay side by side, so they read as a pair; the action goes last.
   protected readonly columns = [
     'gallery',
@@ -265,7 +268,8 @@ export class ProductCatalog {
       description: ['', [Validators.maxLength(productConstraints.titleMaxLength)]],
       priceMin: ['', [priceBound]],
       priceMax: ['', [priceBound]],
-      category: ['', [Validators.maxLength(productConstraints.categoryMaxLength)]],
+      // The text typed to look a category up; the filter itself is the picked chips.
+      category: [''],
       // '' means "not asked about", which is not the same as "no" (not published, not ready).
       publishedProm: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
       publishedOlx: this.formBuilder.nonNullable.control<'' | 'true' | 'false'>(''),
@@ -285,6 +289,22 @@ export class ProductCatalog {
     { initialValue: false },
   );
 
+  /** Without the list the field still holds the chips it has; it only has nothing to suggest. */
+  private readonly categories = toSignal(this.api.listCategories().pipe(catchError(() => of([]))), {
+    initialValue: [],
+  });
+  private readonly categoryText = toSignal(this.filters.controls.category.valueChanges, {
+    initialValue: '',
+  });
+  protected readonly pickedCategories = linkedSignal(() => this.category());
+  protected readonly categorySuggestions = computed(() => {
+    const text = this.categoryText().toLowerCase();
+    const picked = this.pickedCategories();
+    return this.categories().filter(
+      (category) => category.toLowerCase().includes(text) && !picked.includes(category),
+    );
+  });
+
   constructor() {
     // After a reload, or a Back out of a filtered page, the fields have to agree with the
     // rows underneath them.
@@ -297,7 +317,7 @@ export class ProductCatalog {
         description: applied.description ?? '',
         priceMin: applied.priceMin ?? '',
         priceMax: applied.priceMax ?? '',
-        category: applied.category ?? '',
+        category: '',
         publishedProm: flagControlValue(applied.publishedProm),
         publishedOlx: flagControlValue(applied.publishedOlx),
         ready: flagControlValue(applied.ready),
@@ -337,6 +357,7 @@ export class ProductCatalog {
     }
 
     const value = this.filters.getRawValue();
+    const categories = this.pickedCategories();
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParamsHandling: 'merge',
@@ -347,7 +368,7 @@ export class ProductCatalog {
         description: asQueryParam(value.description),
         priceMin: asQueryParam(value.priceMin),
         priceMax: asQueryParam(value.priceMax),
-        category: asQueryParam(value.category),
+        category: categories.length === 0 ? null : categories,
         publishedProm: asQueryParam(value.publishedProm),
         publishedOlx: asQueryParam(value.publishedOlx),
         ready: asQueryParam(value.ready),
@@ -357,7 +378,17 @@ export class ProductCatalog {
 
   protected resetFilters(): void {
     this.filters.reset();
+    this.pickedCategories.set([]);
     this.applyFilters();
+  }
+
+  protected pickCategory(category: string): void {
+    this.pickedCategories.update((picked) => [...picked, category]);
+    this.filters.controls.category.setValue('');
+  }
+
+  protected removeCategory(category: string): void {
+    this.pickedCategories.update((picked) => picked.filter((item) => item !== category));
   }
 
   protected changePage(event: PageEvent): void {

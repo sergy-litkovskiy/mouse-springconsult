@@ -59,14 +59,12 @@ export const toSearchFilter = textFilter(
 const categoryText = textFilter(1, productConstraints.categoryMaxLength);
 
 /**
- * The router hands a repeated `?category=` over as an array, the form the API documents. Until the
- * filter takes several categories (T62) the first one is the filter; a string method called on
- * the array would take the whole catalogue down instead.
+ * The router hands a repeated `?category=` over as an array and a single one as a string; both
+ * are read as a list, so an address saved before the filter took several still works.
  */
-export function toCategoryFilter(
-  value: string | readonly string[] | undefined,
-): string | undefined {
-  return categoryText(typeof value === 'object' ? value[0] : value);
+export function toCategoryFilter(value: string | readonly string[] | undefined): string[] {
+  const values = typeof value === 'object' ? value : [value];
+  return values.map(categoryText).filter((category) => category !== undefined);
 }
 
 /**

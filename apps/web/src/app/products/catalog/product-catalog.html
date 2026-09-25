@@ -51,10 +51,29 @@
 
       <mat-form-field class="filters__field" appearance="outline">
         <mat-label>Категорія</mat-label>
-        <input matInput formControlName="category" />
-        @if (filters.controls.category.hasError('maxlength')) {
-          <mat-error>Довше за {{ categoryMaxLength }} символів.</mat-error>
-        }
+        <mat-chip-grid #categoryChips aria-label="Обрані категорії">
+          @for (category of pickedCategories(); track $index) {
+            <mat-chip-row (removed)="removeCategory(category)">
+              {{ category }}
+              <button matChipRemove type="button" [attr.aria-label]="'Прибрати ' + category">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip-row>
+          }
+        </mat-chip-grid>
+        <input
+          formControlName="category"
+          [matChipInputFor]="categoryChips"
+          [matAutocomplete]="categoryOptions"
+        />
+        <mat-autocomplete
+          #categoryOptions="matAutocomplete"
+          (optionSelected)="pickCategory($event.option.value)"
+        >
+          @for (category of categorySuggestions(); track category) {
+            <mat-option [value]="category">{{ category }}</mat-option>
+          }
+        </mat-autocomplete>
       </mat-form-field>
 
       <mat-form-field class="filters__field filters__field--flag" appearance="outline">

@@ -29,7 +29,9 @@ export class ProductsApi {
   }
 
   listCategories(): Observable<ProductCategoryList> {
-    throw new Error('Not implemented');
+    return this.http.get<ProductCategoryList>(`${this.baseUrl}/categories`, {
+      withCredentials: true,
+    });
   }
 
   getById(productId: string): Observable<ProductCardRead> {
