@@ -1,7 +1,7 @@
 ---
 id: T64
 title: "Відмітки публікації як іконки"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1300
 blocked_by: []
 blocks: [T65]
-updated_at: "2026-09-21"
+updated_at: "2026-09-25"
 ---
 
 # T64 — Відмітки публікації як іконки
@@ -75,9 +75,9 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-58: іконки замість тексту, з підказкою й `aria-label`.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): show the published flags as icons in the catalog`.
+- [x] AC-58: іконки замість тексту, з підказкою й `aria-label`.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): show the published flags as icons in the catalog`.
 
 ## Links
 
