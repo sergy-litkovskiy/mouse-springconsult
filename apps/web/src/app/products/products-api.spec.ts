@@ -114,6 +114,16 @@ describe('ProductsApi', () => {
     request.flush({});
   });
 
+  it('reads the categories in use for the filter suggestions (AC-56)', async () => {
+    const pending = firstValueFrom(api.listCategories());
+    const request = http.expectOne('/api/products/categories');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBe(true);
+    request.flush(['Клавіатури', 'Миші', 'Навушники']);
+
+    expect(await pending).toEqual(['Клавіатури', 'Миші', 'Навушники']);
+  });
+
   it('reads one card by its id (getProduct)', async () => {
     const pending = firstValueFrom(api.getById(PRODUCT_ID));
     const request = http.expectOne(`/api/products/${PRODUCT_ID}`);

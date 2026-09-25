@@ -5,6 +5,7 @@ import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.con
 import type {
   Product,
   ProductCardRead,
+  ProductCategoryList,
   ProductCreateRequest,
   ProductImage,
   ProductListQuery,
@@ -25,6 +26,10 @@ export class ProductsApi {
    */
   listRequest(query: ProductListQuery): HttpResourceRequest {
     return { url: this.baseUrl, params: toParams(query), withCredentials: true };
+  }
+
+  listCategories(): Observable<ProductCategoryList> {
+    throw new Error('Not implemented');
   }
 
   getById(productId: string): Observable<ProductCardRead> {

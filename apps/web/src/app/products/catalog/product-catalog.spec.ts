@@ -4,8 +4,11 @@ import {
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
+import { TestKey } from '@angular/cdk/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { TestBed } from '@angular/core/testing';
+import { MatAutocompleteHarness } from '@angular/material/autocomplete/testing';
+import { MatChipGridHarness, MatChipInputHarness } from '@angular/material/chips/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatPaginatorHarness } from '@angular/material/paginator/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
@@ -13,7 +16,12 @@ import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { PreparationRunDto } from '@contracts/ai.contract';
-import type { ProductCard, ProductList, ProductListItem } from '@contracts/products.contract';
+import type {
+  ProductCard,
+  ProductCategoryList,
+  ProductList,
+  ProductListItem,
+} from '@contracts/products.contract';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm } from '../form/product-form';
@@ -123,6 +131,10 @@ const WITHOUT_OLX_DESCRIPTION: ProductListItem = {
   isReady: false,
 };
 
+const CATEGORIES: ProductCategoryList = ['Клавіатури', 'Миші', 'Навушники'];
+
+const CATEGORIES_URL = '/api/products/categories';
+
 describe('ProductCatalog', () => {
   let harness: RouterTestingHarness;
   let http: HttpTestingController;
@@ -132,10 +144,28 @@ describe('ProductCatalog', () => {
    * The table is opened through the router, not built by hand: its whole state arrives as
    * query parameters, so a test that skips the router tests a component nobody runs.
    */
-  async function open(url = '/products'): Promise<void> {
+  async function open(
+    url = '/products',
+    categories: ProductCategoryList | 'unavailable' = CATEGORIES,
+  ): Promise<void> {
     harness = await RouterTestingHarness.create(url);
     element = harness.routeNativeElement!;
     await tick();
+    // Answered here, so that a test about the table is not left with the list in flight.
+    const reads = http.match((request) => request.url === CATEGORIES_URL);
+    for (const read of reads) {
+      if (categories === 'unavailable') {
+        read.flush(
+          { error: { code: 'internal_error', message: 'Internal error' } },
+          { status: 500, statusText: 'Internal Server Error' },
+        );
+      } else {
+        read.flush(categories);
+      }
+    }
+    if (reads.length > 0) {
+      await tick();
+    }
   }
 
   /**
@@ -255,11 +285,11 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('filters by the first of repeated categories instead of failing to render', async () => {
+  it('sends every repeated category of a saved address, in its order (AC-56)', async () => {
     await open('/products?category=Миші&category=Клавіатури');
     const request = expectRequest();
 
-    expect(request.request.params.getAll('category')).toEqual(['Миші']);
+    expect(request.request.params.getAll('category')).toEqual(['Миші', 'Клавіатури']);
 
     request.flush(PAGE);
     await settle();
@@ -274,6 +304,199 @@ describe('ProductCatalog', () => {
 
     request.flush(PAGE);
     await settle();
+  });
+
+  describe('several categories picked from suggestions (AC-56)', () => {
+    const MICE: ProductListItem = { ...MOUSE, category: 'Миші' };
+    const HEADPHONES: ProductListItem = {
+      ...KEYBOARD,
+      id: '66666666-6666-4666-8666-666666666666',
+      titleProm: 'Навушники Sony WH-1000XM4',
+      titleOlx: 'Sony WH-1000XM4 бездротові',
+      category: 'Навушники',
+    };
+
+    function loader() {
+      return TestbedHarnessEnvironment.loader(harness.fixture);
+    }
+
+    async function categoryChips(): Promise<string[]> {
+      const rows = await (await loader().getHarness(MatChipGridHarness)).getRows();
+      return Promise.all(rows.map((row) => row.getText()));
+    }
+
+    async function suggestionsFor(text: string): Promise<string[]> {
+      const input = await loader().getHarness(MatAutocompleteHarness);
+      await input.clear();
+      await input.enterText(text);
+      const options = await input.getOptions();
+      return Promise.all(options.map((option) => option.getText()));
+    }
+
+    async function pick(text: string, category: string): Promise<void> {
+      const input = await loader().getHarness(MatAutocompleteHarness);
+      await input.clear();
+      await input.enterText(text);
+      await input.selectOption({ text: category });
+      await settle();
+    }
+
+    async function typeAndPressEnter(text: string): Promise<void> {
+      const input = await loader().getHarness(MatChipInputHarness);
+      await input.setValue(text);
+      await input.sendSeparatorKey(TestKey.ENTER);
+      await settle();
+    }
+
+    async function removeChip(index: number): Promise<void> {
+      const row = (await (await loader().getHarness(MatChipGridHarness)).getRows())[index];
+      if (row === undefined) {
+        throw new Error(`no category chip #${String(index)}`);
+      }
+      await (await row.getRemoveButton()).click();
+      await settle();
+    }
+
+    function urlCategories(): string[] {
+      const router = TestBed.inject(Router);
+      return router.parseUrl(router.url).queryParamMap.getAll('category');
+    }
+
+    function categoryCells(): (string | undefined)[] {
+      return rows().map((row) => row.querySelector('td.mat-column-category')?.textContent.trim());
+    }
+
+    it('suggests the categories holding the typed text, whatever its case (AC-56)', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      expect(await suggestionsFor('ш')).toEqual(['Миші', 'Навушники']);
+      expect(await suggestionsFor('кЛАВ')).toEqual(['Клавіатури']);
+    });
+
+    it('applies two picked categories to the URL, the request and the table (AC-56)', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      await pick('ш', 'Миші');
+      await pick('ш', 'Навушники');
+      expect(await categoryChips()).toEqual(['Миші', 'Навушники']);
+
+      submitFilters();
+      await tick();
+
+      expect(urlCategories()).toEqual(['Миші', 'Навушники']);
+      const request = expectRequest();
+      expect(request.request.params.getAll('category')).toEqual(['Миші', 'Навушники']);
+      request.flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
+      await settle();
+
+      expect(categoryCells()).toEqual(['Миші', 'Навушники']);
+    });
+
+    it('leaves a category already picked out of the suggestions (AC-56)', async () => {
+      await open('/products?category=Миші');
+      expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
+      await settle();
+
+      expect(await suggestionsFor('и')).toEqual(['Клавіатури', 'Навушники']);
+      expect(await suggestionsFor('ми')).toEqual([]);
+    });
+
+    it('adds no second chip for a category already picked (AC-56)', async () => {
+      await open('/products?category=Миші');
+      expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
+      await settle();
+
+      await typeAndPressEnter('Миші');
+
+      expect(await categoryChips()).toEqual(['Миші']);
+    });
+
+    it('turns text that names no category into no chip (AC-56)', async () => {
+      await open('/products?category=Миші');
+      expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
+      await settle();
+
+      await typeAndPressEnter('Планшети');
+
+      expect(await categoryChips()).toEqual(['Миші']);
+    });
+
+    it('opens a saved address with one category as one chip over a filtered table (AC-56)', async () => {
+      await open('/products?category=Миші');
+      const request = expectRequest();
+      expect(request.request.params.getAll('category')).toEqual(['Миші']);
+      request.flush({ ...PAGE, items: [MICE], total: 1 });
+      await settle();
+
+      expect(await categoryChips()).toEqual(['Миші']);
+      expect(categoryCells()).toEqual(['Миші']);
+    });
+
+    it('keeps the picked chips working and shows no error when the list failed to load (AC-56)', async () => {
+      await open('/products?category=Миші', 'unavailable');
+      expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
+      await settle();
+
+      expect(await categoryChips()).toEqual(['Миші']);
+      expect(element.querySelector('[role="alert"]')).toBeNull();
+
+      await removeChip(0);
+      submitFilters();
+      await tick();
+
+      const request = expectRequest();
+      expect(request.request.params.has('category')).toBe(false);
+      request.flush(PAGE);
+      await settle();
+    });
+
+    it('drops the category from the URL and the request once every chip is removed (AC-56)', async () => {
+      await open('/products?category=Миші&category=Навушники');
+      const first = expectRequest();
+      expect(first.request.params.getAll('category')).toEqual(['Миші', 'Навушники']);
+      first.flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
+      await settle();
+      expect(await categoryChips()).toEqual(['Миші', 'Навушники']);
+
+      await removeChip(1);
+      await removeChip(0);
+      submitFilters();
+      await tick();
+
+      // Not an empty `category=`: the API answers that with 400.
+      expect(TestBed.inject(Router).url).not.toContain('category');
+      const request = expectRequest();
+      expect(request.request.params.has('category')).toBe(false);
+      request.flush({ ...PAGE, items: [MICE, KEYBOARD, HEADPHONES], total: 3 });
+      await settle();
+
+      expect(rows().length).toBe(3);
+    });
+
+    it('drops the category from the URL and the request on reset (AC-56)', async () => {
+      await open('/products?category=Миші&category=Навушники');
+      expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
+      await settle();
+      expect(await categoryChips()).toEqual(['Миші', 'Навушники']);
+
+      [...element.querySelectorAll<HTMLButtonElement>('.filters__actions button')]
+        .find((button) => button.textContent.trim() === 'Скинути')
+        ?.click();
+      await tick();
+
+      expect(TestBed.inject(Router).url).toBe('/products');
+      const request = expectRequest();
+      expect(request.request.params.has('category')).toBe(false);
+      request.flush({ ...PAGE, items: [MICE, KEYBOARD, HEADPHONES], total: 3 });
+      await settle();
+
+      expect(await categoryChips()).toEqual([]);
+      expect(rows().length).toBe(3);
+    });
   });
 
   it('keeps filter text that has not been applied yet when the page changes', async () => {
