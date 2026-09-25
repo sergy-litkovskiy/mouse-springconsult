@@ -713,6 +713,39 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['миша', 'logitech']);
     });
 
+    it('drops a keyword edited down to nothing (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await editKeyword(1, '   ');
+
+      expect(await keywords()).toEqual(['миша']);
+    });
+
+    it('trims an edited keyword and drops it when it repeats another (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      await editKeyword(0, ' мишка ');
+      expect(await keywords()).toEqual(['мишка', 'logitech']);
+      await editKeyword(1, 'мишка');
+
+      expect(await keywords()).toEqual(['мишка']);
+    });
+
+    it('turns the text left in the input into chips when the field is left (AC-53)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      const input = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatChipInputHarness);
+      await input.setValue('бездротова, миша');
+      await input.blur();
+      await settle();
+
+      expect(await keywords()).toEqual(['миша', 'logitech', 'бездротова']);
+      expect(keywordInput().value).toBe('');
+    });
+
     it('shows the length error for a keyword over 60 characters and sends nothing (AC-53, AC-07)', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();

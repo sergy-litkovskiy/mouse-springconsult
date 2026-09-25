@@ -358,7 +358,10 @@ export class ProductForm {
     this.form.controls[title].setValue(field.value);
   }
 
-  /** A pasted line arrives whole on Enter, so it is split on commas here, not by a separator key. */
+  /**
+   * A pasted line arrives whole on Enter or when the field is left, so it is split on commas here,
+   * not by a separator key.
+   */
   protected addKeywords(event: MatChipInputEvent): void {
     const keywords = [...this.form.controls.seoKeywords.value];
     for (const keyword of parseKeywords(event.value)) {
@@ -370,11 +373,16 @@ export class ProductForm {
     event.chipInput.clear();
   }
 
+  /** An edit down to nothing or into another keyword drops the chip, as adding would refuse it. */
   protected editKeyword(index: number, event: MatChipEditedEvent): void {
+    const keywords = this.form.controls.seoKeywords.value;
+    const edited = event.value.trim();
+    const dropped =
+      edited === '' || keywords.some((keyword, at) => at !== index && keyword === edited);
     this.form.controls.seoKeywords.setValue(
-      this.form.controls.seoKeywords.value.map((keyword, at) =>
-        at === index ? event.value : keyword,
-      ),
+      dropped
+        ? keywords.filter((_, at) => at !== index)
+        : keywords.map((keyword, at) => (at === index ? edited : keyword)),
     );
   }
 

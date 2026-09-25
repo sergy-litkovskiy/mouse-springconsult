@@ -167,6 +167,7 @@
         <input
           [matChipInputFor]="keywordGrid"
           [matChipInputSeparatorKeyCodes]="keywordSeparators"
+          [matChipInputAddOnBlur]="true"
           (matChipInputTokenEnd)="addKeywords($event)"
           placeholder="миша, logitech, бездротова"
         />
