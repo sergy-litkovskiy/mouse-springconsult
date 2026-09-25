@@ -1,0 +1,117 @@
+name: Release
+
+# A merged Release-PR puts a new top version into CHANGELOG.md: tag it and draft the
+# GitHub Release. Publishing the draft stays with a human.
+on:
+  push:
+    branches: [main]
+    paths: [CHANGELOG.md]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Read the top changelog section
+        id: changelog
+        run: |
+          versions=$(sed -n 's/^## \[\([0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/p' CHANGELOG.md)
+          version=$(echo "$versions" | sed -n 1p)
+          previous=$(echo "$versions" | sed -n 2p)
+          if [ -z "$version" ]; then
+            echo "::error::CHANGELOG.md has no released version"
+            exit 1
+          fi
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "::notice::Release v$version already exists"
+            exit 0
+          fi
+          for app in api web; do
+            actual=$(jq -r .version "apps/$app/package.json")
+            if [ "$actual" != "$version" ]; then
+              echo "::error::apps/$app/package.json is $actual, CHANGELOG.md says $version"
+              exit 1
+            fi
+          done
+          # A release body renders every newline as <br>, so a list item wrapped in
+          # CHANGELOG.md is glued back into one line; a nested item stays on its own.
+          awk '
+            /^## \[[0-9]+\.[0-9]+\.[0-9]+\]/ { if (found) exit; found = 1; next }
+            !found { next }
+            /^[[:space:]]+[^-*+[:space:]]/ && n && lines[n] != "" {
+              sub(/^[[:space:]]+/, "")
+              lines[n] = lines[n] " " $0
+              next
+            }
+            { lines[++n] = $0; if ($0 ~ /[^[:space:]]/) { if (!first) first = n; last = n } }
+            END { if (first) for (i = first; i <= last; i++) print lines[i] }
+          ' CHANGELOG.md >"$RUNNER_TEMP/section.md"
+          if [ ! -s "$RUNNER_TEMP/section.md" ]; then
+            echo "::error::The [$version] section of CHANGELOG.md is empty"
+            exit 1
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "previous=$previous" >>"$GITHUB_OUTPUT"
+
+      # The tag goes first: a draft release does not create it, and next-version.sh
+      # counts from it. A rerun after a failed draft finds the tag already there.
+      - name: Tag the release
+        if: steps.changelog.outputs.version != ''
+        env:
+          TAG: v${{ steps.changelog.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::notice::Tag $TAG already exists"
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            git push origin "$TAG"
+          fi
+
+      - name: Write release notes
+        id: notes
+        if: steps.changelog.outputs.version != ''
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          prompt=$(cat .github/prompts/release-notes.md)
+          # Outside the checkout, so the session does not load the repo's CLAUDE.md.
+          (cd "$RUNNER_TEMP" && claude -p "$prompt" --model claude-sonnet-5 --max-turns 2 --tools "" <section.md) \
+            >"$RUNNER_TEMP/notes.md"
+
+      - name: Draft the GitHub Release
+        if: steps.changelog.outputs.version != ''
+        env:
+          VERSION: ${{ steps.changelog.outputs.version }}
+          PREVIOUS: ${{ steps.changelog.outputs.previous }}
+          NOTES_OUTCOME: ${{ steps.notes.outcome }}
+        run: |
+          {
+            if [ "$NOTES_OUTCOME" = success ] && [ -s "$RUNNER_TEMP/notes.md" ]; then
+              cat "$RUNNER_TEMP/notes.md"
+              echo
+            fi
+            echo "## Зміни"
+            echo
+            cat "$RUNNER_TEMP/section.md"
+            if [ -n "$PREVIOUS" ]; then
+              echo
+              echo "**Повний diff:** $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/v$PREVIOUS...v$VERSION"
+            fi
+          } >"$RUNNER_TEMP/body.md"
+          gh release create "v$VERSION" --draft --verify-tag --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/body.md"
