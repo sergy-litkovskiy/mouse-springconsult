@@ -22,6 +22,7 @@ import type {
   ProductList,
   ProductListItem,
 } from '@contracts/products.contract';
+import { productConstraints } from '@contracts/products-limits';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm } from '../form/product-form';
@@ -496,6 +497,40 @@ describe('ProductCatalog', () => {
 
       expect(await categoryChips()).toEqual([]);
       expect(rows().length).toBe(3);
+    });
+
+    it('keeps chips and filter text not yet applied when the page of two categories changes (AC-56)', async () => {
+      await open('/products?category=Миші&category=Навушники');
+      expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], total: 100 });
+      await settle();
+
+      await pick('лав', 'Клавіатури');
+      type('priceMin', '1000.00');
+      await harness.navigateByUrl('/products?category=Миші&category=Навушники&page=2');
+      await tick();
+      expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], page: 2, total: 100 });
+      await settle();
+
+      expect(await categoryChips()).toEqual(['Миші', 'Навушники', 'Клавіатури']);
+      const priceMin = element.querySelector<HTMLInputElement>('input[formcontrolname="priceMin"]');
+      expect(priceMin?.value).toBe('1000.00');
+    });
+
+    it('suggests nothing once the filter holds as many categories as the API takes (AC-56)', async () => {
+      const names = Array.from(
+        { length: productConstraints.categoryFilterMaxItems + 1 },
+        (_, index) => `Категорія ${String(index + 1)}`,
+      );
+      const picked = names.slice(0, productConstraints.categoryFilterMaxItems);
+      const query = picked.map((name) => `category=${encodeURIComponent(name)}`).join('&');
+      await open(`/products?${query}`, names);
+      expectRequest().flush(PAGE);
+      await settle();
+
+      // With nothing to suggest the panel stays closed, and a closed panel has no options to read.
+      const input = await loader().getHarness(MatAutocompleteHarness);
+      await input.enterText('Категорія');
+      expect(await input.isOpen()).toBe(false);
     });
   });
 
