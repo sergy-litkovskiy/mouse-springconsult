@@ -1,7 +1,7 @@
 ---
 id: T60
 title: "Вужчі фільтри-прапорці в панелі каталогу"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: []
 blocks: [T62]
-updated_at: "2026-09-21"
+updated_at: "2026-09-25"
 ---
 
 # T60 — Вужчі фільтри-прапорці в панелі каталогу
@@ -37,7 +37,8 @@ updated_at: "2026-09-21"
 
 ## Data delta
 
-**Немає.** Правка торкається лише `product-catalog.css` і класів у `product-catalog.html`.
+**Немає.** Правка торкається лише `product-catalog.css`, класів у `product-catalog.html` і правила
+вирізу рамки для цих полів у `styles.css`.
 
 ## API contract excerpt
 
@@ -60,7 +61,7 @@ updated_at: "2026-09-21"
 **AC-54 (нове) — happy path**
 **Given** `user` відкриває `/products` на екрані шириною 1280 px
 **When** панель фільтрів відмальована
-**Then** три поля-прапорці вужчі, ніж 10.5rem (168 px), а текстові фільтри отримали звільнене місце
+**Then** три поля-прапорці вужчі, ніж 10.5rem (168 px)
 
 **AC-54 — edge case**
 **Given** у полі-прапорці обрано «Так» і мітка плаває над рамкою, або поле без вибору
@@ -81,9 +82,9 @@ updated_at: "2026-09-21"
 
 ## DoD
 
-- [ ] AC-54: поля-прапорці вужчі за 168 px, мітки цілі на 1280 і 360 px.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): narrow the catalog flag filters`.
+- [x] AC-54: поля-прапорці вужчі за 168 px, мітки цілі на 1280 і 360 px.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): narrow the catalog flag filters`.
 
 ## Links
 
