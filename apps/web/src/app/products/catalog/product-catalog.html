@@ -49,7 +49,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field class="filters__field" appearance="outline">
+      <mat-form-field class="filters__field filters__field--wide" appearance="outline">
         <mat-label>Категорія</mat-label>
         <mat-chip-grid #categoryChips aria-label="Обрані категорії">
           @for (category of pickedCategories(); track $index) {
