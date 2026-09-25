@@ -584,14 +584,106 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('Вживаний');
     expect(element.textContent).toContain('Новий');
     expect(element.textContent).toContain('Знайдено: 2');
+  });
 
-    // MOUSE is up on Prom and not on OLX: the two columns say different things about the
-    // same card, which is the whole point of there being two of them.
-    const firstRow = element.querySelector('tr[mat-row]');
-    const cell = (column: string): string | undefined =>
-      firstRow?.querySelector(`td.mat-column-${column}`)?.textContent.trim();
-    expect(cell('publishedProm')).toBe('Опубліковано');
-    expect(cell('publishedOlx')).toBe('Ні');
+  describe('published flags as icons (AC-58)', () => {
+    // MOUSE: Prom yes, OLX no; the second row flips both, so every column shows both states.
+    const FLIPPED: ProductListItem = { ...KEYBOARD, publishedProm: false, publishedOlx: true };
+
+    async function openFlags(): Promise<void> {
+      await open();
+      expectRequest().flush({ ...PAGE, items: [MOUSE, FLIPPED], total: 2 });
+      await settle();
+    }
+
+    function flagCell(row: number, column: 'publishedProm' | 'publishedOlx'): HTMLElement | null {
+      return (
+        element
+          .querySelectorAll('tr[mat-row]')
+          [row]?.querySelector<HTMLElement>(`td.mat-column-${column}`) ?? null
+      );
+    }
+
+    function flagIcon(row: number, column: 'publishedProm' | 'publishedOlx'): HTMLElement | null {
+      return flagCell(row, column)?.querySelector<HTMLElement>('mat-icon') ?? null;
+    }
+
+    async function flagTooltip(
+      row: number,
+      column: 'publishedProm' | 'publishedOlx',
+    ): Promise<string> {
+      const tooltips = await TestbedHarnessEnvironment.loader(harness.fixture).getAllHarnesses(
+        MatTooltipHarness.with({ selector: `td.mat-column-${column} mat-icon` }),
+      );
+      const tooltip = tooltips[row];
+      if (tooltip === undefined) {
+        throw new Error(`no ${column} icon with a tooltip in row ${String(row)}`);
+      }
+      await tooltip.show();
+      const text = await tooltip.getTooltipText();
+      await tooltip.hide();
+      return text;
+    }
+
+    it('shows an icon instead of the published or not text in both columns (AC-58)', async () => {
+      await openFlags();
+
+      for (const row of [0, 1]) {
+        for (const column of ['publishedProm', 'publishedOlx'] as const) {
+          expect(flagIcon(row, column)).not.toBeNull();
+          const text = flagCell(row, column)?.textContent ?? '';
+          expect(text).not.toContain('Опубліковано');
+          expect(text).not.toContain('Ні');
+        }
+      }
+    });
+
+    it('draws a published flag as check_circle and styles it apart from an unpublished one (AC-58)', async () => {
+      await openFlags();
+
+      expect(flagIcon(0, 'publishedProm')?.textContent.trim()).toBe('check_circle');
+      expect(flagIcon(1, 'publishedOlx')?.textContent.trim()).toBe('check_circle');
+      // Green against grey: the colour follows the state, so the two icons cannot look alike.
+      expect(flagIcon(0, 'publishedProm')?.className).not.toBe(
+        flagIcon(0, 'publishedOlx')?.className,
+      );
+      expect(flagIcon(0, 'publishedProm')?.className).toBe(flagIcon(1, 'publishedOlx')?.className);
+      expect(flagIcon(0, 'publishedOlx')?.className).toBe(flagIcon(1, 'publishedProm')?.className);
+    });
+
+    it('names the marketplace and the state in the aria-label of each icon (AC-58)', async () => {
+      await openFlags();
+
+      expect(flagIcon(0, 'publishedProm')?.getAttribute('aria-label')).toBe('Опубліковано на Prom');
+      expect(flagIcon(0, 'publishedOlx')?.getAttribute('aria-label')).toBe(
+        'Не опубліковано на OLX',
+      );
+      expect(flagIcon(1, 'publishedProm')?.getAttribute('aria-label')).toBe(
+        'Не опубліковано на Prom',
+      );
+      expect(flagIcon(1, 'publishedOlx')?.getAttribute('aria-label')).toBe('Опубліковано на OLX');
+    });
+
+    it('keeps the icons audible to a screen reader (AC-58)', async () => {
+      await openFlags();
+
+      // mat-icon hides itself with aria-hidden="true" unless told otherwise.
+      for (const row of [0, 1]) {
+        for (const column of ['publishedProm', 'publishedOlx'] as const) {
+          expect(flagIcon(row, column)).not.toBeNull();
+          expect(flagIcon(row, column)?.getAttribute('aria-hidden')).not.toBe('true');
+        }
+      }
+    });
+
+    it('repeats the aria-label in the tooltip of each icon (AC-58)', async () => {
+      await openFlags();
+
+      expect(await flagTooltip(0, 'publishedProm')).toBe('Опубліковано на Prom');
+      expect(await flagTooltip(0, 'publishedOlx')).toBe('Не опубліковано на OLX');
+      expect(await flagTooltip(1, 'publishedProm')).toBe('Не опубліковано на Prom');
+      expect(await flagTooltip(1, 'publishedOlx')).toBe('Опубліковано на OLX');
+    });
   });
 
   it('shows the main frame as the thumbnail and the total number of images beside it', async () => {
