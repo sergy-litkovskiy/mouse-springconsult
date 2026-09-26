@@ -62,6 +62,7 @@ body {
   --mat-sys-outline-variant: #d4cec6;
   /* Lighter than `outline`, which also colours text; 3:1 is the floor for a control's edge. */
   --mat-form-field-outlined-outline-color: #96918b;
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
 
   /* The theme writes `Roboto` into every shorthand, so each one is restated. */
   --mat-sys-display-large: 400 3.562rem / 4rem var(--app-font);
