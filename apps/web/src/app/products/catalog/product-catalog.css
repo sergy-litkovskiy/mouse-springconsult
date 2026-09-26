@@ -112,7 +112,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-block: 8px;
 }
 
 .gallery-cell__thumb {
@@ -175,7 +174,10 @@
   cursor: pointer;
 }
 
-/* Not `-high`: that is the not-ready badge's own background, and the badge would lose its edge. */
+.catalog__row .mat-mdc-cell {
+  padding-block: 12px;
+}
+
 .catalog__row:hover {
   background-color: var(--mat-sys-surface-container);
 }
@@ -183,7 +185,7 @@
 .readiness {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: 6px;
   white-space: nowrap;
   font: var(--mat-sys-label-medium);
 }
