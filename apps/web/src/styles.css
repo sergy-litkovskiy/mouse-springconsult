@@ -60,6 +60,8 @@ body {
   /* Also the muted text colour (placeholders, idle flags): 4.5:1 up to `surface-container`. */
   --mat-sys-outline: #6f6a63;
   --mat-sys-outline-variant: #d4cec6;
+  /* Lighter than `outline`, which also colours text; 3:1 is the floor for a control's edge. */
+  --mat-form-field-outlined-outline-color: #96918b;
 
   /* The theme writes `Roboto` into every shorthand, so each one is restated. */
   --mat-sys-display-large: 400 3.562rem / 4rem var(--app-font);
