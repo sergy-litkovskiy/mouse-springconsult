@@ -17,8 +17,7 @@ body {
 
 /*
  * The Paper Dashboard look on top of the prebuilt theme, which sets its tokens on `html`:
- * `:root` outranks it without `!important`. The demo's `#51cbce` carries white text at
- * only 2:1, so it becomes the container tone and `primary` is a darker teal at 5:1.
+ * `:root` outranks it without `!important`. White on `primary` is 4.6:1.
  */
 :root {
   --app-font: Geist, 'Helvetica Neue', Arial, sans-serif;
@@ -26,16 +25,16 @@ body {
   /* Material 3 has no success role, so the green is ours: white on it is about 5:1. */
   --app-success: #2e7d32;
 
-  --mat-sys-primary: #007c7f;
+  --mat-sys-primary: #1572e8;
   --mat-sys-on-primary: #ffffff;
-  --mat-sys-primary-container: #51cbce;
-  --mat-sys-on-primary-container: #003f41;
-  --mat-sys-primary-fixed: #51cbce;
-  --mat-sys-primary-fixed-dim: #34afb2;
-  --mat-sys-on-primary-fixed: #002021;
-  --mat-sys-on-primary-fixed-variant: #003f41;
-  --mat-sys-inverse-primary: #51cbce;
-  --mat-sys-surface-tint: #007c7f;
+  --mat-sys-primary-container: #d6e4fc;
+  --mat-sys-on-primary-container: #0b3d82;
+  --mat-sys-primary-fixed: #d6e4fc;
+  --mat-sys-primary-fixed-dim: #b3cdf8;
+  --mat-sys-on-primary-fixed: #001b3f;
+  --mat-sys-on-primary-fixed-variant: #0b3d82;
+  --mat-sys-inverse-primary: #8fb6f5;
+  --mat-sys-surface-tint: #1572e8;
 
   --mat-sys-secondary: #66615b;
   --mat-sys-on-secondary: #ffffff;
