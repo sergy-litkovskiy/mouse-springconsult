@@ -112,7 +112,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-block: 8px;
 }
 
 .gallery-cell__thumb {
@@ -173,6 +172,10 @@
 
 .catalog__row {
   cursor: pointer;
+}
+
+.catalog__row .mat-mdc-cell {
+  padding-block: 12px;
 }
 
 .catalog__row:hover {
