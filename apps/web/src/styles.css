@@ -21,7 +21,7 @@ body {
  * only 2:1, so it becomes the container tone and `primary` is a darker teal at 5:1.
  */
 :root {
-  --app-font: Montserrat, 'Helvetica Neue', Arial, sans-serif;
+  --app-font: Geist, 'Helvetica Neue', Arial, sans-serif;
 
   /* Material 3 has no success role, so the green is ours: white on it is about 5:1. */
   --app-success: #2e7d32;
@@ -131,15 +131,23 @@ body {
   max-width: none;
 }
 
-/* One palette for the readiness badge in the catalogue and in the open card. */
+/*
+ * One palette for the readiness badge in the catalogue and in the open card: tinted text on a
+ * 10% wash of itself. The tint is mixed with white, not made transparent, so a hovered row
+ * does not dim it; both tones hold 5:1 against it.
+ */
 .readiness--not-ready {
-  background-color: var(--mat-sys-surface-container-high);
-  color: var(--mat-sys-on-surface-variant);
+  --readiness-color: #a14a0a;
 }
 
 .readiness--ready {
-  background-color: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
+  --readiness-color: #137333;
+}
+
+.readiness--not-ready,
+.readiness--ready {
+  background-color: color-mix(in srgb, var(--readiness-color) 10%, #fff);
+  color: var(--readiness-color);
 }
 
 .snack-bar--success {
