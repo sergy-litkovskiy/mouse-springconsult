@@ -1,7 +1,7 @@
 ---
 status: Archived
 owner: "Serhii"
-updated_at: "2026-09-21"
+updated_at: "2026-09-26"
 ---
 
 # Архів плану виконання — product-creation-flow
@@ -124,6 +124,30 @@ WYSIWYG-редактор» з кореневого `CLAUDE.md` і plain text з 
 
 T26 і T27 після T25 незалежні, тож їхній порядок можна поміняти.
 
+## Поставка 3 — UI каталогу й форми
+
+Закриті T56–T64 переїхали сюди 2026-09-26. Відкриті задачі поставки 3 й доріжки, які до них
+ведуть, лишились у [плані](../execution-plan.md).
+
+- **`api`** (`productListQuerySchema`): T61, потім T63 — обидві правлять ту саму схему, і T63
+  вливається в уже змінений контракт, а не конфліктує з ним;
+- **T62** — після T59 (патерн chips), T60 (рядки CSS панелі) і T61 (перелік категорій).
+
+T62 і фронтова половина T63 теж правлять `product-catalog.*`, тож у доріжці каталогу вони
+стають між T60 і T57.
+
+| # | ID | Задача | Крок А | Між | Після | Обґрунтування |
+|---|----|--------|--------|-----|-------|---------------|
+| 1 | T56 | Підсвітка рядка | `goal` | `pw` | — | Верстка без поведінки під unit-тест, DoD вимірюваний (див. умову нижче). Назву токена `--mat-sys-*` звір із документацією Material 22 до старту `/goal`, бо цикл писатиме її з пам'яті |
+| 2 | T60 | Вужчі фільтри-прапорці | `goal` | `pw` на 1280 і 360 px | — | Та сама природа, що T37 і T40: ширина полів і ціла мітка вимірюються. Обрізання плаваючої мітки оцінюєш сам на знімках |
+| 3 | T61 | Категорії в `api` | `tdd` | `+обв'язка`: маршрут `GET /products/categories` у `ProductController`; смоук 401 і те, що `categories` не ловить `/:productId` | — | Поведінка під тест на живій базі: `IN (...)`, `DISTINCT`, нормалізація рядка в масив. Маршрут — обв'язка, агенти `/tdd` його не зареєструють, тесту на 401 не напишуть. `openapi.yaml` і `PRD.md §5` (кроки 6–7) — руками до кроку Б |
+| 4 | T58 | Назви в textarea | `tdd` | `pw` | — | Правка наявних `product-form.*`, нових файлів немає. Поведінка «перенос → пробіл, Enter нічого не додає» тестується. `PRD.md §5` — руками |
+| 5 | T59 | Ключові слова як chips | `tdd` | `pw` | — | Контрол стає масивом, і це зачіпає звірку T55 — її тести мають лишитися зеленими, тож RED переписує їх на масив, а не видаляє. `MatChipsModule` є в `@angular/material`, пакет не додається. `PRD.md §5` — руками |
+| 6 | T62 | Кілька категорій | `tdd` | `pw` | — | Повторює патерн chips із T59 і додає `mat-autocomplete`; нових файлів немає. Стан у URL — масив, тож тест на збережену адресу з однією категорією обов'язковий. `PRD.md §5` — руками |
+| 7 | T63 | Живий пошук | `tdd` | якщо тест регістру кирилиці червоний і виправлення — міграція, вона окремим комітом до `/tdd --from green`; `pw` | — | Регістр `ILIKE` залежить від ctype образу `postgres:18-alpine` — це доводить тест на живій базі, а не пам'ять. Живий пошук тестується фейковим часом. `openapi.yaml` і `PRD.md §5` — руками |
+| 8 | T57 | Верхній пагінатор | `tdd` | `pw` | — | XS, але поведінка «два подання одного стану» тестується через `MatPaginatorHarness`. `PRD.md §5` — руками |
+| 9 | T64 | Іконки публікації | `tdd` | `pw` | — | XS: тест на `aria-label` іконок, а не на колір. `PRD.md §5` — руками |
+
 ## Готові умови `/goal`
 
 Умова має три частини: вимірюваний стан, вивід раннера й обмеження. `node --test` друкує
@@ -165,6 +189,17 @@ T07, T25 і T27 додають npm-пакети, а `node_modules` живуть 
 
 ```
 /goal docs/features/product-creation-flow/tasks/unify-readiness-badge-colors.md: every Checklist item is done, `rg -n "readiness--" apps/web/src/app --glob '*.css'` prints nothing, the computed `background-color` and `color` of `[data-testid="readiness"]` are equal in the catalogue row and in the open card dialog for both a ready and a not-ready card (checked with playwright-cli), `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+Поставка 3. Умова T60 дослівно не спрацювала: `mat-label` — рядковий елемент, його
+`scrollWidth` і `clientWidth` завжди 0, тож обрізання міряли на `.mdc-floating-label` (PR #60).
+
+```
+/goal docs/features/product-creation-flow/tasks/highlight-catalog-row-on-hover.md: every Checklist item is done, with playwright-cli on /products the computed `background-color` of a hovered `.catalog__row` differs from that of a row without the pointer and the row text has a contrast of at least 4.5:1 against it, `git diff -U0 -- apps/web/src/app/products/catalog/product-catalog.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/narrow-catalog-flag-filters.md: every Checklist item is done, with playwright-cli on /products at 1280 px the three fields labelled «Опубл. на Prom», «Опубл. на OLX» and «Картка готова» are each narrower than 168 px and every `mat-label` inside them has `scrollWidth <= clientWidth` both empty and with «Так» selected, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, screenshots at both widths are saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 Хвіст `or stop after N turns` ненадійний, тож межу витрат став окремо.
