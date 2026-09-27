@@ -1,7 +1,7 @@
 ---
 id: T65
 title: "Ціна й стан: редагування прямо в комірці каталогу"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2300
 blocked_by: [T64]
 blocks: []
-updated_at: "2026-09-26"
+updated_at: "2026-09-27"
 ---
 
 # T65 — Ціна й стан: редагування прямо в комірці каталогу
@@ -109,9 +109,9 @@ updated_at: "2026-09-26"
 
 ## DoD
 
-- [ ] AC-59: ціна й стан редагуються в комірці, помилка ціни видна там само.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): edit price and condition inline in the catalog`.
+- [x] AC-59: ціна й стан редагуються в комірці, помилка ціни видна там само.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): edit price and condition inline in the catalog`.
 
 ## Links
 
