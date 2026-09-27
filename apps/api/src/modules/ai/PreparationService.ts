@@ -45,6 +45,19 @@ function priceQuery(card: Product): string {
   return description !== '' ? `${title} ${description}` : title;
 }
 
+/** A title column is a single varchar(200) line, whatever the model wrote (AC-61). */
+function singleLineTitle(text: string): string {
+  const line = text.replace(/\s+/g, ' ').trim();
+  if (line.length <= productConstraints.titleMaxLength) {
+    return line;
+  }
+  // Cut at the last word boundary that fits; a single overlong word is cut mid-word.
+  return line
+    .slice(0, productConstraints.titleMaxLength + 1)
+    .replace(/\s\S*$/, '')
+    .slice(0, productConstraints.titleMaxLength);
+}
+
 export class PreparationService {
   constructor(
     private readonly adapter: AnthropicAdapter,
@@ -61,18 +74,11 @@ export class PreparationService {
     if (job.scope === 'field') {
       const rewrite = await this.adapter.rewriteField(job.field, job.draftText);
       await this.runs.recordUsage(job.runId, rewrite.usage);
-      let value = rewrite.value;
-      if ((job.field === 'titleProm' || job.field === 'titleOlx') && typeof value === 'string') {
-        // A title column is a single varchar(200) line, whatever the model wrote (AC-61).
-        const line = value.replace(/\s+/g, ' ').trim();
-        value =
-          line.length > productConstraints.titleMaxLength
-            ? line
-                .slice(0, productConstraints.titleMaxLength + 1)
-                .replace(/\s\S*$/, '')
-                .slice(0, productConstraints.titleMaxLength)
-            : line;
-      }
+      const isTitle = job.field === 'titleProm' || job.field === 'titleOlx';
+      const value =
+        isTitle && typeof rewrite.value === 'string'
+          ? singleLineTitle(rewrite.value)
+          : rewrite.value;
       await this.runs.finishRun(job.runId, {
         status: 'succeeded',
         suggestions: [{ field: SUGGESTION_FIELDS[job.field], value }],
@@ -90,19 +96,9 @@ export class PreparationService {
     if (job.scope === 'texts' || job.scope === 'both') {
       const texts = await this.adapter.generateTexts(await this.readRecognitionFrames(card));
       await this.runs.recordUsage(job.runId, texts.usage);
-      // A title column is a single varchar(200) line, whatever the model wrote (AC-61).
-      const [titleProm = '', titleOlx = ''] = [texts.titleProm, texts.titleOlx].map((title) => {
-        const line = title.replace(/\s+/g, ' ').trim();
-        return line.length > productConstraints.titleMaxLength
-          ? line
-              .slice(0, productConstraints.titleMaxLength + 1)
-              .replace(/\s\S*$/, '')
-              .slice(0, productConstraints.titleMaxLength)
-          : line;
-      });
       suggestions.push(
-        { field: 'title_prom', value: titleProm },
-        { field: 'title_olx', value: titleOlx },
+        { field: 'title_prom', value: singleLineTitle(texts.titleProm) },
+        { field: 'title_olx', value: singleLineTitle(texts.titleOlx) },
         { field: 'description_prom', value: texts.descriptionProm },
         { field: 'description_olx', value: texts.descriptionOlx },
         { field: 'seo_keywords', value: texts.seoKeywords },
