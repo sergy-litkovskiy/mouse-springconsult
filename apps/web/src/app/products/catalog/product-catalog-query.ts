@@ -96,6 +96,18 @@ export function flagControlValue(flag: boolean | undefined): '' | 'true' | 'fals
   return flag ? 'true' : 'false';
 }
 
+/** "0.00" is how the column says "not priced yet", so a price field shows it as empty. */
+const UNPRICED = '0.00';
+
+export function priceFieldValue(price: string): string {
+  return price === UNPRICED ? '' : price;
+}
+
+export function priceFromField(value: string): string {
+  const price = value.trim();
+  return price === '' ? UNPRICED : price;
+}
+
 export function priceBound(control: AbstractControl): ValidationErrors | null {
   const value = (control.value as string).trim();
   return value === '' || productConstraints.pricePattern.test(value) ? null : { price: true };

@@ -1,10 +1,12 @@
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import {
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
+  type ElementRef,
   inject,
   input,
   linkedSignal,
@@ -12,6 +14,7 @@ import {
   resourceFromSnapshots,
   type ResourceSnapshot,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -25,7 +28,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorIntl, MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
+import { type MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -38,6 +41,7 @@ import type {
   ProductList,
   ProductListItem,
   ProductListQuery,
+  ProductUpdate,
 } from '@contracts/products.contract';
 import {
   productConstraints,
@@ -52,6 +56,8 @@ import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
   priceBound,
+  priceFieldValue,
+  priceFromField,
   priceRange,
   flagControlValue,
   toPage,
@@ -85,6 +91,16 @@ const DELETE_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNKNOWN_DELETE_MESSAGE = 'Не вдалося видалити картку. Спробуйте ще раз.';
+
+const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499 або 2499.00.';
+
+const EDIT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  [apiErrorCodes.invalidPrice]: PRICE_FORMAT_MESSAGE,
+};
+
+const UNKNOWN_EDIT_MESSAGE = 'Не вдалося зберегти зміну. Спробуйте ще раз.';
+
+type EditableField = 'price' | 'condition';
 
 function isProductNotFound(error: unknown): boolean {
   return (
@@ -250,6 +266,15 @@ export class ProductCatalog {
   });
 
   protected readonly deleteError = signal<string | null>(null);
+
+  /** One cell in the whole table is edited at a time, so one draft of each kind is enough. */
+  protected readonly editing = signal<{ id: string; field: EditableField } | null>(null);
+  protected readonly priceDraft = signal('');
+  protected readonly conditionDraft = signal<ProductCondition>('used');
+  protected readonly editError = signal<string | null>(null);
+  protected readonly saving = signal(false);
+  private readonly priceInput = viewChild<ElementRef<HTMLInputElement>>('priceInput');
+  private readonly conditionSelect = viewChild<MatSelect>('conditionSelect');
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
@@ -319,6 +344,10 @@ export class ProductCatalog {
   });
 
   constructor() {
+    // The pencil that had the focus is gone once the cell opens, so the field takes it over.
+    afterRenderEffect(() => this.priceInput()?.nativeElement.focus());
+    afterRenderEffect(() => this.conditionSelect()?.focus());
+
     // After a reload, or a Back out of a filtered page, the fields have to agree with the
     // rows underneath them.
     effect(() => {
@@ -489,6 +518,56 @@ export class ProductCatalog {
   }
 
   protected readonly missingFields = missingFieldsHint;
+
+  protected startEdit(product: ProductListItem, field: EditableField): void {
+    this.editing.set({ id: product.id, field });
+    this.priceDraft.set(priceFieldValue(product.price));
+    this.conditionDraft.set(product.condition);
+    this.editError.set(null);
+  }
+
+  protected cancelEdit(): void {
+    this.editing.set(null);
+  }
+
+  /**
+   * Only the edited field travels, and a value left as it was sends nothing. The badge is not
+   * worked out here: it comes back with the re-read page, from the server's rule.
+   */
+  protected async saveEdit(product: ProductListItem): Promise<void> {
+    // The disabled buttons do not stop Enter in the field.
+    if (this.saving()) {
+      return;
+    }
+    let request: ProductUpdate;
+    if (this.editing()?.field === 'price') {
+      const price = priceFromField(this.priceDraft());
+      if (!productConstraints.pricePattern.test(price)) {
+        this.editError.set(PRICE_FORMAT_MESSAGE);
+        return;
+      }
+      request = { price };
+    } else {
+      request = { condition: this.conditionDraft() };
+    }
+    if (request.price === product.price || request.condition === product.condition) {
+      this.editing.set(null);
+      return;
+    }
+
+    this.saving.set(true);
+    this.editError.set(null);
+    try {
+      await firstValueFrom(this.api.update(product.id, request));
+    } catch (error: unknown) {
+      this.editError.set(apiErrorMessage(error, EDIT_ERROR_MESSAGES, UNKNOWN_EDIT_MESSAGE));
+      return;
+    } finally {
+      this.saving.set(false);
+    }
+    this.editing.set(null);
+    this.catalogue.reload();
+  }
 
   protected async deleteProduct(product: ProductCard): Promise<void> {
     const question: ConfirmDialogData = {

@@ -208,3 +208,32 @@
 .published-flag--on {
   color: var(--app-success);
 }
+
+/* The editor takes the width of its value, not of the column, so the row does not grow. */
+.cell-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.cell-editor__input {
+  width: 7rem;
+  padding: 6px 8px;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 4px;
+  font: var(--mat-sys-body-medium);
+  text-align: right;
+}
+
+.cell-editor__select {
+  width: 7rem;
+}
+
+.cell-editor__error {
+  flex-basis: 100%;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+  white-space: normal;
+  text-align: left;
+}

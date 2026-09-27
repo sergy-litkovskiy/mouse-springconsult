@@ -43,7 +43,7 @@ import type {
 } from '@contracts/products.contract';
 import { productConstraints, type ProductCondition } from '@contracts/products-limits';
 import { apiErrorMessage } from '../../api-error-message';
-import { priceBound } from '../catalog/product-catalog-query';
+import { priceBound, priceFieldValue, priceFromField } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { PreparationRunPoller } from '../preparation-run-poller';
@@ -88,9 +88,6 @@ const UNAVAILABLE_MODEL_MESSAGE = 'Модель зараз недоступна.
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку. Спробуйте ще раз.';
 const UNKNOWN_READ_MESSAGE = 'Не вдалося прочитати картку. Закрийте вікно і спробуйте ще раз.';
-
-/** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
-const UNPRICED = '0.00';
 
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
   { value: 'used', label: 'Вживаний' },
@@ -518,12 +515,11 @@ export class ProductForm {
    */
   private changes(): ProductUpdate {
     const value = this.form.getRawValue();
-    const price = value.price.trim();
     const changes: ProductUpdate = {
       descriptionProm: value.descriptionProm,
       descriptionOlx: value.descriptionOlx,
       seoKeywords: value.seoKeywords,
-      price: price === '' ? UNPRICED : price,
+      price: priceFromField(value.price),
       condition: value.condition,
       publishedProm: value.publishedProm,
       publishedOlx: value.publishedOlx,
@@ -566,7 +562,7 @@ export class ProductForm {
         descriptionProm: product.descriptionProm,
         descriptionOlx: product.descriptionOlx,
         seoKeywords: product.seoKeywords,
-        price: product.price === UNPRICED ? '' : product.price,
+        price: priceFieldValue(product.price),
         category: product.category,
         condition: product.condition,
         publishedProm: product.publishedProm,

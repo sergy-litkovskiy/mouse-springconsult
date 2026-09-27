@@ -1641,4 +1641,418 @@ describe('ProductCatalog', () => {
 
     expect(element.querySelector('mat-progress-bar')).toBeNull();
   });
+
+  describe('price and condition edited in the cell (AC-59)', () => {
+    type EditableColumn = 'price' | 'condition';
+
+    const PENCIL_LABELS: Readonly<Record<EditableColumn, string>> = {
+      price: 'Змінити ціну',
+      condition: 'Змінити стан',
+    };
+
+    const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499 або 2499.00.';
+
+    async function openCatalog(items: ProductListItem[]): Promise<void> {
+      await open();
+      expectRequest().flush({ ...PAGE, items, total: items.length });
+      await settle();
+    }
+
+    function cell(row: number, column: EditableColumn): HTMLElement | null {
+      return rows()[row]?.querySelector<HTMLElement>(`td.mat-column-${column}`) ?? null;
+    }
+
+    function cellButton(
+      row: number,
+      column: EditableColumn,
+      label: string,
+    ): HTMLButtonElement | null {
+      return (
+        cell(row, column)?.querySelector<HTMLButtonElement>(`button[aria-label^="${label}"]`) ??
+        null
+      );
+    }
+
+    async function startEditing(row: number, column: EditableColumn): Promise<void> {
+      const pencil = cellButton(row, column, PENCIL_LABELS[column]);
+      expect(pencil).not.toBeNull();
+      pencil?.click();
+      await settle();
+    }
+
+    function priceField(row: number): HTMLInputElement | null {
+      return cell(row, 'price')?.querySelector<HTMLInputElement>('input') ?? null;
+    }
+
+    function typePrice(row: number, value: string): void {
+      const input = priceField(row);
+      expect(input).not.toBeNull();
+      if (input !== null) {
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+      }
+    }
+
+    function pressInPrice(row: number, key: 'Enter' | 'Escape'): void {
+      const input = priceField(row);
+      expect(input).not.toBeNull();
+      input?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+    }
+
+    function clickCellButton(row: number, column: EditableColumn, label: string): void {
+      const button = cellButton(row, column, label);
+      expect(button).not.toBeNull();
+      button?.click();
+    }
+
+    function saveButton(row: number, column: EditableColumn): HTMLButtonElement | null {
+      return cellButton(row, column, 'Зберегти');
+    }
+
+    function cancelButton(row: number, column: EditableColumn): HTMLButtonElement | null {
+      return cellButton(row, column, 'Скасувати');
+    }
+
+    /** Whitespace is dropped because `Intl` groups thousands with a narrow no-break space. */
+    function shownPrice(row: number): string {
+      return (cell(row, 'price')?.textContent ?? '').replace(/\s/g, '');
+    }
+
+    function editorsInTable(): number {
+      return element.querySelectorAll('table input, table mat-select').length;
+    }
+
+    function expectNoPatch(): void {
+      http.expectNone((request) => request.method === 'PATCH');
+    }
+
+    function conditionSelect(): Promise<MatSelectHarness> {
+      return TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
+        MatSelectHarness.with({ ancestor: 'td.mat-column-condition' }),
+      );
+    }
+
+    it('saves a new price as a PATCH of the price alone and re-reads the page (AC-59)', async () => {
+      await openCatalog([UNPRICED, KEYBOARD]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2499.5');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      const patch = http.expectOne(`/api/products/${UNPRICED.id}`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({ price: '2499.5' });
+      patch.flush({ ...UNPRICED, price: '2499.50', isReady: true, discardedKeywordsCount: 0 });
+      await tick();
+
+      // The badge comes from the server's re-read, not from a second rule on the client.
+      expectRequest().flush({
+        ...PAGE,
+        items: [{ ...UNPRICED, price: '2499.50', isReady: true }, KEYBOARD],
+      });
+      await settle();
+
+      expect(dialogs().length).toBe(0);
+      expect(priceField(0)).toBeNull();
+      expect(shownPrice(0)).toContain('2499,50');
+      expect(badge(0)?.textContent.trim()).toBe('Готово');
+    });
+
+    it('saves a new condition as a PATCH of the condition alone and re-reads the page (AC-59)', async () => {
+      await openCatalog([UNPRICED]);
+
+      await startEditing(0, 'condition');
+      const select = await conditionSelect();
+      expect(await select.getValueText()).toBe('Вживаний');
+      await select.open();
+      const options = await select.getOptions();
+      const labels = await Promise.all(options.map((option) => option.getText()));
+      expect(labels.sort()).toEqual(['Вживаний', 'Новий']);
+      await select.clickOptions({ text: 'Новий' });
+
+      clickCellButton(0, 'condition', 'Зберегти');
+      await tick();
+
+      const patch = http.expectOne(`/api/products/${UNPRICED.id}`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({ condition: 'new' });
+      patch.flush({ ...UNPRICED, condition: 'new', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...UNPRICED, condition: 'new' }], total: 1 });
+      await settle();
+
+      expect(dialogs().length).toBe(0);
+      expect(cell(0, 'condition')?.querySelector('mat-select')).toBeNull();
+      expect(cell(0, 'condition')?.textContent).toContain('Новий');
+    });
+
+    it('saves the price on Enter as on the tick (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '3100');
+      pressInPrice(0, 'Enter');
+      await tick();
+
+      const patch = http.expectOne(`/api/products/${MOUSE.id}`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({ price: '3100' });
+      patch.flush({ ...MOUSE, price: '3100.00', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '3100.00' }], total: 1 });
+      await settle();
+
+      expect(shownPrice(0)).toContain('3100,00');
+    });
+
+    it('saves an emptied price as 0.00, as the card form does (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      const patch = http.expectOne(`/api/products/${MOUSE.id}`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({ price: '0.00' });
+      patch.flush({ ...MOUSE, price: '0.00', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '0.00' }], total: 1 });
+      await settle();
+    });
+
+    it('puts the focus in the field the pencil opens, so Esc and typing reach it (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      expect(document.activeElement).toBe(priceField(0));
+
+      await startEditing(0, 'condition');
+      expect(document.activeElement).toBe(cell(0, 'condition')?.querySelector('mat-select'));
+    });
+
+    it('shows a price of 0.00 as an empty field, as the card form does (AC-59)', async () => {
+      await openCatalog([UNPRICED]);
+
+      await startEditing(0, 'price');
+
+      expect(priceField(0)?.value).toBe('');
+    });
+
+    it('sends nothing for a price or a condition left as it was (AC-59)', async () => {
+      await openCatalog([MOUSE, UNPRICED]);
+
+      await startEditing(0, 'price');
+      expect(priceField(0)?.value).toBe('2499.00');
+      clickCellButton(0, 'price', 'Зберегти');
+      await settle();
+      expectNoPatch();
+
+      // An empty field on an unpriced card is the "0.00" it already holds.
+      await startEditing(1, 'price');
+      clickCellButton(1, 'price', 'Зберегти');
+      await settle();
+      expectNoPatch();
+
+      await startEditing(0, 'condition');
+      clickCellButton(0, 'condition', 'Зберегти');
+      await settle();
+      expectNoPatch();
+      http.expectNone((request) => request.url === '/api/products');
+    });
+
+    for (const invalid of ['-5', '12,345']) {
+      it(`refuses ${invalid} without asking the server and keeps it in the open field (AC-59)`, async () => {
+        await openCatalog([MOUSE]);
+
+        await startEditing(0, 'price');
+        typePrice(0, invalid);
+        clickCellButton(0, 'price', 'Зберегти');
+        await settle();
+        pressInPrice(0, 'Enter');
+        await settle();
+
+        expectNoPatch();
+        expect(priceField(0)?.value).toBe(invalid);
+        expect(cell(0, 'price')?.textContent).toContain(PRICE_FORMAT_MESSAGE);
+      });
+    }
+
+    it('shows invalid_price from the server in the cell and keeps the typed value open (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2499.5');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      http
+        .expectOne(`/api/products/${MOUSE.id}`)
+        .flush(
+          { error: { code: 'invalid_price', message: 'Invalid price' } },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+      await settle();
+
+      // Nothing was written, so there is nothing to re-read.
+      http.expectNone((request) => request.url === '/api/products');
+      expect(dialogs().length).toBe(0);
+      expect(priceField(0)?.value).toBe('2499.5');
+      expect(cell(0, 'price')?.textContent).toContain(PRICE_FORMAT_MESSAGE);
+    });
+
+    it('shows a lost connection in the cell and keeps the typed value open (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2499.5');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      http.expectOne(`/api/products/${MOUSE.id}`).error(new ProgressEvent('error'));
+      await settle();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(priceField(0)?.value).toBe('2499.5');
+      expect(cell(0, 'price')?.textContent).toContain('Немає зв’язку із сервером');
+    });
+
+    it('turns both buttons off while the save is in flight, so a second click sends nothing (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2600');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      expect(saveButton(0, 'price')?.disabled).toBe(true);
+      expect(cancelButton(0, 'price')?.disabled).toBe(true);
+      saveButton(0, 'price')?.click();
+      await tick();
+
+      const patches = http.match((request) => request.method === 'PATCH');
+      expect(patches.length).toBe(1);
+      patches[0]?.flush({ ...MOUSE, price: '2600.00', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '2600.00' }], total: 1 });
+      await settle();
+    });
+
+    it('sends nothing for Enter while the save is in flight (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2600');
+      pressInPrice(0, 'Enter');
+      await tick();
+      pressInPrice(0, 'Enter');
+      await tick();
+
+      const patches = http.match((request) => request.method === 'PATCH');
+      expect(patches.length).toBe(1);
+      patches[0]?.flush({ ...MOUSE, price: '2600.00', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '2600.00' }], total: 1 });
+      await settle();
+    });
+
+    it('puts the saved price back without a request on the cross (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '1');
+      clickCellButton(0, 'price', 'Скасувати');
+      await settle();
+
+      expectNoPatch();
+      expect(dialogs().length).toBe(0);
+      expect(priceField(0)).toBeNull();
+      expect(shownPrice(0)).toContain('2499,00');
+
+      await startEditing(0, 'price');
+      expect(priceField(0)?.value).toBe('2499.00');
+    });
+
+    it('puts the saved price back without a request on Esc (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '1');
+      pressInPrice(0, 'Escape');
+      await settle();
+
+      expectNoPatch();
+      expect(priceField(0)).toBeNull();
+      expect(shownPrice(0)).toContain('2499,00');
+
+      await startEditing(0, 'price');
+      expect(priceField(0)?.value).toBe('2499.00');
+    });
+
+    it('puts the saved condition back without a request on the cross (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'condition');
+      await (await conditionSelect()).clickOptions({ text: 'Новий' });
+      clickCellButton(0, 'condition', 'Скасувати');
+      await settle();
+
+      expectNoPatch();
+      expect(cell(0, 'condition')?.querySelector('mat-select')).toBeNull();
+      expect(cell(0, 'condition')?.textContent).toContain('Вживаний');
+    });
+
+    it('keeps one cell in edit mode across the table and drops the draft it leaves (AC-59)', async () => {
+      await openCatalog([MOUSE, KEYBOARD]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '1');
+      await startEditing(1, 'price');
+
+      expect(editorsInTable()).toBe(1);
+      expect(priceField(0)).toBeNull();
+      expect(shownPrice(0)).toContain('2499,00');
+      expect(priceField(1)?.value).toBe('3200.00');
+
+      await startEditing(0, 'condition');
+
+      expect(editorsInTable()).toBe(1);
+      expect(priceField(1)).toBeNull();
+      expect(cell(0, 'condition')?.querySelector('mat-select')).not.toBeNull();
+      expectNoPatch();
+      expect(dialogs().length).toBe(0);
+    });
+
+    it('opens no card form on a click at the pencil, the field or the buttons (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      expect(dialogs().length).toBe(0);
+
+      priceField(0)?.click();
+      await settle();
+      expect(dialogs().length).toBe(0);
+
+      clickCellButton(0, 'price', 'Скасувати');
+      await settle();
+      expect(dialogs().length).toBe(0);
+
+      await startEditing(0, 'condition');
+      const select = await conditionSelect();
+      await select.open();
+      await select.close();
+      expect(dialogs().length).toBe(0);
+
+      clickCellButton(0, 'condition', 'Зберегти');
+      await settle();
+      expect(dialogs().length).toBe(0);
+    });
+  });
 });
