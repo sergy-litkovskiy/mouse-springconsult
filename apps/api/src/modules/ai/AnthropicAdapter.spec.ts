@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import sharp from 'sharp';
 import { config } from '../../config.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
 import {
   AnthropicAdapter,
   type FieldRewriteResult,
@@ -55,6 +56,8 @@ class RecordingAnthropicAdapter extends AnthropicAdapter {
     return {
       value: {
         recognizedItem: 'вʼязана пов’язка на голову',
+        titleProm: 'Вʼязана пов’язка на голову',
+        titleOlx: 'Пов’язка на голову вʼязана',
         descriptionProm: 'Опис для Prom.',
         descriptionOlx: 'Опис для OLX.',
         seoKeywords: ['пов’язка', 'вʼязана'],
@@ -123,18 +126,41 @@ describe('frame limit', () => {
 });
 
 describe('generateTexts', () => {
-  it('returns the recognized item alongside both listings and usage (AC-08, ADR 0014)', async () => {
+  it('returns the recognized item alongside both titles, both listings and usage (AC-05, AC-08, ADR 0014)', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
     const result: TextsResult = await adapter.generateTexts([await bigFrame(64, 64)]);
 
     assert.deepEqual(result, {
       recognizedItem: 'вʼязана пов’язка на голову',
+      titleProm: 'Вʼязана пов’язка на голову',
+      titleOlx: 'Пов’язка на голову вʼязана',
       descriptionProm: 'Опис для Prom.',
       descriptionOlx: 'Опис для OLX.',
       seoKeywords: ['пов’язка', 'вʼязана'],
       usage: USAGE,
     });
+  });
+
+  it('asks for a Prom title and an OLX title along with the descriptions (AC-05)', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+
+    await adapter.generateTexts([await bigFrame(64, 64)]);
+
+    assert.match(textOf(adapter.lastTextsContent), /\btitles?\b/i);
+  });
+
+  it('asks for each title on a single line within the title column limit (AC-61)', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+
+    await adapter.generateTexts([await bigFrame(64, 64)]);
+
+    const prompt = textOf(adapter.lastTextsContent);
+    assert.match(prompt, /\b(single|one) line\b/i);
+    assert.ok(
+      prompt.includes(String(productConstraints.titleMaxLength)),
+      `expected the prompt to name the ${String(productConstraints.titleMaxLength)}-character title limit`,
+    );
   });
 
   it('asks for plain text, not Markdown or emoji (ai/CLAUDE.md)', async () => {

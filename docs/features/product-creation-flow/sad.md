@@ -605,7 +605,7 @@ sequenceDiagram
 документа, де межа виправляє введене замість відмовити, і розбіжність зі стилем валідації §8
 винесена у звіт аудиту.
 
-**Сценарій 7 — поставка 2: підготовка текстів (US-03, AC-05, AC-06, AC-07).**
+**Сценарій 7 — поставка 2: підготовка текстів (US-03, AC-05, AC-06, AC-07, AC-61).**
 
 ```mermaid
 sequenceDiagram
@@ -618,7 +618,7 @@ sequenceDiagram
     participant anthropic as Anthropic API
 
     user->>web: запускає підготовку текстів (Generate all)
-    web->>api: просить обидва описи й ключові слова
+    web->>api: просить назви, описи й ключові слова
     api->>pg: читає картку з кадрами
     alt немає жодного кадру
         api-->>web: доменний код gallery empty (AC-06)
@@ -630,9 +630,10 @@ sequenceDiagram
         worker->>pg: бере задачу
         worker->>r2: читає до трьох кадрів картки
         worker->>worker: sharp зменшує кадр до 1568 px перед викликом
-        worker->>anthropic: structured outputs — розпізнає товар і повертає опис Prom, слова, опис OLX (ADR 0014)
-        anthropic-->>worker: три значення одним викликом
-        worker->>pg: пише три пропозиції та usage виклику (ADR 0006)
+        worker->>anthropic: structured outputs — розпізнає товар і повертає назви Prom і OLX, опис Prom, слова, опис OLX (ADR 0014)
+        anthropic-->>worker: п'ять значень одним викликом
+        worker->>worker: зводить кожну назву до одного рядка не довше 200 символів (AC-61)
+        worker->>pg: пише п'ять пропозицій та usage виклику (ADR 0006)
         loop поки запуск не завершено
             web->>api: питає стан запуску
             api->>pg: читає стан задачі й пропозиції картки

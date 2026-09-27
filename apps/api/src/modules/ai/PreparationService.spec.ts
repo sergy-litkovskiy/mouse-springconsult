@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
 import { config } from '../../config.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
 import { createDataSource } from '../../db.ts';
 import { MediaService, type ImageStorage } from '../media/index.ts';
 import {
@@ -12,6 +13,7 @@ import {
   Product,
   ProductImage,
   ProductRepository,
+  ProductService,
   PRODUCTS_TABLE,
   type RunOutcome,
 } from '../products/index.ts';
@@ -42,6 +44,8 @@ const FIELD_USAGE = { model: MODEL, inputTokens: 120, outputTokens: 30 };
 
 const TEXTS: TextsResult = {
   recognizedItem: 'бездротова миша Logitech MX Master 3',
+  titleProm: 'Бездротова миша Logitech MX Master 3',
+  titleOlx: 'Миша Logitech MX Master 3, бездротова',
   descriptionProm: 'Опис для Prom.',
   descriptionOlx: 'Опис для OLX.',
   seoKeywords: ['миша', 'logitech'],
@@ -55,7 +59,12 @@ const PRICE: PriceResult = {
   usage: PRICE_USAGE,
 };
 
-type Script = { readonly textsFailure?: Error; readonly priceFailure?: Error };
+type Script = {
+  readonly textsFailure?: Error;
+  readonly priceFailure?: Error;
+  readonly texts?: TextsResult;
+  readonly fieldValue?: string;
+};
 
 /** Never talks to Anthropic: every public method is overridden and records what it was given. */
 class ScriptedAnthropicAdapter extends AnthropicAdapter {
@@ -72,7 +81,7 @@ class ScriptedAnthropicAdapter extends AnthropicAdapter {
     if (this.script.textsFailure !== undefined) {
       throw this.script.textsFailure;
     }
-    return TEXTS;
+    return this.script.texts ?? TEXTS;
   }
 
   override async findPriceRange(query: string): Promise<PriceResult> {
@@ -88,6 +97,9 @@ class ScriptedAnthropicAdapter extends AnthropicAdapter {
     draftText: string,
   ): Promise<FieldRewriteResult> {
     this.fieldCalls.push({ field, draftText });
+    if (this.script.fieldValue !== undefined) {
+      return { value: this.script.fieldValue, usage: FIELD_USAGE };
+    }
     return field === 'seoKeywords'
       ? { value: ['миша', 'logitech', 'mx master'], usage: FIELD_USAGE }
       : { value: 'Новий варіант.', usage: FIELD_USAGE };
@@ -228,7 +240,13 @@ const TEXT_SUGGESTIONS = [
   { field: 'description_olx', value: 'Опис для OLX.' },
   { field: 'description_prom', value: 'Опис для Prom.' },
   { field: 'seo_keywords', value: ['миша', 'logitech'] },
+  { field: 'title_olx', value: 'Миша Logitech MX Master 3, бездротова' },
+  { field: 'title_prom', value: 'Бездротова миша Logitech MX Master 3' },
 ];
+
+/** 239 characters, and the 200th falls inside a word: 33 whole words (197 characters) fit. */
+const OVERLONG_TITLE = Array.from({ length: 40 }, () => 'мишка').join(' ');
+const OVERLONG_TITLE_CUT = Array.from({ length: 33 }, () => 'мишка').join(' ');
 
 const PRICE_SUGGESTION = { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } };
 
@@ -248,7 +266,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: texts', () => {
-    it('stores the Prom description, the keywords and the OLX description as three separate suggestions (AC-05)', async () => {
+    it('stores both titles, the Prom description, the keywords and the OLX description as five separate suggestions (AC-05)', async () => {
       const { service } = setup();
       const job = await textsJob();
 
@@ -258,6 +276,72 @@ describe('preparation service (postgres)', () => {
       const run = await loadRun(job.runId);
       assert.equal(run.status, 'succeeded');
       assert.equal(run.errorCode, null);
+    });
+
+    it('puts each title on one line and cuts an overlong one at a word boundary, leaving the descriptions as written (AC-61)', async () => {
+      const multiLineDescription = `Перший рядок опису.\n${OVERLONG_TITLE}`;
+      const { service } = setup({
+        texts: {
+          ...TEXTS,
+          titleProm: '  Бездротова миша\nLogitech MX Master 3 ',
+          titleOlx: OVERLONG_TITLE,
+          descriptionOlx: multiLineDescription,
+        },
+      });
+      const job = await textsJob();
+
+      await service.prepare(job);
+
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        { field: 'description_olx', value: multiLineDescription },
+        { field: 'description_prom', value: 'Опис для Prom.' },
+        { field: 'seo_keywords', value: ['миша', 'logitech'] },
+        { field: 'title_olx', value: OVERLONG_TITLE_CUT },
+        { field: 'title_prom', value: 'Бездротова миша Logitech MX Master 3' },
+      ]);
+      assert.ok(OVERLONG_TITLE_CUT.length <= productConstraints.titleMaxLength);
+    });
+
+    it('fills an overlong title into an empty card field without breaking the column (AC-61)', async () => {
+      const { service, media } = setup({ texts: { ...TEXTS, titleOlx: OVERLONG_TITLE } });
+      const productId = await seedProduct({ titleProm: '', titleOlx: '' });
+      await seedGallery(productId, 1);
+      const runId = await seedRun(productId, 'texts');
+      const products = new ProductService(
+        new ProductRepository(dataSource),
+        media,
+        new PreparationRepository(dataSource),
+      );
+
+      await service.prepare({ runId, productId, scope: 'texts' });
+      const reading = await products.getById(productId);
+
+      assert.equal(reading.product.titleOlx, OVERLONG_TITLE_CUT);
+      assert.equal(reading.product.titleProm, TEXTS.titleProm);
+    });
+
+    it('keeps a title the user wrote and fills the empty one with the suggestion (AC-61, AC-11)', async () => {
+      const { service, media } = setup();
+      const productId = await seedProduct({ titleProm: 'Моя назва для Prom', titleOlx: '' });
+      await seedGallery(productId, 1);
+      const runId = await seedRun(productId, 'texts');
+      const products = new ProductService(
+        new ProductRepository(dataSource),
+        media,
+        new PreparationRepository(dataSource),
+      );
+
+      await service.prepare({ runId, productId, scope: 'texts' });
+      const reading = await products.getById(productId);
+
+      assert.equal(reading.product.titleProm, 'Моя назва для Prom');
+      assert.equal(reading.product.titleOlx, TEXTS.titleOlx);
+      assert.deepEqual(
+        reading.pendingSuggestions
+          .filter(({ field }) => field === 'title_prom')
+          .map(({ value }) => value),
+        [TEXTS.titleProm],
+      );
     });
 
     it('recognizes the item from the main frame first and sends at most three frames (AC-05)', async () => {
@@ -304,7 +388,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: both', () => {
-    it('stores the texts and the price range as four separate suggestions (AC-05, AC-08)', async () => {
+    it('stores the texts and the price range as six separate suggestions (AC-05, AC-08)', async () => {
       const { service } = setup();
       const job = await textsJob('both');
 
@@ -315,6 +399,8 @@ describe('preparation service (postgres)', () => {
         TEXT_SUGGESTIONS[1],
         PRICE_SUGGESTION,
         TEXT_SUGGESTIONS[2],
+        TEXT_SUGGESTIONS[3],
+        TEXT_SUGGESTIONS[4],
       ]);
       assert.equal((await loadRun(job.runId)).status, 'succeeded');
     });
@@ -458,6 +544,42 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.status, 'succeeded');
       assert.equal(run.inputTokens, FIELD_USAGE.inputTokens);
       assert.equal(run.outputTokens, FIELD_USAGE.outputTokens);
+    });
+
+    it('puts a rewritten title on one line (AC-61)', async () => {
+      const { service } = setup({ fieldValue: ' Миша Logitech\nMX Master 3  ' });
+      const productId = await seedProduct();
+      const runId = await seedRun(productId, 'field');
+
+      await service.prepare({
+        runId,
+        productId,
+        scope: 'field',
+        field: 'titleOlx',
+        draftText: 'миша лоджитек',
+      });
+
+      assert.deepEqual(await suggestionsOf(runId), [
+        { field: 'title_olx', value: 'Миша Logitech MX Master 3' },
+      ]);
+    });
+
+    it('cuts an overlong rewritten title at a word boundary within the column limit (AC-61)', async () => {
+      const { service } = setup({ fieldValue: OVERLONG_TITLE });
+      const productId = await seedProduct();
+      const runId = await seedRun(productId, 'field');
+
+      await service.prepare({
+        runId,
+        productId,
+        scope: 'field',
+        field: 'titleProm',
+        draftText: 'миша лоджитек',
+      });
+
+      assert.deepEqual(await suggestionsOf(runId), [
+        { field: 'title_prom', value: OVERLONG_TITLE_CUT },
+      ]);
     });
 
     it('stores a rewritten keyword list as a list (ADR 0015)', async () => {

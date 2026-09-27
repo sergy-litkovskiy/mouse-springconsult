@@ -1,7 +1,7 @@
 ---
 id: T67
 title: "«Згенерувати все» готує й назви для Prom і OLX"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 3000
 blocked_by: []
 blocks: [T72]
-updated_at: "2026-09-23"
+updated_at: "2026-09-27"
 ---
 
 # T67 — «Згенерувати все» готує й назви для Prom і OLX
@@ -50,13 +50,14 @@ updated_at: "2026-09-23"
 
 ## Sequence
 
-> `web->>api: просить обидва описи й ключові слова`
-> `worker->>anthropic: structured outputs — розпізнає товар і повертає опис Prom, слова, опис OLX (ADR 0014)`
-> `anthropic-->>worker: три значення одним викликом`
-> `worker->>pg: пише три пропозиції та usage виклику (ADR 0006)`
+> `web->>api: просить назви, описи й ключові слова`
+> `worker->>anthropic: structured outputs — розпізнає товар і повертає назви Prom і OLX, опис Prom, слова, опис OLX (ADR 0014)`
+> `anthropic-->>worker: п'ять значень одним викликом`
+> `worker->>worker: зводить кожну назву до одного рядка не довше 200 символів (AC-61)`
+> `worker->>pg: пише п'ять пропозицій та usage виклику (ADR 0006)`
 
-[sad.md §6](../sad.md#6-runtime-view), сценарій 7. Після задачі ці кроки говорять про обидві
-назви й п'ять значень. Діаграму правимо кроком 6 чекліста.
+[sad.md §6](../sad.md#6-runtime-view), сценарій 7, у редакції після кроку 6 чекліста: до задачі
+ці кроки говорили про три значення без назв.
 
 ## Data delta
 
@@ -117,9 +118,9 @@ AC-05 переписується, AC-61 нове. До [PRD §5](../PRD.md#5-acc
 
 ## DoD
 
-- [ ] AC-05 у новій редакції та AC-61: назви приходять разом з описами й не ламають колонку.
-- [ ] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені, `pw` пройдено.
-- [ ] Коміт: `feat(ai): generate both listing titles with the texts`.
+- [x] AC-05 у новій редакції та AC-61: назви приходять разом з описами й не ламають колонку.
+- [x] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені, `pw` пройдено.
+- [x] Коміт: `feat(ai): generate both listing titles with the texts`.
 
 ## Links
 
