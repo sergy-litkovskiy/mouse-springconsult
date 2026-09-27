@@ -215,7 +215,7 @@
           <td mat-cell *matCellDef="let product" class="catalog__price">
             @if (editing()?.id === product.id && editing()?.field === 'price') {
               <!-- A click inside the editor is not a click on the row: that opens the card form. -->
-              <div class="cell-editor" (click)="$event.stopPropagation()">
+              <div class="cell-editor" role="presentation" (click)="$event.stopPropagation()">
                 <input
                   #priceInput
                   class="cell-editor__input"
@@ -272,7 +272,7 @@
           <th mat-header-cell *matHeaderCellDef scope="col">Стан</th>
           <td mat-cell *matCellDef="let product">
             @if (editing()?.id === product.id && editing()?.field === 'condition') {
-              <div class="cell-editor" (click)="$event.stopPropagation()">
+              <div class="cell-editor" role="presentation" (click)="$event.stopPropagation()">
                 <mat-select
                   class="cell-editor__select"
                   [attr.aria-label]="'Стан ' + product.titleProm"
