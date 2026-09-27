@@ -38,6 +38,7 @@ import type {
   ProductList,
   ProductListItem,
   ProductListQuery,
+  ProductUpdate,
 } from '@contracts/products.contract';
 import {
   productConstraints,
@@ -250,6 +251,13 @@ export class ProductCatalog {
   });
 
   protected readonly deleteError = signal<string | null>(null);
+
+  /** One cell in the whole table is edited at a time, so one draft of each kind is enough. */
+  protected readonly editing = signal<{ id: string; field: 'price' | 'condition' } | null>(null);
+  protected readonly priceDraft = signal('');
+  protected readonly conditionDraft = signal<ProductCondition>('used');
+  protected readonly editError = signal<string | null>(null);
+  protected readonly saving = signal(false);
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
@@ -489,6 +497,61 @@ export class ProductCatalog {
   }
 
   protected readonly missingFields = missingFieldsHint;
+
+  /** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
+  protected startEdit(product: ProductListItem, field: 'price' | 'condition'): void {
+    this.editing.set({ id: product.id, field });
+    this.priceDraft.set(product.price === '0.00' ? '' : product.price);
+    this.conditionDraft.set(product.condition);
+    this.editError.set(null);
+  }
+
+  protected cancelEdit(): void {
+    this.editing.set(null);
+  }
+
+  /**
+   * Only the edited field travels, and a value left as it was sends nothing. The badge is not
+   * worked out here: it comes back with the re-read page, from the server's rule.
+   */
+  protected async saveEdit(product: ProductListItem): Promise<void> {
+    let request: ProductUpdate;
+    if (this.editing()?.field === 'price') {
+      const typed = this.priceDraft().trim();
+      // An emptied field is "not priced yet", as it is in the card form.
+      const price = typed === '' ? '0.00' : typed;
+      if (!productConstraints.pricePattern.test(price)) {
+        this.editError.set('Ціна виглядає як 2499 або 2499.00.');
+        return;
+      }
+      request = { price };
+    } else {
+      request = { condition: this.conditionDraft() };
+    }
+    if (request.price === product.price || request.condition === product.condition) {
+      this.editing.set(null);
+      return;
+    }
+
+    this.saving.set(true);
+    this.editError.set(null);
+    try {
+      await firstValueFrom(this.api.update(product.id, request));
+    } catch (error: unknown) {
+      this.editError.set(
+        apiErrorMessage(
+          error,
+          { [apiErrorCodes.invalidPrice]: 'Ціна виглядає як 2499 або 2499.00.' },
+          'Не вдалося зберегти зміну. Спробуйте ще раз.',
+        ),
+      );
+      return;
+    } finally {
+      this.saving.set(false);
+    }
+    this.editing.set(null);
+    this.catalogue.reload();
+  }
 
   protected async deleteProduct(product: ProductCard): Promise<void> {
     const question: ConfirmDialogData = {

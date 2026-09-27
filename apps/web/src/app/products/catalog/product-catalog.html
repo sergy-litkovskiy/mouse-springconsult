@@ -213,7 +213,53 @@
         <ng-container matColumnDef="price">
           <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Ціна</th>
           <td mat-cell *matCellDef="let product" class="catalog__price">
-            {{ formatPrice(product.price) }}
+            @if (editing()?.id === product.id && editing()?.field === 'price') {
+              <!-- A click inside the editor is not a click on the row: that opens the card form. -->
+              <div class="cell-editor" (click)="$event.stopPropagation()">
+                <input
+                  #priceInput
+                  class="cell-editor__input"
+                  inputmode="decimal"
+                  placeholder="2499.00"
+                  [attr.aria-label]="'Ціна, ₴, ' + product.titleProm"
+                  [value]="priceDraft()"
+                  (input)="priceDraft.set(priceInput.value)"
+                  (keydown.enter)="saveEdit(product)"
+                  (keydown.escape)="cancelEdit()"
+                />
+                <button
+                  matIconButton
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="saveEdit(product)"
+                  [attr.aria-label]="'Зберегти ціну ' + product.titleProm"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  matIconButton
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="cancelEdit()"
+                  [attr.aria-label]="'Скасувати зміну ціни ' + product.titleProm"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+                @if (editError(); as message) {
+                  <span class="cell-editor__error" role="alert">{{ message }}</span>
+                }
+              </div>
+            } @else {
+              {{ formatPrice(product.price) }}
+              <button
+                matIconButton
+                type="button"
+                (click)="$event.stopPropagation(); startEdit(product, 'price')"
+                [attr.aria-label]="'Змінити ціну ' + product.titleProm"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
           </td>
         </ng-container>
 
@@ -224,7 +270,51 @@
 
         <ng-container matColumnDef="condition">
           <th mat-header-cell *matHeaderCellDef scope="col">Стан</th>
-          <td mat-cell *matCellDef="let product">{{ conditionLabel(product.condition) }}</td>
+          <td mat-cell *matCellDef="let product">
+            @if (editing()?.id === product.id && editing()?.field === 'condition') {
+              <div class="cell-editor" (click)="$event.stopPropagation()">
+                <mat-select
+                  class="cell-editor__select"
+                  [attr.aria-label]="'Стан ' + product.titleProm"
+                  [(value)]="conditionDraft"
+                >
+                  <mat-option value="new">{{ conditionLabel('new') }}</mat-option>
+                  <mat-option value="used">{{ conditionLabel('used') }}</mat-option>
+                </mat-select>
+                <button
+                  matIconButton
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="saveEdit(product)"
+                  [attr.aria-label]="'Зберегти стан ' + product.titleProm"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  matIconButton
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="cancelEdit()"
+                  [attr.aria-label]="'Скасувати зміну стану ' + product.titleProm"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+                @if (editError(); as message) {
+                  <span class="cell-editor__error" role="alert">{{ message }}</span>
+                }
+              </div>
+            } @else {
+              {{ conditionLabel(product.condition) }}
+              <button
+                matIconButton
+                type="button"
+                (click)="$event.stopPropagation(); startEdit(product, 'condition')"
+                [attr.aria-label]="'Змінити стан ' + product.titleProm"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="publishedProm">
