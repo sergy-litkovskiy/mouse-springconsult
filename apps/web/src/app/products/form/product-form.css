@@ -52,8 +52,19 @@
 .card-form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
   padding-top: 16px;
+}
+
+.card-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-form__group:not(:last-child) {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
 /* One pair per row (mockup 2026-09-12): the field being edited, the buttons, the suggestion.
