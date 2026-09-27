@@ -16,6 +16,8 @@ export type Usage = {
 export type TextsResult = {
   /** Returned to the caller only — never persisted as a field of its own (ADR 0014). */
   readonly recognizedItem: string;
+  readonly titleProm: string;
+  readonly titleOlx: string;
   readonly descriptionProm: string;
   readonly descriptionOlx: string;
   readonly seoKeywords: readonly string[];
@@ -63,6 +65,8 @@ const PLAIN_TEXT_RULE =
 
 const TextsSchema = z.object({
   recognizedItem: z.string(),
+  titleProm: z.string(),
+  titleOlx: z.string(),
   descriptionProm: z.string(),
   descriptionOlx: z.string(),
   seoKeywords: z.array(z.string()),
