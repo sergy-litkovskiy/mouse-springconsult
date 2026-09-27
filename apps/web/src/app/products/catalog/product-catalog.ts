@@ -527,6 +527,10 @@ export class ProductCatalog {
    * worked out here: it comes back with the re-read page, from the server's rule.
    */
   protected async saveEdit(product: ProductListItem): Promise<void> {
+    // The disabled buttons do not stop Enter in the field.
+    if (this.saving()) {
+      return;
+    }
     let request: ProductUpdate;
     if (this.editing()?.field === 'price') {
       const typed = this.priceDraft().trim();

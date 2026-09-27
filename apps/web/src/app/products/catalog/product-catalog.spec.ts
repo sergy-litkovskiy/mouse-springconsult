@@ -1934,6 +1934,25 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
+    it('sends nothing for Enter while the save is in flight (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '2600');
+      pressInPrice(0, 'Enter');
+      await tick();
+      pressInPrice(0, 'Enter');
+      await tick();
+
+      const patches = http.match((request) => request.method === 'PATCH');
+      expect(patches.length).toBe(1);
+      patches[0]?.flush({ ...MOUSE, price: '2600.00', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '2600.00' }], total: 1 });
+      await settle();
+    });
+
     it('puts the saved price back without a request on the cross (AC-59)', async () => {
       await openCatalog([MOUSE]);
 
