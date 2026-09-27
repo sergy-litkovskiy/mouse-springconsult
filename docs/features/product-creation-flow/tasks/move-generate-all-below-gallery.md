@@ -1,7 +1,7 @@
 ---
 id: T69
 title: "«Згенерувати все» між галереєю й полями форми"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1200
 blocked_by: []
 blocks: [T77]
-updated_at: "2026-09-25"
+updated_at: "2026-09-27"
 ---
 
 # T69 — «Згенерувати все» між галереєю й полями форми
@@ -73,9 +73,9 @@ AC-63 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-63: кнопка між галереєю й полями.
-- [ ] Тести `web` зелені без змін у `*.spec.ts`, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): place Generate all between the gallery and the fields`.
+- [x] AC-63: кнопка між галереєю й полями.
+- [x] Тести `web` зелені без змін у `*.spec.ts`, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): place Generate all between the gallery and the fields`.
 
 ## Links
 
