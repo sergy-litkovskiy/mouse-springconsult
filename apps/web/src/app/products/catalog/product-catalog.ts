@@ -1,10 +1,12 @@
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import {
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
+  type ElementRef,
   inject,
   input,
   linkedSignal,
@@ -12,6 +14,7 @@ import {
   resourceFromSnapshots,
   type ResourceSnapshot,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -25,7 +28,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorIntl, MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
+import { type MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -270,6 +273,8 @@ export class ProductCatalog {
   protected readonly conditionDraft = signal<ProductCondition>('used');
   protected readonly editError = signal<string | null>(null);
   protected readonly saving = signal(false);
+  private readonly priceInput = viewChild<ElementRef<HTMLInputElement>>('priceInput');
+  private readonly conditionSelect = viewChild<MatSelect>('conditionSelect');
   protected readonly pageIndex = computed(() => this.page() - 1);
   protected readonly pageSizeOptions = [10, 20, productPagination.maxPageSize];
   protected readonly titleMaxLength = productConstraints.titleMaxLength;
@@ -339,6 +344,10 @@ export class ProductCatalog {
   });
 
   constructor() {
+    // The pencil that had the focus is gone once the cell opens, so the field takes it over.
+    afterRenderEffect(() => this.priceInput()?.nativeElement.focus());
+    afterRenderEffect(() => this.conditionSelect()?.focus());
+
     // After a reload, or a Back out of a filtered page, the fields have to agree with the
     // rows underneath them.
     effect(() => {

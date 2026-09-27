@@ -274,6 +274,7 @@
             @if (editing()?.id === product.id && editing()?.field === 'condition') {
               <div class="cell-editor" role="presentation" (click)="$event.stopPropagation()">
                 <mat-select
+                  #conditionSelect
                   class="cell-editor__select"
                   [attr.aria-label]="'Стан ' + product.titleProm"
                   [(value)]="conditionDraft"

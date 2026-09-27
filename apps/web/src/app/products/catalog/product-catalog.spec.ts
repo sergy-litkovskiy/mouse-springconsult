@@ -1826,6 +1826,16 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
+    it('puts the focus in the field the pencil opens, so Esc and typing reach it (AC-59)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      expect(document.activeElement).toBe(priceField(0));
+
+      await startEditing(0, 'condition');
+      expect(document.activeElement).toBe(cell(0, 'condition')?.querySelector('mat-select'));
+    });
+
     it('shows a price of 0.00 as an empty field, as the card form does (AC-59)', async () => {
       await openCatalog([UNPRICED]);
 
