@@ -3,6 +3,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { config } from '../../config.ts';
+import { productConstraints } from '../../contracts/products-limits.ts';
 
 export type RewritableField =
   'titleProm' | 'titleOlx' | 'descriptionProm' | 'descriptionOlx' | 'seoKeywords';
@@ -117,7 +118,9 @@ export class AnthropicAdapter {
         text:
           'These are photos of a secondhand item for a marketplace listing. Identify what the ' +
           'item is (and its brand/model if visible), then write, in Ukrainian: a Prom.ua listing ' +
-          'description with SEO keywords, and a separate OLX listing description. ' +
+          'title and description with SEO keywords, and a separate OLX listing title and ' +
+          'description. Each title is a single line of at most ' +
+          `${String(productConstraints.titleMaxLength)} characters. ` +
           PLAIN_TEXT_RULE,
       },
     ];
