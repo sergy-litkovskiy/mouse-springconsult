@@ -17,6 +17,18 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
+  <app-product-gallery
+    [images]="images()"
+    [ensureProduct]="ensureProductForGallery"
+    (imagesChange)="imagesChanged($event)"
+  />
+
+  @if (!hasFrames()) {
+    <p class="card-hint" role="status">
+      Спершу додайте хоча б одне фото: поля картки стануть доступні після першого кадру.
+    </p>
+  }
+
   <div class="card-prepare">
     <button
       matButton="filled"
@@ -37,18 +49,6 @@
       </span>
     }
   </div>
-
-  <app-product-gallery
-    [images]="images()"
-    [ensureProduct]="ensureProductForGallery"
-    (imagesChange)="imagesChanged($event)"
-  />
-
-  @if (!hasFrames()) {
-    <p class="card-hint" role="status">
-      Спершу додайте хоча б одне фото: поля картки стануть доступні після першого кадру.
-    </p>
-  }
 
   <form class="card-form" id="product-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="card-form__paired">

@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-25"
+updated_at: "2026-09-27"
 stage: "13"
 ---
 
@@ -17,8 +17,13 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T65, T67, T68, T69, T70, T71, T75, T76 — поставка 3, UI каталогу
-й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок: T72 чекає на T67 і T71, T73 — на T72, T74 — на T73, T66 — на T73. Відступи картки: T77 чекає на T69.
+**Готові до старту:** T65, T67, T68, T70, T71, T75, T76, T77 — поставка 3, UI каталогу
+й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок: T72 чекає на T67 і T71, T73 — на T72, T74 — на T73, T66 — на T73.
+
+2026-09-27 закрито [T69](move-generate-all-below-gallery.md): блок «Згенерувати все» з написом про
+запуск і лічильником токенів стоїть після галереї й підказки про фото, перед «Назва для Prom»; нижній
+відступ блоку — 8 px, щоб разом з `padding-top` форми дати 16 px до полів. У базі немає картки з одним
+кадром, тож `pw` підміняв `GET /api/products/:id` через `page.route`, нічого не пишучи в R2. Розблокувала T77.
 
 2026-09-25 заведено [T77](even-out-card-form-spacing.md) за правкою власника: у картці один крок
 16 px між усіма блоками замість ~8, ~30 і ~50 px, а підказка ключових слів сіра й стоїть врівень з
@@ -193,7 +198,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59, T73 | S | — |
 | T67 | [Назви Prom/OLX із «Згенерувати все»](generate-titles-with-texts.md) | Todo | — | S | — |
 | T68 | [Опис Prom після повторного відкриття](keep-prom-description-on-reopen.md) | Todo | — | XS | — |
-| T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Todo | — | XS | — |
+| T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Done | — | XS | 2026-09-27 |
 | T70 | [ID товару з копіюванням](show-copyable-product-id.md) | Todo | — | XS | — |
 | T71 | [Чернетка поля без тегів](strip-tags-from-field-draft.md) | Todo | — | XS | — |
 | T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Blocked | T67, T71 | S | — |
@@ -201,7 +206,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Blocked | T73 | S | — |
 | T75 | [Компактніший шрифт](compact-app-typography.md) | Todo | — | XS | — |
 | T76 | [Кадри картки 120×120](shrink-card-gallery-frames.md) | Todo | — | XS | — |
-| T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Blocked | T69 | XS | — |
+| T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Todo | T69 | XS | — |
 
 ## Спільний DoD
 
