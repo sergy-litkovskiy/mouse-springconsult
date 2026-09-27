@@ -87,6 +87,19 @@ const DELETE_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 
 const UNKNOWN_DELETE_MESSAGE = 'Не вдалося видалити картку. Спробуйте ще раз.';
 
+const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499 або 2499.00.';
+
+const EDIT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  [apiErrorCodes.invalidPrice]: PRICE_FORMAT_MESSAGE,
+};
+
+const UNKNOWN_EDIT_MESSAGE = 'Не вдалося зберегти зміну. Спробуйте ще раз.';
+
+/** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
+const UNPRICED = '0.00';
+
+type EditableField = 'price' | 'condition';
+
 function isProductNotFound(error: unknown): boolean {
   return (
     error instanceof HttpErrorResponse &&
@@ -253,7 +266,7 @@ export class ProductCatalog {
   protected readonly deleteError = signal<string | null>(null);
 
   /** One cell in the whole table is edited at a time, so one draft of each kind is enough. */
-  protected readonly editing = signal<{ id: string; field: 'price' | 'condition' } | null>(null);
+  protected readonly editing = signal<{ id: string; field: EditableField } | null>(null);
   protected readonly priceDraft = signal('');
   protected readonly conditionDraft = signal<ProductCondition>('used');
   protected readonly editError = signal<string | null>(null);
@@ -498,10 +511,9 @@ export class ProductCatalog {
 
   protected readonly missingFields = missingFieldsHint;
 
-  /** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
-  protected startEdit(product: ProductListItem, field: 'price' | 'condition'): void {
+  protected startEdit(product: ProductListItem, field: EditableField): void {
     this.editing.set({ id: product.id, field });
-    this.priceDraft.set(product.price === '0.00' ? '' : product.price);
+    this.priceDraft.set(product.price === UNPRICED ? '' : product.price);
     this.conditionDraft.set(product.condition);
     this.editError.set(null);
   }
@@ -519,9 +531,9 @@ export class ProductCatalog {
     if (this.editing()?.field === 'price') {
       const typed = this.priceDraft().trim();
       // An emptied field is "not priced yet", as it is in the card form.
-      const price = typed === '' ? '0.00' : typed;
+      const price = typed === '' ? UNPRICED : typed;
       if (!productConstraints.pricePattern.test(price)) {
-        this.editError.set('Ціна виглядає як 2499 або 2499.00.');
+        this.editError.set(PRICE_FORMAT_MESSAGE);
         return;
       }
       request = { price };
@@ -538,13 +550,7 @@ export class ProductCatalog {
     try {
       await firstValueFrom(this.api.update(product.id, request));
     } catch (error: unknown) {
-      this.editError.set(
-        apiErrorMessage(
-          error,
-          { [apiErrorCodes.invalidPrice]: 'Ціна виглядає як 2499 або 2499.00.' },
-          'Не вдалося зберегти зміну. Спробуйте ще раз.',
-        ),
-      );
+      this.editError.set(apiErrorMessage(error, EDIT_ERROR_MESSAGES, UNKNOWN_EDIT_MESSAGE));
       return;
     } finally {
       this.saving.set(false);
