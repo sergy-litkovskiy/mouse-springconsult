@@ -53,7 +53,7 @@
   <form class="card-form" id="product-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="card-form__group">
       <div class="card-form__paired">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Назва для Prom</mat-label>
           <textarea
             #titlePromField
@@ -82,7 +82,7 @@
       </div>
 
       <div class="card-form__paired">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Назва для OLX</mat-label>
           <textarea
             #titleOlxField
@@ -132,7 +132,7 @@
       </div>
 
       <div class="card-form__paired">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Опис для OLX</mat-label>
           <textarea matInput formControlName="descriptionOlx" rows="6"></textarea>
         </mat-form-field>
@@ -224,7 +224,7 @@
       </div>
 
       <div class="card-form__row">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Категорія</mat-label>
           <input matInput formControlName="category" />
           @if (form.controls.category.hasError('maxlength')) {
@@ -232,7 +232,7 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Стан</mat-label>
           <mat-select formControlName="condition">
             @for (option of conditionOptions; track option.value) {

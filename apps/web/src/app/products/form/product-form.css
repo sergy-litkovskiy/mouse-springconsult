@@ -26,6 +26,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
+  margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
@@ -53,17 +54,16 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-top: 16px;
 }
 
 .card-form__group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
 .card-form__group:not(:last-child) {
-  padding-bottom: 8px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
@@ -73,7 +73,7 @@
 .card-form__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 16px;
+  gap: 16px;
 }
 
 .card-form__paired > mat-form-field,
@@ -83,18 +83,10 @@
   min-width: 0;
 }
 
-/* Matches the gap a mat-form-field leaves for its hint, so the halves line up. */
-.card-form__paired > app-suggestion-field {
-  display: block;
-  padding-bottom: 22px;
-}
-
-/* Matches the gap a mat-form-field leaves for its hint, so the pair lines up. */
 .card-form__description {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-bottom: 22px;
 }
 
 .card-form__label {
@@ -115,7 +107,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 32px;
-  padding-bottom: 8px;
+  padding-bottom: 16px;
 }
 
 .card-message {
