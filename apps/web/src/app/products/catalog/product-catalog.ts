@@ -53,6 +53,8 @@ import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
   priceBound,
+  priceFieldValue,
+  priceFromField,
   priceRange,
   flagControlValue,
   toPage,
@@ -94,9 +96,6 @@ const EDIT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 const UNKNOWN_EDIT_MESSAGE = 'Не вдалося зберегти зміну. Спробуйте ще раз.';
-
-/** "0.00" is how the column says "not priced yet", so the field shows it as empty. */
-const UNPRICED = '0.00';
 
 type EditableField = 'price' | 'condition';
 
@@ -513,7 +512,7 @@ export class ProductCatalog {
 
   protected startEdit(product: ProductListItem, field: EditableField): void {
     this.editing.set({ id: product.id, field });
-    this.priceDraft.set(product.price === UNPRICED ? '' : product.price);
+    this.priceDraft.set(priceFieldValue(product.price));
     this.conditionDraft.set(product.condition);
     this.editError.set(null);
   }
@@ -533,9 +532,7 @@ export class ProductCatalog {
     }
     let request: ProductUpdate;
     if (this.editing()?.field === 'price') {
-      const typed = this.priceDraft().trim();
-      // An emptied field is "not priced yet", as it is in the card form.
-      const price = typed === '' ? UNPRICED : typed;
+      const price = priceFromField(this.priceDraft());
       if (!productConstraints.pricePattern.test(price)) {
         this.editError.set(PRICE_FORMAT_MESSAGE);
         return;
