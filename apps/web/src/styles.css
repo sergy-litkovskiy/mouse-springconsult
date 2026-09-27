@@ -124,6 +124,20 @@ body {
 }
 
 /*
+ * Material insets a field's hint and error 16px from the outline. Its own rule is injected
+ * after this file, so the field class is prepended to outrank it.
+ */
+.mat-mdc-form-field .mat-mdc-form-field-hint-wrapper,
+.mat-mdc-form-field .mat-mdc-form-field-error-wrapper {
+  padding-inline: 0;
+}
+
+/* Material 22 has no hint colour token: the hint inherits the dialog's text colour. */
+.mat-mdc-form-field .mat-mdc-form-field-hint {
+  color: var(--mat-sys-outline);
+}
+
+/*
  * Material stops a select's notch 60px short of the field, so a resting label never runs under
  * the arrow. A catalogue flag always shows a value, so its label always floats above the arrow
  * and the limit only cuts it off. Material's own selector plus our class, to outrank it.

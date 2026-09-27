@@ -1,7 +1,7 @@
 ---
 id: T77
 title: "Рівні відступи й сіра підказка в картці товару"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 2300
 blocked_by: [T69]
 blocks: []
-updated_at: "2026-09-25"
+updated_at: "2026-09-27"
 ---
 
 # T77 — Рівні відступи й сіра підказка в картці товару
@@ -106,9 +106,12 @@ Material 22 не має (звірено з `_m3-form-field.scss` у контей
 
 ## DoD
 
-- [ ] AC-72: один крок 16 px на 1280 і 360 px; підказка й помилка врівень з рамкою, підказка сіра.
-- [ ] Тести `web` зелені без змін у `*.spec.ts`, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `style(web): even out the card form spacing and mute the keyword hint`.
+- [x] AC-72: один крок 16 px на 1280 і 360 px; підказка й помилка врівень з рамкою, підказка сіра.
+  Лінії між групами полів, які додала T69, стоять за 16 px від блоку над ними й під ними, тож від
+  рядка до рядка через лінію виходить 33 px. Так вирішив власник 2026-09-27: умова `/goal` у плані
+  писалась до цих ліній і рахувала 16 px від рядка до рядка.
+- [x] Тести `web` зелені без змін у `*.spec.ts`, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `style(web): even out the card form spacing and mute the keyword hint`.
 
 ## Links
 
