@@ -39,6 +39,34 @@ describe('draftPlainText', () => {
     );
   });
 
+  it('keeps a list item on one line when Tiptap wraps its text in a paragraph', () => {
+    assert.equal(
+      draftPlainText('<p>Комплект:</p><ul><li><p>Кабель</p></li><li><p>Коробка</p></li></ul>'),
+      'Комплект:\n\n• Кабель\n• Коробка',
+    );
+  });
+
+  it('leaves at most one blank line where the editor kept empty paragraphs', () => {
+    assert.equal(
+      draftPlainText('<p>Перший</p><p></p><p><br></p><p>Другий</p>'),
+      'Перший\n\nДругий',
+    );
+  });
+
+  it('drops script and style together with their content', () => {
+    assert.equal(
+      draftPlainText('<p>Миша</p><script>alert(1)</script><style>p { color: red }</style>'),
+      'Миша',
+    );
+  });
+
+  it('gives quotes back and reads a > inside an attribute as part of the tag', () => {
+    assert.equal(
+      draftPlainText('<p title="a > b">Модель &quot;M1&quot;, кит&#39;</p>'),
+      'Модель "M1", кит\'',
+    );
+  });
+
   it('passes plain text through unchanged, apart from the spaces at its edges (Checklist 1)', () => {
     assert.equal(
       draftPlainText('  Продаю мишу, майже нова.\nКоробка є.  '),
