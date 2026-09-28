@@ -56,7 +56,7 @@ export class InvalidPrice extends AppError {
 
 /** One code for both gates (AC-06, AC-27): `details.missing` names what the card lacks. */
 export class PreparationInputIncomplete extends AppError {
-  constructor(missing: 'gallery' | 'title') {
+  constructor(missing: 'gallery' | 'title' | 'draft') {
     super({
       code: apiErrorCodes.preparationInputIncomplete,
       statusCode: 409,
