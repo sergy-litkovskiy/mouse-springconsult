@@ -3,6 +3,7 @@ import { config } from '../../config.ts';
 import type { PreparationRepository } from './PreparationRepository.ts';
 import type { PreparationRun } from './PreparationRun.ts';
 import type { Product } from './Product.ts';
+import { draftPlainText } from './draftPlainText.ts';
 import type { PreparationQueue, RewritableCardField } from './PreparationQueue.ts';
 import {
   PreparationInputIncomplete,
@@ -42,13 +43,20 @@ export class PreparationRunService {
     if (request.scope === 'price' && product.titleProm === '' && product.titleOlx === '') {
       throw new PreparationInputIncomplete('title');
     }
+    const job =
+      request.scope === 'field'
+        ? { ...request, draftText: draftPlainText(request.draftText) }
+        : request;
+    if (job.scope === 'field' && job.draftText === '') {
+      throw new PreparationInputIncomplete('draft');
+    }
 
     // The key names the input the model actually receives (data-model.md, "версія входу"), so a
     // changed input starts a new run and an unchanged one returns the run it already has.
     const input = {
       frames: readsFrames ? recognitionFrameKeys(product) : null,
       priceQuery: readsTitles ? priceQueryInput(product) : null,
-      field: request.scope === 'field' ? [request.field, request.draftText] : null,
+      field: job.scope === 'field' ? [job.field, job.draftText] : null,
     };
     const inputVersion = createHash('sha256').update(JSON.stringify(input)).digest('hex');
     const idempotencyKey = `${productId}:${request.scope}:${inputVersion}`;
@@ -74,7 +82,7 @@ export class PreparationRunService {
     // The row and the job are two writes: a run still queued may have lost its send, and queueing
     // it again is safe because the job id is the run id.
     if (claim.run.status === 'queued') {
-      await this.queue.enqueue({ runId: claim.run.id, productId, ...request });
+      await this.queue.enqueue({ runId: claim.run.id, productId, ...job });
     }
     return claim;
   }

@@ -147,7 +147,7 @@ function setup(cards: Product[] = [card(CARD_ID)], queue = new RecordingQueue())
   return { products, runs, queue, service };
 }
 
-function missing(expected: 'gallery' | 'title') {
+function missing(expected: 'gallery' | 'title' | 'draft') {
   return (error: unknown): boolean => {
     assert.ok(error instanceof PreparationInputIncomplete);
     assert.deepEqual(error.details, { missing: [expected] });
@@ -274,6 +274,41 @@ describe('preparation run service: scopes', () => {
       },
     ]);
   });
+  it('queues a field run with the draft stripped of its markup (AC-65)', async () => {
+    const { service, queue } = setup();
+
+    const { run } = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'descriptionProm',
+      draftText: '<p>Миша &amp; килимок</p><ul><li>Кабель USB-C</li><li>Коробка</li></ul>',
+    });
+
+    assert.deepEqual(queue.jobs, [
+      {
+        runId: run.id,
+        productId: CARD_ID,
+        scope: 'field',
+        field: 'descriptionProm',
+        draftText: 'Миша & килимок\n\n• Кабель USB-C\n• Коробка',
+      },
+    ]);
+  });
+
+  it('refuses a field run whose draft is markup without text (AC-65)', async () => {
+    const { service, runs, queue } = setup();
+
+    await assert.rejects(
+      service.start(CARD_ID, {
+        scope: 'field',
+        field: 'descriptionProm',
+        draftText: '<p></p><p><br></p>',
+      }),
+      missing('draft'),
+    );
+
+    assert.equal(runs.rows.length, 0);
+    assert.deepEqual(queue.jobs, []);
+  });
 });
 
 describe('preparation run service: idempotency', () => {
@@ -388,6 +423,26 @@ describe('preparation run service: idempotency', () => {
 
     assert.equal(second.created, true);
     assert.notEqual(second.run.id, first.run.id);
+  });
+
+  it('returns the existing run for the same draft text under different markup (AC-65)', async () => {
+    const { service, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'descriptionProm',
+      draftText: '<p>Миша <strong>Logitech</strong> MX</p>',
+    });
+    const second = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'descriptionProm',
+      draftText: '<p>Миша Logitech <em>MX</em></p>',
+    });
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+    assert.equal(runs.rows.length, 1);
+    assert.equal(queue.jobs.length, 1);
   });
 
   it('keeps the runs of two cards with the same title apart (Data delta)', async () => {

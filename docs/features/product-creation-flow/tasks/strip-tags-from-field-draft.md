@@ -1,7 +1,7 @@
 ---
 id: T71
 title: "Чернетка поля йде до моделі без тегів"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 2000
 blocked_by: []
 blocks: [T72]
-updated_at: "2026-09-23"
+updated_at: "2026-09-28"
 ---
 
 # T71 — Чернетка поля йде до моделі без тегів
@@ -99,9 +99,9 @@ AC-65 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-65: модель отримує чернетку без тегів, ключ рахується від тексту.
-- [ ] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
-- [ ] Коміт: `feat(products): strip markup from a field draft before the model`.
+- [x] AC-65: модель отримує чернетку без тегів, ключ рахується від тексту.
+- [x] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
+- [x] Коміт: `feat(products): strip markup from a field draft before the model`.
 
 ## Links
 

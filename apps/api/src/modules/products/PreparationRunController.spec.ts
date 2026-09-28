@@ -301,6 +301,18 @@ describe('preparation run controller', () => {
     ]);
   });
 
+  it('answers preparation_input_incomplete for a field draft of markup without text (AC-65)', async () => {
+    const response = await start(CARD_ID, {
+      scope: 'field',
+      field: 'descriptionProm',
+      draftText: '<p></p><p><br></p>',
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.preparationInputIncomplete);
+    assert.deepEqual(queue.jobs, []);
+  });
+
   it('rejects an unknown scope as validation_failed (Checklist 1)', async () => {
     const response = await start(CARD_ID, { scope: 'everything' });
 

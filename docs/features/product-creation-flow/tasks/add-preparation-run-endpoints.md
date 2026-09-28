@@ -60,9 +60,10 @@ HTTP-межа поставки 2. Запит не чекає на модель: 
 ```yaml
         "409":
           description: >-
-            У галереї немає жодного кадру для scope: texts/both (AC-06), або в
-            картці немає ні titleProm, ні titleOlx для scope: price (AC-27) —
-            два різні missing під тим самим кодом
+            У галереї немає жодного кадру для scope: texts/both (AC-06), в
+            картці немає ні titleProm, ні titleOlx для scope: price (AC-27), або
+            draftText для scope: field після зняття тегів порожній (AC-65) —
+            три різні missing під тим самим кодом
 ```
 
 ## Acceptance criteria

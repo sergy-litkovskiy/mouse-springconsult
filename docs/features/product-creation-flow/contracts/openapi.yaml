@@ -368,9 +368,10 @@ paths:
         "404": { $ref: "#/components/responses/ProductNotFound" }
         "409":
           description: >-
-            У галереї немає жодного кадру для scope: texts/both (AC-06), або в
-            картці немає ні titleProm, ні titleOlx для scope: price (AC-27) —
-            два різні missing під тим самим кодом
+            У галереї немає жодного кадру для scope: texts/both (AC-06), в
+            картці немає ні titleProm, ні titleOlx для scope: price (AC-27), або
+            draftText для scope: field після зняття тегів порожній (AC-65) —
+            три різні missing під тим самим кодом
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -379,6 +380,8 @@ paths:
                   value: { error: { code: preparation_input_incomplete, message: "Додайте бодай один кадр перед підготовкою", details: { missing: ["gallery"] } } }
                 title:
                   value: { error: { code: preparation_input_incomplete, message: "Додайте заголовок Prom або OLX перед пошуком ціни", details: { missing: ["title"] } } }
+                draft:
+                  value: { error: { code: preparation_input_incomplete, message: "The card lacks the input this preparation needs", details: { missing: ["draft"] } } }
         "429":
           description: Перевищено обмеження частоти запусків — 20 на картку за годину, спільні для всіх областей (PRD §6.1 — окреме від ліміту входу)
           content:
