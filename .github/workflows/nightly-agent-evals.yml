@@ -1,0 +1,54 @@
+name: Nightly agent evals
+
+# Behavioural evals cost tokens, so they are non-blocking and manual for now: the schedule
+# stays commented out until the set of cases has been priced. A case red for 2-3 nights in
+# a row is a regression; one red out of three repeats (--repeat 3, threshold below) is a flake.
+on:
+  # schedule:
+  #   - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      simulate_red:
+        description: 'Simulate a red run without calling Claude'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - if: ${{ !inputs.simulate_red }}
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Run evals
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PROMPTFOO_PYTHON: python3
+          PROMPTFOO_PASS_RATE_THRESHOLD: '66'
+        run: |
+          if [ "${{ inputs.simulate_red }}" = "true" ]; then
+            echo "simulated red run"; exit 100
+          fi
+          # Two configs: ro-reviewer (here) and the forbid-env-read guardrail (suite/).
+          # The first failure must not hide the second case, so collect the exit code.
+          rc=0
+          (cd scripts/promptfoo && npx promptfoo@latest eval --no-cache --repeat 3) || rc=$?
+          (cd scripts/promptfoo/suite && npx promptfoo@latest eval --no-cache --repeat 3) || rc=$?
+          exit $rc
+      - name: Open or update the issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          n=$(gh issue list --state open --search '"Nightly agent evals red" in:title' --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "Ще одна червона ніч: $url"
+          else
+            gh issue create --title "Nightly agent evals red" --body "Перший червоний прогін: $url"
+          fi
