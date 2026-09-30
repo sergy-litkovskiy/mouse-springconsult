@@ -1,7 +1,7 @@
 ---
 name: ro-reviewer
 description: Read-only code reviewer. Reads файли/diff, дає рев'ю за пріоритетами P0/P1/P2 з AGENTS.md, але НІКОЛИ не змінює код. Викликай, коли треба незалежний погляд без ризику правок. Tools обмежені до Read/Grep/Glob/Bash (без Write/Edit).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
 ---
 
