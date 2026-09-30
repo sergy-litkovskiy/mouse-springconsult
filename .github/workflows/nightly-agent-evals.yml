@@ -34,6 +34,11 @@ jobs:
           if [ "${{ inputs.simulate_red }}" = "true" ]; then
             echo "simulated red run"; exit 100
           fi
+          # Subscription only: with an API key in the environment claude switches to
+          # API billing, so refuse to run rather than pay silently.
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY is set: evals must run on the subscription token"; exit 1
+          fi
           # Two configs: ro-reviewer (here) and the forbid-env-read guardrail (suite/).
           # The first failure must not hide the second case, so collect the exit code.
           rc=0
