@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: XS
 context_budget: 1800
 blocked_by: []
-blocks: []
-updated_at: "2026-09-23"
+blocks: [T81]
+updated_at: "2026-09-30"
 ---
 
 # T68 — Опис для Prom не зникає після повторного відкриття картки

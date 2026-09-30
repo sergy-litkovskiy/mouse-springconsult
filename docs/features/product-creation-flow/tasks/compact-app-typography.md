@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: XS
 context_budget: 1700
 blocked_by: []
-blocks: []
-updated_at: "2026-09-25"
+blocks: [T80]
+updated_at: "2026-09-30"
 ---
 
 # T75 — Компактніший шрифт
