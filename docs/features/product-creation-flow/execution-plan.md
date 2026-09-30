@@ -5,7 +5,7 @@
 лише в tracker, цей файл описує тільки порядок і інструменти.
 
 Порядок, інструменти й обґрунтування закритих задач — в
-[архіві](_audit/execution-plan-archive.md); там же вісім умов `/goal`, які спрацювали
+[архіві](_audit/execution-plan-archive.md); там же умови `/goal`, які спрацювали
 дослівно, і їх варто перечитати перед тим, як писати нову.
 
 ## Як читати
@@ -39,55 +39,53 @@
 
 ## Що лишилось
 
-### Поставка 3 — UI каталогу й форми (T56–T77)
+### Поставка 3 — відкриті задачі (T66, T68, T70, T72–T76, T78–T82)
 
-Запит 2026-09-21, T67–T74 — запит 2026-09-23, T75–T77 — 2026-09-25. Граф ([_epic.md](tasks/_epic.md)) лишає п'ятнадцять
-задач незалежними, а ланцюжки має лише для T62, T65, T77 і AI-кнопок поля (T67, T71 → T72 → T73 → T66,
-T74). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
+Закриті T56–T65, T67, T69, T71 і T77 переїхали в [архів](_audit/execution-plan-archive.md). Відкриті — запити
+2026-09-23 (T68–T74), 2026-09-25 (T75, T76) і 2026-09-30 (T78–T82). Граф лишає T68, T70, T72, T75, T76 і T78
+незалежними, а ланцюжки має лише для AI-кнопок поля (T72 → T73 → T74 → T66), каталогу (T78 → T79 → T80) і
+зачистки коду (T81, T82). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
 
-- **каталог** (`product-catalog.*`): T56 → T60 → T57 → T64 → T65 — спершу чиста верстка
-  (`goal`), потім правки з тестами, наприкінці найбільша й найризикованіша T65;
-- **форма** (`product-form.*`, `suggestion-field.*`): T58 → T59 → T69 → T70 → T77 → T73 → T74 →
-  T66. T69 і T70 — дрібні правки шаблону, тож ідуть першими й дають наступним уже зсунуті блоки.
-  T77 іде після T69, бо рівняє вже зсунуті нею блоки, і до T73, щоб зміни `app-suggestion-field`
-  лягали на рівну сітку, а не рівнялись разом з нею. T66
-  стоїть останньою, бо її спінер замінює обидві кнопки запуску з T73 у вже переробленому T74
+- **каталог** (`product-catalog.*`): T78 → T79 → T80. Спершу іконки комірки (`goal`), потім каркас сторінки
+  зі скролом лише таблиці (`tdd`: він прибирає верхній пагінатор T57 і чіпає `app-layout.*`), наприкінці
+  висота тулбара, шапки й фільтрів (`goal`). T80 стоїть і за T75: висоту шапки міряють з уже зменшеним шрифтом;
+- **форма** (`product-form.*`, `suggestion-field.*`): T70 → T73 → T74 → T66. T70 — дрібна правка шаблону, тож іде
+  першою. T66 стоїть останньою, бо її спінер замінює обидві кнопки запуску з T73 у вже переробленому T74
   `app-suggestion-field`. T68 править лише `prom-description-editor.*`, тож іде паралельно з будь-чим;
-- **`ai`** (`AnthropicAdapter.ts`, `PreparationService.ts`, `PreparationRunService.ts`):
-  T67 → T71 → T72, додані 2026-09-23. Усі три правлять вхід моделі й ключ ідемпотентності поля,
-  тож ідуть по черзі. З доріжкою форми ця доріжка сходиться на T73: кнопкам потрібен `mode` з T72;
-- **T75, T76** — поза доріжками, тож їх можна взяти будь-коли. `product-gallery.css` з T76 не
-  чіпає жодна інша відкрита задача. `styles.css` з T75 править ще й T77, але інший блок: T75 —
-  токени шрифту в `:root`, T77 — обгортку підказки й помилки поля поруч із правилами міток T40.
+- **`ai`** (`AnthropicAdapter.ts`, `PreparationService.ts`, `PreparationRunService.ts`): T72 — остання з доріжки
+  T67 → T71 → T72, вона править вхід моделі й ключ ідемпотентності поля. З доріжкою форми сходиться на T73:
+  кнопкам потрібен `mode` з T72;
+- **зачистка коду** (T81 — `web`, T82 — `api`): останні в поставці, бо правлять коментарі й назви
+  тестів у файлах майже всіх відкритих задач, і кожна ранніша правка дала б конфлікт при ребейзі. T81 чекає на T66, T68, T70, T74 і T80,
+  T82 — на T74. Якщо власник схоче зачистку раніше, ребра можна зняти ціною ручного злиття. T76 — єдина відкрита
+  `web`-задача поза цим ланцюжком: вона змінює одне правило CSS без номерів, тож ребра до T81 не має;
+- **T75, T76** — поза доріжками, тож їх можна взяти будь-коли. `product-gallery.css` з T76 і `styles.css` з
+  T75 не чіпає жодна інша відкрита задача.
 
 Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно лише в різних
 гілках, і тоді друга ребейзиться на першу.
 
 | # | ID | Задача | Крок А | Між | Після | Обґрунтування |
 |---|----|--------|--------|-----|-------|---------------|
-| 10 | T65 | Ціна й стан у комірці | `tdd·r` | `pw`: успіх, хибна ціна, 422 через `route`, `Esc` | — | Запис грошей: тести переглянути до GREEN — тіло `PATCH` з одним полем, жодного запиту для невалідної ціни, клік у режимі редагування не відкриває форму. Не `cpr`: код лише на фронті, маршрут і валідація `api` не змінюються. `PRD.md §5` — руками |
-| 11 | T67 | Назви з «Згенерувати все» | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Правка наявних `.ts` в `ai`, нових файлів немає. Тести на двійнику адаптера, без мережі. Нормалізацію назви (перенос → пробіл, обрізання по слову до 200) тест фіксує для обох областей, `texts` і `field`: без неї пропозиція, яку `api` застосовує в порожнє поле, падає на `varchar(200)`. Не `cpr`: ні сесій, ні грошей. `PRD.md` (US-03, AC-05, AC-61) і `sad.md §6` сценарій 7 — руками |
-| 12 | T68 | Опис Prom після відкриття | `tdd` | **до** кроку А — відтворення `pw` (крок 1 story); після — `pw` повторно | — | Дефект, гіпотеза — гонка `writeValue` із завантаженням Tiptap. Якщо `pw` її не підтвердив, задача йде в `plan`, а не в `/tdd`: тест на непідтверджену причину зафіксує не той дефект. `PRD.md §5` — руками |
-| 13 | T69 | «Згенерувати все» під галереєю | `goal` | `pw` | — | Верстка без поведінки, DoD вимірюваний (умова нижче). Тести форми мають лишитися зеленими без правок |
-| 14 | T70 | ID з копіюванням | `tdd` | `pw`: `navigator.clipboard.readText()` | — | Правка наявних `product-form.*`, нових файлів немає. `Clipboard` з `@angular/cdk`, пакет уже є. `PRD.md §5` — руками |
-| 15 | T77 | Рівні відступи в картці | `goal` | `pw` на 1280 і 360 px, з помилкою ціни й без | — | Верстка без поведінки під unit-тест, DoD вимірюваний: відступи й край підказки дає `getBoundingClientRect`, колір — `getComputedStyle` (умова нижче). Тести форми мають лишитися зеленими без правок. Знімок «до» — крок 1 чекліста, його цикл робить до першої правки |
-| 16 | T71 | Чернетка без тегів | `tdd` | — | — | Новий лише `draftPlainText.ts` (+ spec), решта — наявні `.ts`. Тест фіксує, що чистка стоїть до хешу. Живого виклику не потрібно: вхід моделі видно в двійнику адаптера. `openapi.yaml` (опис `409`) і `PRD.md §5` — руками |
-| 17 | T72 | Режими `improve` і `prompt` | `tdd` | `pw` — два платні виклики `field`, ≈ $0,01 разом; суму назвати до й після | — | Промпти тестуються на двійнику адаптера: майданчик у тексті, відсутність `web_search`. `mode` у хеші й читання старої задачі без `mode` — під тест. Кнопок ще немає, тож `pw` шле `POST` з `mode` напряму. `openapi.yaml`, `sad.md` (S7, сценарій 10) і `PRD.md` (US-10, AC-21, AC-22, AC-66, AC-67) — руками |
-| 18 | T73 | Три кнопки AI | `tdd` | `pw` — знімок tonal-кнопок, тултіпи, один платний виклик ≈ $0,005 | — | Правка наявних `suggestion-field.*` і `product-form.*`. Наявність tonal у `matIconButton` і назви іконок звірити з документацією до старту, бо агенти писатимуть їх з пам'яті. Тести на старі `aria-label` RED переписує, а не видаляє. `PRD.md §5` — руками |
-| 19 | T74 | Остання пропозиція на поле | `tdd·r` | `pw` без платних викликів | — | Змінюється контракт читання картки, і від нього залежить AC-11: тести переглянути до GREEN, бо звірка має поводитись як раніше. Тести T53 і T55 RED переписує на `latestSuggestions`, а не видаляє. Не `cpr`: ні сесій, ні грошей. `openapi.yaml`, `sad.md` сценарій 9, `PRD.md` і excerpt-и закритих T53 і T55 — руками, і після них gate-check теки `tasks/` |
-| 20 | T66 | Локальний лоадер AI | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Спінер замінює обидві кнопки запуску поля з T73, стрілка лише вимикається. Поле запуску форма бере з власного запиту, бо `PreparationRunDto` його не несе; контракт не змінюється. Ціна (T54) прихована, `pw` її не перевіряє. `PRD.md §5` — руками |
-| 21 | T75 | Компактніший шрифт | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getComputedStyle` дає розмір шрифту (умова нижче). Назви токенів звір із prebuilt-темою в контейнері до старту `/goal`, бо цикл писатиме їх з пам'яті. Чи текст лишився читабельним, оцінюєш сам на знімках |
-| 22 | T76 | Кадри картки 120×120 | `goal` | `pw` на 1280 і 360 px | — | Та сама природа: один трек сітки, розмір кадру міряє `getBoundingClientRect` (умова нижче). Тести галереї мають лишитися зеленими без правок |
+| 1 | T68 | Опис Prom після відкриття | `tdd` | **до** кроку А — відтворення `pw` (крок 1 story); після — `pw` повторно | — | Дефект, гіпотеза — гонка `writeValue` із завантаженням Tiptap. Якщо `pw` її не підтвердив, задача йде в `plan`, а не в `/tdd`: тест на непідтверджену причину зафіксує не той дефект. `PRD.md §5` — руками |
+| 2 | T70 | ID з копіюванням | `tdd` | `pw`: `navigator.clipboard.readText()` | — | Правка наявних `product-form.*`, нових файлів немає. `Clipboard` з `@angular/cdk`, пакет уже є. `PRD.md §5` — руками |
+| 3 | T72 | Режими `improve` і `prompt` | `tdd` | `pw` — два платні виклики `field`, ≈ $0,01 разом; суму назвати до й після | — | Промпти тестуються на двійнику адаптера: майданчик у тексті, відсутність `web_search`. `mode` у хеші й читання старої задачі без `mode` — під тест. Кнопок ще немає, тож `pw` шле `POST` з `mode` напряму. `openapi.yaml`, `sad.md` (S7, сценарій 10) і `PRD.md` (US-10, AC-21, AC-22, AC-66, AC-67) — руками |
+| 4 | T73 | Три кнопки AI | `tdd` | `pw` — знімок tonal-кнопок, тултіпи, один платний виклик ≈ $0,005 | — | Правка наявних `suggestion-field.*` і `product-form.*`. Наявність tonal у `matIconButton` і назви іконок звірити з документацією до старту, бо агенти писатимуть їх з пам'яті. Тести на старі `aria-label` RED переписує, а не видаляє. `PRD.md §5` — руками |
+| 5 | T74 | Остання пропозиція на поле | `tdd·r` | `pw` без платних викликів | — | Змінюється контракт читання картки, і від нього залежить AC-11: тести переглянути до GREEN, бо звірка має поводитись як раніше. Тести T53 і T55 RED переписує на `latestSuggestions`, а не видаляє. Не `cpr`: ні сесій, ні грошей. `openapi.yaml`, `sad.md` сценарій 9, `PRD.md` і excerpt-и закритих T53 і T55 — руками, і після них gate-check теки `tasks/` |
+| 6 | T66 | Локальний лоадер AI | `tdd` | `pw` — один платний виклик одного поля ≈ $0,005; суму назвати до й після | — | Спінер замінює обидві кнопки запуску поля з T73, стрілка лише вимикається. Поле запуску форма бере з власного запиту, бо `PreparationRunDto` його не несе; контракт не змінюється. Ціна (T54) прихована, `pw` її не перевіряє. `PRD.md §5` — руками |
+| 7 | T75 | Компактніший шрифт | `goal` | `pw` на 1280 і 360 px | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getComputedStyle` дає розмір шрифту (умова нижче). Назви токенів звір із prebuilt-темою в контейнері до старту `/goal`, бо цикл писатиме їх з пам'яті. Чи текст лишився читабельним, оцінюєш сам на знімках |
+| 8 | T76 | Кадри картки 120×120 | `goal` | `pw` на 1280 і 360 px | — | Та сама природа: один трек сітки, розмір кадру міряє `getBoundingClientRect` (умова нижче). Тести галереї мають лишитися зеленими без правок |
+| 9 | T78 | Іконки редагування в комірці | `goal` | `pw` на 1280 і 360 px: спокій і режим редагування ціни й стану | — | Верстка без поведінки, DoD вимірюваний: `getBoundingClientRect` іконок і вертикальних центрів (умова нижче). Токени `matIconButton` звір із prebuilt-темою в контейнері до старту `/goal`, бо цикл писатиме їх з пам'яті. Тести каталогу мають лишитися зеленими без правок. `PRD.md §5` (AC-73) входить в умову |
+| 10 | T79 | Скрол лише вмісту таблиці | `tdd` | `pw` на 1280×720, 1024×600 і 360×740: скрол, три рядки, нуль рядків, зміна висоти вікна | — | Правка наявних файлів, нових немає. RED: один `mat-paginator` і `sticky` рядок заголовків; тести T57 про верхній пагінатор RED переписує, а не видаляє. Розкладку (висоту, прилипання до краю вікна) юніт-тест не ловить, її перевіряє `pw`. Не `cpr`: ні сесій, ні грошей. `PRD.md §5` (AC-74 і переписане AC-51) і рядок-примітка в закритій T57 — руками, і після них gate-check теки `tasks/` |
+| 11 | T80 | Нижчі тулбар, шапка й фільтри | `goal` | `pw` на 1280×720 і 360×740, з помилкою в «Ціна від» і без | — | Верстка, DoD вимірюваний (умова нижче). Стоїть за T75 і T79. Токени `mat-toolbar` і кнопок звір із prebuilt-темою до старту. Тести каталогу без правок |
+| 12 | T81 | Зачистка номерів у `web` | `goal` | — | — | Механічна правка з вимірюваним DoD: `rg` і кількість тестів (умова нижче). `*.spec.ts` тут міняються (назви тестів), тож обмеження «нуль змін у spec» замінює рівність кількості тестів до й після. Правка `tdd-test-writer.md` і речення в `CLAUDE.md` — теж у Checklist |
+| 13 | T82 | Зачистка номерів в `api` | `goal` | — | — | Те саме для `api`; у міграціях міняються лише коментарі. Кількість тестів фіксується в першому ж ході |
 
 Кроки `PRD.md §5` і `openapi.yaml` у story агенти `/tdd` не роблять: вони правлять лише код.
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
 done», тож їх робить сам цикл.
 
-**Готові умови `/goal` для T69, T75, T76 і T77** — за шаблоном нижче:
-
-```
-/goal docs/features/product-creation-flow/tasks/move-generate-all-below-gallery.md: every Checklist item is done, with playwright-cli on an open card with one frame `[data-testid="generate-all"]` follows `app-product-gallery` and precedes `[data-field="titleProm"]` in document order (`compareDocumentPosition`), a screenshot of the dialog is saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
-```
+**Готові умови `/goal` для T75, T76, T78, T80, T81 і T82** — за шаблоном нижче:
 
 ```
 /goal docs/features/product-creation-flow/tasks/compact-app-typography.md: every Checklist item is done, with playwright-cli on /products at 1280 px the computed `font-size` of `body` is 13px and of `.catalog__header h1` is 20px, on an open card the computed `font-size` of `textarea[formcontrolname="titleProm"]` is 14px and no `mat-label` or `mat-hint` has a computed `font-size` below 11px, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth` on /products and with the card open, screenshots of the catalogue and the open card at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
@@ -98,7 +96,19 @@ done», тож їх робить сам цикл.
 ```
 
 ```
-/goal docs/features/product-creation-flow/tasks/even-out-card-form-spacing.md: every Checklist item is done, with playwright-cli on an open card with one frame at 1280 px the vertical distance between the `getBoundingClientRect()` bottom of each of `app-product-gallery`, `.card-prepare`, every `.card-form__paired` and `.card-form__row` and the top of the block that follows it (the next of them or `.card-form__marks`) is 16 px ±1, the left edge of the keywords `mat-hint` is within 1 px of the left edge of its field's `.mdc-notched-outline` and its computed `color` equals that of a resting (not floated) `.mdc-floating-label`; at 360 px the distance between each paired `mat-form-field` and the `app-suggestion-field` below it is 16 px ±1, and with an invalid price the price `mat-error` has its left edge within 1 px of the field's `.mdc-notched-outline`, `scrollWidth <= clientWidth`, and the next row starts 16 px ±1 below it; screenshots at both widths with and without the price error are saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css apps/web/src/styles.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+/goal docs/features/product-creation-flow/tasks/shrink-cell-editor-icons.md: every Checklist item is done, with playwright-cli on /products at 1280 px and at 360 px the `mat-icon` inside the pencil button of the price cell and of the condition cell and inside the ✓ and ✕ buttons of an open price editor and of an open condition editor has a `getBoundingClientRect()` width and height of 16 px, in each open editor the input or `mat-select`, the ✓ and the ✕ have vertical centres within 1 px of each other, in the resting state the pencil button of each of those cells has a `getBoundingClientRect()` width and height of 24 px and the vertical centre of its `mat-icon` is within 2 px of the vertical centre of the value text next to it (a `Range` over the cell's text node), entering and leaving edit mode leaves the row's `getBoundingClientRect().height` unchanged, screenshots of the resting and editing states at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/shrink-app-bar-catalog-header-and-filters.md: every Checklist item is done, with playwright-cli on /products scrolled to the top at 1280×720 `mat-toolbar` has a `getBoundingClientRect()` height of 48 px, `.catalog__header` at most 34 px, `.catalog__filters` at most 100 px and the top of `.catalog__table` is at most 216 px, at 360×740 with an invalid «Ціна від» value the top of `.catalog__table` is at most 560 px, that field's `mat-error` lies fully inside the viewport width and `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, screenshots at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/drop-task-references-from-web-code.md: every Checklist item is done, `rg -nP '\bT(?!54\b)\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/web/src` prints nothing, `rg -c 'ADR [0-9]{4}' apps/web/src` prints the same lines as before the first edit, the test count printed by `docker compose run --rm web npm run test` equals the count recorded before the first edit, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run typecheck` exits 0, `git diff --stat` shows at most 500 changed lines; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/drop-task-references-from-api-code.md: every Checklist item is done, `rg -nP '\bT\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/api/src apps/api/db` prints nothing, `rg -c 'ADR [0-9]{4}' apps/api/src apps/api/db` prints the same lines as before the first edit, the `ℹ pass` count printed by `docker compose run --rm api npm run test` equals the count recorded before the first edit, `docker compose run --rm api npm run typecheck`, `lint` and `deps:check` exit 0, `git diff --stat` shows at most 500 changed lines; do not commit and do not edit tracker.md
 ```
 
 ## Відкладено

@@ -7,9 +7,9 @@ gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 2300
-blocked_by: [T58, T59, T73]
-blocks: []
-updated_at: "2026-09-23"
+blocked_by: [T58, T59, T73, T74]
+blocks: [T81]
+updated_at: "2026-09-30"
 ---
 
 # T66 — Локальний індикатор запиту до AI біля кнопки й поля
@@ -46,7 +46,9 @@ updated_at: "2026-09-23"
 запускає моделі, і її місце не має стрибати.
 
 Спільні блоки `product-form.html` з [T58](wrap-product-titles-in-textarea.md) і
-[T59](edit-keywords-as-chips.md), а `suggestion-field.*` — з T73. Тому задача йде після них.
+[T59](edit-keywords-as-chips.md), а `suggestion-field.*` — з T73 і
+[T74](show-latest-suggestions-in-product-form.md) (позначка стану й умова `canAccept` праворуч
+від поля). Тому задача йде після них.
 
 ## Sequence
 
@@ -97,7 +99,7 @@ updated_at: "2026-09-23"
 3. `suggestion-field.ts` / `.html`: вхід `working` (окремо від `busy`); `@if (working())` показує `mat-progress-spinner` `mode="indeterminate"` розміром з іконку замість обох кнопок запуску, стрілка лише вимкнена.
 4. `product-form.html`: спінер у кнопці «Згенерувати все»; `[working]` для кожного `app-suggestion-field`.
 5. `PRD.md §5`: AC-60 з посиланням на цю story.
-6. `pw` на живому стеку: «Покращити через AI» для одного поля — спінер замість обох кнопок лише там, після результату кнопки повернулись. Один платний виклик, ≈ $0,012 за заміром T33; очікувану суму назвати до виклику, виміряну — після.
+6. `pw` на живому стеку: «Покращити через AI» для одного поля — спінер замість обох кнопок лише там, після результату кнопки повернулись. Один платний виклик одного поля, ≈ $0,005 (як у T73); очікувану суму назвати до виклику, виміряну — після.
 
 ## Out of scope
 
@@ -112,5 +114,5 @@ updated_at: "2026-09-23"
 
 ## Links
 
-- [T32](add-preparation-ui.md) — фронт підготовки · [T58](wrap-product-titles-in-textarea.md), [T59](edit-keywords-as-chips.md) — ті самі блоки форми · [T73](add-improve-button-and-tonal-ai-actions.md) — дві кнопки запуску поля
+- [T32](add-preparation-ui.md) — фронт підготовки · [T58](wrap-product-titles-in-textarea.md), [T59](edit-keywords-as-chips.md) — ті самі блоки форми · [T73](add-improve-button-and-tonal-ai-actions.md) — дві кнопки запуску поля · [T74](show-latest-suggestions-in-product-form.md) — позначка пропозиції поруч із полем
 - [sad.md §6](../sad.md#6-runtime-view), сценарії 7 і 10 · [openapi.yaml](../contracts/openapi.yaml) — `startPreparationRun`, `getPreparationRun`

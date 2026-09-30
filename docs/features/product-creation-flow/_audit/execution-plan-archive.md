@@ -1,7 +1,7 @@
 ---
 status: Archived
 owner: "Serhii"
-updated_at: "2026-09-26"
+updated_at: "2026-09-30"
 ---
 
 # Архів плану виконання — product-creation-flow
@@ -126,7 +126,7 @@ T26 і T27 після T25 незалежні, тож їхній порядок �
 
 ## Поставка 3 — UI каталогу й форми
 
-Закриті T56–T64 переїхали сюди 2026-09-26. Відкриті задачі поставки 3 й доріжки, які до них
+Закриті T56–T64 переїхали сюди 2026-09-26, T65, T67, T69, T71 і T77 — 2026-09-30. Відкриті задачі поставки 3 й доріжки, які до них
 ведуть, лишились у [плані](../execution-plan.md).
 
 - **`api`** (`productListQuerySchema`): T61, потім T63 — обидві правлять ту саму схему, і T63
@@ -147,6 +147,11 @@ T62 і фронтова половина T63 теж правлять `product-ca
 | 7 | T63 | Живий пошук | `tdd` | якщо тест регістру кирилиці червоний і виправлення — міграція, вона окремим комітом до `/tdd --from green`; `pw` | — | Регістр `ILIKE` залежить від ctype образу `postgres:18-alpine` — це доводить тест на живій базі, а не пам'ять. Живий пошук тестується фейковим часом. `openapi.yaml` і `PRD.md §5` — руками |
 | 8 | T57 | Верхній пагінатор | `tdd` | `pw` | — | XS, але поведінка «два подання одного стану» тестується через `MatPaginatorHarness`. `PRD.md §5` — руками |
 | 9 | T64 | Іконки публікації | `tdd` | `pw` | — | XS: тест на `aria-label` іконок, а не на колір. `PRD.md §5` — руками |
+| 10 | T65 | Ціна й стан у комірці | `tdd·r` | `pw`: успіх, хибна ціна, 422 через `route`, `Esc` | — | Запис грошей: тести переглянути до GREEN — тіло `PATCH` з одним полем, жодного запиту для невалідної ціни, клік у режимі редагування не відкриває форму. Не `cpr`: код лише на фронті, маршрут і валідація `api` не змінюються. `PRD.md §5` — руками |
+| 11 | T67 | Назви з «Згенерувати все» | `tdd` | `pw` — один платний виклик ≈ $0,012 | — | Правка наявних `.ts` в `ai`, нових файлів немає. Тести на двійнику адаптера, без мережі. Нормалізацію назви (перенос → пробіл, обрізання по слову до 200) тест фіксує для обох областей, `texts` і `field`: без неї пропозиція, яку `api` застосовує в порожнє поле, падає на `varchar(200)`. Не `cpr`: ні сесій, ні грошей. `PRD.md` (US-03, AC-05, AC-61) і `sad.md §6` сценарій 7 — руками |
+| 12 | T69 | «Згенерувати все» під галереєю | `goal` | `pw` | — | Верстка без поведінки, DoD вимірюваний (умова нижче). Тести форми мають лишитися зеленими без правок |
+| 13 | T71 | Чернетка без тегів | `tdd` | — | — | Новий лише `draftPlainText.ts` (+ spec), решта — наявні `.ts`. Тест фіксує, що чистка стоїть до хешу. Живого виклику не потрібно: вхід моделі видно в двійнику адаптера. `openapi.yaml` (опис `409`) і `PRD.md §5` — руками |
+| 14 | T77 | Рівні відступи в картці | `goal` | `pw` на 1280 і 360 px, з помилкою ціни й без | — | Верстка без поведінки під unit-тест, DoD вимірюваний: відступи й край підказки дає `getBoundingClientRect`, колір — `getComputedStyle` (умова нижче). Тести форми мають лишитися зеленими без правок. Знімок «до» — крок 1 чекліста, його цикл робить до першої правки |
 
 ## Готові умови `/goal`
 
@@ -200,6 +205,14 @@ T07, T25 і T27 додають npm-пакети, а `node_modules` живуть 
 
 ```
 /goal docs/features/product-creation-flow/tasks/narrow-catalog-flag-filters.md: every Checklist item is done, with playwright-cli on /products at 1280 px the three fields labelled «Опубл. на Prom», «Опубл. на OLX» and «Картка готова» are each narrower than 168 px and every `mat-label` inside them has `scrollWidth <= clientWidth` both empty and with «Так» selected, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth`, screenshots at both widths are saved, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/move-generate-all-below-gallery.md: every Checklist item is done, with playwright-cli on an open card with one frame `[data-testid="generate-all"]` follows `app-product-gallery` and precedes `[data-field="titleProm"]` in document order (`compareDocumentPosition`), a screenshot of the dialog is saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/even-out-card-form-spacing.md: every Checklist item is done, with playwright-cli on an open card with one frame at 1280 px the vertical distance between the `getBoundingClientRect()` bottom of each of `app-product-gallery`, `.card-prepare`, every `.card-form__paired` and `.card-form__row` and the top of the block that follows it (the next of them or `.card-form__marks`) is 16 px ±1, the left edge of the keywords `mat-hint` is within 1 px of the left edge of its field's `.mdc-notched-outline` and its computed `color` equals that of a resting (not floated) `.mdc-floating-label`; at 360 px the distance between each paired `mat-form-field` and the `app-suggestion-field` below it is 16 px ±1, and with an invalid price the price `mat-error` has its left edge within 1 px of the field's `.mdc-notched-outline`, `scrollWidth <= clientWidth`, and the next row starts 16 px ±1 below it; screenshots at both widths with and without the price error are saved, `git diff -U0 -- apps/web/src/app/products/form/product-form.css apps/web/src/styles.css | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 Хвіст `or stop after N turns` ненадійний, тож межу витрат став окремо.

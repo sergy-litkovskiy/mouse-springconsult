@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: S
 context_budget: 2400
 blocked_by: [T73]
-blocks: []
-updated_at: "2026-09-23"
+blocks: [T66, T81, T82]
+updated_at: "2026-09-30"
 ---
 
 # T74 — Форма показує останню пропозицію моделі для кожного поля
@@ -89,14 +89,15 @@ AC-69 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## Checklist
 
-1. `products.contract.spec.ts`, `ProductController.spec.ts`: `latestSuggestions` замість `pendingSuggestions`, з `resolution` і `resolvedAt`. Тести T53 переписати на нове поле, а не видаляти.
+1. `products.contract.spec.ts`, `ProductController.spec.ts`, `PreparationService.spec.ts`: `latestSuggestions` замість `pendingSuggestions`, з `resolution` і `resolvedAt`. Тести T53 переписати на нове поле, а не видаляти.
 2. `ProductService.spec.ts` / `PreparationRepository.spec.ts`: одна пропозиція на поле — найновіша за `createdAt`; прийняті й відхилені потрапляють у список; звірка AC-11 поводиться як раніше.
-3. `product-form.spec.ts`: позначки «застосовано» / «відхилено»; «<- AI» активна лише при `resolution === null`. Тести T55 на `pendingSuggestions` переписати на `latestSuggestions`.
+3. `product-form.spec.ts`, `products-api.spec.ts`, `product-catalog.spec.ts`: позначки «застосовано» / «відхилено»; «<- AI» активна лише при `resolution === null`. Тести T55 та інші, що згадують `pendingSuggestions`, переписати на `latestSuggestions`, не видаляти.
 4. `PreparationRepository.ts`, `ProductService.ts`, `ProductController.ts`, `products.contract.ts`: читання й мапінг останньої пропозиції на поле.
-5. `product-form.ts` / `.html`, `suggestion-field.*`: `suggestionFor` читає `latestSuggestions`; позначка й умова `canAccept`.
+5. `product-form.ts` / `.html`, `suggestion-field.*`: `suggestionFor` читає `latestSuggestions`; позначка й умова `canAccept`. Перед комітом `rg pendingSuggestions apps` не знаходить нічого.
 6. `openapi.yaml`: у `ProductCardRead` поле `latestSuggestions` замість `pendingSuggestions`, `required` і опис оновлено. Закриті T53 і T55 цитують рядки `pendingSuggestions` у своїх excerpt, тож після правки gate-check на них впаде. У їхніх excerpt ці рядки замінити на ті, що пережили заміну, і дописати під блоком, що поле перейменовано в T74.
 7. `PRD.md`: абзац під AC-11 («Непідтверджені пропозиції віддає читання картки…») — про останню пропозицію на поле; AC-69 з посиланням на цю story. `sad.md §6`, сценарій 9: `Note` після відповіді `api-->>web` про останню пропозицію на поле. Сам рядок відповіді не переписувати: його дослівно цитують T53 і T55.
 8. `pw` на живому стеку без платних викликів: картка з уже прийнятою й відхиленою пропозиціями показує обидві позначки, «<- AI» вимкнена.
+9. Перед комітом виміряти `git diff --stat`. Якщо понад 500 рядків — розрізати: спершу `api` (віддає `latestSuggestions` поруч із `pendingSuggestions`), потім `web` і прибирання старого поля.
 
 ## Out of scope
 
