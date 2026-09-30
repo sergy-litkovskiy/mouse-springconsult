@@ -1768,7 +1768,7 @@ describe('ProductCatalog', () => {
       await select.open();
       const options = await select.getOptions();
       const labels = await Promise.all(options.map((option) => option.getText()));
-      expect(labels.sort()).toEqual(['б/в', 'Новий']);
+      expect(labels.sort()).toEqual(['Новий', 'б/в']);
       await select.clickOptions({ text: 'Новий' });
 
       clickCellButton(0, 'condition', 'Зберегти');
