@@ -1,7 +1,7 @@
 # План виконання — product-creation-flow
 
 Складено за графом [tracker.md](tasks/tracker.md) і правилами
-[agentic-tools-playbook.md](../../../TMP-DOCS/agentic-tools-playbook.md), §2 і §5.3. Статус живе
+`TMP-DOCS/agentic-tools-playbook.md` (локальний файл, не в git), §2 і §5.3. Статус живе
 лише в tracker, цей файл описує тільки порядок і інструменти.
 
 Порядок, інструменти й обґрунтування закритих задач — в
