@@ -1,0 +1,17 @@
+name: Agent config lint
+
+# Zero tokens, seconds: reads the text of .claude/agents/*.md and compares each agent's
+# tools allowlist with the contract in scripts/eval/lint.py. Nothing here starts an agent.
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - 'scripts/eval/**'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 scripts/eval/lint.py
