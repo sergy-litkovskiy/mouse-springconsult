@@ -2,11 +2,13 @@ name: Agent config lint
 
 # Zero tokens, seconds: reads the text of .claude/agents/*.md and compares each agent's
 # tools allowlist with the contract in scripts/eval/lint.py. Nothing here starts an agent.
+#
+# `lint` is a required check on main. A workflow-level `paths:` filter would not start the
+# workflow at all on other PRs, and the required check would wait forever, so the workflow
+# runs on every PR and the path filter lives in a step: the job is green and quick when
+# the config is untouched.
 on:
   pull_request:
-    paths:
-      - '.claude/**'
-      - 'scripts/eval/**'
 
 jobs:
   lint:
@@ -14,4 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: python3 scripts/eval/lint.py
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if git diff --name-only "origin/$BASE_REF...HEAD" | grep -qE '^(\.claude/|scripts/eval/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.scope.outputs.changed == 'true'
+        run: python3 scripts/eval/lint.py
