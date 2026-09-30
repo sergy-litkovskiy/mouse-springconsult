@@ -115,7 +115,7 @@ Entity під `product_preparation_runs` і `product_field_suggestions` не і�
 У робочому дереві на момент запуску лежали три незакомічені зміни, яких цей прохід
 свідомо не торкався: правка `CLAUDE.md` (розділ «Команди» → посилання на skill
 `mouse-commands`) і два файли ручного інвентарю коренем репозиторію
-(`sdlc-inventory-f2-products.tmp.md`, `sdlc-manual-inventory.md`, датовані 2026-09-01,
+(`../../../../TMP-DOCS`, `../../../../TMP-DOCS`, датовані 2026-09-01,
 про фічу `products`-каталог, а не `product-creation-flow`). Жоден не стосується схеми й не
 входить у коміт цього проходу.
 
