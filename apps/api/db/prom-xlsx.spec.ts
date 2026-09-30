@@ -118,7 +118,7 @@ describe('toCondition', () => {
   });
 
   it('reads anything else, or nothing, as used', () => {
-    assert.equal(toCondition('Вживаний'), 'used');
+    assert.equal(toCondition('б/в'), 'used');
     assert.equal(toCondition('Гашене'), 'used');
     assert.equal(toCondition(undefined), 'used');
   });

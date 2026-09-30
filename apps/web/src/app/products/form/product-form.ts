@@ -90,7 +90,7 @@ const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку
 const UNKNOWN_READ_MESSAGE = 'Не вдалося прочитати картку. Закрийте вікно і спробуйте ще раз.';
 
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
-  { value: 'used', label: 'Вживаний' },
+  { value: 'used', label: 'б/в' },
   { value: 'new', label: 'Новий' },
 ];
 

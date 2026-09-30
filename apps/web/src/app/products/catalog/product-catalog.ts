@@ -132,7 +132,7 @@ function sameCategories(a: readonly string[], b: readonly string[]): boolean {
 
 const CONDITION_LABELS: Readonly<Record<ProductCondition, string>> = {
   new: 'Новий',
-  used: 'Вживаний',
+  used: 'б/в',
 };
 
 const priceFormat = new Intl.NumberFormat('uk-UA', {

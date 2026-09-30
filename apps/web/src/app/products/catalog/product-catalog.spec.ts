@@ -581,7 +581,7 @@ describe('ProductCatalog', () => {
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(2);
     expect(element.textContent).toContain('Миша Logitech MX Master 3');
     expect(element.textContent).toContain('Keychron K2 механічна');
-    expect(element.textContent).toContain('Вживаний');
+    expect(element.textContent).toContain('б/в');
     expect(element.textContent).toContain('Новий');
     expect(element.textContent).toContain('Знайдено: 2');
   });
@@ -1764,11 +1764,11 @@ describe('ProductCatalog', () => {
 
       await startEditing(0, 'condition');
       const select = await conditionSelect();
-      expect(await select.getValueText()).toBe('Вживаний');
+      expect(await select.getValueText()).toBe('б/в');
       await select.open();
       const options = await select.getOptions();
       const labels = await Promise.all(options.map((option) => option.getText()));
-      expect(labels.sort()).toEqual(['Вживаний', 'Новий']);
+      expect(labels.sort()).toEqual(['б/в', 'Новий']);
       await select.clickOptions({ text: 'Новий' });
 
       clickCellButton(0, 'condition', 'Зберегти');
@@ -2006,7 +2006,7 @@ describe('ProductCatalog', () => {
 
       expectNoPatch();
       expect(cell(0, 'condition')?.querySelector('mat-select')).toBeNull();
-      expect(cell(0, 'condition')?.textContent).toContain('Вживаний');
+      expect(cell(0, 'condition')?.textContent).toContain('б/в');
     });
 
     it('keeps one cell in edit mode across the table and drops the draft it leaves (AC-59)', async () => {
