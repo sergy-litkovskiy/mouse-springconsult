@@ -17,6 +17,7 @@ export const preparationRunRequestSchema = z.discriminatedUnion('scope', [
     scope: z.literal('field'),
     field: rewritableFieldSchema,
     draftText: z.string(),
+    mode: z.enum(['improve', 'prompt']).default('improve'),
   }),
 ]);
 

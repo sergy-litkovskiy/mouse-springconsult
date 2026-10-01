@@ -15,6 +15,7 @@ export type PreparationRunJob =
       readonly scope: 'field';
       readonly field: RewritableCardField;
       readonly draftText: string;
+      readonly mode: 'improve' | 'prompt';
     };
 
 export class PreparationQueue {

@@ -791,6 +791,15 @@ components:
           description: >-
             Лише при `scope: field` — поточна незбережена чернетка поля, з якої
             модель готує новий варіант.
+        mode:
+          type: string
+          enum: [improve, prompt]
+          default: improve
+          description: >-
+            Лише при `scope: field`. `improve` — адаптує чернетку під майданчик,
+            зберігаючи всі факти й нічого не вигадуючи. `prompt` — виконує чернетку
+            як інструкцію і пише текст поля; характеристик, яких в інструкції немає,
+            не додає. `web_search` в обох режимах не використовується. Default: `improve`.
       example: { scope: both }
 
     PreparationRun:

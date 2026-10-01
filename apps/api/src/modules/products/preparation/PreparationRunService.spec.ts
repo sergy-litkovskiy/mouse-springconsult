@@ -261,6 +261,7 @@ describe('preparation run service: scopes', () => {
       scope: 'field',
       field: 'descriptionOlx',
       draftText: 'Продаю мишу, майже нова.',
+      mode: 'improve',
     });
 
     assert.equal(run.scope, 'field');
@@ -271,9 +272,33 @@ describe('preparation run service: scopes', () => {
         scope: 'field',
         field: 'descriptionOlx',
         draftText: 'Продаю мишу, майже нова.',
+        mode: 'improve',
       },
     ]);
   });
+
+  it('carries mode into the queued job (AC-66, AC-67)', async () => {
+    const { service, queue } = setup();
+
+    const { run } = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'descriptionProm',
+      draftText: 'інструкція',
+      mode: 'prompt',
+    });
+
+    assert.deepEqual(queue.jobs, [
+      {
+        runId: run.id,
+        productId: CARD_ID,
+        scope: 'field',
+        field: 'descriptionProm',
+        draftText: 'інструкція',
+        mode: 'prompt',
+      },
+    ]);
+  });
+
   it('queues a field run with the draft stripped of its markup (AC-65)', async () => {
     const { service, queue } = setup();
 
@@ -281,6 +306,7 @@ describe('preparation run service: scopes', () => {
       scope: 'field',
       field: 'descriptionProm',
       draftText: '<p>Миша &amp; килимок</p><ul><li>Кабель USB-C</li><li>Коробка</li></ul>',
+      mode: 'improve',
     });
 
     assert.deepEqual(queue.jobs, [
@@ -290,6 +316,7 @@ describe('preparation run service: scopes', () => {
         scope: 'field',
         field: 'descriptionProm',
         draftText: 'Миша & килимок\n\n• Кабель USB-C\n• Коробка',
+        mode: 'improve',
       },
     ]);
   });
@@ -302,6 +329,7 @@ describe('preparation run service: scopes', () => {
         scope: 'field',
         field: 'descriptionProm',
         draftText: '<p></p><p><br></p>',
+        mode: 'improve',
       }),
       missing('draft'),
     );
@@ -414,11 +442,33 @@ describe('preparation run service: idempotency', () => {
       scope: 'field',
       field: 'titleOlx',
       draftText: 'Миша Logitech',
+      mode: 'improve',
     });
     const second = await service.start(CARD_ID, {
       scope: 'field',
       field: 'titleOlx',
       draftText: 'Миша Logitech MX',
+      mode: 'improve',
+    });
+
+    assert.equal(second.created, true);
+    assert.notEqual(second.run.id, first.run.id);
+  });
+
+  it('starts a new run for the same draft with a different mode (AC-66 edge case)', async () => {
+    const { service } = setup();
+
+    const first = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'titleOlx',
+      draftText: 'Миша Logitech',
+      mode: 'improve',
+    });
+    const second = await service.start(CARD_ID, {
+      scope: 'field',
+      field: 'titleOlx',
+      draftText: 'Миша Logitech',
+      mode: 'prompt',
     });
 
     assert.equal(second.created, true);
@@ -432,11 +482,13 @@ describe('preparation run service: idempotency', () => {
       scope: 'field',
       field: 'descriptionProm',
       draftText: '<p>Миша <strong>Logitech</strong> MX</p>',
+      mode: 'improve',
     });
     const second = await service.start(CARD_ID, {
       scope: 'field',
       field: 'descriptionProm',
       draftText: '<p>Миша Logitech <em>MX</em></p>',
+      mode: 'improve',
     });
 
     assert.equal(second.created, false);

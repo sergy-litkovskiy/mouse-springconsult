@@ -297,6 +297,7 @@ describe('preparation run controller', () => {
         scope: 'field',
         field: 'titleOlx',
         draftText: 'Миша Logitech',
+        mode: 'improve',
       },
     ]);
   });
