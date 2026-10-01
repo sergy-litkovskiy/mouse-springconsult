@@ -30,7 +30,10 @@ export class SuggestionField {
   /** The price has no «<- AI»: the admin types the number in by hand (AC-25). */
   readonly acceptable = input(true);
 
+  readonly improvable = input(true);
+
   readonly rewrite = output();
+  readonly improve = output();
   readonly accept = output();
 
   protected readonly text = computed(() => describe(this.suggestion()?.value));

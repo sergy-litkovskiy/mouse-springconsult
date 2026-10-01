@@ -29,6 +29,7 @@ import type {
   ProductUpdateResponse,
 } from '@contracts/products.contract';
 import { ProductForm, type ProductFormData } from './product-form';
+import { SuggestionField } from './suggestion-field';
 
 const CARD_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -973,7 +974,7 @@ describe('ProductForm', () => {
       expect(button('titleOlx', 'rewrite')?.disabled).toBe(false);
     });
 
-    it('rewrites the one field from its draft, without the photos (AC-21)', async () => {
+    it('rewrites the one field from its draft with mode:prompt (AC-21, AC-68)', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -988,6 +989,7 @@ describe('ProductForm', () => {
         scope: 'field',
         field: 'descriptionOlx',
         draftText: 'Продам мишу.',
+        mode: 'prompt',
       });
       request.flush(run('running'));
       await settle();
@@ -1079,6 +1081,7 @@ describe('ProductForm', () => {
         scope: 'field',
         field: 'seoKeywords',
         draftText: 'миша, logitech, бездротова',
+        mode: 'prompt',
       });
       request.flush(run('running'));
       await settle();
@@ -1258,6 +1261,57 @@ describe('ProductForm', () => {
       });
     });
 
+    describe('AI action buttons (AC-68, T73)', () => {
+      function improveButton(field: string): HTMLButtonElement | null {
+        return half(field).querySelector<HTMLButtonElement>('[data-testid="improve"]');
+      }
+
+      it('sends mode:improve when the auto_fix_high button is clicked (AC-68)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        type('titleOlx', 'Logitech MX Master 3 бездротова');
+        await settle();
+        improveButton('titleOlx')?.click();
+        await settle();
+
+        const request = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual({
+          scope: 'field',
+          field: 'titleOlx',
+          draftText: 'Logitech MX Master 3 бездротова',
+          mode: 'improve',
+        });
+        request.flush(run('running'));
+        await settle();
+
+        http.expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`).flush(run('failed'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(EMPTY_WITH_FRAME));
+        await settle();
+      });
+
+      it('shows three AI buttons with correct aria-labels (AC-68 accessibility)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        const promptBtn = button('titleOlx', 'rewrite');
+        const improveBtn = improveButton('titleOlx');
+        const acceptBtn = button('titleOlx', 'accept');
+
+        expect(promptBtn?.getAttribute('aria-label')).toBe(
+          'Застосувати як промпт: Пропозиція для OLX',
+        );
+        expect(improveBtn?.getAttribute('aria-label')).toBe(
+          'Покращити через AI: Пропозиція для OLX',
+        );
+        expect(acceptBtn?.getAttribute('aria-label')).toBe(
+          'Застосувати для поля ліворуч: Пропозиція для OLX',
+        );
+      });
+    });
+
     it('explains a rate limit in Ukrainian rather than showing its code', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
@@ -1295,5 +1349,17 @@ describe('ProductForm', () => {
         finishedAt: null,
       };
     }
+  });
+});
+
+describe('SuggestionField improvable input (T73)', () => {
+  it('hides the improve button when improvable is false (AC-68)', () => {
+    TestBed.configureTestingModule({ imports: [SuggestionField] });
+    const sf = TestBed.createComponent(SuggestionField);
+    sf.componentRef.setInput('label', 'Ціна від моделі');
+    sf.componentRef.setInput('improvable', false);
+    sf.detectChanges();
+
+    expect((sf.nativeElement as HTMLElement).querySelector('[data-testid="improve"]')).toBeNull();
   });
 });

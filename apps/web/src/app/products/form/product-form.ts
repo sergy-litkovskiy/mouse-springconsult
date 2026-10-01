@@ -338,7 +338,22 @@ export class ProductForm {
 
   /** One field, rewritten from the draft on the left, without the photos (ADR 0015, AC-21). */
   protected rewriteField(field: RewritableField): Promise<void> {
-    return this.startRun({ scope: 'field', field, draftText: fieldText(this.draft(), field) });
+    return this.startRun({
+      scope: 'field',
+      field,
+      draftText: fieldText(this.draft(), field),
+      mode: 'prompt',
+    });
+  }
+
+  /** Improves the draft in place rather than treating it as a prompt (T73, AC-68). */
+  protected improveField(field: RewritableField): Promise<void> {
+    return this.startRun({
+      scope: 'field',
+      field,
+      draftText: fieldText(this.draft(), field),
+      mode: 'improve',
+    });
   }
 
   /** The price never reads the draft — it searches the web, so it is a scope of its own. */

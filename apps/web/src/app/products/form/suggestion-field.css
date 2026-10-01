@@ -1,5 +1,5 @@
-/* Buttons between the two halves, the way the mockup draws them: «? -> AI» carries the draft to
-   the model, «<- AI» brings the answer back, and the arrows only read as arrows in between. */
+/* Buttons between the two halves. Tonal background set via system tokens (no hex) because
+   matIconButton has no built-in tonal variant in Angular Material 22 (icon-button-overrides). */
 .suggestion {
   display: flex;
   align-items: stretch;
@@ -12,6 +12,17 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
+}
+
+.suggestion__buttons button {
+  background-color: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  --mat-icon-button-state-layer-color: var(--mat-sys-on-secondary-container);
+  --mat-icon-button-ripple-color: color-mix(
+    in srgb,
+    var(--mat-sys-on-secondary-container) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%),
+    transparent
+  );
 }
 
 .suggestion__value {

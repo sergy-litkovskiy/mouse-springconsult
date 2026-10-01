@@ -77,6 +77,7 @@
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
           (rewrite)="rewriteField('titleProm')"
+          (improve)="improveField('titleProm')"
           (accept)="acceptSuggestion('titleProm')"
         />
       </div>
@@ -106,6 +107,7 @@
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
           (rewrite)="rewriteField('titleOlx')"
+          (improve)="improveField('titleOlx')"
           (accept)="acceptSuggestion('titleOlx')"
         />
       </div>
@@ -127,6 +129,7 @@
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
           (rewrite)="rewriteField('descriptionProm')"
+          (improve)="improveField('descriptionProm')"
           (accept)="acceptSuggestion('descriptionProm')"
         />
       </div>
@@ -145,6 +148,7 @@
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
           (rewrite)="rewriteField('descriptionOlx')"
+          (improve)="improveField('descriptionOlx')"
           (accept)="acceptSuggestion('descriptionOlx')"
         />
       </div>
@@ -190,6 +194,7 @@
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
           (rewrite)="rewriteField('seoKeywords')"
+          (improve)="improveField('seoKeywords')"
           (accept)="acceptSuggestion('seoKeywords')"
         />
       </div>
@@ -218,6 +223,7 @@
             [canRewrite]="canLookUpPrice()"
             rewriteHint="Спершу заповніть назву для Prom або для OLX."
             [acceptable]="false"
+            [improvable]="false"
             (rewrite)="lookUpPrice()"
           />
         }
