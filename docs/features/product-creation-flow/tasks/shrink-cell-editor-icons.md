@@ -1,7 +1,7 @@
 ---
 id: T78
 title: "Компактні іконки редагування в комірці каталогу"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1800
 blocked_by: []
 blocks: [T79]
-updated_at: "2026-09-30"
+updated_at: "2026-10-01"
 ---
 
 # T78 — Компактні іконки редагування в комірці каталогу

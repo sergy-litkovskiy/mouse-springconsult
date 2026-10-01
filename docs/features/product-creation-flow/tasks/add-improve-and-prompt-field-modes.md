@@ -1,7 +1,7 @@
 ---
 id: T72
 title: "Два режими запуску поля: покращити чернетку й виконати її як промпт"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2800
 blocked_by: [T67, T71]
 blocks: [T73]
-updated_at: "2026-09-30"
+updated_at: "2026-10-01"
 ---
 
 # T72 — Два режими запуску поля: покращити чернетку й виконати її як промпт
