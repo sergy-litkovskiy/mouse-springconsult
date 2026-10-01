@@ -264,6 +264,7 @@ describe('ProductsApi', () => {
       scope: 'field',
       field: 'descriptionOlx',
       draftText: 'Продам мишу, написав сам.',
+      mode: 'improve',
     };
     const started: PreparationRunDto = { ...QUEUED_RUN, scope: 'field' };
 
