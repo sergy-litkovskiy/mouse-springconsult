@@ -25,7 +25,7 @@ import { productConstraints } from '../../contracts/products-limits.ts';
 import { config } from '../../config.ts';
 import { AppError } from '../../errors.ts';
 import { FileTooLarge } from '../media/index.ts';
-import type { FieldSuggestion, SuggestionField } from './FieldSuggestion.ts';
+import type { FieldSuggestion, SuggestionField } from './preparation/FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
 import {
   ImageNotFound,

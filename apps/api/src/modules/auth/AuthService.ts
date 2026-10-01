@@ -1,10 +1,10 @@
 import type { AuthUser } from '../../contracts/auth.contract.ts';
 import { InvalidCredentials, NotAuthenticated, UserDeactivated } from './AuthErrors.ts';
-import type { PasswordHasher } from './PasswordHasher.ts';
-import type { SessionTokens } from './SessionTokens.ts';
+import type { PasswordHasher } from './credentials/PasswordHasher.ts';
+import type { SessionTokens } from './credentials/SessionTokens.ts';
 import type { SystemClock } from './SystemClock.ts';
-import type { User } from './User.ts';
-import type { UserRepository } from './UserRepository.ts';
+import type { User } from './user/User.ts';
+import type { UserRepository } from './user/UserRepository.ts';
 
 export type AuthServiceConfig = {
   readonly ttlSeconds: number;

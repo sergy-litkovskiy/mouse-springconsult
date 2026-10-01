@@ -9,10 +9,10 @@ import {
   preparationRunListQuerySchema,
   preparationRunRequestSchema,
   type PreparationRunDto,
-} from '../../contracts/ai.contract.ts';
-import { apiErrorCodes } from '../../contracts/error-codes.ts';
-import { AppError } from '../../errors.ts';
-import { ProductNotFound } from './ProductErrors.ts';
+} from '../../../contracts/ai.contract.ts';
+import { apiErrorCodes } from '../../../contracts/error-codes.ts';
+import { AppError } from '../../../errors.ts';
+import { ProductNotFound } from '../ProductErrors.ts';
 import type { PreparationRun } from './PreparationRun.ts';
 import type { PreparationRunService } from './PreparationRunService.ts';
 

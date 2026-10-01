@@ -1,16 +1,16 @@
 import { createHash } from 'node:crypto';
-import { config } from '../../config.ts';
+import { config } from '../../../config.ts';
 import type { PreparationRepository } from './PreparationRepository.ts';
 import type { PreparationRun } from './PreparationRun.ts';
-import type { Product } from './Product.ts';
-import { draftPlainText } from './draftPlainText.ts';
+import type { Product } from '../Product.ts';
+import { draftPlainText } from '../description/draftPlainText.ts';
 import type { PreparationQueue, RewritableCardField } from './PreparationQueue.ts';
 import {
   PreparationInputIncomplete,
   PreparationRateLimited,
   ProductNotFound,
-} from './ProductErrors.ts';
-import type { ProductRepository } from './ProductRepository.ts';
+} from '../ProductErrors.ts';
+import type { ProductRepository } from '../ProductRepository.ts';
 
 export type PreparationRequest =
   | { readonly scope: 'texts' | 'price' | 'both' }

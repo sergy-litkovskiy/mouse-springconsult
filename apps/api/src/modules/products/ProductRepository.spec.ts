@@ -11,7 +11,7 @@ import {
   type ProductListCriteria,
 } from './ProductRepository.ts';
 import { ImageNotFound } from './ProductErrors.ts';
-import type { PreparationRepository } from './PreparationRepository.ts';
+import type { PreparationRepository } from './preparation/PreparationRepository.ts';
 import { ProductService } from './ProductService.ts';
 
 /**

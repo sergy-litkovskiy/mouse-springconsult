@@ -18,7 +18,8 @@
 ```
 apps/api/src/                                   api.ts, worker.ts + технічні сервіси
                                                 (config, db, logger, queue, errors)
-apps/api/src/modules/{auth,products,media,ai}   бізнес-модулі
+apps/api/src/modules/{auth,products,media,ai}   бізнес-модулі; підфічі — auth/{user,credentials},
+                                                products/{preparation,description}
 apps/api/src/contracts/                         zod-схеми й константи контракту (@contracts)
 apps/api/db/                                    міграції, раннер, створення БД (зокрема тестової)
 apps/web/src/app/{auth,products}/               фічі Angular; підфічі — auth/login,

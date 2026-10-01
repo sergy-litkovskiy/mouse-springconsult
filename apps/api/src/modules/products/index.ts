@@ -1,19 +1,19 @@
 export { Product, PRODUCTS_TABLE } from './Product.ts';
 export type { ProductPage } from './Product.ts';
 export { ProductImage, PRODUCT_IMAGES_TABLE } from './ProductImage.ts';
-export { PreparationRun, PREPARATION_RUNS_TABLE } from './PreparationRun.ts';
+export { PreparationRun, PREPARATION_RUNS_TABLE } from './preparation/PreparationRun.ts';
 export type {
   PreparationErrorCode,
   PreparationScope,
   PreparationStatus,
-} from './PreparationRun.ts';
-export { FieldSuggestion, FIELD_SUGGESTIONS_TABLE } from './FieldSuggestion.ts';
+} from './preparation/PreparationRun.ts';
+export { FieldSuggestion, FIELD_SUGGESTIONS_TABLE } from './preparation/FieldSuggestion.ts';
 export type {
   PriceRange,
   SuggestionField,
   SuggestionResolution,
   SuggestionValue,
-} from './FieldSuggestion.ts';
+} from './preparation/FieldSuggestion.ts';
 
 export { ProductRepository } from './ProductRepository.ts';
 export type {
@@ -23,7 +23,7 @@ export type {
   ProductListCriteria,
 } from './ProductRepository.ts';
 
-export { PreparationRepository } from './PreparationRepository.ts';
+export { PreparationRepository } from './preparation/PreparationRepository.ts';
 export type {
   CallUsage,
   PreparationRunDraft,
@@ -31,16 +31,16 @@ export type {
   SuggestionDraft,
   RunClaim,
   TokenTotals,
-} from './PreparationRepository.ts';
-export { PreparationQueue } from './PreparationQueue.ts';
-export type { PreparationRunJob } from './PreparationQueue.ts';
-export { PreparationRunService } from './PreparationRunService.ts';
-export type { PreparationRequest, PreparationStart } from './PreparationRunService.ts';
-export { PreparationRunController } from './PreparationRunController.ts';
+} from './preparation/PreparationRepository.ts';
+export { PreparationQueue } from './preparation/PreparationQueue.ts';
+export type { PreparationRunJob } from './preparation/PreparationQueue.ts';
+export { PreparationRunService } from './preparation/PreparationRunService.ts';
+export type { PreparationRequest, PreparationStart } from './preparation/PreparationRunService.ts';
+export { PreparationRunController } from './preparation/PreparationRunController.ts';
 
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
-export { cleanDescription } from './cleanDescription.ts';
+export { cleanDescription } from './description/cleanDescription.ts';
 
 export {
   GalleryFull,

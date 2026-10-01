@@ -6,9 +6,13 @@ import type {
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
-import { cleanDescription } from './cleanDescription.ts';
-import type { FieldSuggestion, SuggestionField, SuggestionValue } from './FieldSuggestion.ts';
-import type { PreparationRepository, TokenTotals } from './PreparationRepository.ts';
+import { cleanDescription } from './description/cleanDescription.ts';
+import type {
+  FieldSuggestion,
+  SuggestionField,
+  SuggestionValue,
+} from './preparation/FieldSuggestion.ts';
+import type { PreparationRepository, TokenTotals } from './preparation/PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
 import {
   GalleryFull,

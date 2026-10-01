@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
-import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../db/test-database.ts';
-import { createDataSource } from '../../db.ts';
+import { prepareTestDatabase, resetTables, testDatabaseUrl } from '../../../../db/test-database.ts';
+import { createDataSource } from '../../../db.ts';
 import { FieldSuggestion } from './FieldSuggestion.ts';
 import { PreparationRepository } from './PreparationRepository.ts';
 import { PreparationRun, type PreparationStatus } from './PreparationRun.ts';
-import { PRODUCTS_TABLE, Product } from './Product.ts';
-import { ProductImage } from './ProductImage.ts';
+import { PRODUCTS_TABLE, Product } from '../Product.ts';
+import { ProductImage } from '../ProductImage.ts';
 
 /**
  * Against a real Postgres: adding tokens instead of overwriting them and the transaction around

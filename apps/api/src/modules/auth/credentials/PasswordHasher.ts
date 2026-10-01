@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { config } from '../../config.ts';
+import { config } from '../../../config.ts';
 
 /**
  * The migration that creates the first user hashes with these same parameters: otherwise the very

@@ -1,13 +1,13 @@
-export { User, USERS_TABLE } from './User.ts';
-export { UserRepository } from './UserRepository.ts';
-export { PasswordHasher } from './PasswordHasher.ts';
-export { SessionTokens } from './SessionTokens.ts';
+export { User, USERS_TABLE } from './user/User.ts';
+export { UserRepository } from './user/UserRepository.ts';
+export { PasswordHasher } from './credentials/PasswordHasher.ts';
+export { SessionTokens } from './credentials/SessionTokens.ts';
 export type {
   IssuedToken,
   IssueTokenInput,
   SessionClaims,
   SessionTokensConfig,
-} from './SessionTokens.ts';
+} from './credentials/SessionTokens.ts';
 export { SystemClock } from './SystemClock.ts';
 
 export { InvalidCredentials, NotAuthenticated, UserDeactivated } from './AuthErrors.ts';

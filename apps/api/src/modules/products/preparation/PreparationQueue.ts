@@ -1,4 +1,4 @@
-import { preparationQueue, type PgBoss } from '../../queue.ts';
+import { preparationQueue, type PgBoss } from '../../../queue.ts';
 
 export type RewritableCardField =
   'titleProm' | 'titleOlx' | 'descriptionProm' | 'descriptionOlx' | 'seoKeywords';
