@@ -29,6 +29,7 @@ backups/
 .playwright-cli/
 
 .claude/worktrees/
+.claude/logs/
 /TMP-DOCS/
 
 # Agent evals: пісочниці й вивід прогонів
