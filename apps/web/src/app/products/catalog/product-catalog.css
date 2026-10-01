@@ -209,16 +209,25 @@
   color: var(--app-success);
 }
 
-/* The editor takes the width of its value, not of the column, so the row does not grow. */
+.cell-resting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Grid keeps input and buttons on one row; the error spans all columns on its own row below.
+   1fr prevents the input from widening the column — the editor stays within the cell's width. */
 .cell-editor {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 4px;
 }
 
 .cell-editor__input {
-  width: 7rem;
+  width: 100%;
+  min-width: 0;
   padding: 6px 8px;
   border: 1px solid var(--mat-sys-outline);
   border-radius: 4px;
@@ -227,13 +236,27 @@
 }
 
 .cell-editor__select {
-  width: 7rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .cell-editor__error {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
   color: var(--mat-sys-error);
   font: var(--mat-sys-body-small);
   white-space: normal;
   text-align: left;
+}
+
+.cell-editor-btn {
+  --mat-icon-button-icon-size: 16px;
+  --mat-icon-button-state-layer-size: 24px;
+  --mat-icon-button-touch-target-display: none;
+}
+
+/* mat-icon uses font-size for Material Icons font; the token above only covers img/svg. */
+.cell-editor-btn .mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }
