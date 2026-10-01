@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { after, beforeEach, describe, it } from 'node:test';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { apiErrorCodes } from '../../contracts/error-codes.ts';
-import type { PgBoss } from '../../queue.ts';
-import type { Product } from './Product.ts';
+import { apiErrorCodes } from '../../../contracts/error-codes.ts';
+import type { PgBoss } from '../../../queue.ts';
+import type { Product } from '../Product.ts';
 import { PreparationQueue, type PreparationRunJob } from './PreparationQueue.ts';
 import {
   PreparationRepository,
@@ -13,7 +13,7 @@ import {
 import { PreparationRun } from './PreparationRun.ts';
 import { PreparationRunController } from './PreparationRunController.ts';
 import { PreparationRunService } from './PreparationRunService.ts';
-import { ProductRepository } from './ProductRepository.ts';
+import { ProductRepository } from '../ProductRepository.ts';
 
 /** The DataSource is never reached: every repository method the routes call is overridden. */
 const NO_DATA_SOURCE = undefined as unknown as ConstructorParameters<typeof ProductRepository>[0];

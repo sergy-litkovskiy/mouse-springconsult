@@ -1,5 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
-import { promDescriptionHtml } from '../../contracts/prom-description-html.ts';
+import { promDescriptionHtml } from '../../../contracts/prom-description-html.ts';
 
 /**
  * Most descriptions were pasted from a browser and carry Google's markup along: `data-*`,

@@ -12,16 +12,17 @@
  * globs rather than directories.
  */
 const MODULE_INDEX = '^src/modules/[^/]+/index\\.ts$';
-const CONTROLLERS = '^src/modules/[^/]+/[^/]*Controller\\.ts$';
-const SERVICES = '^src/modules/[^/]+/[^/]*Service\\.ts$';
-const REPOSITORIES = '^src/modules/[^/]+/[^/]*Repository\\.ts$';
+const CONTROLLERS = '^src/modules/[^/]+/.*Controller\\.ts$';
+const SERVICES = '^src/modules/[^/]+/.*Service\\.ts$';
+const REPOSITORIES = '^src/modules/[^/]+/.*Repository\\.ts$';
 /**
- * Entity classes carry no suffix — the class is the model — so they are listed by name.
+ * Entity classes carry no suffix — the class is the model — so they are listed by path.
  * A new entity is added here, and that is the whole point of the list: adding one is a
- * decision about where the ORM is allowed to appear.
+ * decision about where the ORM is allowed to appear. Full paths, not names: a same-named
+ * file elsewhere in a module must not inherit the permission.
  */
 const ENTITIES =
-  '^src/modules/[^/]+/(User|Product|ProductImage|PreparationRun|FieldSuggestion)\\.ts$';
+  '^src/modules/(auth/user/User|products/Product|products/ProductImage|products/preparation/PreparationRun|products/preparation/FieldSuggestion)\\.ts$';
 // depcruise matches `to.path` against the *resolved* path, not against the package name.
 const ORM_PACKAGES = '^node_modules/(typeorm|pg)(/|$)';
 

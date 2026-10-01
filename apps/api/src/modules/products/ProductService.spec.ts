@@ -8,9 +8,9 @@ import {
   type SuggestionField,
   type SuggestionResolution,
   type SuggestionValue,
-} from './FieldSuggestion.ts';
+} from './preparation/FieldSuggestion.ts';
 import { Product, type ProductPage } from './Product.ts';
-import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
+import { PreparationRepository, type TokenTotals } from './preparation/PreparationRepository.ts';
 import {
   GalleryFull,
   ImageNotFound,

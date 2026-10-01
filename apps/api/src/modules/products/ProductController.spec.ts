@@ -16,9 +16,9 @@ import {
   type SuggestionField,
   type SuggestionResolution,
   type SuggestionValue,
-} from './FieldSuggestion.ts';
+} from './preparation/FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { PreparationRepository, type TokenTotals } from './PreparationRepository.ts';
+import { PreparationRepository, type TokenTotals } from './preparation/PreparationRepository.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {

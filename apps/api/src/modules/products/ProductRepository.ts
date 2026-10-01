@@ -1,6 +1,6 @@
 import { In, type DataSource, type SelectQueryBuilder } from 'typeorm';
 import type { ProductSortDirection, ProductSortField } from '../../contracts/products-limits.ts';
-import { PREPARATION_RUNS_TABLE } from './PreparationRun.ts';
+import { PREPARATION_RUNS_TABLE } from './preparation/PreparationRun.ts';
 import { Product, type ProductPage } from './Product.ts';
 import { ProductImage } from './ProductImage.ts';
 

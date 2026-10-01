@@ -3,11 +3,11 @@ import { describe, it } from 'node:test';
 import type { DataSource } from 'typeorm';
 import { InvalidCredentials, NotAuthenticated, UserDeactivated } from './AuthErrors.ts';
 import { AuthService } from './AuthService.ts';
-import { PasswordHasher } from './PasswordHasher.ts';
-import { SessionTokens } from './SessionTokens.ts';
+import { PasswordHasher } from './credentials/PasswordHasher.ts';
+import { SessionTokens } from './credentials/SessionTokens.ts';
 import { SystemClock } from './SystemClock.ts';
-import { User } from './User.ts';
-import { UserRepository } from './UserRepository.ts';
+import { User } from './user/User.ts';
+import { UserRepository } from './user/UserRepository.ts';
 
 /**
  * `SessionTokens` is the genuine one — jose signs an HS256 token in microseconds, so there is

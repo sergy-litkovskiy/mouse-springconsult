@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { PgBoss } from '../../queue.ts';
-import type { Product } from './Product.ts';
+import type { PgBoss } from '../../../queue.ts';
+import type { Product } from '../Product.ts';
 import {
   ProductNotFound,
   PreparationInputIncomplete,
   PreparationRateLimited,
-} from './ProductErrors.ts';
+} from '../ProductErrors.ts';
 import { PreparationQueue, type PreparationRunJob } from './PreparationQueue.ts';
 import {
   PreparationRepository,
@@ -15,7 +15,7 @@ import {
 } from './PreparationRepository.ts';
 import { PreparationRun } from './PreparationRun.ts';
 import { PreparationRunService } from './PreparationRunService.ts';
-import { ProductRepository } from './ProductRepository.ts';
+import { ProductRepository } from '../ProductRepository.ts';
 
 /** The DataSource is never reached: every repository method the service calls is overridden. */
 const NO_DATA_SOURCE = undefined as unknown as ConstructorParameters<typeof ProductRepository>[0];
