@@ -1,7 +1,7 @@
 ---
 id: T70
 title: "ID товару під заголовком картки з кнопкою копіювання"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: []
 blocks: [T81]
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T70 — ID товару під заголовком картки з кнопкою копіювання
@@ -86,9 +86,9 @@ AC-64 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-64: ID під заголовком копіюється одним кліком.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): show the product id with a copy button in the card`.
+- [x] AC-64: ID під заголовком копіюється одним кліком.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): show the product id with a copy button in the card`.
 
 ## Links
 
