@@ -3,7 +3,11 @@
 # червоні перевірки її шару. Шар — мітка на початку task_subject. Перевірки фронту звужені до
 # каталогу власника: дерево спільне, і повний ng test бачив би напівзроблені файли сусіда.
 input=$(cat)
-[ -z "$(jq -r '.team_name // empty' <<<"$input")" ] && exit 0   # звичайна сесія, не команда
+# Без jq або з нерозібраним payload порожній team_name означав би «не команда», і гейт мовчки
+# пропускав би все — тому падаємо закрито.
+command -v jq >/dev/null || { echo 'task-gate: потрібен jq' >&2; exit 2; }
+team=$(jq -r '.team_name // empty' <<<"$input") || { echo 'task-gate: payload не JSON' >&2; exit 2; }
+[ -z "$team" ] && exit 0   # звичайна сесія, не команда
 subject=$(jq -r '.task_subject' <<<"$input")
 cd "$CLAUDE_PROJECT_DIR" || exit 2
 
