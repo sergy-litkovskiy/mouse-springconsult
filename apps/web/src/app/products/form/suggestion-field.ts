@@ -43,12 +43,7 @@ export class SuggestionField {
   /** A suggestion already accepted or rejected is shown with its decision, not offered again (AC-69). */
   protected readonly canAccept = computed(() => {
     const suggestion = this.suggestion();
-    return (
-      this.acceptable() &&
-      suggestion !== null &&
-      (suggestion.resolution ?? null) === null &&
-      !this.busy()
-    );
+    return this.acceptable() && suggestion !== null && !suggestion.resolution && !this.busy();
   });
 }
 

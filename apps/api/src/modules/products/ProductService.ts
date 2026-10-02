@@ -260,7 +260,8 @@ export class ProductService {
 
   /** Read back after the decision was written, so the answer carries the decision itself. */
   private async findLatestSuggestions(productId: string): Promise<FieldSuggestion[]> {
-    return [...latestPerField(await this.preparations.findSuggestions(productId)).latest.values()];
+    const suggestions = await this.preparations.findSuggestions(productId);
+    return [...latestPerField(suggestions).latest.values()];
   }
 
   private async toCardReading(
