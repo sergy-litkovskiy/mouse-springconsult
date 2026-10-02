@@ -55,6 +55,7 @@ import { apiErrorMessage } from '../../api-error-message';
 import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
+  normalizePrice,
   priceBound,
   priceFieldValue,
   priceFromField,
@@ -92,7 +93,7 @@ const DELETE_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 
 const UNKNOWN_DELETE_MESSAGE = 'Не вдалося видалити картку. Спробуйте ще раз.';
 
-const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499 або 2499.00.';
+const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499, 2499.00 або 2499,00.';
 
 const EDIT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.invalidPrice]: PRICE_FORMAT_MESSAGE,
@@ -408,8 +409,8 @@ export class ProductCatalog {
         page: null,
         title: asQueryParam(value.title),
         description: asQueryParam(value.description),
-        priceMin: asQueryParam(value.priceMin),
-        priceMax: asQueryParam(value.priceMax),
+        priceMin: asQueryParam(normalizePrice(value.priceMin)),
+        priceMax: asQueryParam(normalizePrice(value.priceMax)),
         category: categories.length === 0 ? null : categories,
         publishedProm: asQueryParam(value.publishedProm),
         publishedOlx: asQueryParam(value.publishedOlx),

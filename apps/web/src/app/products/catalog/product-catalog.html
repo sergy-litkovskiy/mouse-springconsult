@@ -33,7 +33,7 @@
         <mat-label>Ціна від, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMin" placeholder="1000.00" />
         @if (filters.controls.priceMin.hasError('price')) {
-          <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+          <mat-error>Ціна виглядає як 2499, 2499.00 або 2499,00.</mat-error>
         }
       </mat-form-field>
 
@@ -45,7 +45,7 @@
         <mat-label>Ціна до, ₴</mat-label>
         <input matInput inputmode="decimal" formControlName="priceMax" placeholder="5000.00" />
         @if (filters.controls.priceMax.hasError('price')) {
-          <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+          <mat-error>Ціна виглядає як 2499, 2499.00 або 2499,00.</mat-error>
         }
       </mat-form-field>
 

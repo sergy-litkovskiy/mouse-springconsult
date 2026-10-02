@@ -841,6 +841,37 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('Ціна виглядає як');
   });
 
+  it('writes a lower bound typed with a decimal comma into the URL with a dot (AC-78)', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    type('priceMin', '100,5');
+    submitFilters();
+    await tick();
+
+    expect(TestBed.inject(Router).url).toContain('priceMin=100.5');
+    const request = expectRequest();
+    expect(request.request.params.get('priceMin')).toBe('100.5');
+    request.flush(PAGE);
+    await settle();
+  });
+
+  for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
+    it(`refuses a lower bound of ${invalid} with the format hint instead of asking the server (AC-78)`, async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('priceMin', invalid);
+      submitFilters();
+      await tick();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(element.textContent).toContain('Ціна виглядає як 2499, 2499.00 або 2499,00.');
+    });
+  }
+
   it('refuses an upper bound below the lower one', async () => {
     await open();
     expectRequest().flush(PAGE);
@@ -1647,7 +1678,7 @@ describe('ProductCatalog', () => {
       condition: 'Змінити стан',
     };
 
-    const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499 або 2499.00.';
+    const PRICE_FORMAT_MESSAGE = 'Ціна виглядає як 2499, 2499.00 або 2499,00.';
 
     async function openCatalog(items: ProductListItem[]): Promise<void> {
       await open();
@@ -1872,6 +1903,41 @@ describe('ProductCatalog', () => {
         clickCellButton(0, 'price', 'Зберегти');
         await settle();
         pressInPrice(0, 'Enter');
+        await settle();
+
+        expectNoPatch();
+        expect(priceField(0)?.value).toBe(invalid);
+        expect(cell(0, 'price')?.textContent).toContain(PRICE_FORMAT_MESSAGE);
+      });
+    }
+
+    it('saves a price typed with a decimal comma as a PATCH with a dot (AC-78)', async () => {
+      await openCatalog([MOUSE]);
+
+      await startEditing(0, 'price');
+      typePrice(0, '235,50');
+      clickCellButton(0, 'price', 'Зберегти');
+      await tick();
+
+      const patch = http.expectOne(`/api/products/${MOUSE.id}`);
+      expect(patch.request.method).toBe('PATCH');
+      expect(patch.request.body).toEqual({ price: '235.50' });
+      patch.flush({ ...MOUSE, price: '235.50', discardedKeywordsCount: 0 });
+      await tick();
+
+      expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, price: '235.50' }], total: 1 });
+      await settle();
+
+      expect(shownPrice(0)).toContain('235,50');
+    });
+
+    for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
+      it(`refuses ${invalid} with the format hint and sends nothing (AC-78)`, async () => {
+        await openCatalog([MOUSE]);
+
+        await startEditing(0, 'price');
+        typePrice(0, invalid);
+        clickCellButton(0, 'price', 'Зберегти');
         await settle();
 
         expectNoPatch();
