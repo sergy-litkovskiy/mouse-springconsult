@@ -13,6 +13,22 @@
 </h2>
 
 <mat-dialog-content>
+  @if (productId(); as id) {
+    <p class="card-id" data-testid="product-id">
+      ID: {{ id }}
+      <button
+        matIconButton
+        type="button"
+        class="card-id__copy"
+        aria-label="Скопіювати ID товару"
+        matTooltip="Скопіювати ID товару"
+        (click)="copyId(id)"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+    </p>
+  }
+
   @if (saving() || loading()) {
     <mat-progress-bar mode="indeterminate" />
   }
