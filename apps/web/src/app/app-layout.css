@@ -1,3 +1,15 @@
+/* A fixed height, so the page under the bar scrolls inside itself and the bar stays put. */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* A flex item shrinks by default, and a long catalog would squeeze the bar below its own height. */
+.app-bar {
+  flex: none;
+}
+
 .app-bar__spacer {
   flex: 1 1 auto;
 }

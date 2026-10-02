@@ -1,7 +1,7 @@
 ---
 id: T79
 title: "Каталог: скролиться лише вміст таблиці"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2600
 blocked_by: [T78]
 blocks: [T80]
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T79 — Каталог: скролиться лише вміст таблиці
@@ -94,7 +94,7 @@ updated_at: "2026-09-30"
 
 ## Checklist
 
-1. `product-catalog.spec.ts` (RED): один `mat-paginator` без `aria-label` «Верхній пагінатор каталогу»; рядок заголовків має клас `mat-mdc-table-sticky`; тести стану пагінації з URL (наявні) читають єдиний пагінатор. Перейменувати наявні тести, що звертались до верхнього.
+1. `product-catalog.spec.ts` (RED): один `mat-paginator` без `aria-label` «Верхній пагінатор каталогу»; кожна комірка рядка заголовків має клас `mat-mdc-table-sticky` (на нативній `<table>` CDK закріплює комірки, а не `tr`); тести стану пагінації з URL (наявні) читають єдиний пагінатор. Перейменувати наявні тести, що звертались до верхнього.
 2. `product-catalog.html`: прибрати верхній `mat-paginator`, `sticky: true` у `matHeaderRowDef`; `product-catalog.css`: прибрати `.catalog__top-paginator`, зробити `.catalog`, картку й `.catalog__scroll` flex-колонкою з єдиним скролом.
 3. `app-layout.css`: колонка `100dvh`, outlet займає решту; висоту тулбара не вписувати.
 4. `product-catalog.css`: `@media` для вузького й низького екрана — фільтри й шапка в потоці сторінки, пагінатор прикріплений (зняти `overflow: hidden` з картки, якщо він заважає).
@@ -109,10 +109,10 @@ updated_at: "2026-09-30"
 
 ## DoD
 
-- [ ] AC-74: на 1280×720 скролиться лише вміст таблиці, пагінатор біля нижнього краю; на 360 px пагінатор прикріплений, скролу вбік немає.
-- [ ] AC-51 переписано в PRD; верхнього пагінатора в `product-catalog.html` немає.
-- [ ] `docker compose run --rm web npm run lint` і `test` зелені, gate-check теки `tasks/` зелений.
-- [ ] Коміт: `feat(web): scroll only the catalog rows and pin the paginator`.
+- [x] AC-74: на 1280×720 скролиться лише вміст таблиці, пагінатор біля нижнього краю; на 360 px пагінатор прикріплений, скролу вбік немає.
+- [x] AC-51 переписано в PRD; верхнього пагінатора в `product-catalog.html` немає.
+- [x] `docker compose run --rm web npm run lint` і `test` зелені, gate-check теки `tasks/` зелений.
+- [x] Коміт: `feat(web): scroll only the catalog rows and pin the paginator`.
 
 ## Links
 
