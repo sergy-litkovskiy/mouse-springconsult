@@ -17,10 +17,11 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T74, T75, T76, T79, T83, T85, T86, T88 — поставка 3, UI каталогу
+**Готові до старту:** T75, T76, T79, T82, T83, T84, T85, T86, T88 — поставка 3, UI каталогу
 й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок:
-T84 чекає на T74, T66 — на T74 і T84. Ланцюжок каталогу: T80 чекає на T75 і T79,
-T87 — на T80. Зачистка номерів з коду: T81 чекає на T66, T74, T80, T83, T84, T85, T87 і T88, T82 — на T74.
+T66 чекає на T84. Ланцюжок каталогу: T80 чекає на T75 і T79,
+T87 — на T80. Зачистка номерів з коду: T81 чекає на T66, T80, T83, T84, T85, T87 і T88.
+T74 закрито 2026-10-02: вона розблокувала T84 і T82; T66 ще чекає на T84, T81 — на решту своїх `blocked_by`.
 T83–T87 заведено 2026-10-02 за UX-аудитом, T88 — того ж дня за нестабільним тестом редактора. T68 і T70 закрито 2026-10-02 й нічого не розблокували: T81 ще чекає на решту своїх `blocked_by`.
 
 Записи про закриті й заведені задачі з 2026-09-21 — у [хроніці](../_audit/tracker-journal.md).
@@ -122,7 +123,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T71 | [Чернетка поля без тегів](strip-tags-from-field-draft.md) | Done | — | XS | 2026-09-28 |
 | T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Done | T67, T71 | S | 2026-10-01 |
 | T73 | [Три кнопки AI біля поля](add-improve-button-and-tonal-ai-actions.md) | Done | T72 | S | 2026-10-01 |
-| T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Todo | T73 | S | — |
+| T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Done | T73 | S | 2026-10-02 |
 | T75 | [Компактніший шрифт](compact-app-typography.md) | Todo | — | XS | — |
 | T76 | [Кадри картки 120×120](shrink-card-gallery-frames.md) | Todo | — | XS | — |
 | T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Done | T69 | XS | 2026-09-27 |
@@ -130,9 +131,9 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Todo | T78 | S | — |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Blocked | T75, T79 | XS | — |
 | T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T84, T85, T87, T88 | S | — |
-| T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74 | S | — |
+| T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Todo | T74 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Todo | — | S | — |
-| T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Blocked | T74 | S | — |
+| T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Todo | T74 | S | — |
 | T85 | [Кома в ціні](accept-decimal-comma-in-price.md) | Todo | — | XS | — |
 | T86 | [Одна помилка входу](show-login-credentials-error-once.md) | Todo | — | XS | — |
 | T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Blocked | T80 | XS | — |
