@@ -10,6 +10,10 @@ export const rewritableFieldSchema = z.enum([
 
 export type RewritableField = z.infer<typeof rewritableFieldSchema>;
 
+export const fieldRewriteModeSchema = z.enum(['improve', 'prompt']);
+
+export type FieldRewriteMode = z.infer<typeof fieldRewriteModeSchema>;
+
 /** `field` rewrites one text from the draft in the form, so only it carries `field` and `draftText` (ADR 0015). */
 export const preparationRunRequestSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.enum(['texts', 'price', 'both']) }),
@@ -17,7 +21,7 @@ export const preparationRunRequestSchema = z.discriminatedUnion('scope', [
     scope: z.literal('field'),
     field: rewritableFieldSchema,
     draftText: z.string(),
-    mode: z.enum(['improve', 'prompt']).default('improve'),
+    mode: fieldRewriteModeSchema.default('improve'),
   }),
 ]);
 

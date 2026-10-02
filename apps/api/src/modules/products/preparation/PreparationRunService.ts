@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { config } from '../../../config.ts';
+import type { FieldRewriteMode } from '../../../contracts/ai.contract.ts';
 import type { PreparationRepository } from './PreparationRepository.ts';
 import type { PreparationRun } from './PreparationRun.ts';
 import type { Product } from '../Product.ts';
@@ -18,7 +19,7 @@ export type PreparationRequest =
       readonly scope: 'field';
       readonly field: RewritableCardField;
       readonly draftText: string;
-      readonly mode: 'improve' | 'prompt';
+      readonly mode: FieldRewriteMode;
     };
 
 export type PreparationStart = {

@@ -1,3 +1,4 @@
+import type { FieldRewriteMode } from '../../../contracts/ai.contract.ts';
 import { preparationQueue, type PgBoss } from '../../../queue.ts';
 
 export type RewritableCardField =
@@ -15,7 +16,7 @@ export type PreparationRunJob =
       readonly scope: 'field';
       readonly field: RewritableCardField;
       readonly draftText: string;
-      readonly mode: 'improve' | 'prompt';
+      readonly mode: FieldRewriteMode;
     };
 
 export class PreparationQueue {

@@ -1,4 +1,5 @@
 import { config } from '../../config.ts';
+import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import {
@@ -24,7 +25,7 @@ export type PreparationJob =
       readonly field: RewritableField;
       readonly draftText: string;
       /** Optional for backward compat with queue jobs enqueued before T72 deployed. */
-      readonly mode?: 'improve' | 'prompt';
+      readonly mode?: FieldRewriteMode;
     };
 
 const SUGGESTION_FIELDS: Record<RewritableField, SuggestionField> = {

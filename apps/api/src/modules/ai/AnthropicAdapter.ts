@@ -3,6 +3,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { config } from '../../config.ts';
+import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 
 export type RewritableField =
@@ -147,7 +148,7 @@ export class AnthropicAdapter {
   async rewriteField(
     field: RewritableField,
     draftText: string,
-    mode: 'improve' | 'prompt',
+    mode: FieldRewriteMode,
   ): Promise<FieldRewriteResult> {
     const { kind, market } = fieldInfo(field);
     const listInstruction =
