@@ -8,7 +8,7 @@ owner: "Serhii"
 estimate: S
 context_budget: 3100
 blocked_by: [T73]
-blocks: [T66, T81, T82, T84]
+blocks: [T66, T81, T82, T84, T90]
 updated_at: "2026-10-02"
 ---
 
@@ -43,10 +43,11 @@ updated_at: "2026-10-02"
 ## Sequence
 
 > `web->>api: перечитує картку`
-> `api->>pg: звіряє поточне значення з останньою прийнятою пропозицією`
+> `api->>pg: читає поля картки й одну пропозицію на поле`
 
 [sad.md §6](../sad.md#6-runtime-view), сценарій 9: звірка та сама, змінюється лише те, що
-відповідь несе поруч зі значеннями.
+відповідь несе поруч зі значеннями. Сценарій переписано 2026-10-02 ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)): звірки більше
+немає, тож другий рядок — з нового сценарію.
 
 ## Data delta
 
@@ -60,10 +61,11 @@ updated_at: "2026-10-02"
 ```yaml
     ProductCardRead:
     FieldSuggestion:
-        resolution: { type: [string, null], enum: [accepted, rejected, null] }
-        resolvedAt: { type: [string, null], format: date-time }
         createdAt: { type: string, format: date-time }
 ```
+
+Рядки `resolution` і `resolvedAt` прибрано 2026-10-02 ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md), [T91](drop-server-side-suggestion-accept.md)):
+позначок «застосовано» / «відхилено», які додала ця задача, більше немає.
 
 Рядки `pendingSuggestions` тут навмисно не цитуються: крок 6 їх прибирає.
 

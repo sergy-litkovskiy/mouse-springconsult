@@ -49,12 +49,15 @@ UNIQUE на всю таблицю `product_preparation_runs`. Тому запу�
 ## API contract excerpt
 
 ```yaml
-        UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом
-        повертає наявний запуск (`200`), а не створює новий (`201`). Наявним є лише
-        незавершений (`queued`, `running`) чи `succeeded` запуск: UNIQUE частковий,
-        `WHERE status <> 'failed'`, бо відмовлений запуск результату не має й захищати
-        в ньому нема чого. Після `failed` той самий вхід дає `201` і нову задачу
+        UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом,
+        `WHERE status in ('queued', 'running')`: після `succeeded` чи `failed` той
+        самий вхід дає `201` і нову генерацію, а нова пропозиція поля замінює
+        повтор після `failed` відновлює результат, як і раніше
 ```
+
+Рядки про ключ замінено 2026-10-02: [ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)
+звузив частковий UNIQUE до `queued`/`running`, тож повтор після `succeeded` теж ставить новий
+запуск ([T92](keep-one-suggestion-per-field.md)).
 
 Опис доповнено: «наявний» означає лише незавершений (`queued`/`running`) чи
 `succeeded`. Після `failed` той самий вхід дає `201`.

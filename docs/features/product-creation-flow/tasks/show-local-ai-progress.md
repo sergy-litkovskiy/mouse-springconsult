@@ -7,7 +7,7 @@ gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 2500
-blocked_by: [T58, T59, T73, T74, T84]
+blocked_by: [T58, T59, T73, T74, T90]
 blocks: [T81]
 updated_at: "2026-10-02"
 ---
@@ -42,9 +42,11 @@ updated_at: "2026-10-02"
 мають повернутися». Після [T73](add-improve-button-and-tonal-ai-actions.md) біля поля дві кнопки
 запуску: `auto_awesome` («Застосувати як промпт») і `auto_fix_high` («Покращити через AI»). Спінер
 не додається всередину кнопки, а **замінює обидві**, і після результату чи відмови кнопки
-повертаються. Стрілку «Застосувати для поля ліворуч» і кнопку «Відхилити пропозицію»
-([T84](add-reject-suggestion-button.md)) не ховають, а лише вимикають: вони не запускають моделі, і
-їхнє місце не має стрибати. T84 править той самий `app-suggestion-field`, тож задача йде і після неї.
+повертаються. Стрілку «Застосувати для поля ліворуч» не ховають, а лише вимикають: вона не
+запускає моделі, і її місце не має стрибати. [T90](copy-suggestion-into-form-field.md) править
+той самий `app-suggestion-field` (умова `canAccept` без `resolution`), тож задача йде і після неї.
+Кнопки «Відхилити пропозицію» не буде: [T84](add-reject-suggestion-button.md) скасовано
+([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)).
 
 Спільні блоки `product-form.html` з [T58](wrap-product-titles-in-textarea.md) і
 [T59](edit-keywords-as-chips.md), а `suggestion-field.*` — з T73 і

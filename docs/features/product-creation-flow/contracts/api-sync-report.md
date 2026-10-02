@@ -51,8 +51,10 @@ idea-brief.md ✓ (info.description) · `adr/`: усі десять прочит
    специфікацією для стейджу break-tasks.
    **Waiver знято 2026-09-07 частково:** [T03](../tasks/add-product-error-codes.md)
    ввів `ProductErrors.ts` із сімома кодами поставки 1. Чотири коди поставки 2
-   (`preparation_input_incomplete`, `preparation_rate_limited`, `suggestion_not_found`,
-   `suggestion_already_resolved`) досі без класів — за ними T29 і T30.
+   (`preparation_input_incomplete`, `preparation_rate_limited` і два коди рішення про
+   пропозицію) досі без класів — за ними T29 і T30. **2026-10-02:** коди пропозицій
+   прибрано разом з маршрутами прийняття й відхилення
+   ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md), T91).
 3. **Validation ↔ DB constraints** — ✓.
 4. **Entity ↔ endpoint** — ✓.
 5. **OpenAPI ↔ sequence** — ✓, з двома нотатками (supporting, не блокер):

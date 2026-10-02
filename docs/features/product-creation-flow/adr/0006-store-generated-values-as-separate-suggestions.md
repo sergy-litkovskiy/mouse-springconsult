@@ -1,8 +1,8 @@
 ---
-status: Accepted
+status: Superseded by 0017
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-09-01"
+updated_at: "2026-10-02"
 feature_size: M
 stage: "04-05"
 ticket: "TBD"
@@ -10,7 +10,7 @@ ticket: "TBD"
 
 # 0006 — Зберігати згенеровані значення окремими пропозиціями, а не писати їх у поля картки
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0017](0017-keep-one-latest-suggestion-per-field.md) — окрема таблиця лишається, але пропозиція тепер одна на поле, без `resolution` і історії, а генерація не пише в картку навіть у недоторкане поле
 - **Date:** 2026-09-01
 - **Deciders:** Serhii (Architect / Tech Lead)
 

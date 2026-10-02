@@ -7,7 +7,7 @@ gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 1600
-blocked_by: [T74]
+blocked_by: [T74, T91, T92]
 blocks: []
 updated_at: "2026-09-30"
 ---
@@ -95,5 +95,5 @@ updated_at: "2026-09-30"
 
 ## Links
 
-- [T81](drop-task-references-from-web-code.md) — те саме для `web`, з таблицею «було — стало» · [T74](show-latest-suggestions-in-product-form.md) — остання відкрита правка контракту читання картки
+- [T81](drop-task-references-from-web-code.md) — те саме для `web`, з таблицею «було — стало» · [T74](show-latest-suggestions-in-product-form.md), [T91](drop-server-side-suggestion-accept.md) і [T92](keep-one-suggestion-per-field.md) — відкриті правки `products` і `preparation`, які ця задача чекає
 - [apps/api/CLAUDE.md](../../../../apps/api/CLAUDE.md) — правила модулів · [openapi.yaml](../contracts/openapi.yaml) — `getProduct`
