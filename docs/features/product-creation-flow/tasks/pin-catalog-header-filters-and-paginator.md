@@ -1,7 +1,7 @@
 ---
 id: T79
 title: "Каталог: скролиться лише вміст таблиці"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2600
 blocked_by: [T78]
 blocks: [T80]
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T79 — Каталог: скролиться лише вміст таблиці
@@ -109,10 +109,10 @@ updated_at: "2026-09-30"
 
 ## DoD
 
-- [ ] AC-74: на 1280×720 скролиться лише вміст таблиці, пагінатор біля нижнього краю; на 360 px пагінатор прикріплений, скролу вбік немає.
-- [ ] AC-51 переписано в PRD; верхнього пагінатора в `product-catalog.html` немає.
-- [ ] `docker compose run --rm web npm run lint` і `test` зелені, gate-check теки `tasks/` зелений.
-- [ ] Коміт: `feat(web): scroll only the catalog rows and pin the paginator`.
+- [x] AC-74: на 1280×720 скролиться лише вміст таблиці, пагінатор біля нижнього краю; на 360 px пагінатор прикріплений, скролу вбік немає.
+- [x] AC-51 переписано в PRD; верхнього пагінатора в `product-catalog.html` немає.
+- [x] `docker compose run --rm web npm run lint` і `test` зелені, gate-check теки `tasks/` зелений.
+- [x] Коміт: `feat(web): scroll only the catalog rows and pin the paginator`.
 
 ## Links
 
