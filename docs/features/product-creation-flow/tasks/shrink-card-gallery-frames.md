@@ -1,7 +1,7 @@
 ---
 id: T76
 title: "Кадри картки 120×120"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1200
 blocked_by: []
 blocks: []
-updated_at: "2026-09-25"
+updated_at: "2026-10-02"
 ---
 
 # T76 — Кадри картки 120×120
@@ -78,9 +78,9 @@ updated_at: "2026-09-25"
 
 ## DoD
 
-- [ ] AC-71: кадри 120×120 на обох ширинах, на 360 px скролу немає.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): show the card gallery frames at 120 px`.
+- [x] AC-71: кадри 120×120 на обох ширинах, на 360 px скролу немає.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): show the card gallery frames at 120 px`.
 
 ## Links
 
