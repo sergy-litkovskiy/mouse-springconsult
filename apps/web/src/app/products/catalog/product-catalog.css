@@ -12,7 +12,8 @@
   flex-direction: column;
   min-height: 0;
   gap: 16px;
-  padding: 24px;
+  /* No bottom padding: the paginator at the bottom of the table card sits on the window edge. */
+  padding: 24px 24px 0;
   box-sizing: border-box;
 }
 
@@ -309,8 +310,10 @@
     overflow: visible;
   }
 
+  /* Button labels in the rows sit at z-index 1; later in the DOM, the paginator covers them. */
   .catalog__table mat-paginator {
     position: sticky;
     bottom: 0;
+    z-index: 1;
   }
 }
