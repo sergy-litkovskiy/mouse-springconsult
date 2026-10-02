@@ -41,6 +41,15 @@
   margin-inline-start: auto;
 }
 
+.card-id {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
 .card-hint {
   margin: 0 0 16px;
   padding: 12px;

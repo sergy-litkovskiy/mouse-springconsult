@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { TextFieldModule } from '@angular/cdk/text-field';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -162,8 +163,9 @@ export class ProductForm {
   private readonly data = inject<ProductFormData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject<MatDialogRef<ProductForm, boolean>>(MatDialogRef);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly clipboard = inject(Clipboard);
 
-  private readonly productId = signal<string | null>(this.data.productId);
+  protected readonly productId = signal<string | null>(this.data.productId);
   protected readonly card = signal<ProductCardRead | null>(null);
   protected readonly images = signal<readonly ProductImage[]>([]);
 
@@ -333,6 +335,15 @@ export class ProductForm {
       }),
       map((product) => product.id),
     );
+  }
+
+  protected copyId(id: string): void {
+    this.clipboard.copy(id);
+    this.snackBar.open('ID скопійовано', undefined, {
+      duration: 4000,
+      panelClass: 'snack-bar--success',
+      verticalPosition: 'top',
+    });
   }
 
   /** Recognises the item from the main frame and fills every text at once (ADR 0014). */
