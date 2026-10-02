@@ -206,6 +206,9 @@ export class PromDescriptionEditor implements ControlValueAccessor {
             editor.destroy();
             return;
           }
+          // The form may have written a value or toggled `disabled` while the modules were loading.
+          editor.commands.setContent(this.value(), { emitUpdate: false });
+          editor.setEditable(!this.disabled(), false);
           this.editor = editor;
           editor.on('update', () => {
             this.emit(editor.isEmpty ? '' : editor.getHTML());

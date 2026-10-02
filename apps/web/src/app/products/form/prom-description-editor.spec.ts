@@ -27,7 +27,10 @@ describe('PromDescriptionEditor', () => {
   }
 
   /** Tiptap is fetched with import(), so the editor appears a few ticks after the first render. */
-  async function open(value: string, options: { disabled?: boolean } = {}): Promise<void> {
+  async function open(
+    value: string,
+    options: { disabled?: boolean; beforeLoad?: () => void } = {},
+  ): Promise<void> {
     TestBed.configureTestingModule({ imports: [Host] });
     fixture = TestBed.createComponent(Host);
     element = fixture.nativeElement as HTMLElement;
@@ -37,6 +40,7 @@ describe('PromDescriptionEditor', () => {
       control.disable();
     }
     fixture.detectChanges();
+    options.beforeLoad?.();
     for (let attempt = 0; attempt < 50 && visual() === null; attempt += 1) {
       await settle();
     }
@@ -195,6 +199,48 @@ describe('PromDescriptionEditor', () => {
 
     expect(visual()?.textContent).toBe('');
     expect(control.value).toBe('');
+  });
+
+  // The card's GET can land between the first render and the arrival of Tiptap's modules.
+  describe('written to while it is still loading (AC-62)', () => {
+    it('shows the last value written before it loaded, without marking the form changed (AC-62)', async () => {
+      await open('', {
+        beforeLoad: () => {
+          expect(visual()).toBeNull();
+          control.setValue('<p>Чернетка</p>');
+          control.setValue('<p><strong>Стан</strong> ідеальний</p>');
+        },
+      });
+
+      expect(visual()?.querySelector('strong')?.textContent).toBe('Стан');
+      expect(visual()?.textContent).toBe('Стан ідеальний');
+      expect(control.value).toBe('<p><strong>Стан</strong> ідеальний</p>');
+      expect(control.dirty).toBe(false);
+    });
+
+    it('becomes editable when the form is enabled before it loaded (AC-62)', async () => {
+      await open('<p>Опис</p>', {
+        disabled: true,
+        beforeLoad: () => {
+          expect(visual()).toBeNull();
+          control.enable();
+        },
+      });
+
+      expect(visual()?.getAttribute('contenteditable')).toBe('true');
+      expect(control.dirty).toBe(false);
+    });
+
+    it('stays read-only when the form is disabled before it loaded (AC-62)', async () => {
+      await open('<p>Опис</p>', {
+        beforeLoad: () => {
+          expect(visual()).toBeNull();
+          control.disable();
+        },
+      });
+
+      expect(visual()?.getAttribute('contenteditable')).toBe('false');
+    });
   });
 
   describe('the "Почистити html" button', () => {

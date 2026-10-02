@@ -95,7 +95,10 @@ describe('ProductForm', () => {
    * The dialog is handed an identifier and reads the card itself, so a test that opens an existing
    * card answers that read before anything else can happen.
    */
-  function open(product: ProductCard | null): void {
+  function open(
+    product: ProductCard | null,
+    options: { readAfterFirstRender?: boolean } = {},
+  ): void {
     const data: ProductFormData = { productId: product?.id ?? null };
     close = vi.fn();
     TestBed.configureTestingModule({
@@ -110,6 +113,9 @@ describe('ProductForm', () => {
     fixture = TestBed.createComponent(ProductForm);
     http = TestBed.inject(HttpTestingController);
     element = fixture.nativeElement as HTMLElement;
+    if (options.readAfterFirstRender === true) {
+      fixture.detectChanges();
+    }
     if (product !== null) {
       const read = http.expectOne(`/api/products/${product.id}`);
       expect(read.request.method).toBe('GET');
@@ -388,6 +394,34 @@ describe('ProductForm', () => {
     await settle();
 
     expect(close).toHaveBeenCalledWith(true);
+  });
+
+  it('shows the stored Prom description and saves it unchanged when the card arrives before its editor (AC-62)', async () => {
+    const stored: ProductCard = {
+      ...PUBLISHED_ON_PROM,
+      descriptionProm: '<p><strong>Стан</strong> ідеальний</p>',
+    };
+    open(stored, { readAfterFirstRender: true });
+    const visual = (): HTMLElement | null =>
+      element.querySelector<HTMLElement>('app-prom-description-editor .ProseMirror');
+    for (let attempt = 0; attempt < 50 && visual() === null; attempt += 1) {
+      await settle();
+    }
+    await settle();
+
+    expect(visual()?.textContent).toBe('Стан ідеальний');
+    expect(visual()?.getAttribute('contenteditable')).toBe('true');
+
+    submit();
+    await settle();
+
+    const request = http.expectOne(`/api/products/${CARD_ID}`);
+    expect(request.request.method).toBe('PATCH');
+    expect((request.request.body as Record<string, unknown>)['descriptionProm']).toBe(
+      stored.descriptionProm,
+    );
+    request.flush(answer(stored));
+    await settle();
   });
 
   it('leaves blank titles and category out, since a PATCH refuses them', async () => {
