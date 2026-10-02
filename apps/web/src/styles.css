@@ -64,7 +64,11 @@ body {
   --mat-form-field-outlined-outline-color: #96918b;
   --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
 
-  /* The theme writes `Roboto` into every shorthand, so each one is restated. */
+  /*
+   * The theme writes `Roboto` into every shorthand, so each one is restated. Six roles sit one
+   * step below Material's scale; components read `-size` and `-line-height` apart from the
+   * shorthand, so those are restated with it.
+   */
   --mat-sys-display-large: 400 3.562rem / 4rem var(--app-font);
   --mat-sys-display-large-font: var(--app-font);
   --mat-sys-display-medium: 400 2.812rem / 3.25rem var(--app-font);
@@ -75,18 +79,30 @@ body {
   --mat-sys-headline-large-font: var(--app-font);
   --mat-sys-headline-medium: 400 1.75rem / 2.25rem var(--app-font);
   --mat-sys-headline-medium-font: var(--app-font);
-  --mat-sys-headline-small: 400 1.5rem / 2rem var(--app-font);
+  --mat-sys-headline-small: 400 1.25rem / 1.75rem var(--app-font);
   --mat-sys-headline-small-font: var(--app-font);
-  --mat-sys-title-large: 400 1.375rem / 1.75rem var(--app-font);
+  --mat-sys-headline-small-size: 1.25rem;
+  --mat-sys-headline-small-line-height: 1.75rem;
+  --mat-sys-title-large: 400 1.25rem / 1.75rem var(--app-font);
   --mat-sys-title-large-font: var(--app-font);
-  --mat-sys-title-medium: 500 1rem / 1.5rem var(--app-font);
+  --mat-sys-title-large-size: 1.25rem;
+  --mat-sys-title-large-line-height: 1.75rem;
+  --mat-sys-title-medium: 500 0.875rem / 1.25rem var(--app-font);
   --mat-sys-title-medium-font: var(--app-font);
-  --mat-sys-title-small: 500 0.875rem / 1.25rem var(--app-font);
+  --mat-sys-title-medium-size: 0.875rem;
+  --mat-sys-title-medium-line-height: 1.25rem;
+  --mat-sys-title-small: 500 0.8125rem / 1.125rem var(--app-font);
   --mat-sys-title-small-font: var(--app-font);
-  --mat-sys-body-large: 400 1rem / 1.5rem var(--app-font);
+  --mat-sys-title-small-size: 0.8125rem;
+  --mat-sys-title-small-line-height: 1.125rem;
+  --mat-sys-body-large: 400 0.875rem / 1.25rem var(--app-font);
   --mat-sys-body-large-font: var(--app-font);
-  --mat-sys-body-medium: 400 0.875rem / 1.25rem var(--app-font);
+  --mat-sys-body-large-size: 0.875rem;
+  --mat-sys-body-large-line-height: 1.25rem;
+  --mat-sys-body-medium: 400 0.8125rem / 1.125rem var(--app-font);
   --mat-sys-body-medium-font: var(--app-font);
+  --mat-sys-body-medium-size: 0.8125rem;
+  --mat-sys-body-medium-line-height: 1.125rem;
   --mat-sys-body-small: 400 0.75rem / 1rem var(--app-font);
   --mat-sys-body-small-font: var(--app-font);
   --mat-sys-label-large: 500 0.875rem / 1.25rem var(--app-font);

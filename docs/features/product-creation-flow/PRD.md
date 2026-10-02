@@ -837,6 +837,20 @@ UI-частина, [T35](tasks/add-catalog-readiness-filter.md):
 **When** `api` приймає запуск `scope: field`
 **Then** відповідь `409 preparation_input_incomplete` з `details.missing: ["draft"]`, і задача в чергу не йде
 
+### AC-70 (US-06, US-07) — happy path
+
+Запит 2026-09-25, [T75](tasks/compact-app-typography.md).
+
+**Given** `user` відкриває `/products` на екрані шириною 1280 px, а потім картку товару
+**When** сторінка й діалог відмальовані
+**Then** основний текст має 13 px, текст у полях картки — 14 px, заголовок каталогу — 20 px
+
+### AC-70 (US-06, US-07) — accessibility
+
+**Given** шрифт зменшено на крок
+**When** `user` дивиться на каталог і відкриту картку на 1280 і 360 px
+**Then** жоден `mat-label` чи підпис не менший за 11 px, а на 360 px немає горизонтального скролу
+
 ### AC-72 (US-06) — happy path
 
 Запит 2026-09-25, [T77](tasks/even-out-card-form-spacing.md).
