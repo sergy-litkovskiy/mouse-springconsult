@@ -1,7 +1,7 @@
 ---
 id: T75
 title: "Компактніший шрифт"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1700
 blocked_by: []
 blocks: [T80]
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T75 — Компактніший шрифт
@@ -92,9 +92,9 @@ updated_at: "2026-09-30"
 
 ## DoD
 
-- [ ] AC-70: шкалу зсунуто на крок, підписи не дрібніші за 11 px, на 360 px скролу немає.
-- [ ] Наявні тести `web` зелені, `lint` зелений.
-- [ ] Коміт: `style(web): step the type scale down one notch`.
+- [x] AC-70: шкалу зсунуто на крок, підписи не дрібніші за 11 px, на 360 px скролу немає.
+- [x] Наявні тести `web` зелені, `lint` зелений.
+- [x] Коміт: `style(web): step the type scale down one notch`.
 
 ## Links
 
