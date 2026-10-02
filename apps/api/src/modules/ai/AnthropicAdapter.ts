@@ -154,8 +154,8 @@ export class AnthropicAdapter {
       field === 'seoKeywords' ? ' Return a list of keywords, not a sentence.' : '';
     const text =
       mode === 'improve'
-        ? `Adapt this ${market} ${kind} for ${market} — keep all facts from the draft and do not invent any new details: "${draftText}".${listInstruction} ${PLAIN_TEXT_RULE}`
-        : `Execute this instruction and write a ${market} ${kind}. Do not add any characteristics that are not mentioned in the instruction: "${draftText}".${listInstruction} ${PLAIN_TEXT_RULE}`;
+        ? `Adapt this ${market} ${kind} for ${market} — keep all facts from the draft and do not invent any new details: "${draftText}".${listInstruction} Write in Ukrainian. ${PLAIN_TEXT_RULE}`
+        : `Execute this instruction and write a ${market} ${kind}. Do not add any characteristics that are not mentioned in the instruction: "${draftText}".${listInstruction} Write in Ukrainian. ${PLAIN_TEXT_RULE}`;
     const { value, usage } = await this.requestFieldRewrite([{ type: 'text', text }]);
     return { value: value.value, usage };
   }

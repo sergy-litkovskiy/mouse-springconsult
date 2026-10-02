@@ -212,6 +212,14 @@ describe('rewriteField', () => {
 
     assert.match(textOf(adapter.lastFieldContent), /list of keywords/i);
   });
+
+  for (const mode of ['improve', 'prompt'] as const) {
+    it(`asks for the answer in Ukrainian in ${mode} mode`, async () => {
+      const adapter = new RecordingAnthropicAdapter();
+      await adapter.rewriteField('titleProm', 'Logitech MX Master 3', mode);
+      assert.match(textOf(adapter.lastFieldContent), /in Ukrainian/);
+    });
+  }
 });
 
 describe('rewriteField: improve mode (AC-66)', () => {
