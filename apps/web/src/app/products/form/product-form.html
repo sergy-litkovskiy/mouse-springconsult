@@ -222,7 +222,7 @@
           <mat-label>Ціна, ₴</mat-label>
           <input matInput inputmode="decimal" formControlName="price" placeholder="2499.00" />
           @if (form.controls.price.hasError('price')) {
-            <mat-error>Ціна виглядає як 2499 або 2499.00.</mat-error>
+            <mat-error>Ціна виглядає як 2499, 2499.00 або 2499,00.</mat-error>
           }
         </mat-form-field>
         <!--
