@@ -100,10 +100,8 @@ export default defineConfig([
 
   // The typescript-eslint twin of the rule rather than another entry for the core one: blocks
   // that name the same rule replace each other, and this ban has to hold on top of both above.
-  // Specs are left out because they never reach the browser bundle.
   {
     files: ['src/**/*.ts'],
-    ignores: ['**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
