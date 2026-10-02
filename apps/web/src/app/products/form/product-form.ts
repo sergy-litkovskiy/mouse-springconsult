@@ -33,7 +33,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
-import type { PreparationRunRequest, RewritableField } from '@contracts/ai.contract';
+import type {
+  FieldRewriteMode,
+  PreparationRunRequest,
+  RewritableField,
+} from '@contracts/ai.contract';
 import type {
   FieldSuggestion,
   Product,
@@ -336,23 +340,16 @@ export class ProductForm {
     return this.startRun({ scope: 'texts' });
   }
 
-  /** One field, rewritten from the draft on the left, without the photos (ADR 0015, AC-21). */
-  protected rewriteField(field: RewritableField): Promise<void> {
+  /**
+   * One field from the draft on the left, without the photos (ADR 0015, AC-21): `improve` adapts the
+   * draft, `prompt` follows it as an instruction (AC-66, AC-67).
+   */
+  protected rewriteField(field: RewritableField, mode: FieldRewriteMode): Promise<void> {
     return this.startRun({
       scope: 'field',
       field,
       draftText: fieldText(this.draft(), field),
-      mode: 'prompt',
-    });
-  }
-
-  /** Improves the draft in place rather than treating it as a prompt (T73, AC-68). */
-  protected improveField(field: RewritableField): Promise<void> {
-    return this.startRun({
-      scope: 'field',
-      field,
-      draftText: fieldText(this.draft(), field),
-      mode: 'improve',
+      mode,
     });
   }
 
