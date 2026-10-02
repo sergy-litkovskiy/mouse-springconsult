@@ -1082,28 +1082,57 @@ describe('product controller: resolving a suggestion', () => {
   });
 });
 
+const NEWER_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000004';
+const NEWER_OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000005';
+/** What `resolveSuggestion` of the double stamps on a decision. */
+const DECIDED_AT = '2026-09-20T12:00:00.000Z';
+
+function suggestionAt(
+  id: string,
+  field: SuggestionField,
+  value: SuggestionValue,
+  createdAt: string,
+  resolution: SuggestionResolution | null = null,
+): FieldSuggestion {
+  return Object.assign(pendingSuggestion(id, field, value), {
+    createdAt: new Date(createdAt),
+    resolution,
+    resolvedAt: resolution === null ? null : new Date(DECIDED_AT),
+  });
+}
+
+function latestDto(
+  id: string,
+  field: string,
+  value: unknown,
+  createdAt: string,
+  resolution: SuggestionResolution | null = null,
+): Record<string, unknown> {
+  return {
+    id,
+    runId: RUN_ID,
+    field,
+    value,
+    resolution,
+    resolvedAt: resolution === null ? null : DECIDED_AT,
+    createdAt,
+  };
+}
+
 type CardReadBody = {
   titleOlx: string;
-  pendingSuggestions?: readonly Record<string, unknown>[];
+  descriptionOlx: string;
+  latestSuggestions?: readonly Record<string, unknown>[];
 };
 
-/** What the card read owes per suggestion: the identifiers, the field of the contract, the value. */
-function pendingDto(id: string, field: string, value: unknown): Record<string, unknown> {
-  return { id, runId: RUN_ID, field, value, createdAt: SUGGESTED_AT };
+/** Ordered by field, so the test does not pin an order the contract never promised. */
+function latestOf(body: CardReadBody): Record<string, unknown>[] | undefined {
+  return body.latestSuggestions?.toSorted((a, b) =>
+    String(a['field']).localeCompare(String(b['field'])),
+  );
 }
 
-/** An absent field collapses to an empty list, so forgetting it reads as offering no suggestion. */
-function pendingOf(body: CardReadBody): Record<string, unknown>[] {
-  return (body.pendingSuggestions ?? []).map((row) => ({
-    id: row['id'],
-    runId: row['runId'],
-    field: row['field'],
-    value: row['value'],
-    createdAt: row['createdAt'],
-  }));
-}
-
-describe('product controller: pending suggestions of a card', () => {
+describe('product controller: suggestions of a card', () => {
   let repository: SuggestionProductRepository;
   let runs: StubPreparationRepository;
   let app: FastifyInstance;
@@ -1138,30 +1167,34 @@ describe('product controller: pending suggestions of a card', () => {
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
-      pendingDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі'),
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT),
     ]);
   });
 
-  it('leaves the suggestion the read applied itself out of the pending ones (AC-42)', async () => {
+  it('shows the suggestion the read applied itself as accepted, not as waiting (AC-42, AC-69)', async () => {
     repository.cards[0] = card(READY_ID, { titleOlx: '' });
 
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
     const body = response.json<CardReadBody>();
 
     assert.equal(body.titleOlx, 'Назва від моделі');
-    assert.deepEqual(body.pendingSuggestions, []);
+    assert.deepEqual(latestOf(body), [
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'accepted'),
+    ]);
   });
 
-  it('never brings a rejected suggestion back among the pending ones (AC-42)', async () => {
+  it('brings a rejected suggestion back as rejected, never as waiting (AC-42, AC-69)', async () => {
     await app.inject({ method: 'POST', url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject') });
 
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
 
-    assert.deepEqual(response.json<CardReadBody>().pendingSuggestions, []);
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'rejected'),
+    ]);
   });
 
-  it('answers an acceptance with what is still waiting for a decision (Checklist 3)', async () => {
+  it('answers an acceptance with the accepted suggestion beside what is still waiting (Checklist 3)', async () => {
     runs.suggestions.set(READY_ID, [
       pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
       pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
@@ -1173,12 +1206,13 @@ describe('product controller: pending suggestions of a card', () => {
     });
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
-      pendingDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.'),
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.', SUGGESTED_AT),
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'accepted'),
     ]);
   });
 
-  it('answers a rejection with what is still waiting for a decision (Checklist 3)', async () => {
+  it('answers a rejection with the rejected suggestion beside what is still waiting (Checklist 3)', async () => {
     runs.suggestions.set(READY_ID, [
       pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
       pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
@@ -1190,8 +1224,9 @@ describe('product controller: pending suggestions of a card', () => {
     });
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
-      pendingDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.'),
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.', SUGGESTED_AT),
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'rejected'),
     ]);
   });
 
@@ -1199,15 +1234,186 @@ describe('product controller: pending suggestions of a card', () => {
     const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
 
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(response.json<CardReadBody>().pendingSuggestions, []);
+    assert.deepEqual(response.json<CardReadBody>().latestSuggestions, []);
   });
 
-  it('takes the pending suggestions from the query the reconciliation already makes (DoD)', async () => {
+  it('takes the latest suggestions from the query the reconciliation already makes (DoD)', async () => {
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
 
-    assert.deepEqual(pendingOf(response.json<CardReadBody>()), [
-      pendingDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі'),
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT),
     ]);
     assert.equal(runs.suggestionQueries, 1);
+  });
+});
+
+describe('product controller: latest suggestion of every field', () => {
+  let repository: SuggestionProductRepository;
+  let runs: StubPreparationRepository;
+  let app: FastifyInstance;
+
+  before(async () => {
+    repository = new SuggestionProductRepository();
+    runs = new StubPreparationRepository();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, runs),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this suite is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    repository.cards[0] = card(READY_ID, {
+      titleOlx: 'Моя власна назва',
+      descriptionOlx: 'Мій власний опис.',
+    });
+  });
+
+  it('shows the description applied to an empty field as accepted, then and on the next read (AC-69)', async () => {
+    repository.cards[0] = card(READY_ID, { descriptionOlx: '' });
+    runs.suggestions.set(READY_ID, [
+      suggestionAt(
+        OLX_DESCRIPTION_SUGGESTION_ID,
+        'description_olx',
+        'Опис від моделі.',
+        '2026-09-20T10:00:00.000Z',
+      ),
+    ]);
+    const expected = [
+      latestDto(
+        OLX_DESCRIPTION_SUGGESTION_ID,
+        'descriptionOlx',
+        'Опис від моделі.',
+        '2026-09-20T10:00:00.000Z',
+        'accepted',
+      ),
+    ];
+
+    const applying = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const next = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.equal(next.statusCode, 200);
+    assert.equal(next.json<CardReadBody>().descriptionOlx, 'Опис від моделі.');
+    assert.deepEqual(latestOf(applying.json<CardReadBody>()), expected);
+    assert.deepEqual(latestOf(next.json<CardReadBody>()), expected);
+  });
+
+  it('puts the newer undecided suggestion beside the field instead of an older rejected one (AC-69)', async () => {
+    runs.suggestions.set(READY_ID, [
+      suggestionAt(
+        SUGGESTION_ID,
+        'title_olx',
+        'Назва від моделі',
+        '2026-09-20T10:00:00.000Z',
+        'rejected',
+      ),
+      suggestionAt(
+        NEWER_SUGGESTION_ID,
+        'title_olx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+      ),
+    ]);
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(
+        NEWER_SUGGESTION_ID,
+        'titleOlx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+      ),
+    ]);
+  });
+
+  it('keeps the field edited by hand and leaves the new suggestion beside it undecided (AC-69, AC-11)', async () => {
+    runs.suggestions.set(READY_ID, [
+      suggestionAt(
+        SUGGESTION_ID,
+        'title_olx',
+        'Назва від моделі',
+        '2026-09-20T10:00:00.000Z',
+        'accepted',
+      ),
+      suggestionAt(
+        NEWER_SUGGESTION_ID,
+        'title_olx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+      ),
+    ]);
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const body = response.json<CardReadBody>();
+
+    assert.equal(body.titleOlx, 'Моя власна назва');
+    assert.deepEqual(latestOf(body), [
+      latestDto(
+        NEWER_SUGGESTION_ID,
+        'titleOlx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+      ),
+    ]);
+  });
+
+  it('keeps one suggestion per field, the newest by createdAt, whatever its resolution (Checklist 2)', async () => {
+    runs.suggestions.set(READY_ID, [
+      suggestionAt(
+        SUGGESTION_ID,
+        'title_olx',
+        'Назва від моделі',
+        '2026-09-20T10:00:00.000Z',
+        'rejected',
+      ),
+      suggestionAt(
+        OLX_DESCRIPTION_SUGGESTION_ID,
+        'description_olx',
+        'Опис від моделі.',
+        '2026-09-20T10:01:00.000Z',
+      ),
+      suggestionAt(
+        NEWER_OLX_DESCRIPTION_SUGGESTION_ID,
+        'description_olx',
+        'Новий опис від моделі.',
+        '2026-09-20T10:03:00.000Z',
+        'accepted',
+      ),
+      suggestionAt(
+        NEWER_SUGGESTION_ID,
+        'title_olx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+        'rejected',
+      ),
+    ]);
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+
+    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
+      latestDto(
+        NEWER_OLX_DESCRIPTION_SUGGESTION_ID,
+        'descriptionOlx',
+        'Новий опис від моделі.',
+        '2026-09-20T10:03:00.000Z',
+        'accepted',
+      ),
+      latestDto(
+        NEWER_SUGGESTION_ID,
+        'titleOlx',
+        'Нова назва від моделі',
+        '2026-09-20T10:05:00.000Z',
+        'rejected',
+      ),
+    ]);
   });
 });

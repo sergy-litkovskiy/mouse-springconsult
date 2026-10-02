@@ -212,7 +212,7 @@ export class ProductController {
   private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
     return {
       ...this.toCardResponse(reading),
-      pendingSuggestions: reading.pendingSuggestions.map((suggestion) =>
+      pendingSuggestions: reading.latestSuggestions.map((suggestion) =>
         this.toSuggestionResponse(suggestion),
       ),
       totalInputTokens: reading.tokens.inputTokens,

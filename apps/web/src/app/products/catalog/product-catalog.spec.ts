@@ -1164,7 +1164,7 @@ describe('ProductCatalog', () => {
   async function answerCardRead(card: ProductCard): Promise<void> {
     const read = http.expectOne(`/api/products/${card.id}`);
     expect(read.request.method).toBe('GET');
-    read.flush({ ...card, pendingSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 });
+    read.flush({ ...card, latestSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 });
     await settle();
   }
 

@@ -40,7 +40,7 @@ export type ProductReading = {
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
   /** What the reconciliation left for the human to decide: `resolution` still NULL (AC-11). */
-  readonly pendingSuggestions: readonly FieldSuggestion[];
+  readonly latestSuggestions: readonly FieldSuggestion[];
 };
 
 /** Keywords past the ceiling are reported here rather than raised as an error (AC-07). */
@@ -274,7 +274,7 @@ export class ProductService {
       product,
       isReady: this.isReady(product),
       tokens: await this.preparations.sumTokens(productId),
-      pendingSuggestions,
+      latestSuggestions: pendingSuggestions,
     };
   }
 

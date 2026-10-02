@@ -210,7 +210,8 @@ export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
  * by the very read that reconciles them (AC-11), and a page of cards would count them per row.
  */
 export const productCardReadSchema = productCardSchema.extend({
-  pendingSuggestions: z.array(fieldSuggestionSchema),
+  pendingSuggestions: z.array(fieldSuggestionSchema).optional(),
+  latestSuggestions: z.array(fieldSuggestionSchema).optional(),
   totalInputTokens: z.int().nonnegative(),
   totalOutputTokens: z.int().nonnegative(),
 });

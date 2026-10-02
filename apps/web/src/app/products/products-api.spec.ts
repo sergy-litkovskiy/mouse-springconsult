@@ -75,7 +75,7 @@ const SUGGESTION: FieldSuggestion = {
 const CARD_WITH_SUGGESTION: ProductCardRead = {
   ...PRODUCT,
   isReady: true,
-  pendingSuggestions: [SUGGESTION],
+  latestSuggestions: [SUGGESTION],
   totalInputTokens: 1200,
   totalOutputTokens: 800,
 };
@@ -300,7 +300,9 @@ describe('ProductsApi', () => {
     const accepted: ProductCardRead = {
       ...CARD_WITH_SUGGESTION,
       descriptionOlx: SUGGESTED_OLX_DESCRIPTION,
-      pendingSuggestions: [],
+      latestSuggestions: [
+        { ...SUGGESTION, resolution: 'accepted', resolvedAt: '2026-09-20T09:01:00.000Z' },
+      ],
     };
 
     const pending = firstValueFrom(api.acceptSuggestion(PRODUCT_ID, SUGGESTION_ID));
@@ -314,7 +316,12 @@ describe('ProductsApi', () => {
   });
 
   it('rejects one suggestion and answers with the recounted card', async () => {
-    const rejected: ProductCardRead = { ...CARD_WITH_SUGGESTION, pendingSuggestions: [] };
+    const rejected: ProductCardRead = {
+      ...CARD_WITH_SUGGESTION,
+      latestSuggestions: [
+        { ...SUGGESTION, resolution: 'rejected', resolvedAt: '2026-09-20T09:01:00.000Z' },
+      ],
+    };
 
     const pending = firstValueFrom(api.rejectSuggestion(PRODUCT_ID, SUGGESTION_ID));
     const request = http.expectOne(

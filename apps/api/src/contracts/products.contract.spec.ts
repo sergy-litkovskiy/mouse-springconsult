@@ -259,27 +259,39 @@ describe('product card read contract', () => {
     createdAt: '2026-09-20T10:00:00.000Z',
   };
 
-  it('requires the pending suggestions of a card in its read response (AC-41)', () => {
-    assert.equal(
-      productCardReadSchema.safeParse({ ...card, pendingSuggestions: [] }).success,
-      true,
-    );
+  it('requires the latest suggestions of a card in its read response (AC-41, AC-69)', () => {
+    assert.equal(productCardReadSchema.safeParse({ ...card, latestSuggestions: [] }).success, true);
     assert.equal(productCardReadSchema.safeParse(card).success, false);
   });
 
-  it('carries a pending suggestion whole, resolution and all (AC-41)', () => {
+  it('carries the latest suggestion of every field whole, resolution and all (AC-41, AC-69)', () => {
+    const accepted = {
+      ...suggestion,
+      resolution: 'accepted',
+      resolvedAt: '2026-09-20T10:00:05.000Z',
+    };
+    const rejected = {
+      ...suggestion,
+      id: '0199c0de-1111-7000-8000-000000000002',
+      field: 'descriptionOlx',
+      value: 'Продам бездротову мишу.',
+      resolution: 'rejected',
+      resolvedAt: '2026-09-20T11:00:00.000Z',
+    };
+    const undecided = { ...suggestion, field: 'titleProm' };
+
     const parsed: Record<string, unknown> = productCardReadSchema.parse({
       ...card,
-      pendingSuggestions: [suggestion],
+      latestSuggestions: [accepted, rejected, undecided],
     });
 
-    assert.deepEqual(parsed['pendingSuggestions'], [suggestion]);
+    assert.deepEqual(parsed['latestSuggestions'], [accepted, rejected, undecided]);
   });
 
   it('refuses a suggestion field spelled the way the column holds it (AC-41)', () => {
     const result = productCardReadSchema.safeParse({
       ...card,
-      pendingSuggestions: [{ ...suggestion, field: 'title_olx' }],
+      latestSuggestions: [{ ...suggestion, field: 'title_olx' }],
     });
 
     assert.equal(result.success, false);
