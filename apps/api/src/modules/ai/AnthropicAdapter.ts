@@ -3,6 +3,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import sharp from 'sharp';
 import { z } from 'zod';
 import { config } from '../../config.ts';
+import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 
 export type RewritableField =
@@ -144,17 +145,19 @@ export class AnthropicAdapter {
   }
 
   /** Text-only rewrite of one field from its draft — no photos, no read of `products` (ADR 0015). */
-  async rewriteField(field: RewritableField, draftText: string): Promise<FieldRewriteResult> {
+  async rewriteField(
+    field: RewritableField,
+    draftText: string,
+    mode: FieldRewriteMode,
+  ): Promise<FieldRewriteResult> {
+    const { kind, market } = fieldInfo(field);
     const listInstruction =
       field === 'seoKeywords' ? ' Return a list of keywords, not a sentence.' : '';
-    const { value, usage } = await this.requestFieldRewrite([
-      {
-        type: 'text',
-        text:
-          `Rewrite this ${fieldKind(field)} draft as a new variant — same subject and language, ` +
-          `better phrasing: "${draftText}".${listInstruction} ${PLAIN_TEXT_RULE}`,
-      },
-    ]);
+    const text =
+      mode === 'improve'
+        ? `Adapt this ${kind} draft for ${market} — keep all facts from the draft and do not invent any new details: "${draftText}".${listInstruction} Write in Ukrainian. ${PLAIN_TEXT_RULE}`
+        : `Execute this instruction and write a ${market} ${kind}. Do not add any characteristics that are not mentioned in the instruction: "${draftText}".${listInstruction} Write in Ukrainian. ${PLAIN_TEXT_RULE}`;
+    const { value, usage } = await this.requestFieldRewrite([{ type: 'text', text }]);
     return { value: value.value, usage };
   }
 
@@ -242,15 +245,17 @@ async function optimizeFrame(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(optimized);
 }
 
-function fieldKind(field: RewritableField): string {
+function fieldInfo(field: RewritableField): { kind: string; market: string } {
   switch (field) {
     case 'titleProm':
+      return { kind: 'listing title', market: 'Prom.ua' };
     case 'titleOlx':
-      return 'listing title';
+      return { kind: 'listing title', market: 'OLX' };
     case 'descriptionProm':
+      return { kind: 'listing description', market: 'Prom.ua' };
     case 'descriptionOlx':
-      return 'listing description';
+      return { kind: 'listing description', market: 'OLX' };
     case 'seoKeywords':
-      return 'SEO keyword list';
+      return { kind: 'SEO keyword list', market: 'Prom.ua' };
   }
 }

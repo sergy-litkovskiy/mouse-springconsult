@@ -965,15 +965,15 @@ describe('ProductForm', () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
-      expect(button('titleOlx', 'rewrite')?.disabled).toBe(true);
+      expect(button('titleOlx', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       type('titleOlx', 'Logitech MX Master 3 бездротова');
       await settle();
 
-      expect(button('titleOlx', 'rewrite')?.disabled).toBe(false);
+      expect(button('titleOlx', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it('rewrites the one field from its draft, without the photos (AC-21)', async () => {
+    it('rewrites the one field from its draft with mode:prompt (AC-21, AC-68)', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -988,6 +988,7 @@ describe('ProductForm', () => {
         scope: 'field',
         field: 'descriptionOlx',
         draftText: 'Продам мишу.',
+        mode: 'prompt',
       });
       request.flush(run('running'));
       await settle();
@@ -1007,12 +1008,12 @@ describe('ProductForm', () => {
       type('descriptionOlx', 'Продам мишу, повний комплект.');
       await settle();
       // A description alone does not enable it: the server gates on a title (AC-27).
-      expect(button('price', 'rewrite')?.disabled).toBe(true);
+      expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       type('titleOlx', 'Logitech MX Master 3 бездротова');
       await settle();
 
-      expect(button('price', 'rewrite')?.disabled).toBe(false);
+      expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
     it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
@@ -1059,11 +1060,11 @@ describe('ProductForm', () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
-      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(true);
+      expect(button('seoKeywords', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       await addKeyword('миша');
 
-      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(false);
+      expect(button('seoKeywords', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
     it('rewrites the keywords from their chips joined with commas (AC-53, AC-21)', async () => {
@@ -1079,6 +1080,7 @@ describe('ProductForm', () => {
         scope: 'field',
         field: 'seoKeywords',
         draftText: 'миша, logitech, бездротова',
+        mode: 'prompt',
       });
       request.flush(run('running'));
       await settle();
@@ -1255,6 +1257,68 @@ describe('ProductForm', () => {
         await finishWith(GENERATED);
 
         expect(await keywords()).toEqual(['миша', 'logitech']);
+      });
+    });
+
+    describe('AI action buttons (AC-68, T73)', () => {
+      function improveButton(field: string): HTMLButtonElement | null {
+        return half(field).querySelector<HTMLButtonElement>('[data-testid="improve"]');
+      }
+
+      it('sends mode:improve when the auto_fix_high button is clicked (AC-68)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        type('titleOlx', 'Logitech MX Master 3 бездротова');
+        await settle();
+        improveButton('titleOlx')?.click();
+        await settle();
+
+        const request = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual({
+          scope: 'field',
+          field: 'titleOlx',
+          draftText: 'Logitech MX Master 3 бездротова',
+          mode: 'improve',
+        });
+        request.flush(run('running'));
+        await settle();
+
+        http.expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`).flush(run('failed'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(EMPTY_WITH_FRAME));
+        await settle();
+      });
+
+      it('sends nothing when a launch button is clicked while the field is empty (AC-22)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        button('titleOlx', 'rewrite')?.click();
+        improveButton('titleOlx')?.click();
+        await settle();
+
+        http.expectNone(`/api/products/${CARD_ID}/preparation-runs`);
+      });
+
+      it('shows three AI buttons with correct aria-labels (AC-68 accessibility)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        const promptBtn = button('titleOlx', 'rewrite');
+        const improveBtn = improveButton('titleOlx');
+        const acceptBtn = button('titleOlx', 'accept');
+
+        expect(promptBtn?.getAttribute('aria-label')).toBe(
+          'Застосувати як промпт: Пропозиція для OLX',
+        );
+        expect(improveBtn?.getAttribute('aria-label')).toBe(
+          'Покращити через AI: Пропозиція для OLX',
+        );
+        expect(acceptBtn?.getAttribute('aria-label')).toBe(
+          'Застосувати для поля ліворуч: Пропозиція для OLX',
+        );
       });
     });
 

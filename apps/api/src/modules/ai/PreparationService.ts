@@ -1,4 +1,5 @@
 import { config } from '../../config.ts';
+import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import {
@@ -23,6 +24,8 @@ export type PreparationJob =
       readonly scope: 'field';
       readonly field: RewritableField;
       readonly draftText: string;
+      /** Optional for backward compat with queue jobs enqueued before T72 deployed. */
+      readonly mode?: FieldRewriteMode;
     };
 
 const SUGGESTION_FIELDS: Record<RewritableField, SuggestionField> = {
@@ -72,7 +75,11 @@ export class PreparationService {
     }
 
     if (job.scope === 'field') {
-      const rewrite = await this.adapter.rewriteField(job.field, job.draftText);
+      const rewrite = await this.adapter.rewriteField(
+        job.field,
+        job.draftText,
+        job.mode ?? 'improve',
+      );
       await this.runs.recordUsage(job.runId, rewrite.usage);
       const isTitle = job.field === 'titleProm' || job.field === 'titleOlx';
       const value =

@@ -70,7 +70,8 @@ type Script = {
 class ScriptedAnthropicAdapter extends AnthropicAdapter {
   readonly textsCalls: (readonly Uint8Array[])[] = [];
   readonly priceQueries: string[] = [];
-  readonly fieldCalls: { field: RewritableField; draftText: string }[] = [];
+  readonly fieldCalls: { field: RewritableField; draftText: string; mode: 'improve' | 'prompt' }[] =
+    [];
 
   constructor(private readonly script: Script) {
     super('test-key');
@@ -95,8 +96,9 @@ class ScriptedAnthropicAdapter extends AnthropicAdapter {
   override async rewriteField(
     field: RewritableField,
     draftText: string,
+    mode: 'improve' | 'prompt',
   ): Promise<FieldRewriteResult> {
-    this.fieldCalls.push({ field, draftText });
+    this.fieldCalls.push({ field, draftText, mode });
     if (this.script.fieldValue !== undefined) {
       return { value: this.script.fieldValue, usage: FIELD_USAGE };
     }
@@ -534,7 +536,9 @@ describe('preparation service (postgres)', () => {
         draftText: 'миша лоджитек',
       });
 
-      assert.deepEqual(adapter.fieldCalls, [{ field: 'titleProm', draftText: 'миша лоджитек' }]);
+      assert.deepEqual(adapter.fieldCalls, [
+        { field: 'titleProm', draftText: 'миша лоджитек', mode: 'improve' },
+      ]);
       assert.deepEqual(media.reads, []);
       assert.equal(adapter.textsCalls.length, 0);
       assert.deepEqual(await suggestionsOf(runId), [
@@ -597,6 +601,59 @@ describe('preparation service (postgres)', () => {
 
       assert.deepEqual(await suggestionsOf(runId), [
         { field: 'seo_keywords', value: ['миша', 'logitech', 'mx master'] },
+      ]);
+    });
+
+    it('passes improve to the adapter when job has no mode (AC-66, backward compat)', async () => {
+      const { service, adapter } = setup();
+      const productId = await seedProduct();
+      const runId = await seedRun(productId, 'field');
+
+      await service.prepare({
+        runId,
+        productId,
+        scope: 'field',
+        field: 'titleProm',
+        draftText: 'миша лоджитек',
+        // mode absent — simulates an old queue job
+      });
+
+      assert.deepEqual(adapter.fieldCalls[0]?.mode, 'improve');
+    });
+
+    it('passes prompt to the adapter when job has mode prompt (AC-67)', async () => {
+      const { service, adapter } = setup();
+      const productId = await seedProduct();
+      const runId = await seedRun(productId, 'field');
+
+      await service.prepare({
+        runId,
+        productId,
+        scope: 'field',
+        field: 'descriptionProm',
+        draftText: 'скатертина льон, 140x120, нова',
+        mode: 'prompt',
+      });
+
+      assert.deepEqual(adapter.fieldCalls[0]?.mode, 'prompt');
+    });
+
+    it('normalizes a rewritten title in prompt mode too (AC-61, T67)', async () => {
+      const { service } = setup({ fieldValue: '  Миша Logitech\nMX Master  ' });
+      const productId = await seedProduct();
+      const runId = await seedRun(productId, 'field');
+
+      await service.prepare({
+        runId,
+        productId,
+        scope: 'field',
+        field: 'titleOlx',
+        draftText: 'інструкція',
+        mode: 'prompt',
+      });
+
+      assert.deepEqual(await suggestionsOf(runId), [
+        { field: 'title_olx', value: 'Миша Logitech MX Master' },
       ]);
     });
   });

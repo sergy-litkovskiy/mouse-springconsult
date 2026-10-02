@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { config } from '../../../config.ts';
+import type { FieldRewriteMode } from '../../../contracts/ai.contract.ts';
 import type { PreparationRepository } from './PreparationRepository.ts';
 import type { PreparationRun } from './PreparationRun.ts';
 import type { Product } from '../Product.ts';
@@ -14,7 +15,12 @@ import type { ProductRepository } from '../ProductRepository.ts';
 
 export type PreparationRequest =
   | { readonly scope: 'texts' | 'price' | 'both' }
-  | { readonly scope: 'field'; readonly field: RewritableCardField; readonly draftText: string };
+  | {
+      readonly scope: 'field';
+      readonly field: RewritableCardField;
+      readonly draftText: string;
+      readonly mode: FieldRewriteMode;
+    };
 
 export type PreparationStart = {
   readonly run: PreparationRun;
@@ -56,7 +62,7 @@ export class PreparationRunService {
     const input = {
       frames: readsFrames ? recognitionFrameKeys(product) : null,
       priceQuery: readsTitles ? priceQueryInput(product) : null,
-      field: job.scope === 'field' ? [job.field, job.draftText] : null,
+      field: job.scope === 'field' ? [job.field, job.mode, job.draftText] : null,
     };
     const inputVersion = createHash('sha256').update(JSON.stringify(input)).digest('hex');
     const idempotencyKey = `${productId}:${request.scope}:${inputVersion}`;

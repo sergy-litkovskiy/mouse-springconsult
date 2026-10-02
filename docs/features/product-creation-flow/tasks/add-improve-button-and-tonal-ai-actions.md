@@ -1,7 +1,7 @@
 ---
 id: T73
 title: "Три кнопки AI біля поля: промпт, покращити, взяти варіант"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2000
 blocked_by: [T72]
 blocks: [T66, T74]
-updated_at: "2026-09-23"
+updated_at: "2026-10-01"
 ---
 
 # T73 — Три кнопки AI біля поля: промпт, покращити, взяти варіант

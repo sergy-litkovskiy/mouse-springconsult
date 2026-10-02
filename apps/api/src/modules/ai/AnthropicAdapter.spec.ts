@@ -194,7 +194,11 @@ describe('rewriteField', () => {
   it('sends the draft text and returns a single string for a title field (ADR 0015)', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
-    const result: FieldRewriteResult = await adapter.rewriteField('titleProm', 'стара чернетка');
+    const result: FieldRewriteResult = await adapter.rewriteField(
+      'titleProm',
+      'стара чернетка',
+      'improve',
+    );
 
     assert.equal(textOf(adapter.lastFieldContent).includes('стара чернетка'), true);
     assert.equal(result.value, 'Новий варіант.');
@@ -204,8 +208,84 @@ describe('rewriteField', () => {
   it('asks for a keyword list, not a sentence, when the field is seoKeywords (ADR 0015)', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
-    await adapter.rewriteField('seoKeywords', 'слово1, слово2');
+    await adapter.rewriteField('seoKeywords', 'слово1, слово2', 'improve');
 
     assert.match(textOf(adapter.lastFieldContent), /list of keywords/i);
+  });
+
+  for (const mode of ['improve', 'prompt'] as const) {
+    it(`asks for the answer in Ukrainian in ${mode} mode`, async () => {
+      const adapter = new RecordingAnthropicAdapter();
+      await adapter.rewriteField('titleProm', 'Logitech MX Master 3', mode);
+      assert.match(textOf(adapter.lastFieldContent), /in Ukrainian/);
+    });
+  }
+});
+
+describe('rewriteField: improve mode (AC-66)', () => {
+  it('names Prom.ua for a Prom field', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('titleProm', 'чернетка', 'improve');
+    assert.match(textOf(adapter.lastFieldContent), /Prom\.ua/);
+  });
+
+  it('names OLX for an OLX field', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('titleOlx', 'чернетка', 'improve');
+    assert.match(textOf(adapter.lastFieldContent), /OLX/);
+  });
+
+  it('names the marketplace once, as the target rather than the source', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('titleProm', 'чернетка', 'improve');
+    assert.equal(textOf(adapter.lastFieldContent).match(/Prom\.ua/g)?.length, 1);
+  });
+
+  it('asks to keep all facts and not invent', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionProm', 'чернетка', 'improve');
+    const prompt = textOf(adapter.lastFieldContent);
+    assert.match(prompt, /keep all facts/i);
+    assert.match(prompt, /do not invent/i);
+  });
+
+  it('does not use web_search (no price request)', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('titleProm', 'чернетка', 'improve');
+    assert.equal(adapter.lastPriceContent, undefined);
+  });
+});
+
+describe('rewriteField: prompt mode (AC-67)', () => {
+  it('names Prom.ua for a Prom field', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');
+    assert.match(textOf(adapter.lastFieldContent), /Prom\.ua/);
+  });
+
+  it('names OLX for an OLX field', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionOlx', 'інструкція', 'prompt');
+    assert.match(textOf(adapter.lastFieldContent), /OLX/);
+  });
+
+  it('asks to execute the instruction', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');
+    assert.match(textOf(adapter.lastFieldContent), /execute this instruction/i);
+  });
+
+  it('asks not to add characteristics not mentioned in the instruction', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');
+    const prompt = textOf(adapter.lastFieldContent);
+    assert.match(prompt, /do not add/i);
+    assert.match(prompt, /not mentioned/i);
+  });
+
+  it('does not use web_search (no price request)', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');
+    assert.equal(adapter.lastPriceContent, undefined);
   });
 });

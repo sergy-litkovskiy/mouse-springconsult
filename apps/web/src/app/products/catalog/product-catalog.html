@@ -230,6 +230,7 @@
                 <button
                   matIconButton
                   type="button"
+                  class="cell-editor-btn"
                   [disabled]="saving()"
                   (click)="saveEdit(product)"
                   [attr.aria-label]="'Зберегти ціну ' + product.titleProm"
@@ -239,6 +240,7 @@
                 <button
                   matIconButton
                   type="button"
+                  class="cell-editor-btn"
                   [disabled]="saving()"
                   (click)="cancelEdit()"
                   [attr.aria-label]="'Скасувати зміну ціни ' + product.titleProm"
@@ -250,15 +252,18 @@
                 }
               </div>
             } @else {
-              {{ formatPrice(product.price) }}
-              <button
-                matIconButton
-                type="button"
-                (click)="$event.stopPropagation(); startEdit(product, 'price')"
-                [attr.aria-label]="'Змінити ціну ' + product.titleProm"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
+              <span class="cell-resting">
+                {{ formatPrice(product.price) }}
+                <button
+                  matIconButton
+                  type="button"
+                  class="cell-editor-btn"
+                  (click)="$event.stopPropagation(); startEdit(product, 'price')"
+                  [attr.aria-label]="'Змінити ціну ' + product.titleProm"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </span>
             }
           </td>
         </ng-container>
@@ -285,6 +290,7 @@
                 <button
                   matIconButton
                   type="button"
+                  class="cell-editor-btn"
                   [disabled]="saving()"
                   (click)="saveEdit(product)"
                   [attr.aria-label]="'Зберегти стан ' + product.titleProm"
@@ -294,6 +300,7 @@
                 <button
                   matIconButton
                   type="button"
+                  class="cell-editor-btn"
                   [disabled]="saving()"
                   (click)="cancelEdit()"
                   [attr.aria-label]="'Скасувати зміну стану ' + product.titleProm"
@@ -305,15 +312,18 @@
                 }
               </div>
             } @else {
-              {{ conditionLabel(product.condition) }}
-              <button
-                matIconButton
-                type="button"
-                (click)="$event.stopPropagation(); startEdit(product, 'condition')"
-                [attr.aria-label]="'Змінити стан ' + product.titleProm"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
+              <span class="cell-resting">
+                {{ conditionLabel(product.condition) }}
+                <button
+                  matIconButton
+                  type="button"
+                  class="cell-editor-btn"
+                  (click)="$event.stopPropagation(); startEdit(product, 'condition')"
+                  [attr.aria-label]="'Змінити стан ' + product.titleProm"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </span>
             }
           </td>
         </ng-container>

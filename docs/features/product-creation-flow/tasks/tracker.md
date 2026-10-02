@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-09-30"
+updated_at: "2026-10-01"
 stage: "13"
 ---
 
@@ -119,14 +119,14 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Done | — | XS | 2026-09-27 |
 | T70 | [ID товару з копіюванням](show-copyable-product-id.md) | Todo | — | XS | — |
 | T71 | [Чернетка поля без тегів](strip-tags-from-field-draft.md) | Done | — | XS | 2026-09-28 |
-| T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Todo | T67, T71 | S | — |
-| T73 | [Три кнопки AI біля поля](add-improve-button-and-tonal-ai-actions.md) | Blocked | T72 | S | — |
+| T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Done | T67, T71 | S | 2026-10-01 |
+| T73 | [Три кнопки AI біля поля](add-improve-button-and-tonal-ai-actions.md) | Done | T72 | S | 2026-10-01 |
 | T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Blocked | T73 | S | — |
 | T75 | [Компактніший шрифт](compact-app-typography.md) | Todo | — | XS | — |
 | T76 | [Кадри картки 120×120](shrink-card-gallery-frames.md) | Todo | — | XS | — |
 | T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Done | T69 | XS | 2026-09-27 |
-| T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Todo | — | XS | — |
-| T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Blocked | T78 | S | — |
+| T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
+| T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Todo | T78 | S | — |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Blocked | T75, T79 | XS | — |
 | T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80 | S | — |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74 | S | — |

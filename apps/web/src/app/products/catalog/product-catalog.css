@@ -209,16 +209,28 @@
   color: var(--app-success);
 }
 
-/* The editor takes the width of its value, not of the column, so the row does not grow. */
+.cell-resting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* Grid keeps input and buttons on one row; the error spans all columns on its own row below.
+   1fr prevents the input from widening the column — the editor stays within the cell's width. */
 .cell-editor {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 4px;
 }
 
+/* border-box: with padding and border on top of 100%, the input overflows its track onto the
+   save button. */
 .cell-editor__input {
-  width: 7rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 5.5rem;
   padding: 6px 8px;
   border: 1px solid var(--mat-sys-outline);
   border-radius: 4px;
@@ -226,14 +238,39 @@
   text-align: right;
 }
 
+/* mat-select has no intrinsic width: on a 1fr track it collapses to its arrow. */
 .cell-editor__select {
-  width: 7rem;
+  width: 100%;
+  min-width: 4rem;
+}
+
+/* Reserves the editor's width at rest (field + two buttons + gaps + 2 × 16px padding), so
+   opening it neither widens the column nor rewraps the titles beside it (AC-73). */
+.mat-column-price {
+  min-width: 11rem;
+}
+
+.mat-column-condition {
+  min-width: 9.5rem;
 }
 
 .cell-editor__error {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
   color: var(--mat-sys-error);
   font: var(--mat-sys-body-small);
   white-space: normal;
   text-align: left;
+}
+
+.cell-editor-btn {
+  --mat-icon-button-icon-size: 16px;
+  --mat-icon-button-state-layer-size: 24px;
+  --mat-icon-button-touch-target-display: none;
+}
+
+/* mat-icon uses font-size for Material Icons font; the token above only covers img/svg. */
+.cell-editor-btn .mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }

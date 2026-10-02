@@ -76,7 +76,8 @@
           [canRewrite]="canRewrite('titleProm')"
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
-          (rewrite)="rewriteField('titleProm')"
+          (rewrite)="rewriteField('titleProm', 'prompt')"
+          (improve)="rewriteField('titleProm', 'improve')"
           (accept)="acceptSuggestion('titleProm')"
         />
       </div>
@@ -105,7 +106,8 @@
           [canRewrite]="canRewrite('titleOlx')"
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
-          (rewrite)="rewriteField('titleOlx')"
+          (rewrite)="rewriteField('titleOlx', 'prompt')"
+          (improve)="rewriteField('titleOlx', 'improve')"
           (accept)="acceptSuggestion('titleOlx')"
         />
       </div>
@@ -126,7 +128,8 @@
           [canRewrite]="canRewrite('descriptionProm')"
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
-          (rewrite)="rewriteField('descriptionProm')"
+          (rewrite)="rewriteField('descriptionProm', 'prompt')"
+          (improve)="rewriteField('descriptionProm', 'improve')"
           (accept)="acceptSuggestion('descriptionProm')"
         />
       </div>
@@ -144,7 +147,8 @@
           [canRewrite]="canRewrite('descriptionOlx')"
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
-          (rewrite)="rewriteField('descriptionOlx')"
+          (rewrite)="rewriteField('descriptionOlx', 'prompt')"
+          (improve)="rewriteField('descriptionOlx', 'improve')"
           (accept)="acceptSuggestion('descriptionOlx')"
         />
       </div>
@@ -189,7 +193,8 @@
           [canRewrite]="canRewrite('seoKeywords')"
           rewriteHint="Спершу напишіть текст у полі ліворуч."
           [acceptable]="true"
-          (rewrite)="rewriteField('seoKeywords')"
+          (rewrite)="rewriteField('seoKeywords', 'prompt')"
+          (improve)="rewriteField('seoKeywords', 'improve')"
           (accept)="acceptSuggestion('seoKeywords')"
         />
       </div>
@@ -218,6 +223,7 @@
             [canRewrite]="canLookUpPrice()"
             rewriteHint="Спершу заповніть назву для Prom або для OLX."
             [acceptable]="false"
+            [improvable]="false"
             (rewrite)="lookUpPrice()"
           />
         }
