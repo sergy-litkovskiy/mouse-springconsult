@@ -44,13 +44,13 @@ updated_at: "2026-09-21"
 ## API contract excerpt
 
 ```yaml
-            pendingSuggestions:
+            latestSuggestions:
               type: array
-              description: >-
-                Непідтверджені пропозиції поруч зі значеннями (sad.md сценарій 9) —
-                те, що звірка цього ж читання лишила людині (AC-11). `resolution`
-                і `resolvedAt` тут завжди `null`.
 ```
+
+Поле `pendingSuggestions` перейменовано на `latestSuggestions` у [T74](show-latest-suggestions-in-product-form.md),
+і разом з ним переписано опис: тепер це остання пропозиція кожного поля з її станом. Рядки
+старого опису контракт більше не містить, тож excerpt їх не цитує.
 
 ## Acceptance criteria
 

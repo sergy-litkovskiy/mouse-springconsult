@@ -206,11 +206,11 @@ export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
 /**
  * The cost of a card rides with the card itself and not with a list: it is a sum over the
  * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
- * The suggestions still waiting for a decision ride along for the same reason: they are counted
- * by the very read that reconciles them (AC-11), and a page of cards would count them per row.
+ * The latest suggestion of every field rides along for the same reason: it comes out of the very
+ * read that reconciles it (AC-11, AC-69), and a page of cards would look it up per row.
  */
 export const productCardReadSchema = productCardSchema.extend({
-  pendingSuggestions: z.array(fieldSuggestionSchema),
+  latestSuggestions: z.array(fieldSuggestionSchema),
   totalInputTokens: z.int().nonnegative(),
   totalOutputTokens: z.int().nonnegative(),
 });

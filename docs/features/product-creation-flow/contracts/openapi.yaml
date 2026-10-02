@@ -668,14 +668,16 @@ components:
           description: >-
             Читання однієї картки, а не рядок каталогу: обидві добавки рахуються по
             одній картці, і сторінка з 50 рядків рахувала б їх 50 разів.
-          required: [pendingSuggestions, totalInputTokens, totalOutputTokens]
+          required: [latestSuggestions, totalInputTokens, totalOutputTokens]
           properties:
-            pendingSuggestions:
+            latestSuggestions:
               type: array
               description: >-
-                Непідтверджені пропозиції поруч зі значеннями (sad.md сценарій 9) —
-                те, що звірка цього ж читання лишила людині (AC-11). `resolution`
-                і `resolvedAt` тут завжди `null`.
+                Остання за `createdAt` пропозиція кожного поля поруч зі значеннями
+                (sad.md сценарій 9, AC-69), з будь-якою `resolution`. Непідтверджена має
+                `resolution` і `resolvedAt` `null`; прийнята звіркою цього ж читання
+                (AC-11) приходить уже як `accepted`. Поле з'явилось у T74 замість
+                `pendingSuggestions`.
               items: { $ref: "#/components/schemas/FieldSuggestion" }
             totalInputTokens:
               type: integer
@@ -933,7 +935,7 @@ components:
 
     ProductCardReadExample:
       description: >-
-        Та сама картка, прочитана окремо: поруч зі значеннями — те, що чекає на рішення.
+        Та сама картка, прочитана окремо: поруч зі значеннями — остання пропозиція кожного поля.
       value:
         id: "01930000-0000-7000-8000-000000000001"
         titleProm: "Кавомашина DeLonghi ECAM, б/у"
@@ -952,7 +954,7 @@ components:
             position: 0
             isMain: true
         isReady: true
-        pendingSuggestions:
+        latestSuggestions:
           - id: "01930000-0000-7000-8000-000000000003"
             runId: "01930000-0000-7000-8000-000000000004"
             field: titleOlx

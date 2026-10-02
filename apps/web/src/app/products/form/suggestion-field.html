@@ -42,7 +42,15 @@
   </div>
 
   <div class="suggestion__value">
-    <span class="suggestion__label">{{ label() }}</span>
+    <span class="suggestion__label"
+      >{{ label() }}
+      @if (suggestion()?.resolution; as resolution) {
+        ·
+        <span data-testid="suggestion-resolution">{{
+          resolution === 'accepted' ? 'застосовано' : 'відхилено'
+        }}</span>
+      }
+    </span>
     @if (text() === '') {
       <p class="suggestion__empty" data-testid="suggestion-empty">Пропозиції ще немає.</p>
     } @else {

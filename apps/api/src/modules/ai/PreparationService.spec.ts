@@ -338,12 +338,14 @@ describe('preparation service (postgres)', () => {
 
       assert.equal(reading.product.titleProm, 'Моя назва для Prom');
       assert.equal(reading.product.titleOlx, TEXTS.titleOlx);
-      assert.deepEqual(
-        reading.pendingSuggestions
-          .filter(({ field }) => field === 'title_prom')
-          .map(({ value }) => value),
-        [TEXTS.titleProm],
+      const latest = new Map(
+        reading.latestSuggestions.map(({ field, value, resolution }) => [
+          field,
+          { value, resolution },
+        ]),
       );
+      assert.deepEqual(latest.get('title_prom'), { value: TEXTS.titleProm, resolution: null });
+      assert.deepEqual(latest.get('title_olx'), { value: TEXTS.titleOlx, resolution: 'accepted' });
     });
 
     it('recognizes the item from the main frame first and sends at most three frames (AC-05)', async () => {

@@ -124,9 +124,9 @@ describe('ProductForm', () => {
     }
   }
 
-  /** The three fields a read carries and a row of the list does not (T31, T53). */
+  /** The three fields a read carries and a row of the list does not (T31, T53, T74). */
   function asRead(card: ProductCard): ProductCardRead {
-    return { ...card, pendingSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
+    return { ...card, latestSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
   }
 
   /**
@@ -1039,12 +1039,12 @@ describe('ProductForm', () => {
       value: ['бездротова миша', 'logitech mx master 3'],
     };
 
-    /** A card read that already carries suggestions nobody has decided on yet. */
-    function withPending(card: ProductCard, pending: readonly FieldSuggestion[]): ProductCardRead {
-      return { ...asRead(card), pendingSuggestions: [...pending] };
+    /** A card read that carries the latest suggestion of every field, decided or not (AC-69). */
+    function withLatest(card: ProductCard, latest: readonly FieldSuggestion[]): ProductCardRead {
+      return { ...asRead(card), latestSuggestions: [...latest] };
     }
 
-    function openWithPending(card: ProductCard, pending: readonly FieldSuggestion[]): void {
+    function openWithLatest(card: ProductCard, latest: readonly FieldSuggestion[]): void {
       const data: ProductFormData = { productId: card.id };
       close = vi.fn();
       TestBed.configureTestingModule({
@@ -1059,7 +1059,7 @@ describe('ProductForm', () => {
       fixture = TestBed.createComponent(ProductForm);
       http = TestBed.inject(HttpTestingController);
       element = fixture.nativeElement as HTMLElement;
-      http.expectOne(`/api/products/${card.id}`).flush(withPending(card, pending));
+      http.expectOne(`/api/products/${card.id}`).flush(withLatest(card, latest));
     }
 
     function half(field: string): HTMLElement {
@@ -1138,7 +1138,7 @@ describe('ProductForm', () => {
     });
 
     it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
-      openWithPending(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
+      openWithLatest(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
       await settle();
 
       expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
@@ -1148,7 +1148,7 @@ describe('ProductForm', () => {
     });
 
     it('shows a suggestion beside the field the admin wrote, not instead of it (AC-11)', async () => {
-      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+      openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
       await settle();
 
       type('descriptionOlx', 'Мій власний текст.');
@@ -1213,7 +1213,7 @@ describe('ProductForm', () => {
     });
 
     it('puts an accepted keyword suggestion into the chips and saves it as an array (AC-53)', async () => {
-      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_KEYWORDS]);
+      openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_KEYWORDS]);
       await settle();
 
       button('seoKeywords', 'accept')?.click();
@@ -1241,7 +1241,7 @@ describe('ProductForm', () => {
     });
 
     it('shows the suggestions of a card opened without a run of its own (AC-28)', async () => {
-      openWithPending(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
+      openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
       await settle();
 
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
@@ -1277,7 +1277,7 @@ describe('ProductForm', () => {
           .expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`)
           .flush(textsRun('succeeded'));
         await settle();
-        http.expectOne(`/api/products/${CARD_ID}`).flush(withPending(card, []));
+        http.expectOne(`/api/products/${CARD_ID}`).flush(withLatest(card, []));
         await settle();
       }
 
@@ -1378,6 +1378,82 @@ describe('ProductForm', () => {
         await finishWith(GENERATED);
 
         expect(await keywords()).toEqual(['миша', 'logitech']);
+      });
+    });
+
+    describe('the latest suggestion of every field (AC-69)', () => {
+      const SUGGESTED_OLX_TITLE: FieldSuggestion = {
+        ...SUGGESTED_OLX_DESCRIPTION,
+        id: '88888888-8888-4888-8888-888888888888',
+        field: 'titleOlx',
+        value: 'Logitech MX Master 3 — нова назва від моделі',
+        createdAt: '2026-09-21T09:00:35.000Z',
+      };
+
+      function resolutionMark(field: string): string | null {
+        const mark = half(field).querySelector('[data-testid="suggestion-resolution"]');
+        return mark === null ? null : mark.textContent.trim().toLowerCase();
+      }
+
+      it('shows the description «Згенерувати все» applied as «застосовано», with «<- AI» off (AC-69)', async () => {
+        const applied = SUGGESTED_OLX_DESCRIPTION.value as string;
+        openWithLatest({ ...EMPTY_WITH_FRAME, descriptionOlx: applied }, [
+          {
+            ...SUGGESTED_OLX_DESCRIPTION,
+            resolution: 'accepted',
+            resolvedAt: '2026-09-20T09:00:40.000Z',
+          },
+        ]);
+        await settle();
+
+        expect(field('descriptionOlx').value).toBe(applied);
+        expect(suggestionText('descriptionOlx')).toBe(applied);
+        expect(resolutionMark('descriptionOlx')).toBe('застосовано');
+        expect(button('descriptionOlx', 'accept')?.disabled).toBe(true);
+      });
+
+      it('shows a rejected suggestion as «відхилено», with «<- AI» off (Checklist 3)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [
+          {
+            ...SUGGESTED_OLX_DESCRIPTION,
+            resolution: 'rejected',
+            resolvedAt: '2026-09-20T09:05:00.000Z',
+          },
+        ]);
+        await settle();
+
+        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(resolutionMark('descriptionOlx')).toBe('відхилено');
+        expect(button('descriptionOlx', 'accept')?.disabled).toBe(true);
+      });
+
+      it('offers the newer undecided suggestion without a mark, ready to apply (AC-69)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+        await settle();
+
+        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(resolutionMark('descriptionOlx')).toBeNull();
+        expect(button('descriptionOlx', 'accept')?.disabled).toBe(false);
+
+        button('descriptionOlx', 'accept')?.click();
+        await settle();
+
+        http
+          .expectOne(`/api/products/${CARD_ID}/suggestions/${SUGGESTED_OLX_DESCRIPTION.id}/accept`)
+          .flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+      });
+
+      it('keeps the field edited by hand and offers the new suggestion beside it (AC-69, AC-11)', async () => {
+        openWithLatest({ ...PUBLISHED_ON_PROM, titleOlx: 'Моя власна назва' }, [
+          SUGGESTED_OLX_TITLE,
+        ]);
+        await settle();
+
+        expect(field('titleOlx').value).toBe('Моя власна назва');
+        expect(suggestionText('titleOlx')).toBe(SUGGESTED_OLX_TITLE.value);
+        expect(resolutionMark('titleOlx')).toBeNull();
+        expect(button('titleOlx', 'accept')?.disabled).toBe(false);
       });
     });
 

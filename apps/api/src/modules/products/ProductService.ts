@@ -39,8 +39,8 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
-  /** What the reconciliation left for the human to decide: `resolution` still NULL (AC-11). */
-  readonly pendingSuggestions: readonly FieldSuggestion[];
+  /** One per field, the newest by `createdAt`, decided or not (AC-69). */
+  readonly latestSuggestions: readonly FieldSuggestion[];
 };
 
 /** Keywords past the ceiling are reported here rather than raised as an error (AC-07). */
@@ -107,17 +107,20 @@ function cardHolds(product: Product, changes: ProductChanges): boolean {
 function latestPerField(suggestions: readonly FieldSuggestion[]): {
   accepted: Map<SuggestionField, FieldSuggestion>;
   pending: Map<SuggestionField, FieldSuggestion>;
+  latest: Map<SuggestionField, FieldSuggestion>;
 } {
   const accepted = new Map<SuggestionField, FieldSuggestion>();
   const pending = new Map<SuggestionField, FieldSuggestion>();
+  const latest = new Map<SuggestionField, FieldSuggestion>();
   for (const suggestion of suggestions) {
+    latest.set(suggestion.field, suggestion);
     if (suggestion.resolution === 'accepted') {
       accepted.set(suggestion.field, suggestion);
     } else if (suggestion.resolution === null) {
       pending.set(suggestion.field, suggestion);
     }
   }
-  return { accepted, pending };
+  return { accepted, pending, latest };
 }
 
 function capKeywords(keywords: string[]): {
@@ -166,19 +169,19 @@ export class ProductService {
 
     const reconciled = await this.applySuggestionsToUntouchedFields(id, product);
 
-    return this.toCardReading(id, reconciled.product, reconciled.pending);
+    return this.toCardReading(id, reconciled.product, reconciled.latest);
   }
 
   /**
-   * The pending suggestions of the card come out of this very pass: they are what the check left
-   * undecided, so a second trip to the table would only ask again what is already in hand.
+   * The latest suggestions of the card come out of this very pass while it writes nothing. Once it
+   * accepts some of them, they are read back: the decision and its time are stamped by the table.
    */
   private async applySuggestionsToUntouchedFields(
     id: string,
     product: Product,
-  ): Promise<{ product: Product; pending: FieldSuggestion[] }> {
+  ): Promise<{ product: Product; latest: FieldSuggestion[] }> {
     const suggestions = await this.preparations.findSuggestions(id);
-    const { accepted, pending } = latestPerField(suggestions);
+    const { accepted, pending, latest } = latestPerField(suggestions);
 
     const changes: ProductChanges = {};
     const applied: FieldSuggestion[] = [];
@@ -192,11 +195,8 @@ export class ProductService {
       Object.assign(changes, suggested);
       applied.push(suggestion);
     }
-    const stillPending = suggestions.filter(
-      (suggestion) => suggestion.resolution === null && !applied.includes(suggestion),
-    );
     if (applied.length === 0) {
-      return { product, pending: stillPending };
+      return { product, latest: [...latest.values()] };
     }
 
     for (const suggestion of applied) {
@@ -206,7 +206,7 @@ export class ProductService {
     if (saved === null) {
       throw new ProductNotFound(id);
     }
-    return { product: saved, pending: stillPending };
+    return { product: saved, latest: await this.findLatestSuggestions(id) };
   }
 
   /** The value reaches the card through the same save as a manual edit (AC-12). */
@@ -237,7 +237,7 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    return this.toCardReading(productId, product, await this.findPendingSuggestions(productId));
+    return this.toCardReading(productId, product, await this.findLatestSuggestions(productId));
   }
 
   async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
@@ -255,26 +255,25 @@ export class ProductService {
       throw new ProductNotFound(productId);
     }
 
-    return this.toCardReading(productId, product, await this.findPendingSuggestions(productId));
+    return this.toCardReading(productId, product, await this.findLatestSuggestions(productId));
   }
 
-  /** Read back after the decision was written, so the answer names what is still undecided. */
-  private async findPendingSuggestions(productId: string): Promise<FieldSuggestion[]> {
-    return (await this.preparations.findSuggestions(productId)).filter(
-      (suggestion) => suggestion.resolution === null,
-    );
+  /** Read back after the decision was written, so the answer carries the decision itself. */
+  private async findLatestSuggestions(productId: string): Promise<FieldSuggestion[]> {
+    const suggestions = await this.preparations.findSuggestions(productId);
+    return [...latestPerField(suggestions).latest.values()];
   }
 
   private async toCardReading(
     productId: string,
     product: Product,
-    pendingSuggestions: readonly FieldSuggestion[],
+    latestSuggestions: readonly FieldSuggestion[],
   ): Promise<ProductCardReading> {
     return {
       product,
       isReady: this.isReady(product),
       tokens: await this.preparations.sumTokens(productId),
-      pendingSuggestions,
+      latestSuggestions,
     };
   }
 

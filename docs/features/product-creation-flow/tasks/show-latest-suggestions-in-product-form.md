@@ -1,12 +1,12 @@
 ---
 id: T74
 title: "Форма показує останню пропозицію моделі для кожного поля"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2600
+context_budget: 3100
 blocked_by: [T73]
 blocks: [T66, T81, T82, T84]
 updated_at: "2026-10-02"
@@ -106,9 +106,27 @@ AC-69 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-69: праворуч остання пропозиція з її станом.
-- [ ] Тести `api` і `web` зелені, `typecheck`, `lint`, `deps:check` зелені, `pw` пройдено, gate-check теки `tasks/` зелений.
-- [ ] Коміт: `feat(products): show the latest suggestion for every field of the card`.
+- [x] AC-69: праворуч остання пропозиція з її станом.
+- [x] Тести `api` і `web` зелені, `typecheck`, `lint`, `deps:check` зелені, `pw` пройдено, gate-check теки `tasks/` зелений.
+- [x] Коміт: `feat(products): show the latest suggestion for every field of the card`.
+
+Результат 2026-10-02:
+- `/tdd --review-tests`: RED `2e08e79`, GREEN `7207f84`, REFACTOR `4be8a56`. Перший RED лише додав
+  тести; старі тести T53 і T55 test-writer переписав на `latestSuggestions` після перегляду, у тому
+  ж коміті (amend), з заглушками форми типів у `products.contract.ts` і `ProductService.ts`. Десять
+  гейтів `feature-ship` зелені: api 442/442, web 269 passed, 2 skipped.
+- Індекс не знадобився: «остання на поле» береться з тієї самої вибірки `findSuggestions`, яку
+  звірка вже робить. Другий запит іде лише тоді, коли звірка щось застосувала: рішення й час
+  ставить таблиця.
+- `pw` без платних викликів: «Вузьке мереживо…» — дві прийняті пропозиції з «застосовано», «<- AI»
+  вимкнена; «Методика музичного виховання в школі» — відхилена «Скатертина…» в `descriptionProm`
+  з «відхилено» й вимкненою «<- AI», дві непідтверджені без позначки й з активною кнопкою.
+  Відхиленої пропозиції в базі не було, тож тестову «Скатертину» (з `pw` T72) відхилено через
+  `POST …/reject`; дві висячі пропозиції для `pw` T84 лишились. Прийнятої й відхиленої на одній
+  картці немає, тож позначки перевірено на двох.
+- **Пункт 9 Checklist.** `git diff --stat` — 498 вставок і 112 видалень: 473 рядки spec-ів, 80 —
+  коду, 57 — документів. Не розрізано: розріз «спершу `api`, потім `web`» мав розвести код за
+  деплоєм, а коду 80 рядків; більшість обсягу — переписані тести T53 і T55.
 
 ## Links
 

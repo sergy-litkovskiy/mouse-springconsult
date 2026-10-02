@@ -60,10 +60,13 @@ Checklist T30 про нього мовчить. Споживач — [T32](add-p
 ## API contract excerpt
 
 ```yaml
-        pendingSuggestions:
+        latestSuggestions:
           type: array
           items: { $ref: "#/components/schemas/FieldSuggestion" }
 ```
+
+Поле `pendingSuggestions` перейменовано на `latestSuggestions` у [T74](show-latest-suggestions-in-product-form.md):
+тепер воно несе останню пропозицію кожного поля з будь-якою `resolution`. Рядок вище цитує нову назву.
 
 ```yaml
       required: [id, runId, field, value, createdAt]
