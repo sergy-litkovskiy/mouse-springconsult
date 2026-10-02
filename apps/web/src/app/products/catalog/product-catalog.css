@@ -225,9 +225,12 @@
   gap: 4px;
 }
 
+/* border-box: with padding and border on top of 100%, the input overflows its track onto the
+   save button. */
 .cell-editor__input {
+  box-sizing: border-box;
   width: 100%;
-  min-width: 0;
+  min-width: 5.5rem;
   padding: 6px 8px;
   border: 1px solid var(--mat-sys-outline);
   border-radius: 4px;
@@ -235,9 +238,20 @@
   text-align: right;
 }
 
+/* mat-select has no intrinsic width: on a 1fr track it collapses to its arrow. */
 .cell-editor__select {
   width: 100%;
-  min-width: 0;
+  min-width: 4rem;
+}
+
+/* Reserves the editor's width at rest (field + two buttons + gaps + 2 × 16px padding), so
+   opening it neither widens the column nor rewraps the titles beside it (AC-73). */
+.mat-column-price {
+  min-width: 11rem;
+}
+
+.mat-column-condition {
+  min-width: 9.5rem;
 }
 
 .cell-editor__error {
