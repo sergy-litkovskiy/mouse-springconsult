@@ -4,6 +4,7 @@ import {
   provideHttpClientTesting,
   type TestRequest,
 } from '@angular/common/http/testing';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { TestKey } from '@angular/cdk/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
@@ -357,6 +358,92 @@ describe('ProductForm', () => {
 
       expect(await firstValueFrom(fixture.componentInstance.ensureProduct())).toBe(CARD_ID);
       http.expectNone('/api/products');
+    });
+  });
+
+  describe('the card id under the title (AC-64)', () => {
+    const COPY_LABEL = 'Скопіювати ID товару';
+
+    function idLine(): HTMLElement | null {
+      return element.querySelector<HTMLElement>('[data-testid="product-id"]');
+    }
+
+    function copyButton(): HTMLButtonElement | null {
+      return element.querySelector<HTMLButtonElement>(`button[aria-label="${COPY_LABEL}"]`);
+    }
+
+    /** jsdom has no clipboard to read back, so the copy itself is what the test watches. */
+    function watchClipboard() {
+      return vi.spyOn(TestBed.inject(Clipboard), 'copy').mockReturnValue(true);
+    }
+
+    it('shows the id of an existing card right under the title, before the gallery (AC-64)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      const line = idLine();
+      expect(line, 'no id line').not.toBeNull();
+      expect(line?.textContent).toContain(CARD_ID);
+      const title = element.querySelector('h2');
+      const gallery = element.querySelector('app-product-gallery');
+      if (line === null || title === null || gallery === null) {
+        return;
+      }
+      expect(title.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(line.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('copies the card id with one click and confirms it with «ID скопійовано» (AC-64)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+      const copy = watchClipboard();
+
+      copyButton()?.click();
+      await settle();
+
+      expect(copy).toHaveBeenCalledTimes(1);
+      expect(copy).toHaveBeenCalledWith(CARD_ID);
+      expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain(
+        'ID скопійовано',
+      );
+    });
+
+    it('shows no id line for a new card until the first frame has created it (AC-64)', async () => {
+      open(null);
+      await settle();
+
+      expect(idLine()).toBeNull();
+      expect(copyButton()).toBeNull();
+
+      const created = firstValueFrom(fixture.componentInstance.ensureProduct());
+      http.expectOne('/api/products').flush({ ...WITHOUT_FRAMES });
+      await created;
+      fixture.componentInstance.imagesChanged([FRAME]);
+      await settle();
+
+      expect(idLine(), 'no id line once the card exists').not.toBeNull();
+      expect(idLine()?.textContent).toContain(CARD_ID);
+      const copy = watchClipboard();
+      copyButton()?.click();
+      await settle();
+      expect(copy).toHaveBeenCalledWith(CARD_ID);
+    });
+
+    it('labels the copy button «Скопіювати ID товару» and shows the same tooltip (AC-64)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      expect(copyButton(), 'no copy button with the aria-label').not.toBeNull();
+      const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarnessOrNull(
+        MatTooltipHarness.with({ selector: `button[aria-label="${COPY_LABEL}"]` }),
+      );
+      expect(tooltip, 'the copy button carries no tooltip').not.toBeNull();
+      if (tooltip === null) {
+        return;
+      }
+      await tooltip.show();
+      expect(await tooltip.getTooltipText()).toBe(COPY_LABEL);
+      await tooltip.hide();
     });
   });
 
