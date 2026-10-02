@@ -96,6 +96,31 @@ export default defineConfig([
 
   ...featureBoundaries,
 
+  // The typescript-eslint twin of the rule rather than another entry for the core one: blocks
+  // that name the same rule replace each other, and this ban has to hold on top of both above.
+  // Specs are left out because they never reach the browser bundle.
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@contracts/*.contract'],
+              allowTypeImports: true,
+              message:
+                'A *.contract.ts file is zod schemas: a runtime import ships zod to the browser ' +
+                '(+55 KB gzip). Use `import type`; runtime constants live in *-limits.ts and ' +
+                'error-codes.ts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
