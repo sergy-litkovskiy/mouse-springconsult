@@ -103,13 +103,17 @@ export function priceFieldValue(price: string): string {
   return price === UNPRICED ? '' : price;
 }
 
+export function normalizePrice(value: string): string {
+  return value.trim().replace(',', '.');
+}
+
 export function priceFromField(value: string): string {
-  const price = value.trim();
+  const price = normalizePrice(value);
   return price === '' ? UNPRICED : price;
 }
 
 export function priceBound(control: AbstractControl): ValidationErrors | null {
-  const value = (control.value as string).trim();
+  const value = normalizePrice(control.value as string);
   return value === '' || productConstraints.pricePattern.test(value) ? null : { price: true };
 }
 
@@ -118,8 +122,8 @@ export function priceBound(control: AbstractControl): ValidationErrors | null {
  * `Number` reads a value here without ever storing or sending one.
  */
 export function priceRange(group: AbstractControl): ValidationErrors | null {
-  const min = (group.get('priceMin')?.value as string | undefined)?.trim() ?? '';
-  const max = (group.get('priceMax')?.value as string | undefined)?.trim() ?? '';
+  const min = normalizePrice((group.get('priceMin')?.value as string | undefined) ?? '');
+  const max = normalizePrice((group.get('priceMax')?.value as string | undefined) ?? '');
   const bothValid =
     productConstraints.pricePattern.test(min) && productConstraints.pricePattern.test(max);
   if (!bothValid) {

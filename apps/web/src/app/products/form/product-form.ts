@@ -71,7 +71,7 @@ export type ProductFormData = {
 const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.notAuthenticated]: 'Сесія завершилась. Увійдіть ще раз.',
   [apiErrorCodes.validationFailed]: 'Сервер не прийняв значення. Перевірте поля, зокрема ціну.',
-  [apiErrorCodes.invalidPrice]: 'Ціна виглядає як 2499 або 2499.00.',
+  [apiErrorCodes.invalidPrice]: 'Ціна виглядає як 2499, 2499.00 або 2499,00.',
   [apiErrorCodes.productNotFound]: 'Картку вже видалено.',
 };
 

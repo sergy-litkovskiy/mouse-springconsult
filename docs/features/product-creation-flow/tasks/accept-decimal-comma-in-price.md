@@ -1,7 +1,7 @@
 ---
 id: T85
 title: "Ціна приймає кому як десятковий роздільник"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -85,9 +85,9 @@ updated_at: "2026-10-02"
 
 ## DoD
 
-- [ ] AC-78: кома приймається в усіх трьох полях ціни, у `api` йде крапка.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): accept a decimal comma in price fields`.
+- [x] AC-78: кома приймається в усіх трьох полях ціни, у `api` йде крапка.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): accept a decimal comma in price fields`.
 
 ## Links
 
