@@ -1,7 +1,7 @@
 ---
 id: T68
 title: "Опис для Prom не зникає після повторного відкриття картки"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -109,9 +109,9 @@ AC-62 нове. До [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-62: опис для Prom переживає повторне відкриття й збереження.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено до і після.
-- [ ] Коміт: `fix(web): keep the Prom description when the card loads before its editor`.
+- [x] AC-62: опис для Prom переживає повторне відкриття й збереження.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено до і після.
+- [x] Коміт: `fix(web): keep the Prom description when the card loads before its editor`.
 
 ## Links
 
