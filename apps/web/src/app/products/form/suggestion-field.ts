@@ -36,6 +36,9 @@ export class SuggestionField {
   readonly improve = output();
   readonly accept = output();
 
+  /** Disabled launch buttons stay hoverable for their hint (`disabledInteractive`), so Material
+   * no longer swallows the click — it is gated here. */
+  protected readonly canLaunch = computed(() => this.canRewrite() && !this.busy());
   protected readonly text = computed(() => describe(this.suggestion()?.value));
   protected readonly canAccept = computed(
     () => this.acceptable() && this.suggestion() !== null && !this.busy(),

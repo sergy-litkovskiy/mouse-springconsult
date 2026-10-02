@@ -3,11 +3,12 @@
     <button
       matIconButton
       type="button"
-      [disabled]="!canRewrite() || busy()"
+      [disabled]="!canLaunch()"
+      disabledInteractive
       [matTooltip]="canRewrite() ? 'Застосувати як промпт' : rewriteHint()"
       [attr.aria-label]="'Застосувати як промпт: ' + label()"
       data-testid="rewrite"
-      (click)="rewrite.emit()"
+      (click)="canLaunch() && rewrite.emit()"
     >
       <mat-icon>auto_awesome</mat-icon>
     </button>
@@ -15,11 +16,12 @@
       <button
         matIconButton
         type="button"
-        [disabled]="!canRewrite() || busy()"
-        matTooltip="Покращити через AI"
+        [disabled]="!canLaunch()"
+        disabledInteractive
+        [matTooltip]="canRewrite() ? 'Покращити через AI' : rewriteHint()"
         [attr.aria-label]="'Покращити через AI: ' + label()"
         data-testid="improve"
-        (click)="improve.emit()"
+        (click)="canLaunch() && improve.emit()"
       >
         <mat-icon>auto_fix_high</mat-icon>
       </button>

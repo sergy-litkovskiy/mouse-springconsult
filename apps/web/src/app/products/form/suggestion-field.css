@@ -25,6 +25,14 @@
   );
 }
 
+/* The rule above outranks Material's `.mat-mdc-icon-button[disabled]`, so the M3 tonal disabled
+   colors have to be restated here. */
+.suggestion__buttons button:disabled,
+.suggestion__buttons button[aria-disabled='true'] {
+  background-color: color-mix(in srgb, var(--mat-sys-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent);
+}
+
 .suggestion__value {
   display: flex;
   flex: 1 1 auto;

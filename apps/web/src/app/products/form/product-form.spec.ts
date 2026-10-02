@@ -966,12 +966,12 @@ describe('ProductForm', () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
-      expect(button('titleOlx', 'rewrite')?.disabled).toBe(true);
+      expect(button('titleOlx', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       type('titleOlx', 'Logitech MX Master 3 бездротова');
       await settle();
 
-      expect(button('titleOlx', 'rewrite')?.disabled).toBe(false);
+      expect(button('titleOlx', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
     it('rewrites the one field from its draft with mode:prompt (AC-21, AC-68)', async () => {
@@ -1009,12 +1009,12 @@ describe('ProductForm', () => {
       type('descriptionOlx', 'Продам мишу, повний комплект.');
       await settle();
       // A description alone does not enable it: the server gates on a title (AC-27).
-      expect(button('price', 'rewrite')?.disabled).toBe(true);
+      expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       type('titleOlx', 'Logitech MX Master 3 бездротова');
       await settle();
 
-      expect(button('price', 'rewrite')?.disabled).toBe(false);
+      expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
     it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
@@ -1061,11 +1061,11 @@ describe('ProductForm', () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
-      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(true);
+      expect(button('seoKeywords', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       await addKeyword('миша');
 
-      expect(button('seoKeywords', 'rewrite')?.disabled).toBe(false);
+      expect(button('seoKeywords', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
     it('rewrites the keywords from their chips joined with commas (AC-53, AC-21)', async () => {
@@ -1292,6 +1292,17 @@ describe('ProductForm', () => {
         await settle();
       });
 
+      it('sends nothing when a launch button is clicked while the field is empty (AC-22)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        button('titleOlx', 'rewrite')?.click();
+        improveButton('titleOlx')?.click();
+        await settle();
+
+        http.expectNone(`/api/products/${CARD_ID}/preparation-runs`);
+      });
+
       it('shows three AI buttons with correct aria-labels (AC-68 accessibility)', async () => {
         open(EMPTY_WITH_FRAME);
         await settle();
@@ -1361,5 +1372,20 @@ describe('SuggestionField improvable input (T73)', () => {
     sf.detectChanges();
 
     expect((sf.nativeElement as HTMLElement).querySelector('[data-testid="improve"]')).toBeNull();
+  });
+
+  it('gives the disabled improve button the same hint as the prompt button (AC-68)', async () => {
+    TestBed.configureTestingModule({ imports: [SuggestionField] });
+    const sf = TestBed.createComponent(SuggestionField);
+    sf.componentRef.setInput('label', 'Назва для Prom');
+    sf.componentRef.setInput('canRewrite', false);
+    sf.componentRef.setInput('rewriteHint', 'Спершу напишіть текст у полі ліворуч.');
+    sf.detectChanges();
+
+    const tooltip = await TestbedHarnessEnvironment.loader(sf).getHarness(
+      MatTooltipHarness.with({ selector: '[data-testid="improve"]' }),
+    );
+    await tooltip.show();
+    expect(await tooltip.getTooltipText()).toBe('Спершу напишіть текст у полі ліворуч.');
   });
 });
