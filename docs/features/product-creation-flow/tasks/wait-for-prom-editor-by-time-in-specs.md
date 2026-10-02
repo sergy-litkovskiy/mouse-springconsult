@@ -1,7 +1,7 @@
 ---
 id: T88
 title: "Spec-и чекають редактор опису Prom за часом, а не за кількістю тиків"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -79,9 +79,9 @@ formatted and leaves the form untouched» зрідка падає з `Error: the
 
 ## DoD
 
-- [ ] Обидва цикли чекають за часом, `expect` не змінено.
-- [ ] 30 прогонів `web` поспіль зелені, `lint` зелений.
-- [ ] Коміт: `fix(web): wait for the Prom editor by time in specs`.
+- [x] Обидва цикли чекають за часом, `expect` не змінено.
+- [x] 30 прогонів `web` поспіль зелені, `lint` зелений.
+- [x] Коміт: `fix(web): wait for the Prom editor by time in specs`.
 
 ## Links
 

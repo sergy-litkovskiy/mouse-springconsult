@@ -41,7 +41,9 @@ describe('PromDescriptionEditor', () => {
     }
     fixture.detectChanges();
     options.beforeLoad?.();
-    for (let attempt = 0; attempt < 50 && visual() === null; attempt += 1) {
+    // Bounded by time, not ticks: under load a cold import() of Tiptap outlasts 50 ticks (~0.5 s).
+    const deadline = Date.now() + 3000;
+    while (visual() === null && Date.now() < deadline) {
       await settle();
     }
     if (visual() === null) {
