@@ -212,7 +212,7 @@ export class ProductController {
   private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
     return {
       ...this.toCardResponse(reading),
-      pendingSuggestions: reading.latestSuggestions.map((suggestion) =>
+      latestSuggestions: reading.latestSuggestions.map((suggestion) =>
         this.toSuggestionResponse(suggestion),
       ),
       totalInputTokens: reading.tokens.inputTokens,
@@ -220,13 +220,14 @@ export class ProductController {
     };
   }
 
-  /** `resolution` and `resolvedAt` are left out: everything answered here is still undecided. */
   private toSuggestionResponse(suggestion: FieldSuggestion): FieldSuggestionResponse {
     return {
       id: suggestion.id,
       runId: suggestion.runId,
       field: suggestionFieldNames[suggestion.field],
       value: suggestion.value,
+      resolution: suggestion.resolution,
+      resolvedAt: suggestion.resolvedAt?.toISOString() ?? null,
       createdAt: suggestion.createdAt.toISOString(),
     };
   }

@@ -40,9 +40,16 @@ export class SuggestionField {
    * no longer swallows the click — it is gated here. */
   protected readonly canLaunch = computed(() => this.canRewrite() && !this.busy());
   protected readonly text = computed(() => describe(this.suggestion()?.value));
-  protected readonly canAccept = computed(
-    () => this.acceptable() && this.suggestion() !== null && !this.busy(),
-  );
+  /** A suggestion already accepted or rejected is shown with its decision, not offered again (AC-69). */
+  protected readonly canAccept = computed(() => {
+    const suggestion = this.suggestion();
+    return (
+      this.acceptable() &&
+      suggestion !== null &&
+      (suggestion.resolution ?? null) === null &&
+      !this.busy()
+    );
+  });
 }
 
 /** Polymorphic by field, the way the column is: a text, a keyword list or a price range. */

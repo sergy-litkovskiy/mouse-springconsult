@@ -246,11 +246,11 @@ export class ProductForm {
   );
 
   protected readonly suggestions = computed<Partial<Record<string, FieldSuggestion>>>(() => {
-    const pending: Partial<Record<string, FieldSuggestion>> = {};
-    for (const suggestion of this.card()?.pendingSuggestions ?? []) {
-      pending[suggestion.field] = suggestion;
+    const latest: Partial<Record<string, FieldSuggestion>> = {};
+    for (const suggestion of this.card()?.latestSuggestions ?? []) {
+      latest[suggestion.field] = suggestion;
     }
-    return pending;
+    return latest;
   });
 
   protected readonly totalTokens = computed(() => {
