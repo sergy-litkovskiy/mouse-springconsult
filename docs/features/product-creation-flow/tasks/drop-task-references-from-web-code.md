@@ -7,7 +7,7 @@ gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 2200
-blocked_by: [T66, T68, T70, T74, T80, T83, T84, T85, T87]
+blocked_by: [T66, T68, T70, T74, T80, T83, T84, T85, T87, T88]
 blocks: []
 updated_at: "2026-10-02"
 ---
