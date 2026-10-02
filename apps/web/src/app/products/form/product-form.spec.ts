@@ -539,13 +539,48 @@ describe('ProductForm', () => {
       field('price').dispatchEvent(new Event('blur'));
       await settle();
 
-      expect(element.textContent).toContain('Ціна виглядає як 2499 або 2499.00.');
+      expect(element.textContent).toContain('Ціна виглядає як 2499, 2499.00 або 2499,00.');
       expect(field('price').value).toBe('2499.999');
       expect(saveButton().disabled).toBe(true);
       submit();
       await settle();
       http.expectNone(`/api/products/${CARD_ID}`);
     });
+
+    it('saves a price typed with a decimal comma with a dot (AC-78)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      type('price', '235,50');
+      await settle();
+      submit();
+      await settle();
+
+      const request = http.expectOne(`/api/products/${CARD_ID}`);
+      expect(request.request.method).toBe('PATCH');
+      expect((request.request.body as Record<string, unknown>)['price']).toBe('235.50');
+      request.flush(answer({ ...PUBLISHED_ON_PROM, price: '235.50' }));
+      await settle();
+
+      expect(close).toHaveBeenCalledWith(true);
+    });
+
+    for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
+      it(`explains the format for ${invalid} and sends nothing (AC-78)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        type('price', invalid);
+        field('price').dispatchEvent(new Event('blur'));
+        await settle();
+
+        expect(element.textContent).toContain('Ціна виглядає як 2499, 2499.00 або 2499,00.');
+        expect(field('price').value).toBe(invalid);
+        submit();
+        await settle();
+        http.expectNone(`/api/products/${CARD_ID}`);
+      });
+    }
 
     it('keeps what was typed when the server refuses it', async () => {
       open(PUBLISHED_ON_PROM);
@@ -676,7 +711,7 @@ describe('ProductForm', () => {
           };
           request.flush(body, { status: 400, statusText: 'Bad Request' });
         },
-        message: 'Ціна виглядає як 2499 або 2499.00.',
+        message: 'Ціна виглядає як 2499, 2499.00 або 2499,00.',
       },
       {
         name: 'a missing card',

@@ -103,6 +103,10 @@ export function priceFieldValue(price: string): string {
   return price === UNPRICED ? '' : price;
 }
 
+export function normalizePrice(value: string): string {
+  throw new Error('Not implemented');
+}
+
 export function priceFromField(value: string): string {
   const price = value.trim();
   return price === '' ? UNPRICED : price;
