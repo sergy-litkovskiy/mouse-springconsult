@@ -8,8 +8,8 @@ owner: "Serhii"
 estimate: XS
 context_budget: 2000
 blocked_by: [T75, T79]
-blocks: [T81]
-updated_at: "2026-09-30"
+blocks: [T81, T87]
+updated_at: "2026-10-02"
 ---
 
 # T80 — Нижчі тулбар, шапка й фільтри каталогу

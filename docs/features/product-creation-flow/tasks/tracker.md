@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-10-01"
+updated_at: "2026-10-02"
 stage: "13"
 ---
 
@@ -17,10 +17,11 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T68, T70, T72, T75, T76, T78 — поставка 3, UI каталогу
+**Готові до старту:** T68, T70, T74, T75, T76, T79, T83, T85, T86 — поставка 3, UI каталогу
 й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок:
-T73 чекає на T72, T74 — на T73, T66 — на T73 і T74. Ланцюжок каталогу: T79 чекає на T78,
-T80 — на T75 і T79. Зачистка номерів з коду: T81 чекає на T66, T68, T70, T74 і T80, T82 — на T74.
+T84 чекає на T74, T66 — на T74 і T84. Ланцюжок каталогу: T80 чекає на T75 і T79,
+T87 — на T80. Зачистка номерів з коду: T81 чекає на T66, T68, T70, T74, T80, T83, T84, T85 і T87, T82 — на T74.
+T83–T87 заведено 2026-10-02 за UX-аудитом.
 
 Записи про закриті й заведені задачі з 2026-09-21 — у [хроніці](../_audit/tracker-journal.md).
 
@@ -98,7 +99,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 
 ## Поставка 3 — UI каталогу й форми
 
-Запит 2026-09-21 після приймання поставки 2; T67–T74 додано 2026-09-23, T75–T77 — 2026-09-25, T78–T82 — 2026-09-30. Ланцюжки в `blocked_by` — здебільшого спільні файли
+Запит 2026-09-21 після приймання поставки 2; T67–T74 додано 2026-09-23, T75–T77 — 2026-09-25, T78–T82 — 2026-09-30, T83–T87 — 2026-10-02 (UX-аудит). Ланцюжки в `blocked_by` — здебільшого спільні файли
 (`product-catalog.*`, `product-form.*`), а не смислові залежності; деталі — в [_epic.md](_epic.md).
 
 | ID | Задача | Статус | blocked_by | Est | Закрито |
@@ -113,7 +114,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Done | — | S | 2026-09-24 |
 | T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Done | — | XS | 2026-09-25 |
 | T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Done | T64 | S | 2026-09-27 |
-| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59, T73, T74 | S | — |
+| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59, T73, T74, T84 | S | — |
 | T67 | [Назви Prom/OLX із «Згенерувати все»](generate-titles-with-texts.md) | Done | — | S | 2026-09-27 |
 | T68 | [Опис Prom після повторного відкриття](keep-prom-description-on-reopen.md) | Todo | — | XS | — |
 | T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Done | — | XS | 2026-09-27 |
@@ -121,15 +122,20 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T71 | [Чернетка поля без тегів](strip-tags-from-field-draft.md) | Done | — | XS | 2026-09-28 |
 | T72 | [Режими поля: покращити й промпт](add-improve-and-prompt-field-modes.md) | Done | T67, T71 | S | 2026-10-01 |
 | T73 | [Три кнопки AI біля поля](add-improve-button-and-tonal-ai-actions.md) | Done | T72 | S | 2026-10-01 |
-| T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Blocked | T73 | S | — |
+| T74 | [Остання пропозиція на поле](show-latest-suggestions-in-product-form.md) | Todo | T73 | S | — |
 | T75 | [Компактніший шрифт](compact-app-typography.md) | Todo | — | XS | — |
 | T76 | [Кадри картки 120×120](shrink-card-gallery-frames.md) | Todo | — | XS | — |
 | T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Done | T69 | XS | 2026-09-27 |
 | T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Todo | T78 | S | — |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Blocked | T75, T79 | XS | — |
-| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80 | S | — |
+| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T84, T85, T87 | S | — |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74 | S | — |
+| T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Todo | — | S | — |
+| T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Blocked | T74 | S | — |
+| T85 | [Кома в ціні](accept-decimal-comma-in-price.md) | Todo | — | XS | — |
+| T86 | [Одна помилка входу](show-login-credentials-error-once.md) | Todo | — | XS | — |
+| T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Blocked | T80 | XS | — |
 
 ## Спільний DoD
 
