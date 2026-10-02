@@ -94,7 +94,7 @@ updated_at: "2026-09-30"
 
 ## Checklist
 
-1. `product-catalog.spec.ts` (RED): один `mat-paginator` без `aria-label` «Верхній пагінатор каталогу»; рядок заголовків має клас `mat-mdc-table-sticky`; тести стану пагінації з URL (наявні) читають єдиний пагінатор. Перейменувати наявні тести, що звертались до верхнього.
+1. `product-catalog.spec.ts` (RED): один `mat-paginator` без `aria-label` «Верхній пагінатор каталогу»; кожна комірка рядка заголовків має клас `mat-mdc-table-sticky` (на нативній `<table>` CDK закріплює комірки, а не `tr`); тести стану пагінації з URL (наявні) читають єдиний пагінатор. Перейменувати наявні тести, що звертались до верхнього.
 2. `product-catalog.html`: прибрати верхній `mat-paginator`, `sticky: true` у `matHeaderRowDef`; `product-catalog.css`: прибрати `.catalog__top-paginator`, зробити `.catalog`, картку й `.catalog__scroll` flex-колонкою з єдиним скролом.
 3. `app-layout.css`: колонка `100dvh`, outlet займає решту; висоту тулбара не вписувати.
 4. `product-catalog.css`: `@media` для вузького й низького екрана — фільтри й шапка в потоці сторінки, пагінатор прикріплений (зняти `overflow: hidden` з картки, якщо він заважає).
