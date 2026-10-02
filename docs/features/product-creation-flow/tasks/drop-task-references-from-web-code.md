@@ -6,10 +6,10 @@ delivery: 3
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2000
-blocked_by: [T66, T68, T70, T74, T80]
+context_budget: 2200
+blocked_by: [T66, T68, T70, T74, T80, T83, T84, T85, T87]
 blocks: []
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T81 — Прибрати номери задач і AC з коду `web`
@@ -95,7 +95,7 @@ updated_at: "2026-09-30"
 
 ## Out of scope
 
-- Ребро [T76](shrink-card-gallery-frames.md) → T81 не потрібне: це єдина відкрита `web`-задача поза ланцюжком, але вона змінює одне правило CSS без номерів задач.
+- Ребра [T76](shrink-card-gallery-frames.md) → T81 і [T86](show-login-credentials-error-once.md) → T81 не потрібні: це відкриті `web`-задачі поза ланцюжком, але T76 змінює одне правило CSS, а T86 — сторінку входу, і в жодному з цих файлів номерів задач немає.
 - `apps/api` — [T82](drop-task-references-from-api-code.md).
 - Документи в `docs/`, `CLAUDE.md` застосунків і story-файли: там ці номери й живуть.
 - Переписування тестів по суті: міняються лише назви.

@@ -1,15 +1,15 @@
 ---
 id: T74
 title: "Форма показує останню пропозицію моделі для кожного поля"
-status: Blocked
+status: Todo
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2400
+context_budget: 2600
 blocked_by: [T73]
-blocks: [T66, T81, T82]
-updated_at: "2026-09-30"
+blocks: [T66, T81, T82, T84]
+updated_at: "2026-10-02"
 ---
 
 # T74 — Форма показує останню пропозицію моделі для кожного поля

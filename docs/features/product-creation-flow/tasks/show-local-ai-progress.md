@@ -6,10 +6,10 @@ delivery: 3
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2300
-blocked_by: [T58, T59, T73, T74]
+context_budget: 2500
+blocked_by: [T58, T59, T73, T74, T84]
 blocks: [T81]
-updated_at: "2026-09-30"
+updated_at: "2026-10-02"
 ---
 
 # T66 — Локальний індикатор запиту до AI біля кнопки й поля
@@ -42,8 +42,9 @@ updated_at: "2026-09-30"
 мають повернутися». Після [T73](add-improve-button-and-tonal-ai-actions.md) біля поля дві кнопки
 запуску: `auto_awesome` («Застосувати як промпт») і `auto_fix_high` («Покращити через AI»). Спінер
 не додається всередину кнопки, а **замінює обидві**, і після результату чи відмови кнопки
-повертаються. Стрілку «Застосувати для поля ліворуч» не ховають, а лише вимикають: вона не
-запускає моделі, і її місце не має стрибати.
+повертаються. Стрілку «Застосувати для поля ліворуч» і кнопку «Відхилити пропозицію»
+([T84](add-reject-suggestion-button.md)) не ховають, а лише вимикають: вони не запускають моделі, і
+їхнє місце не має стрибати. T84 править той самий `app-suggestion-field`, тож задача йде і після неї.
 
 Спільні блоки `product-form.html` з [T58](wrap-product-titles-in-textarea.md) і
 [T59](edit-keywords-as-chips.md), а `suggestion-field.*` — з T73 і
