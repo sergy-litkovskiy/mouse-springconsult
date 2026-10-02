@@ -235,6 +235,12 @@ describe('rewriteField: improve mode (AC-66)', () => {
     assert.match(textOf(adapter.lastFieldContent), /OLX/);
   });
 
+  it('names the marketplace once, as the target rather than the source', async () => {
+    const adapter = new RecordingAnthropicAdapter();
+    await adapter.rewriteField('titleProm', 'чернетка', 'improve');
+    assert.equal(textOf(adapter.lastFieldContent).match(/Prom\.ua/g)?.length, 1);
+  });
+
   it('asks to keep all facts and not invent', async () => {
     const adapter = new RecordingAnthropicAdapter();
     await adapter.rewriteField('descriptionProm', 'чернетка', 'improve');
