@@ -30,7 +30,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, type MatSnackBarConfig } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
@@ -93,6 +93,12 @@ const UNAVAILABLE_MODEL_MESSAGE = 'Модель зараз недоступна.
 
 const UNKNOWN_ERROR_MESSAGE = 'Не вдалося зберегти картку. Спробуйте ще раз.';
 const UNKNOWN_READ_MESSAGE = 'Не вдалося прочитати картку. Закрийте вікно і спробуйте ще раз.';
+
+const SUCCESS_SNACK_BAR: MatSnackBarConfig = {
+  duration: 4000,
+  panelClass: 'snack-bar--success',
+  verticalPosition: 'top',
+};
 
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
   { value: 'used', label: 'б/в' },
@@ -339,11 +345,7 @@ export class ProductForm {
 
   protected copyId(id: string): void {
     this.clipboard.copy(id);
-    this.snackBar.open('ID скопійовано', undefined, {
-      duration: 4000,
-      panelClass: 'snack-bar--success',
-      verticalPosition: 'top',
-    });
+    this.snackBar.open('ID скопійовано', undefined, SUCCESS_SNACK_BAR);
   }
 
   /** Recognises the item from the main frame and fills every text at once (ADR 0014). */
@@ -521,7 +523,7 @@ export class ProductForm {
           ? `Картку збережено. Понад ліміт відкинуто ключових слів: ${String(discarded)}.`
           : 'Картку збережено.',
         undefined,
-        { duration: 4000, panelClass: 'snack-bar--success', verticalPosition: 'top' },
+        SUCCESS_SNACK_BAR,
       );
       this.dialogRef.close(true);
     } catch (error: unknown) {
