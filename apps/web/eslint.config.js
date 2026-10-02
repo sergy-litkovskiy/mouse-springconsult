@@ -11,19 +11,42 @@ import tseslint from 'typescript-eslint';
  */
 const FEATURES = ['auth', 'products'];
 
-/** Ban on importing a sibling feature — one rule per feature. */
+const byKindDirectories = {
+  group: [
+    '**/core/**',
+    '**/shared/**',
+    '**/utils/**',
+    '**/services/**',
+    '**/components/**',
+    // The ban is on directories of this project, not on package entry points:
+    // `@angular/core/testing` and `@angular/core/rxjs-interop` are neither.
+    '!@angular/**',
+  ],
+  message:
+    'Group by feature, not by kind of code: this project has no core/, shared/, ' +
+    'utils/, services/ or components/ directories (Angular style guide).',
+};
+
+/**
+ * Ban on importing a sibling feature — one rule per feature. The block restates
+ * `byKindDirectories`: blocks that name the same rule replace each other rather than merge,
+ * so without it a feature file would lose the directory ban.
+ */
 const featureBoundaries = FEATURES.map((feature) => ({
   files: [`src/app/${feature}/**/*.ts`],
   rules: {
     'no-restricted-imports': [
       'error',
       {
-        patterns: FEATURES.filter((other) => other !== feature).map((other) => ({
-          group: [`**/${other}/**`, `**/app/${other}`],
-          message:
-            `Feature ${feature} does not import ${other}. Anything shared moves up as a ` +
-            'file at the app/ level under a concrete name.',
-        })),
+        patterns: [
+          byKindDirectories,
+          ...FEATURES.filter((other) => other !== feature).map((other) => ({
+            group: [`**/${other}/**`, `**/app/${other}`],
+            message:
+              `Feature ${feature} does not import ${other}. Anything shared moves up as a ` +
+              'file at the app/ level under a concrete name.',
+          })),
+        ],
       },
     ],
   },
@@ -69,28 +92,7 @@ export default defineConfig([
       '@typescript-eslint/unbound-method': 'off',
       'no-console': ['error', { allow: ['error'] }],
       eqeqeq: ['error', 'always'],
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: [
-                '**/core/**',
-                '**/shared/**',
-                '**/utils/**',
-                '**/services/**',
-                '**/components/**',
-                // The ban is on directories of this project, not on package entry points:
-                // `@angular/core/testing` and `@angular/core/rxjs-interop` are neither.
-                '!@angular/**',
-              ],
-              message:
-                'Group by feature, not by kind of code: this project has no core/, shared/, ' +
-                'utils/, services/ or components/ directories (Angular style guide).',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { patterns: [byKindDirectories] }],
     },
   },
 
