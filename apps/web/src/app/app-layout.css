@@ -8,6 +8,9 @@
 /* A flex item shrinks by default, and a long catalog would squeeze the bar below its own height. */
 .app-bar {
   flex: none;
+  /* Below 600 px Material reads the mobile height instead, so both are set. */
+  --mat-toolbar-standard-height: 48px;
+  --mat-toolbar-mobile-height: 48px;
 }
 
 .app-bar__spacer {

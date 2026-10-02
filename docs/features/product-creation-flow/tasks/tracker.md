@@ -17,9 +17,10 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T80, T82, T83, T84, T86, T89 — поставка 3, UI каталогу
+**Готові до старту:** T82, T83, T84, T86, T87, T89 — поставка 3, UI каталогу
 й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок AI-кнопок:
-T66 чекає на T84. Ланцюжок каталогу: T87 чекає на T80. Зачистка номерів з коду: T81 чекає на T66, T80, T83, T84, T87 і T89.
+T66 чекає на T84. Зачистка номерів з коду: T81 чекає на T66, T83, T84, T87 і T89.
+T80 закрито 2026-10-02: вона розблокувала T87; T81 ще чекає на решту своїх `blocked_by`.
 T76 закрито 2026-10-02 й нічого не розблокувала: від неї ніщо не залежить.
 T89 заведено 2026-10-02 за нестабільним першим тестом форми, знайденим під час T88.
 T88 закрито 2026-10-02 й нічого не розблокувала: T81 ще чекає на решту своїх `blocked_by`.
@@ -133,14 +134,14 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T77 | [Рівні відступи в картці](even-out-card-form-spacing.md) | Done | T69 | XS | 2026-09-27 |
 | T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Done | T78 | S | 2026-10-02 |
-| T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Todo | T75, T79 | XS | — |
+| T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Done | T75, T79 | XS | 2026-10-02 |
 | T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T84, T85, T87, T88, T89 | S | — |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Todo | T74 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Todo | — | S | — |
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Todo | T74 | S | — |
 | T85 | [Кома в ціні](accept-decimal-comma-in-price.md) | Done | — | XS | 2026-10-02 |
 | T86 | [Одна помилка входу](show-login-credentials-error-once.md) | Todo | — | XS | — |
-| T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Blocked | T80 | XS | — |
+| T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Todo | T80 | XS | — |
 | T88 | [Spec-и чекають редактор за часом](wait-for-prom-editor-by-time-in-specs.md) | Done | — | XS | 2026-10-02 |
 | T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Todo | — | XS | — |
 
