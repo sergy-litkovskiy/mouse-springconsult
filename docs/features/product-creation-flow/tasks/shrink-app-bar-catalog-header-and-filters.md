@@ -1,7 +1,7 @@
 ---
 id: T80
 title: "Нижчі тулбар, шапка й фільтри каталогу"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -103,9 +103,9 @@ updated_at: "2026-10-02"
 
 ## DoD
 
-- [ ] AC-75: на 1280 px тулбар 48, шапка ≤ 34, фільтри ≤ 100, верх таблиці ≤ 216; на 360 px верх таблиці ≤ 560.
-- [ ] Наявні тести `web` зелені без правок, `lint` зелений.
-- [ ] Коміт: `style(web): shrink the app bar, catalog header and filters`.
+- [x] AC-75: на 1280 px тулбар 48, шапка ≤ 34, фільтри ≤ 100, верх таблиці ≤ 216; на 360 px верх таблиці ≤ 560.
+- [x] Наявні тести `web` зелені без правок, `lint` зелений.
+- [x] Коміт: `style(web): shrink the app bar, catalog header and filters`.
 
 ## Links
 

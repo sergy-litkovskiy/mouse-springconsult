@@ -11,9 +11,9 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  gap: 16px;
+  gap: 8px;
   /* No bottom padding: the paginator at the bottom of the table card sits on the window edge. */
-  padding: 24px 24px 0;
+  padding: 8px 24px 0;
   box-sizing: border-box;
 }
 
@@ -21,6 +21,8 @@
   display: flex;
   align-items: baseline;
   gap: 16px;
+  --mat-button-filled-container-height: 32px;
+  --mat-button-filled-touch-target-display: none;
 }
 
 .catalog__header h1 {
@@ -39,9 +41,9 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px 16px;
-  padding: 16px;
-  --mat-form-field-container-height: 46px;
-  --mat-form-field-container-vertical-padding: 11px;
+  padding: 8px;
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
 }
 
 /* A grid with `span` would add implicit tracks on a narrow screen and scroll sideways. */
@@ -70,10 +72,12 @@
 
 .filters__actions {
   display: flex;
-  align-self: stretch;
   align-items: center;
   gap: 8px;
-  padding-bottom: 22px;
+  --mat-button-filled-container-height: 36px;
+  --mat-button-filled-touch-target-display: none;
+  --mat-button-text-container-height: 36px;
+  --mat-button-text-touch-target-display: none;
 }
 
 .filters__error {
@@ -183,6 +187,8 @@
 
 .catalog__create {
   margin-left: auto;
+  /* On a narrow screen the label would wrap to two lines and spill out of the dense button. */
+  white-space: nowrap;
 }
 
 .catalog__row {
