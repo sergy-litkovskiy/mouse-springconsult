@@ -1,6 +1,16 @@
-.catalog {
+/* The layout gives the catalog what is left of the viewport under the app bar. */
+:host {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.catalog {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   gap: 16px;
   padding: 24px;
   box-sizing: border-box;
@@ -72,25 +82,29 @@
   font: var(--mat-sys-body-small);
 }
 
+/*
+ * Header and filters keep their height and the card takes the rest, so only the rows scroll and
+ * the paginator, the last child of the card, stays at the bottom edge even with no rows at all.
+ */
 .catalog__table {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
-}
-
-.catalog__top-paginator {
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
 .catalog__scroll {
   position: relative;
-  overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
-/* Out of the flow: a bar that pushes the rows down is the jump the kept rows are there to avoid. */
+/* Out of the flow: a bar that pushes the rows down is the jump the kept rows are there to avoid.
+   Above the sticky header cells, which CDK lifts to z-index 100. */
 .catalog__loader {
   position: absolute;
   inset: 0 0 auto;
-  z-index: 1;
+  z-index: 101;
 }
 
 .catalog__scroll--loading table {
@@ -273,4 +287,30 @@
   font-size: 16px;
   width: 16px;
   height: 16px;
+}
+
+/*
+ * Pinned filters would leave no room for the rows on a narrow or low screen (on 360 px they take
+ * ~570 px), so there the header and the filters scroll away and only the paginator stays.
+ * `overflow: hidden` on the card would keep the paginator from sticking to the screen edge.
+ */
+@media (max-width: 599.98px), (max-height: 479.98px) {
+  :host {
+    overflow-y: auto;
+  }
+
+  .catalog,
+  .catalog__table,
+  .catalog__scroll {
+    flex: none;
+  }
+
+  .catalog__table {
+    overflow: visible;
+  }
+
+  .catalog__table mat-paginator {
+    position: sticky;
+    bottom: 0;
+  }
 }

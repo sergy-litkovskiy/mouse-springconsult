@@ -1,3 +1,10 @@
+/* A fixed height, so the page under the bar scrolls inside itself and the bar stays put. */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
 .app-bar__spacer {
   flex: 1 1 auto;
 }

@@ -135,16 +135,6 @@
       </p>
     }
 
-    <mat-paginator
-      class="catalog__top-paginator"
-      aria-label="Верхній пагінатор каталогу"
-      [length]="total()"
-      [pageIndex]="pageIndex()"
-      [pageSize]="pageSize()"
-      [pageSizeOptions]="pageSizeOptions"
-      (page)="changePage($event)"
-    />
-
     <div
       class="catalog__scroll"
       [class.catalog__scroll--loading]="loading()"
@@ -413,7 +403,7 @@
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
         <tr
           mat-row
           *matRowDef="let row; columns: columns"
@@ -428,7 +418,7 @@
     }
 
     <mat-paginator
-      aria-label="Нижній пагінатор каталогу"
+      aria-label="Пагінатор каталогу"
       [length]="total()"
       [pageIndex]="pageIndex()"
       [pageSize]="pageSize()"
