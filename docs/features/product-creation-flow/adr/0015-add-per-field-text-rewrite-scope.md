@@ -2,7 +2,7 @@
 status: Accepted
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-09-12"
+updated_at: "2026-10-02"
 feature_size: M
 stage: "04-05"
 ticket: "TBD"
@@ -56,6 +56,10 @@ ticket: "TBD"
 обмеження частоти й запис `usage` дістаються без додаткового коду, бо вже написані для
 `texts`/`price`/`both`. Нова область не додає ні ендпоінту, ні таблиці, ні окремого шляху
 прийняття в UI: «<- AI» на будь-якому полі викликає той самий `acceptFieldSuggestion`.
+
+> **Уточнення 2026-10-02, [ADR 0017](0017-keep-one-latest-suggestion-per-field.md).**
+> `acceptFieldSuggestion` прибрано: «<- AI» копіює пропозицію в поле форми без запиту, а в
+> картку її пише «Зберегти». Шлях прийняття лишається один на всі області, тільки живе у `web`.
 
 ## Consequences
 

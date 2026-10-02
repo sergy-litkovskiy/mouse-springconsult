@@ -43,9 +43,12 @@ updated_at: "2026-09-20"
 
 [sad.md §6](../sad.md#6-runtime-view), **сценарій 9** — обидві гілки:
 
-> `api->>pg: звіряє поточне значення з останньою прийнятою пропозицією`
-> гілка «збігається» → нова застосовується сама
-> гілка «розійшлося» → пропозиція чекає на рішення людини (AC-11)
+> `api->>pg: читає поля картки й одну пропозицію на поле`
+
+Сценарій 9 переписано 2026-10-02 ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)): звірки, двох її гілок і маршрутів цієї
+задачі більше немає, їх прибирає [T91](drop-server-side-suggestion-accept.md). Рядок вище — з нового
+сценарію. На момент закриття задача реалізовувала звірку «збігається → застосовується сама,
+розійшлося → чекає на рішення людини» (AC-11).
 
 ## Data delta
 
@@ -60,14 +63,12 @@ updated_at: "2026-09-20"
 ## API contract excerpt
 
 ```yaml
-      description: >-
-        прийнятою пропозицією) не проходить через цей ендпоінт — воно відбувається
-        всередині читання картки ([ADR 0006](../adr/0006-store-generated-values-as-separate-suggestions.md)),
-        цей маршрут — лише явна дія людини після розходження (AC-11).
-      operationId: acceptFieldSuggestion
+      operationId: updateProduct
       responses:
-        "409": { $ref: "#/components/responses/SuggestionAlreadyResolved" }
 ```
+
+Маршрути `acceptFieldSuggestion` і `rejectFieldSuggestion` прибрано з контракту 2026-10-02
+([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)). Пропозицію, скопійовану стрілкою у форму, тепер пише в картку `updateProduct`.
 
 ## Acceptance criteria
 

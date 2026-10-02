@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-09-18"
+updated_at: "2026-10-02"
 feature_size: M
 stage: "08"
 ticket: "TBD"
@@ -38,7 +38,8 @@ ticket: "TBD"
 erDiagram
     products ||--o{ product_images : "галерея до 10 кадрів"
     products ||--o{ product_preparation_runs : "запуски підготовки"
-    product_preparation_runs ||--o{ product_field_suggestions : "пропозиції на поле"
+    products ||--o{ product_field_suggestions : "одна пропозиція на поле"
+    product_preparation_runs ||--o{ product_field_suggestions : "запуск, що дав пропозицію"
 
     products {
         uuid id PK
@@ -83,11 +84,10 @@ erDiagram
 
     product_field_suggestions {
         uuid id PK
+        uuid product_id FK
         uuid run_id FK
         varchar field
         jsonb value "поліморфне за полем"
-        varchar resolution "null поки не вирішено"
-        timestamptz resolved_at
         timestamptz created_at
     }
 ```
@@ -107,7 +107,9 @@ erDiagram
 `description_prom`/`description_olx`, ці поля ніколи не були порожні на момент першого
 запуску, і правило ADR 0006 «порожнє поле застосовує пропозицію само» для описів фактично
 не спрацьовувало. Тепер на новій картці описи справді порожні до першого запуску, і
-правило працює для всіх текстових полів однаково — без винятку.
+правило працює для всіх текстових полів однаково — без винятку. З
+[ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md) (2026-10-02) цього правила
+немає взагалі: пропозиція не заповнює навіть порожнє поле.
 
 Область `field` ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) читає вхід
 інакше: не з фото і не з `products`, а з `draftText` у тілі запиту — чернетки, яку людина
@@ -119,9 +121,10 @@ erDiagram
 **Картка — єдиний агрегат фічі.** `products` володіє галереєю (`product_images`) і
 запусками підготовки (`product_preparation_runs`), обидва — каскадом `on delete cascade`,
 бо ні кадр, ні запуск не мають життя без картки
-([ADR 0012](adr/0012-delete-permanently-in-the-same-request.md)). Пропозиція належить
-запуску, а не картці напряму: `usage` виклику записаний на запуску, і пропозиція без свого
-запуску не відповідає, скільки вона коштувала.
+([ADR 0012](adr/0012-delete-permanently-in-the-same-request.md)). Пропозиція з
+[ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md) належить картці напряму: вона
+одна на (картка, поле) і переживає запуски, що її перезаписували. `run_id` лишається
+посиланням на останній з них, бо `usage` виклику записаний на запуску.
 
 Галерея власного сервісу не отримує ([sad.md §5](sad.md)) — межа агрегату проходить по
 картці, а не по кожній дитячій таблиці.
@@ -190,7 +193,7 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `id` | UUID | PK, `default uuidv7()` | |
 | `product_id` | UUID | NOT NULL, FK → `products(id)` ON DELETE CASCADE | |
 | `scope` | VARCHAR(8) | NOT NULL, CHECK IN (`texts`,`price`,`both`,`field`) | Без області AC-10b не має предмета: саму ціну не попросити, не перезапускаючи тексти. `field` — регенерація одного поля з чернетки, без фото ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) |
-| `idempotency_key` | TEXT | NOT NULL, UNIQUE серед незавершених і вдалих | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
+| `idempotency_key` | TEXT | NOT NULL, UNIQUE серед `queued` і `running` | Картка + область + версія входу (sad.md §6, сценарій 7). Для `texts` версія входу — хеш ключів R2 кадрів, використаних у запиті; для `price` — хеш заголовка й опису за формулою AC-27; для `both` — обидва, бо запуск робить обидва виклики; для `field` — хеш (`field`, `draftText`) |
 | `status` | VARCHAR(16) | NOT NULL, CHECK IN (`queued`,`running`,`succeeded`,`failed`) | Джерело для полінгу (сценарій 7, 8) |
 | `error_code` | VARCHAR(64) | NULL | Доменний код при `failed` — той самий, що фронт мапить у текст (AC-10). `price_unavailable` — часткова відмова `both`: тексти записані, ціни немає (AC-10b). `preparation_failed` — вичерпано `retryLimit` задачі, пропозицій немає (AC-10, [events.md](contracts/events.md)) |
 | `error_detail` | TEXT | NULL | Англійське повідомлення помилки, що закрила `failed`-запуск, обрізане до `config.ai.errorDetailMaxLength`. Каталог показує його дрібно під українським текстом за `error_code` ([T50](tasks/show-preparation-failures-in-catalog.md)). `null` у запусків, що впали до міграції |
@@ -214,24 +217,30 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 - Обмеження частоти запусків (§8, PRD §6.1) → `count(*) where product_id = $1 and
   created_at > now() - вікно`. **Окремої таблиці лічильника не заводимо** — запуски вже
   записані тут, а індекс під це не потрібен: при десятках запусків на місяць скан дешевший.
-- Повторний клік по незміненому входу не платить двічі → `idempotency_key` UNIQUE
-  `WHERE status <> 'failed'`. Відмовлений запуск результату не має, тож ключ не займає (AC-37).
+- Подвійний клік не платить двічі → `idempotency_key` UNIQUE `WHERE status in ('queued',
+  'running')`. Завершений запуск ключ не займає: після `failed` повтор відновлює результат, а
+  після `succeeded` повтор того самого входу — свідоме прохання нового варіанта (PRD AC-82,
+  [ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)). До 2026-10-02 частковий
+  індекс був `WHERE status <> 'failed'`, і `succeeded` тримав ключ назавжди.
 
-### `product_field_suggestions` — поставка 2, створено
+### `product_field_suggestions` — поставка 2, форма з [ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)
 
-Що модель запропонувала для конкретного поля картки і що з цим зробила людина.
+Що модель запропонувала для конкретного поля картки востаннє. Рядок один на (картка, поле):
+нова генерація його перезаписує, статусу й історії немає. Форму змінює міграція
+[T92](tasks/keep-one-suggestion-per-field.md).
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | UUID | PK, `default uuidv7()` | |
-| `run_id` | UUID | NOT NULL, FK → `product_preparation_runs(id)` ON DELETE CASCADE | Картка досяжна через запуск — `product_id` тут **не** дублюється |
+| `product_id` | UUID | NOT NULL, FK → `products(id)` ON DELETE CASCADE | Додано T92 з backfill через `run_id`. Без нього UNIQUE на (картка, поле) не виразити |
+| `run_id` | UUID | NOT NULL, FK → `product_preparation_runs(id)` ON DELETE CASCADE | Запуск, що записав поточне значення. Upsert його оновлює |
 | `field` | VARCHAR(32) | NOT NULL, CHECK IN (`title_prom`,`title_olx`,`description_prom`,`description_olx`,`seo_keywords`,`price`) | `title_prom`/`title_olx` додані разом з областю `field` ([ADR 0015](adr/0015-add-per-field-text-rewrite-scope.md)) — до цього рішення заголовки не мали власної пропозиції |
-| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для заголовків і описів, масив рядків для ключових слів, `{priceFrom, priceTo}` для ціни — саме тому пропозиція з `field: price` не проходить generic `acceptFieldSuggestion` (Open items) |
-| `resolution` | VARCHAR(16) | NULL, CHECK IN (`accepted`,`rejected`) | **NULL = ще не вирішено.** Третього слова немає: `pending` дублював би те, що вже несе відсутність рішення |
-| `resolved_at` | TIMESTAMPTZ | NULL | |
-| `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() | |
+| `value` | JSONB | NOT NULL | **Єдиний JSONB у схемі.** Значення поліморфне за `field`: рядок для заголовків і описів, масив рядків для ключових слів, `{priceFrom, priceTo}` для ціни. Опис для Prom тут plain text: на HTML його перетворює форма, коли стрілка копіює пропозицію в поле ([ADR 0016](adr/0016-store-the-prom-description-as-html.md) №7) |
+| `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() | Час останньої генерації: upsert ставить `now()` |
 
-Створена тією самою міграцією `1789736913481-create-preparation-tables`: без запуску пропозиція не має, кому належати.
+Створена міграцією `1789736913481-create-preparation-tables`. Колонки `resolution` і
+`resolved_at` прибрала T92: прийняття більше не є подією в базі, бо стрілка копіює
+пропозицію у форму, а в картку її пише «Зберегти».
 
 **Чому JSONB, попри загальне правило «структуровані поля → першокласні колонки».** Форма
 значення залежить від `field`, і окремі колонки дали б `value_text`, `value_keywords`,
@@ -239,20 +248,21 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 правило називає: payload, непрозорий для БД, яка його не фільтрує й не сортує, а тільки
 віддає.
 
-**Чому `product_id` не дублюється сюди.** Звірка AC-11 читає останню прийняту пропозицію
-для поля картки, і без дубля це `join` через `runs`. Дубльована колонка скоротила б запит
-ціною другого місця, де живе той самий факт, — а розходження між ними нічим не захищене.
+**Чому `product_id` тепер дублюється.** До ADR 0017 картку брали через `join` із запуском, а
+дубль відкидали: друге місце для того самого факту, і розходження між ними нічим не
+захищене. Тепер інваріант «одна пропозиція на поле картки» тримає UNIQUE, а індекс не може
+дотягтися через `join`. Розходження з `run.product_id` constraint-ом так само не захищене,
+але обидва значення пише один upsert з того самого запуску.
 
 **Access patterns:**
-- Звірка AC-11 (сценарій 9): `join product_preparation_runs r on r.id = s.run_id where
-  r.product_id = $1 and s.field = $2 and s.resolution = 'accepted' order by s.created_at
-  desc limit 1` → індекс `product_field_suggestions_run_field_key` (FK-колонка `run_id`
-  лідирує в ньому, тож той самий індекс обслуговує і join, і унікальність).
-- Непідтверджені пропозиції поруч зі значеннями (сценарій 5, 9) → те саме, `resolution is
-  null`.
+- Пропозиції картки поруч зі значеннями (сценарії 5, 9) → `where product_id = $1` →
+  індекс `product_field_suggestions_product_field_key`, у якому `product_id` лідирує.
+- Запис результату запуску → `insert … on conflict (product_id, field) do update set value,
+  run_id, created_at = now()`, той самий індекс.
 
-**Constraints:** `product_field_suggestions_run_field_key` UNIQUE (`run_id`, `field`) —
-один запуск дає не більше однієї пропозиції на поле.
+**Constraints:** `product_field_suggestions_product_field_key` UNIQUE (`product_id`, `field`) —
+одна пропозиція на поле картки. Вона ж забороняє запуску дати дві пропозиції на поле, що
+раніше тримав UNIQUE (`run_id`, `field`).
 
 ## Indexes
 
@@ -263,8 +273,8 @@ DEFERRABLE INITIALLY DEFERRED — перестановка проходить ч
 | `product_images_main_key` | `product_images` | `product_id` WHERE `is_main` UNIQUE | Рівно один головний кадр (AC-03). **Наявний** |
 | `product_images_position_key` | `product_images` | (`product_id`, `position`) UNIQUE DEFERRABLE | Порядок у галереї з дозволеною перестановкою. **Наявний** |
 | `product_preparation_runs_product_id_idx` | `product_preparation_runs` | `product_id` | Вартість картки (AC-14) і запуски картки; FK-індекс. **Поставка 2** |
-| `product_preparation_runs_idempotency_key_key` | `product_preparation_runs` | `idempotency_key` UNIQUE `WHERE status <> 'failed'` | Повторний запуск того самого входу не платить двічі; після відмови вхід вільний (AC-37). **Поставка 2** |
-| `product_field_suggestions_run_field_key` | `product_field_suggestions` | (`run_id`, `field`) UNIQUE | Пропозиції запуску; один запуск дає не більше однієї на поле; той самий індекс обслуговує join у звірці AC-11. **Поставка 2** |
+| `product_preparation_runs_idempotency_key_key` | `product_preparation_runs` | `idempotency_key` UNIQUE `WHERE status in ('queued', 'running')` | Подвійний клік не ставить другого запуску; завершений запуск вхід звільняє (PRD AC-82). **Поставка 2**, предикат змінює T92 |
+| `product_field_suggestions_product_field_key` | `product_field_suggestions` | (`product_id`, `field`) UNIQUE | Одна пропозиція на поле картки, ціль upsert-а й читання пропозицій картки. **T92** замість `product_field_suggestions_run_field_key` (`run_id`, `field`) |
 
 `products` не має жодного вторинного індексу — каталог фільтрує через `ilike`, якого
 B-tree не обслуговує, а 50-100 карток на місяць роблять послідовний скан дешевшим за
@@ -280,6 +290,7 @@ B-tree не обслуговує, а 50-100 карток на місяць ро�
 | `− product_images.url` | **етап 13** | Нероздільна з правкою `ProductImage` і `ProductController`: без домену бакета в `config` адресу з ключа не скласти, а розділяти зміну на два коміти означає проміжний деплой, де щось одне не відповідає іншому |
 | `+ product_preparation_runs`, `+ product_field_suggestions` | **поставка 2**, `1789736913481-create-preparation-tables` | Створені після черги й `worker` (T25) — таблиця без процесу, що в неї пише, не мала сенсу раніше |
 | `+ product_preparation_runs.error_detail` | **поставка 2**, `1790004050193-add-preparation-run-error-detail` | Каталог показує відмови вже після того, як діалог картки закрили (T50), і сам код не пояснює, що саме пішло не так |
+| `+ product_field_suggestions.product_id`, `− resolution`, `− resolved_at`, UNIQUE (`product_id`, `field`), предикат `idempotency_key` → `queued`/`running` | **T92** | [ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md): одна пропозиція на поле без статусу. Міграція лишає найновіший рядок на (`product_id`, `field`) і видаляє решту; `down` повертає колонки й індекси, але не видалені рядки |
 
 ## Test fixtures
 
@@ -289,7 +300,7 @@ B-tree не обслуговує, а 50-100 карток на місяць ро�
 яку цей прохід не змінив.
 
 Сідів фіча не додає: bootstrap адміна вже робить `1787738400000-create-first-user`, а
-довідкових таблиць у схемі немає — `condition`, `scope`, `status`, `resolution` і `field`
+довідкових таблиць у схемі немає — `condition`, `scope`, `status` і `field`
 живуть константами в коді, не рядками таблиці.
 
 ## Open items

@@ -40,8 +40,12 @@ Checklist T30 про нього мовчить. Споживач — [T32](add-p
 [sad.md §6](../sad.md#6-runtime-view), **сценарій 9** — останній крок циклу звірки й відповідь,
 до якої [T30](add-suggestion-resolution-endpoints.md) дійшла лише наполовину:
 
-> `api->>pg: звіряє поточне значення з останньою прийнятою пропозицією`
-> `api-->>web: значення полів, а поруч — непідтверджені пропозиції`
+> `api->>pg: читає поля картки й одну пропозицію на поле`
+> `api-->>web: значення полів без змін, а поруч — остання пропозиція кожного поля`
+
+Сценарій 9 переписано 2026-10-02 ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)): звірки й «непідтверджених» пропозицій більше
+немає, тож рядки вище — з нового сценарію. На момент закриття задача віддавала поруч зі значеннями
+непідтверджені пропозиції.
 
 Половина «значення полів» уже віддається; половина «а поруч — непідтверджені пропозиції» — ні.
 
@@ -71,8 +75,10 @@ Checklist T30 про нього мовчить. Споживач — [T32](add-p
 ```yaml
       required: [id, runId, field, value, createdAt]
           enum: [titleProm, titleOlx, descriptionProm, descriptionOlx, seoKeywords, price]
-        resolution: { type: [string, null], enum: [accepted, rejected, null] }
 ```
+
+Рядок `resolution` прибрано 2026-10-02: пропозиція більше не має статусу ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md),
+[T91](drop-server-side-suggestion-accept.md)).
 
 `resolution` і `resolvedAt` у масиві завжди `null` — інших там не буває. Прибирати їх зі схеми
 `FieldSuggestion` не треба: її ж формою оголошено пропозицію взагалі.

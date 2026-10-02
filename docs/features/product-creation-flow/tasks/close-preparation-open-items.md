@@ -71,12 +71,15 @@ updated_at: "2026-09-18"
         задачі — перевірка коштує одного читання, запуск коштує грошей (sad.md
         сценарій 7). Ідемпотентність — **не** заголовок клієнта:
         ключ (картка, область, версія входу) обчислює сервер із `idempotency_key`
-        UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом
-        повертає наявний запуск (`200`), а не створює новий (`201`). Наявним є лише
-        незавершений (`queued`, `running`) чи `succeeded` запуск: UNIQUE частковий,
-        `WHERE status <> 'failed'`, бо відмовлений запуск результату не має й захищати
+        UNIQUE у `product_preparation_runs`; повторний виклик з тим самим входом,
+        поки запуск у черзі чи йде (`queued`, `running`), повертає його (`200`), а
+        `WHERE status in ('queued', 'running')`: після `succeeded` чи `failed` той
       operationId: startPreparationRun
 ```
+
+Рядки про ключ замінено 2026-10-02: [ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)
+звузив частковий UNIQUE до `queued`/`running`, тож повтор після `succeeded` теж ставить новий
+запуск ([T92](keep-one-suggestion-per-field.md)).
 
 ## Acceptance criteria
 

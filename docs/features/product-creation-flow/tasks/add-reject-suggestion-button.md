@@ -1,18 +1,26 @@
 ---
 id: T84
 title: "Кнопка «Відхилити пропозицію» біля поля картки"
-status: Blocked
+status: Dropped
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2000
+context_budget: 2200
 blocked_by: [T74]
-blocks: [T66, T81]
+blocks: []
 updated_at: "2026-10-02"
 ---
 
 # T84 — Кнопка «Відхилити пропозицію» біля поля картки
+
+> **Dropped 2026-10-02.** Власник вирішив, що пропозиції не мають статусів:
+> [ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md). Пропозицію, яку людина не
+> хоче, вона просто ігнорує або запускає нову генерацію. Маршрут відхилення прибирає
+> [T91](drop-server-side-suggestion-accept.md), а місце T84 у графі займає
+> [T90](copy-suggestion-into-form-field.md). Номер AC-77 у PRD так і не з'явився й не
+> перевикористовується. Гілку `feat-t84-reject-suggestion-button` не пушили. Нижче — текст
+> story на момент скасування.
 
 ## Context
 
@@ -43,10 +51,10 @@ updated_at: "2026-10-02"
 
 ## Sequence
 
-> `web->>api: відхиляє пропозицію`
-> `api->>pg: позначає пропозицію відхиленою, поле не змінюється`
+> `web-->>user: поля лишились як були, нові пропозиції стоять праворуч`
 
-Сценарій 9 [sad.md §6](../sad.md#6-runtime-view), гілка «user відхиляє».
+Сценарій 9 [sad.md §6](../sad.md#6-runtime-view). Гілку «user відхиляє», яку задача мала
+реалізувати, прибрано разом з T84; рядок вище — з переписаного сценарію.
 
 ## Data delta
 
@@ -56,13 +64,11 @@ updated_at: "2026-10-02"
 ## API contract excerpt
 
 ```yaml
-  /products/{productId}/suggestions/{suggestionId}/reject:
-      summary: Відхилити пропозицію поля
-      operationId: rejectFieldSuggestion
-          description: Пропозицію відхилено
-              schema: { $ref: "#/components/schemas/ProductCardRead" }
-        "409": { $ref: "#/components/responses/SuggestionAlreadyResolved" }
+    FieldSuggestion:
+      required: [id, runId, field, value, createdAt]
 ```
+
+Маршрут `rejectFieldSuggestion`, на якому стояла задача, з контракту прибрано.
 
 ## Acceptance criteria
 
