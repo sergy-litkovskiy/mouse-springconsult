@@ -18,7 +18,8 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T92, T81 — поставка 3, одна пропозиція на поле в `api` і зачистка номерів з коду `web`. Порядок і інструменти — у [плані виконання](../execution-plan.md). Зачистка номерів з коду: T82 чекає на T92.
+**Готові до старту:** T81, T82 — поставка 3, зачистка номерів з коду `web` і `api`. Порядок і інструменти — у [плані виконання](../execution-plan.md).
+T92 закрито 2026-10-03: вона розблокувала T82 — остання з її `blocked_by`.
 T91 закрито 2026-10-03: вона розблокувала T92; T82 ще чекає на T92.
 T66 закрито 2026-10-03: вона розблокувала T81 — остання з її `blocked_by`.
 T90 закрито 2026-10-03: вона розблокувала T91 і T66; T81 ще чекає на T66.
@@ -144,7 +145,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Done | T78 | S | 2026-10-02 |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Done | T75, T79 | XS | 2026-10-02 |
 | T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Todo | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | — |
-| T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74, T91, T92 | S | — |
+| T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Todo | T74, T91, T92 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Done | — | S | 2026-10-03 |
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Dropped | T74 | S | — |
 | T85 | [Кома в ціні](accept-decimal-comma-in-price.md) | Done | — | XS | 2026-10-02 |
@@ -154,7 +155,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Dropped | — | XS | — |
 | T90 | [Стрілка копіює у форму](copy-suggestion-into-form-field.md) | Done | T74, T83 | S | 2026-10-03 |
 | T91 | [Без прийняття пропозицій в `api`](drop-server-side-suggestion-accept.md) | Done | T90 | S | 2026-10-03 |
-| T92 | [Одна пропозиція на поле](keep-one-suggestion-per-field.md) | Todo | T91 | S | — |
+| T92 | [Одна пропозиція на поле](keep-one-suggestion-per-field.md) | Done | T91 | S | 2026-10-03 |
 
 ## Спільний DoD
 

@@ -1,7 +1,7 @@
 ---
 id: T92
 title: "Одна пропозиція на поле, повтор запуску — нова генерація"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2400
 blocked_by: [T91]
 blocks: [T82]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T92 — Одна пропозиція на поле, повтор запуску — нова генерація
@@ -110,9 +110,9 @@ AC-82 уже в [PRD §5](../PRD.md#5-acceptance-criteria).
 
 ## DoD
 
-- [ ] AC-82: повтор — нова генерація, подвійний клік — один запуск, рядок один на поле.
-- [ ] Тести `api` зелені, up/down міграції пройдено, `pw` пройдено, `cpr` — ACCEPT чи WARN.
-- [ ] Коміт: `feat(products): keep one suggestion per field of the card`.
+- [x] AC-82: повтор — нова генерація, подвійний клік — один запуск, рядок один на поле.
+- [x] Тести `api` зелені, up/down міграції пройдено, `pw` пройдено, `cpr` — ACCEPT чи WARN.
+- [x] Коміт: `feat(products): keep one suggestion per field of the card`.
 
 ## Links
 
