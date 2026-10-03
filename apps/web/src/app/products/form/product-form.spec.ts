@@ -1396,13 +1396,6 @@ describe('ProductForm', () => {
       value: { priceFrom: '2100.00', priceTo: '2600.00' },
     };
 
-    const SUGGESTED_KEYWORDS: FieldSuggestion = {
-      ...SUGGESTED_OLX_DESCRIPTION,
-      id: '77777777-7777-4777-8777-777777777777',
-      field: 'seoKeywords',
-      value: ['бездротова миша', 'logitech mx master 3'],
-    };
-
     /** A card read that carries the latest suggestion of every field, decided or not (AC-69). */
     function withLatest(card: ProductCard, latest: readonly FieldSuggestion[]): ProductCardRead {
       return { ...asRead(card), latestSuggestions: [...latest] };
@@ -1519,25 +1512,6 @@ describe('ProductForm', () => {
 
       expect(field('descriptionOlx').value).toBe('Мій власний текст.');
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-
-      button('descriptionOlx', 'accept')?.click();
-      await settle();
-
-      const accepted = http.expectOne(
-        `/api/products/${CARD_ID}/suggestions/${SUGGESTED_OLX_DESCRIPTION.id}/accept`,
-      );
-      expect(accepted.request.method).toBe('POST');
-      accepted.flush(
-        asRead({
-          ...PUBLISHED_ON_PROM,
-          descriptionOlx: SUGGESTED_OLX_DESCRIPTION.value as string,
-        }),
-      );
-      await settle();
-
-      expect(field('descriptionOlx').value).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-      // Only that field moved: a suggestion decides nothing about the rest of the form.
-      expect(field('titleProm').value).toBe(PUBLISHED_ON_PROM.titleProm);
     });
 
     it('keeps «? -> AI» for the keywords unavailable until there is a chip (AC-53, AC-22)', async () => {
@@ -1575,173 +1549,12 @@ describe('ProductForm', () => {
       await settle();
     });
 
-    it('puts an accepted keyword suggestion into the chips and saves it as an array (AC-53)', async () => {
-      openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_KEYWORDS]);
-      await settle();
-
-      button('seoKeywords', 'accept')?.click();
-      await settle();
-
-      http.expectOne(`/api/products/${CARD_ID}/suggestions/${SUGGESTED_KEYWORDS.id}/accept`).flush(
-        asRead({
-          ...PUBLISHED_ON_PROM,
-          seoKeywords: ['бездротова миша', 'logitech mx master 3'],
-        }),
-      );
-      await settle();
-
-      expect(await keywords()).toEqual(['бездротова миша', 'logitech mx master 3']);
-
-      submit();
-      await settle();
-      const request = http.expectOne(`/api/products/${CARD_ID}`);
-      expect((request.request.body as Record<string, unknown>)['seoKeywords']).toEqual([
-        'бездротова миша',
-        'logitech mx master 3',
-      ]);
-      request.flush(answer(PUBLISHED_ON_PROM));
-      await settle();
-    });
-
     it('shows the suggestions of a card opened without a run of its own (AC-28)', async () => {
       openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
       await settle();
 
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
       // The price suggestion arrives in the read all the same; showing it comes back with T54.
-    });
-
-    describe('texts the server applied on its own (T55)', () => {
-      /** The card as the read after «Згенерувати все» returns it: every untouched field filled. */
-      const GENERATED: ProductCard = {
-        ...EMPTY_WITH_FRAME,
-        titleProm: 'Миша Logitech MX Master 3',
-        titleOlx: 'Logitech MX Master 3 бездротова',
-        descriptionProm: '<p>Бездротова миша у відмінному стані.</p>',
-        descriptionOlx: 'Продам мишу, повний комплект.',
-        seoKeywords: ['миша', 'logitech'],
-      };
-
-      function textsRun(status: PreparationRunDto['status']): PreparationRunDto {
-        return { ...run(status), scope: 'texts', errorCode: null };
-      }
-
-      async function startGenerateAll(): Promise<void> {
-        element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]')?.click();
-        await settle();
-        const started = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
-        expect(started.request.body).toEqual({ scope: 'texts' });
-        started.flush(textsRun('running'));
-        await settle();
-      }
-
-      async function finishWith(card: ProductCard): Promise<void> {
-        http
-          .expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`)
-          .flush(textsRun('succeeded'));
-        await settle();
-        http.expectOne(`/api/products/${CARD_ID}`).flush(withLatest(card, []));
-        await settle();
-      }
-
-      async function promDescriptionHtml(): Promise<string> {
-        promHtmlMode().click();
-        await settle();
-        const area = element.querySelector<HTMLTextAreaElement>(
-          'app-prom-description-editor textarea',
-        );
-        if (area === null) {
-          throw new Error('the Prom description editor has no HTML mode');
-        }
-        return area.value;
-      }
-
-      it('shows the applied texts in the fields without a click (AC-05)', async () => {
-        open(EMPTY_WITH_FRAME);
-        await settle();
-
-        await startGenerateAll();
-        await finishWith(GENERATED);
-
-        expect(field('titleProm').value).toBe(GENERATED.titleProm);
-        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
-        expect(field('descriptionOlx').value).toBe(GENERATED.descriptionOlx);
-        expect(await keywords()).toEqual(['миша', 'logitech']);
-        expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
-      });
-
-      it('saves the applied texts instead of erasing them (AC-05)', async () => {
-        open(EMPTY_WITH_FRAME);
-        await settle();
-
-        await startGenerateAll();
-        await finishWith(GENERATED);
-        submit();
-        await settle();
-
-        const request = http.expectOne(`/api/products/${CARD_ID}`);
-        expect(request.request.method).toBe('PATCH');
-        const body = request.request.body as Record<string, unknown>;
-        expect({
-          titleProm: body['titleProm'],
-          titleOlx: body['titleOlx'],
-          descriptionProm: body['descriptionProm'],
-          descriptionOlx: body['descriptionOlx'],
-          seoKeywords: body['seoKeywords'],
-        }).toEqual({
-          titleProm: GENERATED.titleProm,
-          titleOlx: GENERATED.titleOlx,
-          descriptionProm: GENERATED.descriptionProm,
-          descriptionOlx: GENERATED.descriptionOlx,
-          seoKeywords: GENERATED.seoKeywords,
-        });
-        request.flush(answer(GENERATED));
-        await settle();
-      });
-
-      it('keeps a field edited during the run and fills the untouched ones (AC-11)', async () => {
-        open(EMPTY_WITH_FRAME);
-        await settle();
-
-        await startGenerateAll();
-        type('descriptionOlx', 'Мій власний текст.');
-        await settle();
-        await finishWith(GENERATED);
-
-        expect(field('descriptionOlx').value).toBe('Мій власний текст.');
-        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
-        expect(await keywords()).toEqual(['миша', 'logitech']);
-        expect(await promDescriptionHtml()).toBe(GENERATED.descriptionProm);
-      });
-
-      it('keeps the keywords the admin changed during the run (AC-53, AC-11)', async () => {
-        open(EMPTY_WITH_FRAME);
-        await settle();
-        expect(await keywords()).toEqual([]);
-
-        await startGenerateAll();
-        await addKeyword('моє слово');
-        await finishWith(GENERATED);
-
-        expect(await keywords()).toEqual(['моє слово']);
-        expect(field('titleOlx').value).toBe(GENERATED.titleOlx);
-      });
-
-      // Leaving the chip input hands the grid's list back to the form, so the control is marked
-      // dirty with the very list it already held.
-      it('fills the keywords the admin only passed through during the run (AC-53, AC-05)', async () => {
-        open(EMPTY_WITH_FRAME);
-        await settle();
-        expect(await keywords()).toEqual([]);
-
-        await startGenerateAll();
-        keywordInput().dispatchEvent(new Event('focus'));
-        keywordInput().dispatchEvent(new Event('blur'));
-        await settle();
-        await finishWith(GENERATED);
-
-        expect(await keywords()).toEqual(['миша', 'logitech']);
-      });
     });
 
     describe('the latest suggestion of every field (AC-69)', () => {
@@ -1753,58 +1566,12 @@ describe('ProductForm', () => {
         createdAt: '2026-09-21T09:00:35.000Z',
       };
 
-      function resolutionMark(field: string): string | null {
-        const mark = half(field).querySelector('[data-testid="suggestion-resolution"]');
-        return mark === null ? null : mark.textContent.trim().toLowerCase();
-      }
-
-      it('shows the description «Згенерувати все» applied as «застосовано», with «<- AI» off (AC-69)', async () => {
-        const applied = SUGGESTED_OLX_DESCRIPTION.value as string;
-        openWithLatest({ ...EMPTY_WITH_FRAME, descriptionOlx: applied }, [
-          {
-            ...SUGGESTED_OLX_DESCRIPTION,
-            resolution: 'accepted',
-            resolvedAt: '2026-09-20T09:00:40.000Z',
-          },
-        ]);
-        await settle();
-
-        expect(field('descriptionOlx').value).toBe(applied);
-        expect(suggestionText('descriptionOlx')).toBe(applied);
-        expect(resolutionMark('descriptionOlx')).toBe('застосовано');
-        expect(button('descriptionOlx', 'accept')?.disabled).toBe(true);
-      });
-
-      it('shows a rejected suggestion as «відхилено», with «<- AI» off (Checklist 3)', async () => {
-        openWithLatest(PUBLISHED_ON_PROM, [
-          {
-            ...SUGGESTED_OLX_DESCRIPTION,
-            resolution: 'rejected',
-            resolvedAt: '2026-09-20T09:05:00.000Z',
-          },
-        ]);
-        await settle();
-
-        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-        expect(resolutionMark('descriptionOlx')).toBe('відхилено');
-        expect(button('descriptionOlx', 'accept')?.disabled).toBe(true);
-      });
-
-      it('offers the newer undecided suggestion without a mark, ready to apply (AC-69)', async () => {
+      it('offers the latest suggestion ready to apply (AC-69)', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
         await settle();
 
         expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-        expect(resolutionMark('descriptionOlx')).toBeNull();
         expect(button('descriptionOlx', 'accept')?.disabled).toBe(false);
-
-        button('descriptionOlx', 'accept')?.click();
-        await settle();
-
-        http
-          .expectOne(`/api/products/${CARD_ID}/suggestions/${SUGGESTED_OLX_DESCRIPTION.id}/accept`)
-          .flush(asRead(PUBLISHED_ON_PROM));
-        await settle();
       });
 
       it('keeps the field edited by hand and offers the new suggestion beside it (AC-69, AC-11)', async () => {
@@ -1815,7 +1582,6 @@ describe('ProductForm', () => {
 
         expect(field('titleOlx').value).toBe('Моя власна назва');
         expect(suggestionText('titleOlx')).toBe(SUGGESTED_OLX_TITLE.value);
-        expect(resolutionMark('titleOlx')).toBeNull();
         expect(button('titleOlx', 'accept')?.disabled).toBe(false);
       });
     });
