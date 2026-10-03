@@ -8,9 +8,8 @@ import type { FieldSuggestion } from '@contracts/products.contract';
  * The right half of a paired field (mockup 2026-09-12): the model's latest suggestion beside the
  * value the admin is editing, never instead of it (AC-11).
  *
- * Shown, not edited — for every field, not only the price. Accepting a suggestion copies what the
- * server stored (`acceptSuggestion` takes an identifier, not a value, T30), so a correction made
- * here would go nowhere. The admin edits on the left, after «<- AI» brought the text over.
+ * Shown, not edited — for every field, not only the price. The admin edits on the left, after
+ * «<- AI» brought the text over (AC-81).
  */
 @Component({
   selector: 'app-suggestion-field',
@@ -40,11 +39,10 @@ export class SuggestionField {
    * no longer swallows the click — it is gated here. */
   protected readonly canLaunch = computed(() => this.canRewrite() && !this.busy());
   protected readonly text = computed(() => describe(this.suggestion()?.value));
-  /** A suggestion already accepted or rejected is shown with its decision, not offered again (AC-69). */
-  protected readonly canAccept = computed(() => {
-    const suggestion = this.suggestion();
-    return this.acceptable() && suggestion !== null && !suggestion.resolution && !this.busy();
-  });
+  /** A suggestion has no decision of its own: it is offered for as long as it is the latest (AC-69). */
+  protected readonly canAccept = computed(
+    () => this.acceptable() && this.suggestion() !== null && !this.busy(),
+  );
 }
 
 /** Polymorphic by field, the way the column is: a text, a keyword list or a price range. */

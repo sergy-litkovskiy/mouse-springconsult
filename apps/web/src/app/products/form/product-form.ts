@@ -61,6 +61,7 @@ import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductsApi } from '../products-api';
 import { runFailureMessages } from '../run-failure-messages';
 import { PromDescriptionEditor } from './prom-description-editor';
+import { promDescriptionFromText } from './prom-description-from-text';
 import { SuggestionField } from './suggestion-field';
 
 /**
@@ -115,14 +116,6 @@ const DISCARD_QUESTION: ConfirmDialogData = {
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
   { value: 'used', label: 'б/в' },
   { value: 'new', label: 'Новий' },
-];
-
-const REWRITABLE_FIELDS: readonly RewritableField[] = [
-  'titleProm',
-  'titleOlx',
-  'descriptionProm',
-  'descriptionOlx',
-  'seoKeywords',
 ];
 
 function parseKeywords(text: string): string[] {
@@ -453,29 +446,24 @@ export class ProductForm {
   }
 
   /**
-   * Copies what the server stored into the field on the left, and only that field: the rest of the
-   * form may hold edits of its own, and a suggestion decides nothing about them (AC-11).
+   * Copies the suggestion into the field on the left, and only that field, without a request: the
+   * card changes on «Зберегти» alone (AC-81, ADR 0017). The rest of the form may hold edits of its
+   * own, and a suggestion decides nothing about them (AC-11).
    */
-  protected async acceptSuggestion(field: RewritableField): Promise<void> {
-    const id = this.productId();
-    const suggestion = this.suggestionFor(field);
-    if (id === null || suggestion === null) {
+  protected acceptSuggestion(field: RewritableField): void {
+    const value = this.suggestionFor(field)?.value;
+    if (value === undefined) {
       return;
     }
 
-    this.formError.set(null);
-    try {
-      const card = await firstValueFrom(this.api.acceptSuggestion(id, suggestion.id));
-      this.card.set(card);
-      this.images.set(card.images);
-      if (field === 'seoKeywords') {
-        this.form.controls.seoKeywords.setValue(card.seoKeywords);
-      } else {
-        this.form.controls[field].setValue(card[field]);
-      }
-      this.changed.set(true);
-    } catch (error: unknown) {
-      this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));
+    if (field === 'seoKeywords') {
+      this.form.controls.seoKeywords.setValue(
+        (value as readonly string[]).slice(0, productConstraints.maxKeywords),
+      );
+    } else if (field === 'descriptionProm') {
+      this.form.controls.descriptionProm.setValue(promDescriptionFromText(value as string));
+    } else {
+      this.form.controls[field].setValue(value as string);
     }
   }
 
@@ -495,12 +483,8 @@ export class ProductForm {
   }
 
   /**
-   * Re-reads the card and fills only the texts the admin has not touched: the server writes a text
-   * straight into an empty field (AC-05), and the form would otherwise save the blank over it. What
-   * the admin typed while the run was going stays (AC-11), and the suggestions arrive beside it.
-   *
-   * The keywords are compared with the card as read rather than asked whether they are dirty: the
-   * chip grid hands its list back to the form on every blur, so merely passing through marks them.
+   * Re-reads the card for its suggestions and leaves the fields alone: a run writes nothing into
+   * the card (ADR 0017), and what the admin typed while it was going stays (AC-11).
    */
   private async reread(): Promise<void> {
     const id = this.productId();
@@ -508,23 +492,9 @@ export class ProductForm {
       return;
     }
     try {
-      const read = this.card()?.seoKeywords ?? [];
       const card = await firstValueFrom(this.api.getById(id));
       this.card.set(card);
       this.images.set(card.images);
-      for (const field of REWRITABLE_FIELDS) {
-        if (field === 'seoKeywords') {
-          const keywords = this.form.controls.seoKeywords;
-          if (sameKeywords(keywords.value, read)) {
-            keywords.setValue(card.seoKeywords);
-          }
-          continue;
-        }
-        const control = this.form.controls[field];
-        if (!control.dirty) {
-          control.setValue(card[field]);
-        }
-      }
       this.changed.set(true);
     } catch {
       // The run is already reported; a failed re-read would only replace that message with a

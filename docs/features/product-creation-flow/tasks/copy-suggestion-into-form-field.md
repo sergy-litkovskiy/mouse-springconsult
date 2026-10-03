@@ -1,7 +1,7 @@
 ---
 id: T90
 title: "Стрілка «<- AI» копіює пропозицію в поле форми"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2600
 blocked_by: [T74, T83]
 blocks: [T66, T81, T91]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T90 — Стрілка «<- AI» копіює пропозицію в поле форми
@@ -113,9 +113,9 @@ AC-81 і переписане AC-69 уже в [PRD §5](../PRD.md#5-acceptance-c
 
 ## DoD
 
-- [ ] AC-81 і AC-69: стрілка копіює у форму, картку пише лише «Зберегти».
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): copy a field suggestion into the form`.
+- [x] AC-81 і AC-69: стрілка копіює у форму, картку пише лише «Зберегти».
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): copy a field suggestion into the form`.
 
 ## Links
 

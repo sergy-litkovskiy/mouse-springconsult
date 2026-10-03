@@ -3,9 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import type { PreparationRunDto, PreparationRunRequest } from '@contracts/ai.contract';
 import type {
-  FieldSuggestion,
   Product,
-  ProductCardRead,
   ProductCreate,
   ProductImage,
   ProductUpdate,
@@ -43,7 +41,6 @@ const PRODUCT: Product = {
 };
 
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
-const SUGGESTION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 const QUEUED_RUN: PreparationRunDto = {
   id: RUN_ID,
@@ -58,26 +55,6 @@ const QUEUED_RUN: PreparationRunDto = {
   createdAt: '2026-09-20T09:00:00.000Z',
   startedAt: null,
   finishedAt: null,
-};
-
-const SUGGESTED_OLX_DESCRIPTION = 'Продам мишу Logitech MX Master 3, повний комплект.';
-
-const SUGGESTION: FieldSuggestion = {
-  id: SUGGESTION_ID,
-  runId: RUN_ID,
-  field: 'descriptionOlx',
-  value: SUGGESTED_OLX_DESCRIPTION,
-  resolution: null,
-  resolvedAt: null,
-  createdAt: '2026-09-20T09:00:30.000Z',
-};
-
-const CARD_WITH_SUGGESTION: ProductCardRead = {
-  ...PRODUCT,
-  isReady: true,
-  latestSuggestions: [SUGGESTION],
-  totalInputTokens: 1200,
-  totalOutputTokens: 800,
 };
 
 describe('ProductsApi', () => {
@@ -294,42 +271,5 @@ describe('ProductsApi', () => {
     request.flush(finished);
 
     expect(await pending).toEqual(finished);
-  });
-
-  it('accepts one suggestion and answers with the recounted card (AC-11)', async () => {
-    const accepted: ProductCardRead = {
-      ...CARD_WITH_SUGGESTION,
-      descriptionOlx: SUGGESTED_OLX_DESCRIPTION,
-      latestSuggestions: [
-        { ...SUGGESTION, resolution: 'accepted', resolvedAt: '2026-09-20T09:01:00.000Z' },
-      ],
-    };
-
-    const pending = firstValueFrom(api.acceptSuggestion(PRODUCT_ID, SUGGESTION_ID));
-    const request = http.expectOne(
-      `/api/products/${PRODUCT_ID}/suggestions/${SUGGESTION_ID}/accept`,
-    );
-    expect(request.request.method).toBe('POST');
-    request.flush(accepted);
-
-    expect(await pending).toEqual(accepted);
-  });
-
-  it('rejects one suggestion and answers with the recounted card', async () => {
-    const rejected: ProductCardRead = {
-      ...CARD_WITH_SUGGESTION,
-      latestSuggestions: [
-        { ...SUGGESTION, resolution: 'rejected', resolvedAt: '2026-09-20T09:01:00.000Z' },
-      ],
-    };
-
-    const pending = firstValueFrom(api.rejectSuggestion(PRODUCT_ID, SUGGESTION_ID));
-    const request = http.expectOne(
-      `/api/products/${PRODUCT_ID}/suggestions/${SUGGESTION_ID}/reject`,
-    );
-    expect(request.request.method).toBe('POST');
-    request.flush(rejected);
-
-    expect(await pending).toEqual(rejected);
   });
 });

@@ -102,22 +102,6 @@ export class ProductsApi {
       { withCredentials: true },
     );
   }
-
-  acceptSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
-    return this.http.post<ProductCardRead>(
-      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/accept`,
-      null,
-      { withCredentials: true },
-    );
-  }
-
-  rejectSuggestion(productId: string, suggestionId: string): Observable<ProductCardRead> {
-    return this.http.post<ProductCardRead>(
-      `${this.baseUrl}/${productId}/suggestions/${suggestionId}/reject`,
-      null,
-      { withCredentials: true },
-    );
-  }
 }
 
 type QueryParamValue = string | number | boolean | readonly string[];

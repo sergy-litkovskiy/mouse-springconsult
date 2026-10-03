@@ -18,9 +18,9 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T90 — поставка 3, UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
-T91 чекає на T90, T92 — на T91; T66 чекає на T90. Зачистка номерів з коду: T81 чекає на T66
-і T90, T82 — на T91 і T92.
+**Готові до старту:** T91, T66 — поставка 3, пропозиції в `api` і UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
+T92 чекає на T91. Зачистка номерів з коду: T81 чекає на T66, T82 — на T91 і T92.
+T90 закрито 2026-10-03: вона розблокувала T91 і T66; T81 ще чекає на T66.
 T89 скасовано 2026-10-03 (`Dropped`): падіння не відтворилось на 120 прогонах під навантаженням; ребро до T81 знято.
 T87 закрито 2026-10-03 й нічого не розблокувала: T81 ще чекає на решту своїх `blocked_by`.
 T86 закрито 2026-10-03 й нічого не розблокувала: від неї ніщо не залежить.
@@ -127,7 +127,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Done | — | S | 2026-09-24 |
 | T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Done | — | XS | 2026-09-25 |
 | T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Done | T64 | S | 2026-09-27 |
-| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Blocked | T58, T59, T73, T74, T90 | S | — |
+| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Todo | T58, T59, T73, T74, T90 | S | — |
 | T67 | [Назви Prom/OLX із «Згенерувати все»](generate-titles-with-texts.md) | Done | — | S | 2026-09-27 |
 | T68 | [Опис Prom після повторного відкриття](keep-prom-description-on-reopen.md) | Done | — | XS | 2026-10-02 |
 | T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Done | — | XS | 2026-09-27 |
@@ -151,8 +151,8 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Done | T80 | XS | 2026-10-03 |
 | T88 | [Spec-и чекають редактор за часом](wait-for-prom-editor-by-time-in-specs.md) | Done | — | XS | 2026-10-02 |
 | T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Dropped | — | XS | — |
-| T90 | [Стрілка копіює у форму](copy-suggestion-into-form-field.md) | Todo | T74, T83 | S | — |
-| T91 | [Без прийняття пропозицій в `api`](drop-server-side-suggestion-accept.md) | Blocked | T90 | S | — |
+| T90 | [Стрілка копіює у форму](copy-suggestion-into-form-field.md) | Done | T74, T83 | S | 2026-10-03 |
+| T91 | [Без прийняття пропозицій в `api`](drop-server-side-suggestion-accept.md) | Todo | T90 | S | — |
 | T92 | [Одна пропозиція на поле](keep-one-suggestion-per-field.md) | Blocked | T91 | S | — |
 
 ## Спільний DoD
