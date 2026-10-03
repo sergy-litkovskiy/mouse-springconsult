@@ -39,10 +39,10 @@
 
 ## Що лишилось
 
-### Поставка 3 — відкриті задачі (T66, T68, T70, T72–T76, T78–T83, T85–T92)
+### Поставка 3 — відкриті задачі (T66, T68, T70, T72–T76, T78–T83, T85–T93)
 
 Закриті T56–T65, T67, T69, T71 і T77 переїхали в [архів](_audit/execution-plan-archive.md). Відкриті — запити
-2026-09-23 (T68–T74), 2026-09-25 (T75, T76), 2026-09-30 (T78–T82) і UX-аудит 2026-10-02 (T83–T87); T88 заведено 2026-10-02 за нестабільним тестом, знайденим під час T70, а T89 — того ж дня за ще одним, знайденим під час T88; T89 скасовано 2026-10-03, бо падіння не відтворилось. T90–T92 заведено 2026-10-02 замість скасованої T84 ([ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)). Граф лишає T68, T70, T72, T75, T76 і T78
+2026-09-23 (T68–T74), 2026-09-25 (T75, T76), 2026-09-30 (T78–T82) і UX-аудит 2026-10-02 (T83–T87); T88 заведено 2026-10-02 за нестабільним тестом, знайденим під час T70, а T89 — того ж дня за ще одним, знайденим під час T88; T89 скасовано 2026-10-03, бо падіння не відтворилось. T90–T92 заведено 2026-10-02 замість скасованої T84 ([ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)), а T93 — 2026-10-03, коли довга пропозиція зсунула кнопки AI донизу. Граф лишає T68, T70, T72, T75, T76 і T78
 незалежними, а ланцюжки має лише для AI-кнопок поля (T72 → T73 → T74 → T66), каталогу (T78 → T79 → T80) і
 зачистки коду (T81, T82). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
 
@@ -72,6 +72,8 @@
   лише сторінку входу.
 - **T88** — поза доріжками, але стоїть одразу за T70: нестабільний тест редактора зрідка червонить гейти `/tdd` і
   `feature-ship` кожної наступної `web`-задачі. Правка лише в хелперах очікування двох spec-файлів, тож T81 її чекає.
+- **T93** — поза доріжками: правка лише `suggestion-field.css`, якого не чіпає жодна відкрита задача, а номерів задач у
+  ньому немає, тож ребра до T81 теж немає. Її можна взяти будь-коли, і зручно до T81: `pw` T93 відкриває ту саму форму.
 
 Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно лише в різних
 гілках, і тоді друга ребейзиться на першу.
@@ -99,12 +101,13 @@
 | 18 | T87 | Назва OLX другим рядком | `tdd` | `pw` на 1280 і 360 px; картку з різними назвами дати через `page.route` на `GET /products` | — | Правка наявних `product-catalog.*`, стоїть за T80. RED переписує тести колонки `titleOlx`, а не видаляє. Кольори й шрифт — токени Material. `PRD.md §5` — руками |
 | 19 | T81 | Зачистка номерів у `web` | `goal` | — | — | Механічна правка з вимірюваним DoD: `rg` і кількість тестів (умова нижче). `*.spec.ts` тут міняються (назви тестів), тож обмеження «нуль змін у spec» замінює рівність кількості тестів до й після. Правка `tdd-test-writer.md` і речення в `CLAUDE.md` — теж у Checklist |
 | 20 | T82 | Зачистка номерів в `api` | `goal` | — | — | Те саме для `api`; у міграціях міняються лише коментарі. Кількість тестів фіксується в першому ж ході |
+| 21 | T93 | Кнопки AI вгорі, пропозиція з межею | `goal` | `pw` на 1280 і 360 px без платних викликів: довгу пропозицію дати через `page.route` на `GET /api/products/<id>` | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getBoundingClientRect` панелі й першої кнопки поля (умова нижче). Дві декларації в одному файлі, тож `tdd` нічого б не дав. Тести форми мають лишитися зеленими без правок. `PRD.md §5` (AC-83) входить в умову |
 
 Кроки `PRD.md §5` і `openapi.yaml` у story агенти `/tdd` не роблять: вони правлять лише код.
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
 done», тож їх робить сам цикл.
 
-**Готові умови `/goal` для T75, T76, T78, T80, T81, T82 і T88** — за шаблоном нижче:
+**Готові умови `/goal` для T75, T76, T78, T80, T81, T82, T88 і T93** — за шаблоном нижче:
 
 ```
 /goal docs/features/product-creation-flow/tasks/compact-app-typography.md: every Checklist item is done, with playwright-cli on /products at 1280 px the computed `font-size` of `body` is 13px and of `.catalog__header h1` is 20px, on an open card the computed `font-size` of `textarea[formcontrolname="titleProm"]` is 14px and no `mat-label` or `mat-hint` has a computed `font-size` below 11px, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth` on /products and with the card open, screenshots of the catalogue and the open card at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
@@ -132,6 +135,10 @@ done», тож їх робить сам цикл.
 
 ```
 /goal docs/features/product-creation-flow/tasks/wait-for-prom-editor-by-time-in-specs.md: every Checklist item is done, the reply names the failing test and its error for two failed runs of `docker compose run --rm --no-deps -e NO_COLOR=1 web npm run test` recorded before the first edit, `git diff --name-only` lists only `apps/web/src/app/products/form/prom-description-editor.spec.ts` and `apps/web/src/app/products/form/product-form.spec.ts`, `git diff -U0 -- '*.spec.ts' | rg '^[-+]\s*(await )?expect'` prints nothing, after the edit 30 consecutive runs of `docker compose run --rm --no-deps -e NO_COLOR=1 web npm run test` exit 0 and each prints the same `Tests` line as the first run before the edit, `docker compose run --rm web npm run lint` exits 0; do not commit and do not edit tracker.md
+```
+
+```
+/goal docs/features/product-creation-flow/tasks/cap-suggestion-height-and-pin-ai-buttons.md: every Checklist item is done, with playwright-cli on an open card whose `GET /api/products/<id>` response is rewritten through `page.route` so that the `descriptionOlx` entry of `latestSuggestions` holds 40 paragraphs, at 1280 px and at 360 px `[data-field="descriptionOlx"] .suggestion__value` has a `getBoundingClientRect()` height of at most 384 px and a `scrollHeight` greater than its `clientHeight`, the top of `[data-field="descriptionOlx"] [data-testid="rewrite"]` is within 1 px of the top of that `.suggestion__value`, and the same holds for `[data-field="titleProm"]`, at 360 px the dialog has no horizontal scroll, screenshots of the description row at both widths are saved, no paid preparation run is started, `git diff --name-only -- apps/web/src` lists only `apps/web/src/app/products/form/suggestion-field.css`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 ## Відкладено
