@@ -38,14 +38,12 @@ export type ProductSaving = ProductReading & {
 };
 
 /** The repository hands them over oldest first, so the last one put in for a field is its latest. */
-function latestPerField(
-  suggestions: readonly FieldSuggestion[],
-): Map<SuggestionField, FieldSuggestion> {
+function latestPerField(suggestions: readonly FieldSuggestion[]): FieldSuggestion[] {
   const latest = new Map<SuggestionField, FieldSuggestion>();
   for (const suggestion of suggestions) {
     latest.set(suggestion.field, suggestion);
   }
-  return latest;
+  return [...latest.values()];
 }
 
 function capKeywords(keywords: string[]): {
@@ -87,19 +85,11 @@ export class ProductService {
 
     const suggestions = await this.preparations.findSuggestions(id);
 
-    return this.toCardReading(id, product, [...latestPerField(suggestions).values()]);
-  }
-
-  private async toCardReading(
-    productId: string,
-    product: Product,
-    latestSuggestions: readonly FieldSuggestion[],
-  ): Promise<ProductCardReading> {
     return {
       product,
       isReady: this.isReady(product),
-      tokens: await this.preparations.sumTokens(productId),
-      latestSuggestions,
+      tokens: await this.preparations.sumTokens(id),
+      latestSuggestions: latestPerField(suggestions),
     };
   }
 
