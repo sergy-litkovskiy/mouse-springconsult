@@ -15,10 +15,12 @@ import {
   MatChipInputHarness,
   type MatChipRowHarness,
 } from '@angular/material/chips/testing';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { MatSlideToggleHarness } from '@angular/material/slide-toggle/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, type Observable, Subject } from 'rxjs';
 import type { PreparationRunDto } from '@contracts/ai.contract';
 import type { ApiError } from '@contracts/error.contract';
 import type {
@@ -29,6 +31,7 @@ import type {
   ProductImage,
   ProductUpdateResponse,
 } from '@contracts/products.contract';
+import { ConfirmDialog } from '../../confirm-dialog';
 import { ProductForm, type ProductFormData } from './product-form';
 
 const CARD_ID = '11111111-1111-4111-8111-111111111111';
@@ -82,6 +85,13 @@ const WITHOUT_OLX_DESCRIPTION_AND_PRICE: ProductCard = {
   isReady: false,
 };
 
+type DialogRefDouble = {
+  close: ReturnType<typeof vi.fn>;
+  disableClose: boolean | undefined;
+  keydownEvents: () => Observable<KeyboardEvent>;
+  backdropClick: () => Observable<MouseEvent>;
+};
+
 function answer(card: ProductCard, discardedKeywordsCount = 0): ProductUpdateResponse {
   return { ...card, discardedKeywordsCount };
 }
@@ -91,6 +101,23 @@ describe('ProductForm', () => {
   let http: HttpTestingController;
   let element: HTMLElement;
   let close: ReturnType<typeof vi.fn>;
+  let dialogRef: DialogRefDouble;
+  let keydown: Subject<KeyboardEvent>;
+  let backdrop: Subject<MouseEvent>;
+
+  /** What the catalogue's dialog hands the form: Esc and a click past it arrive as events. */
+  function dialogRefDouble(): DialogRefDouble {
+    close = vi.fn();
+    keydown = new Subject<KeyboardEvent>();
+    backdrop = new Subject<MouseEvent>();
+    dialogRef = {
+      close,
+      disableClose: false,
+      keydownEvents: () => keydown.asObservable(),
+      backdropClick: () => backdrop.asObservable(),
+    };
+    return dialogRef;
+  }
 
   /**
    * The dialog is handed an identifier and reads the card itself, so a test that opens an existing
@@ -101,14 +128,13 @@ describe('ProductForm', () => {
     options: { readAfterFirstRender?: boolean } = {},
   ): void {
     const data: ProductFormData = { productId: product?.id ?? null };
-    close = vi.fn();
     TestBed.configureTestingModule({
       imports: [ProductForm],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: MatDialogRef, useValue: { close } },
+        { provide: MatDialogRef, useValue: dialogRefDouble() },
       ],
     });
     fixture = TestBed.createComponent(ProductForm);
@@ -1049,6 +1075,307 @@ describe('ProductForm', () => {
       expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
   });
+  describe('closing a card with unsaved edits (AC-76)', () => {
+    const SECOND_FRAME: ProductImage = {
+      ...FRAME,
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      r2Key: `products/${CARD_ID}/back.jpg`,
+      url: `https://r2.example.com/products/${CARD_ID}/back.jpg`,
+      position: 1,
+      isMain: false,
+    };
+
+    const TWO_FRAMES: ProductCard = { ...PUBLISHED_ON_PROM, images: [FRAME, SECOND_FRAME] };
+
+    const WAYS_OUT: readonly (readonly [string, () => void])[] = [
+      ['Esc', pressEscape],
+      [
+        'a click past the dialog',
+        () => {
+          backdrop.next(new MouseEvent('click'));
+        },
+      ],
+      [
+        '«Скасувати»',
+        () => {
+          cancelButton().click();
+        },
+      ],
+    ];
+
+    const EDITS: readonly (readonly [string, () => Promise<void>])[] = [
+      ['the Prom title', () => typeIn('titleProm', 'Миша Logitech MX Master 3S')],
+      ['the OLX title', () => typeIn('titleOlx', 'Logitech MX Master 3S')],
+      ['the Prom description', () => typePromDescription('<p>Інший опис.</p>')],
+      ['the OLX description', () => typeIn('descriptionOlx', 'Продам мишу без коробки.')],
+      ['the keywords', () => removeKeyword(0)],
+      ['the price', () => typeIn('price', '2600.00')],
+      ['the category', () => typeIn('category', 'Миші')],
+      ['the condition', () => pickCondition('Новий')],
+      ['the Prom mark', () => flip('Опубліковано на Prom')],
+      ['the OLX mark', () => flip('Опубліковано на OLX')],
+    ];
+
+    beforeEach(() => {
+      // The question closes only once its exit animation is over; settle() does not wait it out.
+      TestBed.configureTestingModule({
+        providers: [{ provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } }],
+      });
+    });
+
+    afterEach(async () => {
+      TestBed.inject(MatDialog).closeAll();
+      await settle();
+    });
+
+    function typeIn(name: string, value: string): Promise<void> {
+      type(name, value);
+      return settle();
+    }
+
+    function pressEscape(): void {
+      keydown.next(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+    }
+
+    function cancelButton(): HTMLButtonElement {
+      const button = [
+        ...element.querySelectorAll<HTMLButtonElement>('mat-dialog-actions button'),
+      ].find((candidate) => candidate.textContent.trim() === 'Скасувати');
+      if (button === undefined) {
+        throw new Error('no cancel button');
+      }
+      return button;
+    }
+
+    async function pickCondition(label: string): Promise<void> {
+      const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(
+        MatSelectHarness.with({ selector: '[formcontrolname="condition"]' }),
+      );
+      await select.clickOptions({ text: label });
+      await settle();
+    }
+
+    async function flip(label: string): Promise<void> {
+      await (await toggle(label)).toggle();
+      await settle();
+    }
+
+    function dialogs() {
+      return TestBed.inject(MatDialog).openDialogs;
+    }
+
+    /** The question opens in the overlay on the body, outside the form's own element. */
+    function question(): HTMLElement | null {
+      return document.querySelector<HTMLElement>('app-confirm-dialog');
+    }
+
+    function questionButton(label: string): HTMLButtonElement | undefined {
+      const buttons = question()?.querySelectorAll<HTMLButtonElement>('button') ?? [];
+      return [...buttons].find((candidate) => candidate.textContent.trim() === label);
+    }
+
+    function expectQuestion(): void {
+      expect(dialogs().length).toBe(1);
+      expect(dialogs()[0]?.componentInstance).toBeInstanceOf(ConfirmDialog);
+      expect(question()?.textContent).toContain('Закрити без збереження?');
+      expect(question()?.textContent).toContain('Правки в полях картки буде втрачено.');
+      expect(questionButton('Закрити без збереження')).toBeDefined();
+      expect(questionButton('Скасувати')).toBeDefined();
+    }
+
+    async function answerQuestion(label: 'Скасувати' | 'Закрити без збереження'): Promise<void> {
+      const button = questionButton(label);
+      if (button === undefined) {
+        throw new Error(`no question with «${label}» is open`);
+      }
+      button.click();
+      await settle();
+      await settle();
+    }
+
+    function expectNoPatch(): void {
+      http.expectNone((request) => request.method === 'PATCH');
+    }
+
+    it('keeps the dialog from closing by itself on Esc or a click past it (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      expect(dialogRef.disableClose).toBe(true);
+    });
+
+    for (const [way, leave] of WAYS_OUT) {
+      it(`asks «Закрити без збереження?» on ${way} and keeps the edited card open (AC-76)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        type('titleOlx', 'Logitech MX Master 3S');
+        await settle();
+
+        leave();
+        await settle();
+
+        expect(close).not.toHaveBeenCalled();
+        expectQuestion();
+        expect(field('titleOlx').value).toBe('Logitech MX Master 3S');
+        expectNoPatch();
+      });
+    }
+
+    for (const [name, edit] of EDITS) {
+      it(`asks before discarding an edit of ${name} (AC-76)`, async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        await edit();
+        await settle();
+
+        pressEscape();
+        await settle();
+
+        expect(close).not.toHaveBeenCalled();
+        expectQuestion();
+      });
+    }
+
+    it('asks before discarding what was typed into a new card (AC-76)', async () => {
+      open(null);
+      await settle();
+      const created = firstValueFrom(fixture.componentInstance.ensureProduct());
+      http.expectOne('/api/products').flush({ ...WITHOUT_FRAMES });
+      await created;
+      fixture.componentInstance.imagesChanged([FRAME]);
+      await settle();
+      type('titleProm', 'Миша Logitech MX Master 3');
+      await settle();
+
+      pressEscape();
+      await settle();
+
+      expect(close).not.toHaveBeenCalled();
+      expectQuestion();
+    });
+
+    it('goes back to the card with its edits when the question is cancelled (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+      type('titleOlx', 'Logitech MX Master 3S');
+      await settle();
+      pressEscape();
+      await settle();
+
+      await answerQuestion('Скасувати');
+
+      expect(close).not.toHaveBeenCalled();
+      expect(dialogs().length).toBe(0);
+      expect(field('titleOlx').value).toBe('Logitech MX Master 3S');
+      expectNoPatch();
+    });
+
+    it('closes the card without a PATCH once discarding is confirmed (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+      type('titleOlx', 'Logitech MX Master 3S');
+      await settle();
+      pressEscape();
+      await settle();
+
+      await answerQuestion('Закрити без збереження');
+
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(dialogs().length).toBe(0);
+      expectNoPatch();
+    });
+
+    it('closes at once on Esc, a click past it and «Скасувати» when the card was only opened (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+
+      for (const [way, leave] of WAYS_OUT) {
+        const before = close.mock.calls.length;
+        leave();
+        await settle();
+
+        expect(close.mock.calls.length, way).toBe(before + 1);
+        expect(close, way).toHaveBeenLastCalledWith(false);
+        expect(dialogs().length, way).toBe(0);
+      }
+    });
+
+    it('reads the empty price field of an unpriced card as "0.00", not as an edit (AC-76)', async () => {
+      open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
+      await settle();
+      expect(field('price').value).toBe('');
+
+      pressEscape();
+      await settle();
+
+      expect(close).toHaveBeenCalledWith(false);
+      expect(dialogs().length).toBe(0);
+    });
+
+    it('closes at once after the keywords were only passed through (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+      keywordInput().dispatchEvent(new Event('focus'));
+      keywordInput().dispatchEvent(new Event('blur'));
+      await settle();
+
+      pressEscape();
+      await settle();
+
+      expect(close).toHaveBeenCalledWith(false);
+      expect(dialogs().length).toBe(0);
+    });
+
+    it('closes at once when an edited field was typed back to what the card holds (AC-76)', async () => {
+      open(PUBLISHED_ON_PROM);
+      await settle();
+      type('titleOlx', 'Logitech MX Master 3S');
+      await settle();
+      type('titleOlx', PUBLISHED_ON_PROM.titleOlx);
+      await settle();
+
+      pressEscape();
+      await settle();
+
+      expect(close).toHaveBeenCalledWith(false);
+      expect(dialogs().length).toBe(0);
+    });
+
+    for (const [change, card, frames] of [
+      ['added', PUBLISHED_ON_PROM, [FRAME, SECOND_FRAME]],
+      ['removed', TWO_FRAMES, [FRAME]],
+    ] as const) {
+      it(`closes at once after a frame was ${change}, telling the catalogue to re-read (AC-76)`, async () => {
+        open(card);
+        await settle();
+        fixture.componentInstance.imagesChanged(frames);
+        await settle();
+
+        pressEscape();
+        await settle();
+
+        expect(close).toHaveBeenCalledWith(true);
+        expect(dialogs().length).toBe(0);
+      });
+    }
+
+    it('closes a new card at once after its first frame, telling the catalogue to re-read (AC-76)', async () => {
+      open(null);
+      await settle();
+      const created = firstValueFrom(fixture.componentInstance.ensureProduct());
+      http.expectOne('/api/products').flush({ ...WITHOUT_FRAMES });
+      await created;
+      fixture.componentInstance.imagesChanged([FRAME]);
+      await settle();
+
+      pressEscape();
+      await settle();
+
+      expect(close).toHaveBeenCalledWith(true);
+      expect(dialogs().length).toBe(0);
+    });
+  });
+
   describe('the preparation panel (T32)', () => {
     const RUN_ID = '44444444-4444-4444-8444-444444444444';
 
@@ -1083,14 +1410,13 @@ describe('ProductForm', () => {
 
     function openWithLatest(card: ProductCard, latest: readonly FieldSuggestion[]): void {
       const data: ProductFormData = { productId: card.id };
-      close = vi.fn();
       TestBed.configureTestingModule({
         imports: [ProductForm],
         providers: [
           provideHttpClient(),
           provideHttpClientTesting(),
           { provide: MAT_DIALOG_DATA, useValue: data },
-          { provide: MatDialogRef, useValue: { close } },
+          { provide: MatDialogRef, useValue: dialogRefDouble() },
         ],
       });
       fixture = TestBed.createComponent(ProductForm);

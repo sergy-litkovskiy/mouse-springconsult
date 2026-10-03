@@ -279,7 +279,7 @@
   @if (formError(); as message) {
     <p class="card-message card-message--error" role="alert">{{ message }}</p>
   }
-  <button matButton type="button" [mat-dialog-close]="changed()">Скасувати</button>
+  <button matButton type="button" (click)="requestClose()">Скасувати</button>
   <button matButton="filled" type="submit" form="product-form" [disabled]="!canSave()">
     Зберегти
   </button>
