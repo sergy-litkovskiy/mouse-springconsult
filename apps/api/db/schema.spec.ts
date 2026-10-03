@@ -41,12 +41,13 @@ async function insertRun(
   productId: string,
   idempotencyKey: string,
   scope = 'both',
+  status = 'queued',
 ): Promise<string> {
   const rows = await dataSource.query<{ id: string }[]>(
     `insert into "product_preparation_runs" ("product_id", "scope", "idempotency_key", "status", "model")
-     values ($1, $2, $3, 'queued', 'claude-sonnet-5')
+     values ($1, $2, $3, $4, 'claude-sonnet-5')
      returning "id"`,
-    [productId, scope, idempotencyKey],
+    [productId, scope, idempotencyKey, status],
   );
 
   const id = rows[0]?.id;
@@ -55,15 +56,15 @@ async function insertRun(
 }
 
 async function insertSuggestion(
+  productId: string,
   runId: string,
   field: string,
   value: unknown,
-  resolution: string | null = null,
 ): Promise<void> {
   await dataSource.query(
-    `insert into "product_field_suggestions" ("run_id", "field", "value", "resolution")
-     values ($1, $2, $3::jsonb, $4)`,
-    [runId, field, JSON.stringify(value), resolution],
+    `insert into "product_field_suggestions" ("product_id", "run_id", "field", "value")
+     values ($1, $2, $3, $4::jsonb)`,
+    [productId, runId, field, JSON.stringify(value)],
   );
 }
 
@@ -167,7 +168,7 @@ describe('database schema constraints', () => {
     );
   });
 
-  it('finds the paid run again instead of letting the same input start a second one', async () => {
+  it('finds the run still going instead of letting the same input start a second one', async () => {
     const productId = await insertProduct();
     await insertRun(productId, 'card:both:frames-hash');
 
@@ -175,6 +176,13 @@ describe('database schema constraints', () => {
       insertRun(productId, 'card:both:frames-hash'),
       /product_preparation_runs_idempotency_key_key/,
     );
+  });
+
+  it('lets the same input succeed twice, since a finished run guards nothing (AC-82)', async () => {
+    const productId = await insertProduct();
+    await insertRun(productId, 'card:both:frames-hash', 'both', 'succeeded');
+
+    await assert.doesNotReject(insertRun(productId, 'card:both:frames-hash', 'both', 'succeeded'));
   });
 
   it('rejects a scope and a status outside the listed ones', async () => {
@@ -191,35 +199,37 @@ describe('database schema constraints', () => {
     );
   });
 
-  it('keeps at most one suggestion per field in a run', async () => {
-    const runId = await insertRun(await insertProduct(), 'k');
-    await insertSuggestion(runId, 'description_olx', 'Опис');
+  it('keeps at most one suggestion per field of a card, across its runs (AC-82)', async () => {
+    const productId = await insertProduct();
+    await insertSuggestion(productId, await insertRun(productId, 'k1'), 'description_olx', 'Опис');
 
     await assert.rejects(
-      insertSuggestion(runId, 'description_olx', 'Інший опис'),
-      /product_field_suggestions_run_field_key/,
+      insertSuggestion(
+        productId,
+        await insertRun(productId, 'k2'),
+        'description_olx',
+        'Інший опис',
+      ),
+      /product_field_suggestions_product_field_key/,
     );
   });
 
-  it('leaves an undecided suggestion as NULL and has no word for it', async () => {
-    const runId = await insertRun(await insertProduct(), 'k');
+  it('rejects a suggestion field outside the listed ones', async () => {
+    const productId = await insertProduct();
+    const runId = await insertRun(productId, 'k');
 
     await assert.doesNotReject(
-      insertSuggestion(runId, 'price', { priceFrom: '100.00', priceTo: '200.00' }),
+      insertSuggestion(productId, runId, 'price', { priceFrom: '100.00', priceTo: '200.00' }),
     );
     await assert.rejects(
-      insertSuggestion(runId, 'seo_keywords', ['миша'], 'pending'),
-      /product_field_suggestions_resolution_check/,
-    );
-    await assert.rejects(
-      insertSuggestion(runId, 'category', 'Периферія'),
+      insertSuggestion(productId, runId, 'category', 'Периферія'),
       /product_field_suggestions_field_check/,
     );
   });
 
   it('removes the runs and their suggestions together with the card', async () => {
     const productId = await insertProduct();
-    await insertSuggestion(await insertRun(productId, 'k'), 'title_prom', 'Миша');
+    await insertSuggestion(productId, await insertRun(productId, 'k'), 'title_prom', 'Миша');
 
     await dataSource.query(`delete from "products" where "id" = $1`, [productId]);
 

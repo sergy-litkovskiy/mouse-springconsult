@@ -7,7 +7,7 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import { cleanDescription } from './description/cleanDescription.ts';
-import type { FieldSuggestion, SuggestionField } from './preparation/FieldSuggestion.ts';
+import type { FieldSuggestion } from './preparation/FieldSuggestion.ts';
 import type { PreparationRepository, TokenTotals } from './preparation/PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
@@ -28,7 +28,7 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
-  /** One per field, the newest by `createdAt` (AC-69). */
+  /** The card keeps one per field, so these are all of its suggestions (AC-69). */
   readonly latestSuggestions: readonly FieldSuggestion[];
 };
 
@@ -36,15 +36,6 @@ export type ProductCardReading = ProductReading & {
 export type ProductSaving = ProductReading & {
   readonly discardedKeywordsCount: number;
 };
-
-/** The repository hands them over oldest first, so the last one put in for a field is its latest. */
-function latestPerField(suggestions: readonly FieldSuggestion[]): FieldSuggestion[] {
-  const latest = new Map<SuggestionField, FieldSuggestion>();
-  for (const suggestion of suggestions) {
-    latest.set(suggestion.field, suggestion);
-  }
-  return [...latest.values()];
-}
 
 function capKeywords(keywords: string[]): {
   seoKeywords: string[];
@@ -83,13 +74,11 @@ export class ProductService {
       throw new ProductNotFound(id);
     }
 
-    const suggestions = await this.preparations.findSuggestions(id);
-
     return {
       product,
       isReady: this.isReady(product),
       tokens: await this.preparations.sumTokens(id),
-      latestSuggestions: latestPerField(suggestions),
+      latestSuggestions: await this.preparations.findSuggestions(id),
     };
   }
 

@@ -67,7 +67,10 @@ class StubProductRepository extends ProductRepository {
   }
 }
 
-/** Keys runs by idempotency key the way the UNIQUE index does; the index itself is proven against Postgres. */
+/**
+ * Keys the runs still going by idempotency key the way the partial UNIQUE index does; the index
+ * itself is proven against Postgres.
+ */
 class StubPreparationRepository extends PreparationRepository {
   readonly rows: PreparationRun[] = [];
   recentRuns: Record<string, number> = {};
@@ -76,8 +79,16 @@ class StubPreparationRepository extends PreparationRepository {
     super(NO_DATA_SOURCE);
   }
 
+  private unfinished(idempotencyKey: string): PreparationRun | undefined {
+    return this.rows.find(
+      (row) =>
+        row.idempotencyKey === idempotencyKey &&
+        (row.status === 'queued' || row.status === 'running'),
+    );
+  }
+
   override async createRunOnce(draft: PreparationRunDraft): Promise<RunClaim> {
-    const existing = this.rows.find((row) => row.idempotencyKey === draft.idempotencyKey);
+    const existing = this.unfinished(draft.idempotencyKey);
     if (existing !== undefined) {
       return { run: existing, created: false };
     }
@@ -101,7 +112,7 @@ class StubPreparationRepository extends PreparationRepository {
   }
 
   override async findRunByKey(idempotencyKey: string): Promise<PreparationRun | null> {
-    return this.rows.find((row) => row.idempotencyKey === idempotencyKey) ?? null;
+    return this.unfinished(idempotencyKey) ?? null;
   }
 
   override async findRun(productId: string, runId: string): Promise<PreparationRun | null> {
@@ -350,6 +361,35 @@ describe('preparation run service: idempotency', () => {
     assert.equal(second.run.id, first.run.id);
     assert.equal(runs.rows.length, 1);
     assert.equal(queue.jobs.length, 1);
+  });
+
+  it('returns the running run for the same input and queues nothing more (AC-82 edge case)', async () => {
+    const { service, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, { scope: 'texts' });
+    first.run.status = 'running';
+    const second = await service.start(CARD_ID, { scope: 'texts' });
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+    assert.equal(runs.rows.length, 1);
+    assert.equal(queue.jobs.length, 1);
+  });
+
+  it('starts and queues a new run for the same input once the previous one succeeded (AC-82)', async () => {
+    const { service, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, { scope: 'texts' });
+    first.run.status = 'succeeded';
+    const repeat = await service.start(CARD_ID, { scope: 'texts' });
+
+    assert.equal(repeat.created, true);
+    assert.notEqual(repeat.run.id, first.run.id);
+    assert.equal(runs.rows.length, 2);
+    assert.deepEqual(
+      queue.jobs.map(({ runId }) => runId),
+      [first.run.id, repeat.run.id],
+    );
   });
 
   it('queues a run again when the same input finds it still queued, so a lost send is recovered', async () => {

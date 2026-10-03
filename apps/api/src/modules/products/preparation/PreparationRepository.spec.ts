@@ -199,17 +199,52 @@ describe('preparation repository (postgres)', () => {
 
     const suggestions = await suggestionsOf(runId);
     assert.deepEqual(
-      suggestions.map(({ field, value, resolution }) => ({ field, value, resolution })),
+      suggestions.map(({ field, value }) => ({ field, value })),
       [
-        { field: 'description_olx', value: 'Опис для OLX.', resolution: null },
-        { field: 'description_prom', value: 'Опис для Prom.', resolution: null },
-        {
-          field: 'price',
-          value: { priceFrom: '1800.00', priceTo: '2400.00' },
-          resolution: null,
-        },
-        { field: 'seo_keywords', value: ['миша', 'logitech'], resolution: null },
+        { field: 'description_olx', value: 'Опис для OLX.' },
+        { field: 'description_prom', value: 'Опис для Prom.' },
+        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } },
+        { field: 'seo_keywords', value: ['миша', 'logitech'] },
       ],
+    );
+  });
+
+  it('replaces the previous suggestion of a field with the next generation, one row per field (AC-82)', async () => {
+    const productId = await seedProduct();
+    const firstRunId = await seedRun(productId);
+    await runs.finishRun(firstRunId, {
+      status: 'succeeded',
+      suggestions: [
+        { field: 'title_prom', value: 'Перша назва' },
+        { field: 'title_olx', value: 'Назва для OLX' },
+      ],
+    });
+    await dataSource.query(
+      `update product_field_suggestions set created_at = now() - interval '1 hour' where run_id = $1`,
+      [firstRunId],
+    );
+    const [firstTitle] = (await suggestionsOf(firstRunId)).filter(
+      ({ field }) => field === 'title_prom',
+    );
+    assert.ok(firstTitle);
+    const secondRunId = await seedRun(productId);
+
+    await runs.finishRun(secondRunId, {
+      status: 'succeeded',
+      suggestions: [{ field: 'title_prom', value: 'Друга назва' }],
+    });
+
+    const found = await runs.findSuggestions(productId);
+    const titles = found.filter(({ field }) => field === 'title_prom');
+    assert.equal(titles.length, 1);
+    const [title] = titles;
+    assert.ok(title);
+    assert.equal(title.value, 'Друга назва');
+    assert.equal(title.runId, secondRunId);
+    assert.ok(title.createdAt > firstTitle.createdAt);
+    assert.deepEqual(
+      found.filter(({ field }) => field === 'title_olx').map(({ runId }) => runId),
+      [firstRunId],
     );
   });
 
@@ -237,8 +272,8 @@ describe('preparation repository (postgres)', () => {
   it('leaves the run unfinished and without suggestions when the finishing write fails (AC-28)', async () => {
     const runId = await seedRun(await seedProduct());
 
-    // A second row for the same field breaks `product_field_suggestions_run_field_key`: the
-    // only way to make the database itself refuse part of an otherwise valid write.
+    // The same field twice in one upsert is refused by Postgres itself: the only way to make the
+    // database refuse part of an otherwise valid write.
     await assert.rejects(
       runs.finishRun(runId, {
         status: 'succeeded',
@@ -247,7 +282,7 @@ describe('preparation repository (postgres)', () => {
           { field: 'description_prom', value: 'Другий варіант.' },
         ],
       }),
-      /product_field_suggestions_run_field_key/,
+      /cannot affect row a second time/,
     );
 
     const stored = await loadRun(runId);
@@ -341,6 +376,26 @@ describe('preparation repository (postgres)', () => {
     assert.equal((await loadRun(failedRunId)).status, 'failed');
   });
 
+  it('starts a new run for a key whose only run succeeded (AC-82)', async () => {
+    const productId = await seedProduct();
+    const draft = {
+      productId,
+      scope: 'texts' as const,
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    };
+    const first = await runs.createRunOnce(draft);
+    await runs.finishRun(first.run.id, { status: 'succeeded', suggestions: [] });
+
+    const repeat = await runs.createRunOnce(draft);
+
+    assert.equal(repeat.created, true);
+    assert.notEqual(repeat.run.id, first.run.id);
+    assert.equal(repeat.run.status, 'queued');
+    assert.equal(await countRuns(productId), 2);
+    assert.equal((await loadRun(first.run.id)).status, 'succeeded');
+  });
+
   it('returns the live retry rather than the failed run of the same key (AC-38)', async () => {
     const productId = await seedProduct();
     await seedFailedRun(productId, 'card:texts:v1');
@@ -362,6 +417,19 @@ describe('preparation repository (postgres)', () => {
   it('reports no run for a key whose only run ended failed (AC-37)', async () => {
     const productId = await seedProduct();
     await seedFailedRun(productId, 'card:texts:v1');
+
+    assert.equal(await runs.findRunByKey('card:texts:v1'), null);
+  });
+
+  it('reports no run for a key whose only run succeeded (AC-82)', async () => {
+    const productId = await seedProduct();
+    const { run } = await runs.createRunOnce({
+      productId,
+      scope: 'texts',
+      idempotencyKey: 'card:texts:v1',
+      model: MODEL,
+    });
+    await runs.finishRun(run.id, { status: 'succeeded', suggestions: [] });
 
     assert.equal(await runs.findRunByKey('card:texts:v1'), null);
   });
@@ -451,10 +519,6 @@ describe('preparation repository (postgres)', () => {
       found.map(({ field }) => field),
       ['title_prom', 'title_olx'],
     );
-    assert.deepEqual(
-      found.map(({ resolution }) => resolution),
-      [null, null],
-    );
   });
 
   it('closes a running run older than a full series of attempts (AC-39)', async () => {
@@ -543,22 +607,5 @@ describe('preparation repository (postgres)', () => {
       [newer, older],
     );
     assert.equal(failed[0]?.errorDetail, 'refused');
-  });
-
-  it('records a decision once and refuses a second one (Checklist 6)', async () => {
-    const runId = await seedRun(await seedProduct());
-    await runs.finishRun(runId, {
-      status: 'succeeded',
-      suggestions: [{ field: 'title_olx', value: 'Назва від моделі' }],
-    });
-    const [suggestion] = await suggestionsOf(runId);
-    assert.ok(suggestion);
-
-    assert.equal(await runs.resolveSuggestion(suggestion.id, 'accepted'), true);
-    assert.equal(await runs.resolveSuggestion(suggestion.id, 'rejected'), false);
-
-    const stored = await dataSource.getRepository(FieldSuggestion).findOneBy({ id: suggestion.id });
-    assert.equal(stored?.resolution, 'accepted');
-    assert.ok(stored.resolvedAt instanceof Date);
   });
 });

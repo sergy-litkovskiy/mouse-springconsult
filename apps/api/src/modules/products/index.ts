@@ -11,7 +11,6 @@ export { FieldSuggestion, FIELD_SUGGESTIONS_TABLE } from './preparation/FieldSug
 export type {
   PriceRange,
   SuggestionField,
-  SuggestionResolution,
   SuggestionValue,
 } from './preparation/FieldSuggestion.ts';
 
