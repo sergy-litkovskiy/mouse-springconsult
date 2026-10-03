@@ -154,6 +154,24 @@ describe('LoginPage', () => {
     expect(element.querySelectorAll('mat-form-field.mat-form-field-invalid').length).toBe(2);
   });
 
+  it('shows the wrong-credentials message once, in the banner, and leaves both fields framed without text (AC-79)', async () => {
+    fill('admin@example.com', 'wrong-password');
+    submit();
+    await settle();
+
+    http
+      .expectOne('/api/auth/login')
+      .flush(INVALID_CREDENTIALS, { status: 401, statusText: 'Unauthorized' });
+    await settle();
+
+    expect(element.textContent?.match(/Невірний email або пароль\./g)?.length).toBe(1);
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+      'Невірний email або пароль.',
+    );
+    expect(element.querySelectorAll('mat-form-field.mat-form-field-invalid').length).toBe(2);
+    expect(element.querySelectorAll('mat-form-field mat-error').length).toBe(0);
+  });
+
   it('explains the reason when the attempt limit is exceeded', async () => {
     fill('admin@example.com', 'correct-horse');
     submit();
