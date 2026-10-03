@@ -92,9 +92,6 @@ const PREPARATION_MESSAGES: Readonly<Record<string, string>> = {
     'Для пошуку ціни потрібен хоча б один заголовок. Заповніть назву для Prom або для OLX.',
   [apiErrorCodes.tooManyRequests]: 'Забагато запитів. Зачекайте трохи і спробуйте ще раз.',
   [apiErrorCodes.productNotFound]: 'Картку вже видалено.',
-  [apiErrorCodes.suggestionNotFound]: 'Пропозиції вже немає — перечитайте картку.',
-  [apiErrorCodes.suggestionAlreadyResolved]: 'Цю пропозицію вже прийнято або відхилено.',
-  [apiErrorCodes.priceSuggestionReadonly]: 'Ціну вписують у поле руками — вона не переноситься.',
 };
 
 const UNAVAILABLE_MODEL_MESSAGE = 'Модель зараз недоступна. Спробуйте ще раз трохи пізніше.';
