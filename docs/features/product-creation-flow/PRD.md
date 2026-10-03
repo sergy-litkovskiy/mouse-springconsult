@@ -979,6 +979,20 @@ UX-аудит 2026-10-02, [T86](tasks/show-login-credentials-error-once.md). В�
 **When** значення поля змінилось
 **Then** рамка помилки зникає з обох полів, а порожнє поле чи хибний формат email і далі показують свій текст під полем
 
+### AC-80 (US-07) — happy path
+
+UX-аудит 2026-10-02, [T87](tasks/show-olx-title-under-prom-title.md).
+
+**Given** у каталозі є картка з різними назвами Prom і OLX та картка з однаковими
+**When** `user` відкриває `/products`
+**Then** колонки «Назва OLX» немає; у першої картки під назвою Prom стоїть «OLX: <назва OLX>» дрібнішим сірим текстом, у другої другого рядка немає
+
+### AC-80 (US-07) — edge case
+
+**Given** назва OLX порожня або відрізняється від назви Prom лише пробілами по краях, або адреса каталогу несе `sort=titleOlx`
+**When** каталог відмальований
+**Then** другого рядка немає; адреса з `sort=titleOlx` відкривається без помилки, а клік по «Назва Prom» сортує за нею
+
 ### AC-81 (US-05) — happy path
 
 Рішення власника 2026-10-02, [ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md), [T90](tasks/copy-suggestion-into-form-field.md).
