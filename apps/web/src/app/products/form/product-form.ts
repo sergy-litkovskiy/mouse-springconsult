@@ -266,8 +266,7 @@ export class ProductForm {
   protected readonly workingField = computed(() => {
     const started = this.started();
     if (
-      started === null ||
-      started.request.scope !== 'field' ||
+      started?.request.scope !== 'field' ||
       !this.preparing() ||
       this.poller.run()?.id !== started.runId
     ) {
