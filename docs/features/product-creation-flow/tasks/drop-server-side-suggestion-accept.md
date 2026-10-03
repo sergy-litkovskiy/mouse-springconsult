@@ -1,7 +1,7 @@
 ---
 id: T91
 title: "`api` більше не приймає й не застосовує пропозиції"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2000
 blocked_by: [T90]
 blocks: [T82, T92]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T91 — `api` більше не приймає й не застосовує пропозиції
@@ -97,9 +97,9 @@ updated_at: "2026-10-02"
 
 ## DoD
 
-- [ ] AC-11: читання картки не пише в поля; маршрутів прийняття немає.
-- [ ] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
-- [ ] Коміт: `feat(products): stop accepting suggestions on the server`.
+- [x] AC-11: читання картки не пише в поля; маршрутів прийняття немає.
+- [x] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
+- [x] Коміт: `feat(products): stop accepting suggestions on the server`.
 
 ## Links
 
