@@ -23,7 +23,12 @@ import {
   type MatChipInputEvent,
   MatChipsModule,
 } from '@angular/material/chips';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -32,7 +37,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, type MatSnackBarConfig } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { firstValueFrom, map, type Observable, of, tap } from 'rxjs';
+import { filter, firstValueFrom, map, type Observable, of, tap } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
   FieldRewriteMode,
@@ -48,6 +53,7 @@ import type {
 } from '@contracts/products.contract';
 import { productConstraints, type ProductCondition } from '@contracts/products-limits';
 import { apiErrorMessage } from '../../api-error-message';
+import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import { priceBound, priceFieldValue, priceFromField } from '../catalog/product-catalog-query';
 import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
@@ -168,6 +174,7 @@ export class ProductForm {
   private readonly formBuilder = inject(FormBuilder);
   private readonly data = inject<ProductFormData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject<MatDialogRef<ProductForm, boolean>>(MatDialogRef);
+  private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly clipboard = inject(Clipboard);
 
@@ -215,6 +222,9 @@ export class ProductForm {
     publishedProm: [false],
     publishedOlx: [false],
   });
+
+  /** What a new card holds before anything is typed: there is no read card to compare it with. */
+  private readonly blank = this.form.getRawValue();
 
   /** Zoneless change detection does not watch a reactive form, so the template reads a signal. */
   protected readonly formInvalid = toSignal(this.form.events.pipe(map(() => this.form.invalid)), {
@@ -281,6 +291,14 @@ export class ProductForm {
   );
 
   constructor() {
+    // Esc and a click past the dialog would drop the edits; they ask first, as «Скасувати» does.
+    this.dialogRef.disableClose = true;
+    this.dialogRef
+      .keydownEvents()
+      .pipe(filter((event) => event.key === 'Escape'))
+      .subscribe(() => void this.requestClose());
+    this.dialogRef.backdropClick().subscribe(() => void this.requestClose());
+
     if (this.data.productId !== null) {
       void this.read(this.data.productId);
     }
@@ -505,6 +523,47 @@ export class ProductForm {
       // The run is already reported; a failed re-read would only replace that message with a
       // vaguer one, and the card on screen is still the one the admin is editing.
     }
+  }
+
+  /**
+   * The form is compared with the card as read rather than asked whether it is dirty: the chip grid
+   * marks the keywords on every blur, and a field typed back to what the card holds is no edit.
+   * Frames are stored as they change, so they never count as unsaved.
+   */
+  protected async requestClose(): Promise<void> {
+    const value = this.form.getRawValue();
+    const read = this.card();
+    const kept = read === null ? this.blank : { ...read, price: priceFieldValue(read.price) };
+    const edited = (Object.keys(value) as (keyof typeof value)[]).some((key) => {
+      if (key === 'seoKeywords') {
+        return (
+          value.seoKeywords.length !== kept.seoKeywords.length ||
+          value.seoKeywords.some((keyword, at) => keyword !== kept.seoKeywords[at])
+        );
+      }
+      if (key === 'price') {
+        return priceFromField(value.price) !== priceFromField(kept.price);
+      }
+      return value[key] !== kept[key];
+    });
+
+    if (edited) {
+      const confirmed = await firstValueFrom(
+        this.dialog
+          .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, {
+            data: {
+              title: 'Закрити без збереження?',
+              message: 'Правки в полях картки буде втрачено.',
+              confirmLabel: 'Закрити без збереження',
+            },
+          })
+          .afterClosed(),
+      );
+      if (confirmed !== true) {
+        return;
+      }
+    }
+    this.dialogRef.close(this.changed());
   }
 
   protected async save(): Promise<void> {
