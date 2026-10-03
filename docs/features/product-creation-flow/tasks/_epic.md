@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 feature_size: M
 stage: "13"
 ticket: "TBD"
@@ -178,7 +178,7 @@ flowchart LR
     T86[T86 одна помилка входу]
     T87[T87 назва OLX другим рядком]
     T88[T88 spec-и чекають редактор за часом]
-    T89[T89 перший тест форми]
+    T89[T89 перший тест форми — Dropped]
     T90[T90 стрілка копіює у форму]
     T91[T91 без прийняття в api]
     T92[T92 одна пропозиція на поле]
@@ -304,7 +304,6 @@ flowchart LR
   T85 --> T81
   T87 --> T81
   T88 --> T81
-  T89 --> T81
 ```
 
 **Що йде паралельно** (те саме, що показують рівні ASCII нижче)**.** У поставці 1 три гілки не перетинаються до T14: контракти
@@ -549,8 +548,8 @@ T83–T87 — знахідки UX-аудиту 2026-10-02 (Playwright MCP на �
 T83, T84, T85 і T87 чіпають файли з номерами задач, тож стоять перед T81. T86 править лише сторінку входу (модуль `auth`,
 поза цією фічею; власник вирішив вести її тут), і номерів задач там немає, тож ребер вона не має. Нові AC-76…AC-80
 кожна story вносить у PRD §5 сама. T88 (2026-10-02, знахідка T70) міняє лише очікування редактора у двох spec-файлах, де є
-номери задач, тож теж стоїть перед T81. T89 (2026-10-02, знахідка T88) — та сама природа в `product-form.spec.ts`, тож і вона
-стоїть перед T81.
+номери задач, тож теж стоїть перед T81. T89 (2026-10-02, знахідка T88) — та сама природа в `product-form.spec.ts`; її скасовано 2026-10-03, бо падіння не
+відтворилось, і ребро T89 → T81 знято.
 T84 скасовано 2026-10-02 ([ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)): у пропозицій більше немає
 статусів, тож кнопка «Відхилити» не потрібна. Її місце займає T90–T92 — одна пропозиція на поле без статусів. Порядок
 «спершу `web`» змістовний: T90 перестає читати `resolution` і кликати `accept`, тож T91 може прибрати маршрути, не
@@ -585,7 +584,7 @@ T90 → T81 успадковано від T84, T91 і T92 → T82 — спіль
 | [T78](shrink-cell-editor-icons.md) | Компактні іконки редагування в комірці каталогу | — | XS | Serhii |
 | [T79](pin-catalog-header-filters-and-paginator.md) | Каталог: скролиться лише вміст таблиці | T78 | S | Serhii |
 | [T80](shrink-app-bar-catalog-header-and-filters.md) | Нижчі тулбар, шапка й фільтри каталогу | T75, T79 | XS | Serhii |
-| [T81](drop-task-references-from-web-code.md) | Прибрати номери задач і AC з коду `web` | T66, T68, T70, T74, T80, T83, T85, T87, T88, T89, T90 | S | Serhii |
+| [T81](drop-task-references-from-web-code.md) | Прибрати номери задач і AC з коду `web` | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | Serhii |
 | [T82](drop-task-references-from-api-code.md) | Прибрати номери задач і AC з коду `api` | T74, T91, T92 | S | Serhii |
 | [T83](confirm-discarding-unsaved-card-edits.md) | Картка не закривається мовчки, коли в полях є незбережені правки | — | S | Serhii |
 | [T84](add-reject-suggestion-button.md) | ~~Кнопка «Відхилити пропозицію» біля поля картки~~ — Dropped | T74 | S | Serhii |
@@ -593,7 +592,7 @@ T90 → T81 успадковано від T84, T91 і T92 → T82 — спіль
 | [T86](show-login-credentials-error-once.md) | Хибний пароль: одне повідомлення замість трьох | — | XS | Serhii |
 | [T87](show-olx-title-under-prom-title.md) | Назва OLX другим рядком під назвою Prom, лише коли вона інша | T80 | XS | Serhii |
 | [T88](wait-for-prom-editor-by-time-in-specs.md) | Spec-и чекають редактор опису Prom за часом, а не за кількістю тиків | — | XS | Serhii |
-| [T89](stabilize-first-product-form-spec-test.md) | Перший тест `product-form.spec.ts` не впирається в таймаут під навантаженням | — | XS | Serhii |
+| [T89](stabilize-first-product-form-spec-test.md) | ~~Перший тест `product-form.spec.ts` не впирається в таймаут під навантаженням~~ — Dropped | — | XS | Serhii |
 | [T90](copy-suggestion-into-form-field.md) | Стрілка «<- AI» копіює пропозицію в поле форми | T74, T83 | S | Serhii |
 | [T91](drop-server-side-suggestion-accept.md) | `api` більше не приймає й не застосовує пропозиції | T90 | S | Serhii |
 | [T92](keep-one-suggestion-per-field.md) | Одна пропозиція на поле, повтор запуску — нова генерація | T91 | S | Serhii |

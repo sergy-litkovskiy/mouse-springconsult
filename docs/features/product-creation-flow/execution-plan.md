@@ -42,7 +42,7 @@
 ### Поставка 3 — відкриті задачі (T66, T68, T70, T72–T76, T78–T83, T85–T92)
 
 Закриті T56–T65, T67, T69, T71 і T77 переїхали в [архів](_audit/execution-plan-archive.md). Відкриті — запити
-2026-09-23 (T68–T74), 2026-09-25 (T75, T76), 2026-09-30 (T78–T82) і UX-аудит 2026-10-02 (T83–T87); T88 заведено 2026-10-02 за нестабільним тестом, знайденим під час T70, а T89 — того ж дня за ще одним, знайденим під час T88. T90–T92 заведено 2026-10-02 замість скасованої T84 ([ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)). Граф лишає T68, T70, T72, T75, T76 і T78
+2026-09-23 (T68–T74), 2026-09-25 (T75, T76), 2026-09-30 (T78–T82) і UX-аудит 2026-10-02 (T83–T87); T88 заведено 2026-10-02 за нестабільним тестом, знайденим під час T70, а T89 — того ж дня за ще одним, знайденим під час T88; T89 скасовано 2026-10-03, бо падіння не відтворилось. T90–T92 заведено 2026-10-02 замість скасованої T84 ([ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)). Граф лишає T68, T70, T72, T75, T76 і T78
 незалежними, а ланцюжки має лише для AI-кнопок поля (T72 → T73 → T74 → T66), каталогу (T78 → T79 → T80) і
 зачистки коду (T81, T82). Задачі правлять одні й ті самі файли, тож порядок задають файли, а не граф. Доріжки:
 
@@ -50,8 +50,8 @@
   зі скролом лише таблиці (`tdd`: він прибирає верхній пагінатор T57 і чіпає `app-layout.*`), далі
   висота тулбара, шапки й фільтрів (`goal`). T80 стоїть і за T75: висоту шапки міряють з уже зменшеним шрифтом.
   Останньою йде T87: колонка назви OLX стає другим рядком і не збиває вимірів T80;
-- **форма** (`product-form.*`, `suggestion-field.*`): T89 → T83 → T90 → T66. T89 стабілізує перший тест
-  `product-form.spec.ts`, за нею T83 (запитання перед закриттям картки з правками). T90 робить стрілку «<- AI»
+- **форма** (`product-form.*`, `suggestion-field.*`): T83 → T90 → T66. Спершу T83 (запитання перед закриттям
+  картки з правками). T90 робить стрілку «<- AI»
   локальним копіюванням у форму, і скопійована пропозиція стає правкою, яку T83 вже захищає. T66 стоїть останньою,
   бо її спінер замінює обидві кнопки запуску з T73 у вже переробленому T90 компоненті. T68 править лише
   `prom-description-editor.*`, тож іде паралельно з будь-чим;
@@ -63,7 +63,7 @@
   кнопкам потрібен `mode` з T72;
 - **зачистка коду** (T81 — `web`, T82 — `api`): останні в поставці, бо правлять коментарі й назви
   тестів у файлах майже всіх відкритих задач, і кожна ранніша правка дала б конфлікт при ребейзі. T81 чекає на T66, T68, T70, T74, T80,
-  T83, T85, T87, T88, T89 і T90, T82 — на T74, T91 і T92. Якщо власник схоче зачистку раніше, ребра можна зняти ціною ручного злиття.
+  T83, T85, T87, T88 і T90, T82 — на T74, T91 і T92. Якщо власник схоче зачистку раніше, ребра можна зняти ціною ручного злиття.
   T76 і T86 — відкриті `web`-задачі поза цим ланцюжком: T76 змінює одне правило CSS, T86 — сторінку входу, і номерів
   задач у цих файлах немає, тож ребер до T81 вони не мають;
 - **T75, T76, T85, T86** — поза доріжками, тож їх можна взяти будь-коли. `product-gallery.css` з T76 і `styles.css` з
@@ -72,8 +72,6 @@
   лише сторінку входу.
 - **T88** — поза доріжками, але стоїть одразу за T70: нестабільний тест редактора зрідка червонить гейти `/tdd` і
   `feature-ship` кожної наступної `web`-задачі. Правка лише в хелперах очікування двох spec-файлів, тож T81 її чекає.
-- **T89** — з тієї ж причини одразу за T88: перший тест `product-form.spec.ts` під навантаженням перевищує 5 с. Правка лише в
-  підготовці цього spec-файлу, тож T81 її чекає; T83 правитиме той самий файл, тому T89 іде перед нею.
 
 Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно лише в різних
 гілках, і тоді друга ребейзиться на першу.
@@ -83,7 +81,6 @@
 | 1 | T68 | Опис Prom після відкриття | `tdd` | **до** кроку А — `pw` «Зберегти» й нове відкриття (крок 1 story; порожній редактор уже відтворено 2026-10-02); після — `pw` повторно | — | Дефект, гіпотеза — гонка `writeValue` із завантаженням Tiptap. Якщо `pw` її не підтвердив, задача йде в `plan`, а не в `/tdd`: тест на непідтверджену причину зафіксує не той дефект. `PRD.md §5` — руками |
 | 2 | T70 | ID з копіюванням | `tdd` | `pw`: `navigator.clipboard.readText()` | — | Правка наявних `product-form.*`, нових файлів немає. `Clipboard` з `@angular/cdk`, пакет уже є. `PRD.md §5` — руками |
 | 3 | T88 | Spec-и чекають редактор за часом | `goal` | — | — | Нестабільність unit-тестом не відтворити, тож RED неможливий, а DoD бінарний: 30 прогонів поспіль (умова нижче). Цикл спершу відтворює падіння: якщо впав не перший тест файлу або помилка інша, ніж «the editor never loaded», гіпотеза хибна — зупинитись і перевести задачу в `plan`. `expect` не змінюються, тож `feature-ship` перевіряє лише гейти |
-| 4 | T89 | Перший тест форми під навантаженням | `goal` | — | — | Та сама природа, що в T88: падіння видно лише під навантаженням, тож RED неможливий, а DoD бінарний (умова нижче). Відтворення — прогонами по три паралельно, бо послідовно тест не падав жодного разу на 111 прогонів. Якщо впав не перший тест файлу або помилка інша, ніж `Test timed out`, — зупинитись і перевести задачу в `plan`. `expect` не змінюються, тож `feature-ship` перевіряє лише гейти |
 | 5 | T83 | Незбережені правки картки | `tdd` | `pw`: правка назви, тоді Esc, клік повз діалог і «Скасувати»; без правки — закриття без запитання; нічого не зберігати | — | Правка наявних `product-form.*`, нових файлів немає; `ConfirmDialog` уже є. «Є правки» — порівняння з `card()`, а не `dirty`: RED має покрити пройдене без змін поле ключових слів, яке `dirty` позначає хибно. `PRD.md §5` — руками |
 | 6 | T72 | Режими `improve` і `prompt` | `tdd` | `pw` — два платні виклики `field`, ≈ $0,01 разом; суму назвати до й після | — | Промпти тестуються на двійнику адаптера: майданчик у тексті, відсутність `web_search`. `mode` у хеші й читання старої задачі без `mode` — під тест. Кнопок ще немає, тож `pw` шле `POST` з `mode` напряму. `openapi.yaml`, `sad.md` (S7, сценарій 10) і `PRD.md` (US-10, AC-21, AC-22, AC-66, AC-67) — руками |
 | 7 | T73 | Три кнопки AI | `tdd` | `pw` — знімок tonal-кнопок, тултіпи, один платний виклик ≈ $0,005 | — | Правка наявних `suggestion-field.*` і `product-form.*`. Наявність tonal у `matIconButton` і назви іконок звірити з документацією до старту, бо агенти писатимуть їх з пам'яті. Тести на старі `aria-label` RED переписує, а не видаляє. `PRD.md §5` — руками |
@@ -107,7 +104,7 @@
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
 done», тож їх робить сам цикл.
 
-**Готові умови `/goal` для T75, T76, T78, T80, T81, T82, T88 і T89** — за шаблоном нижче:
+**Готові умови `/goal` для T75, T76, T78, T80, T81, T82 і T88** — за шаблоном нижче:
 
 ```
 /goal docs/features/product-creation-flow/tasks/compact-app-typography.md: every Checklist item is done, with playwright-cli on /products at 1280 px the computed `font-size` of `body` is 13px and of `.catalog__header h1` is 20px, on an open card the computed `font-size` of `textarea[formcontrolname="titleProm"]` is 14px and no `mat-label` or `mat-hint` has a computed `font-size` below 11px, at 360 px `document.documentElement.scrollWidth <= document.documentElement.clientWidth` on /products and with the card open, screenshots of the catalogue and the open card at both widths are saved, `git diff -U0 -- apps/web/src | rg '^\+.*(#[0-9a-fA-F]{3,8}\b|rgba?\()'` prints nothing, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
@@ -137,15 +134,15 @@ done», тож їх робить сам цикл.
 /goal docs/features/product-creation-flow/tasks/wait-for-prom-editor-by-time-in-specs.md: every Checklist item is done, the reply names the failing test and its error for two failed runs of `docker compose run --rm --no-deps -e NO_COLOR=1 web npm run test` recorded before the first edit, `git diff --name-only` lists only `apps/web/src/app/products/form/prom-description-editor.spec.ts` and `apps/web/src/app/products/form/product-form.spec.ts`, `git diff -U0 -- '*.spec.ts' | rg '^[-+]\s*(await )?expect'` prints nothing, after the edit 30 consecutive runs of `docker compose run --rm --no-deps -e NO_COLOR=1 web npm run test` exit 0 and each prints the same `Tests` line as the first run before the edit, `docker compose run --rm web npm run lint` exits 0; do not commit and do not edit tracker.md
 ```
 
-```
-/goal docs/features/product-creation-flow/tasks/stabilize-first-product-form-spec-test.md: every Checklist item is done, the reply names the failing test and its error for two failed runs of `docker compose run --rm --no-deps -e NO_COLOR=1 web npm run test` run three at a time and recorded before the first edit, `git diff --name-only` lists only `apps/web/src/app/products/form/product-form.spec.ts`, `git diff -U0 -- '*.spec.ts' | rg '^[-+]\s*(await )?expect'` prints nothing, after the edit 39 runs of that command three at a time and then 30 consecutive runs exit 0 and each prints the same `Tests` line as the first run before the edit, `docker compose run --rm web npm run lint` exits 0; do not commit and do not edit tracker.md
-```
-
 ## Відкладено
 
 **T84 — кнопка «Відхилити»** скасована 2026-10-02 (`Dropped`), а не відкладена: пропозиції більше не мають
 статусів ([ADR 0017](adr/0017-keep-one-latest-suggestion-per-field.md)), тож відхиляти нічого. Замість неї — рядки
 9, 9a і 9b таблиці. Гілку `feat-t84-reject-suggestion-button` не пушили; видаляє її людина.
+
+**T89 — перший тест форми під навантаженням** скасована 2026-10-03 (`Dropped`): падіння не відтворилось на 120 повних
+прогонах `web` по три паралельно, а перший тест тривав до 3,04 с при межі в 5 с. Рядок 4 таблиці прибрано, номери
+решти рядків не зсувались. Якщо падіння повернеться, задачу заведуть заново з новими даними.
 
 **T54 — пошук ціни через AI** відкладено 2026-09-21 рішенням власника: кожен виклик
 `scope: price` коштував $0,27–0,77, і це задорого. Ціну вписують руками (AC-12). Код
