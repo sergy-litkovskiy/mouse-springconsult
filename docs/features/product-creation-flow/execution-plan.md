@@ -72,8 +72,8 @@
   лише сторінку входу.
 - **T88** — поза доріжками, але стоїть одразу за T70: нестабільний тест редактора зрідка червонить гейти `/tdd` і
   `feature-ship` кожної наступної `web`-задачі. Правка лише в хелперах очікування двох spec-файлів, тож T81 її чекає.
-- **T93** — поза доріжками: правка лише `suggestion-field.css`, якого не чіпає жодна відкрита задача, а номерів задач у
-  ньому немає, тож ребра до T81 теж немає. Її можна взяти будь-коли, і зручно до T81: `pw` T93 відкриває ту саму форму.
+- **T93** — поза доріжками: правка лише `suggestion-field.css` і правила контейнера в `product-form.css`, яких не чіпає
+  жодна відкрита задача, а номерів задач у них немає, тож ребра до T81 теж немає. Її можна взяти будь-коли, і зручно до T81: `pw` T93 відкриває ту саму форму.
 
 Один виконавець іде таблицею згори вниз; дві доріжки можна вести паралельно лише в різних
 гілках, і тоді друга ребейзиться на першу.
@@ -101,7 +101,7 @@
 | 18 | T87 | Назва OLX другим рядком | `tdd` | `pw` на 1280 і 360 px; картку з різними назвами дати через `page.route` на `GET /products` | — | Правка наявних `product-catalog.*`, стоїть за T80. RED переписує тести колонки `titleOlx`, а не видаляє. Кольори й шрифт — токени Material. `PRD.md §5` — руками |
 | 19 | T81 | Зачистка номерів у `web` | `goal` | — | — | Механічна правка з вимірюваним DoD: `rg` і кількість тестів (умова нижче). `*.spec.ts` тут міняються (назви тестів), тож обмеження «нуль змін у spec» замінює рівність кількості тестів до й після. Правка `tdd-test-writer.md` і речення в `CLAUDE.md` — теж у Checklist |
 | 20 | T82 | Зачистка номерів в `api` | `goal` | — | — | Те саме для `api`; у міграціях міняються лише коментарі. Кількість тестів фіксується в першому ж ході |
-| 21 | T93 | Кнопки AI вгорі, пропозиція з межею | `goal` | `pw` на 1280 і 360 px без платних викликів: довгу пропозицію дати через `page.route` на `GET /api/products/<id>` | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getBoundingClientRect` панелі й першої кнопки поля (умова нижче). Дві декларації в одному файлі, тож `tdd` нічого б не дав. Тести форми мають лишитися зеленими без правок. `PRD.md §5` (AC-83) входить в умову |
+| 21 | T93 | Кнопки AI вгорі, пропозиція з межею | `goal` | `pw` на 1280, 800, 700 і 360 px без платних викликів: довгу пропозицію дати через `page.route` на `GET /api/products/<id>` | — | Верстка без поведінки під unit-тест, DoD вимірюваний: `getBoundingClientRect` обох половин пари й першої кнопки поля (умова нижче). Правила CSS у двох файлах, тож `tdd` нічого б не дав. 800 і 700 px лежать по обидва боки межі переносу пари. Тести форми мають лишитися зеленими без правок. `PRD.md §5` (AC-83) входить в умову |
 
 Кроки `PRD.md §5` і `openapi.yaml` у story агенти `/tdd` не роблять: вони правлять лише код.
 Внеси їх руками до кроку Б. Для `goal`-задач ці кроки входять в умову «every Checklist item is
@@ -138,7 +138,7 @@ done», тож їх робить сам цикл.
 ```
 
 ```
-/goal docs/features/product-creation-flow/tasks/cap-suggestion-height-and-pin-ai-buttons.md: every Checklist item is done, with playwright-cli on an open card whose `GET /api/products/<id>` response is rewritten through `page.route` so that the `descriptionOlx` entry of `latestSuggestions` holds 40 paragraphs, at 1280 px and at 360 px `[data-field="descriptionOlx"] .suggestion__value` has a `getBoundingClientRect()` height of at most 384 px and a `scrollHeight` greater than its `clientHeight`, the top of `[data-field="descriptionOlx"] [data-testid="rewrite"]` is within 1 px of the top of that `.suggestion__value`, and the same holds for `[data-field="titleProm"]`, at 360 px the dialog has no horizontal scroll, screenshots of the description row at both widths are saved, no paid preparation run is started, `git diff --name-only -- apps/web/src` lists only `apps/web/src/app/products/form/suggestion-field.css`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
+/goal docs/features/product-creation-flow/tasks/cap-suggestion-height-and-pin-ai-buttons.md: every Checklist item is done, with playwright-cli on an open card whose `GET /api/products/<id>` response is rewritten through `page.route` so that the `descriptionOlx` entry of `latestSuggestions` holds 40 paragraphs, at 1280 px and at 800 px for each of `titleProm`, `titleOlx`, `descriptionProm`, `descriptionOlx` and `seoKeywords` the `getBoundingClientRect()` height of `[data-field="<field>"] .suggestion__value` is within 1 px of that of the element before `[data-field="<field>"]`, and `[data-field="descriptionOlx"] .suggestion__value` has a `scrollHeight` greater than its `clientHeight`, at 700 px and at 360 px `[data-field="descriptionOlx"] .suggestion__value` sits below the field and has a height of at most 384 px and a `scrollHeight` greater than its `clientHeight`, at every width the top of `[data-field="<field>"] [data-testid="rewrite"]` is within 1 px of the top of that `.suggestion__value`, at 360 px the dialog has no horizontal scroll, screenshots of the description row at 1280 px and at 360 px are saved, no paid preparation run is started, `git diff --name-only -- apps/web/src` lists only `apps/web/src/app/products/form/suggestion-field.css` and `apps/web/src/app/products/form/product-form.css`, `docker compose run --rm web npm run lint` exits 0, `docker compose run --rm web npm run test` exits 0, `git diff --stat -- '*.spec.ts'` prints nothing; do not commit and do not edit tracker.md
 ```
 
 ## Відкладено
