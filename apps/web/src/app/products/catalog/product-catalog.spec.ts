@@ -12,6 +12,7 @@ import { MatChipGridHarness, MatChipInputHarness } from '@angular/material/chips
 import { MatDialog } from '@angular/material/dialog';
 import { MatPaginatorHarness } from '@angular/material/paginator/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
+import { MatSortHarness } from '@angular/material/sort/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -584,6 +585,101 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('б/в');
     expect(element.textContent).toContain('Новий');
     expect(element.textContent).toContain('Знайдено: 2');
+  });
+
+  describe('the OLX title under the Prom title (AC-80)', () => {
+    async function openTitles(items: ProductListItem[]): Promise<void> {
+      await open();
+      expectRequest().flush({ ...PAGE, items, total: items.length });
+      await settle();
+    }
+
+    function row(index: number): HTMLElement | null {
+      return element.querySelectorAll<HTMLElement>('tr[mat-row]')[index] ?? null;
+    }
+
+    function titleCell(index: number): HTMLElement | null {
+      return row(index)?.querySelector<HTMLElement>('td.mat-column-titleProm') ?? null;
+    }
+
+    function olxLine(index: number): HTMLElement | null {
+      const descendants = titleCell(index)?.querySelectorAll<HTMLElement>('*') ?? [];
+      return [...descendants].find((node) => node.textContent.trim().startsWith('OLX:')) ?? null;
+    }
+
+    function occurrences(text: string, part: string): number {
+      return text.split(part).length - 1;
+    }
+
+    it('shows one title column, headed «Назва Prom», and no OLX title column (AC-80)', async () => {
+      await openTitles([MOUSE, KEYBOARD]);
+
+      expect(element.querySelector('th.mat-column-titleProm')?.textContent).toContain('Назва Prom');
+      expect(element.querySelector('th.mat-column-titleOlx')).toBeNull();
+      expect(element.querySelectorAll('td.mat-column-titleOlx').length).toBe(0);
+      expect(element.querySelector('tr.mat-mdc-header-row')?.textContent).not.toContain(
+        'Назва OLX',
+      );
+    });
+
+    it('puts «OLX: <title>» on its own line under the Prom title when the two differ (AC-80)', async () => {
+      await openTitles([MOUSE]);
+
+      expect(titleCell(0)?.textContent).toContain(MOUSE.titleProm);
+      expect(olxLine(0)?.textContent.trim()).toBe(`OLX: ${MOUSE.titleOlx}`);
+    });
+
+    it('gives a card whose OLX title matches its Prom title no second line (AC-80)', async () => {
+      const same: ProductListItem = { ...KEYBOARD, titleOlx: KEYBOARD.titleProm };
+      await openTitles([MOUSE, same]);
+
+      expect(olxLine(0)).not.toBeNull();
+      expect(titleCell(1)?.textContent).not.toContain('OLX:');
+      expect(occurrences(row(1)?.textContent ?? '', KEYBOARD.titleProm)).toBe(1);
+    });
+
+    it('gives a card with an empty OLX title no second line (AC-80)', async () => {
+      const blank: ProductListItem = { ...KEYBOARD, titleOlx: '' };
+      await openTitles([MOUSE, blank]);
+
+      expect(olxLine(0)).not.toBeNull();
+      expect(titleCell(1)?.textContent).toContain(KEYBOARD.titleProm);
+      expect(titleCell(1)?.textContent).not.toContain('OLX:');
+    });
+
+    it('gives a card whose OLX title differs only by spaces at the edges no second line (AC-80)', async () => {
+      const padded: ProductListItem = { ...KEYBOARD, titleOlx: `  ${KEYBOARD.titleProm} ` };
+      await openTitles([MOUSE, padded]);
+
+      expect(olxLine(0)).not.toBeNull();
+      expect(titleCell(1)?.textContent).not.toContain('OLX:');
+      expect(occurrences(row(1)?.textContent ?? '', KEYBOARD.titleProm)).toBe(1);
+    });
+
+    it('opens a saved address sorted by the OLX title and sorts by the Prom title on its header (AC-80)', async () => {
+      await open('/products?sort=titleOlx');
+      const request = expectRequest();
+      expect(request.request.params.get('sort')).toBe('titleOlx');
+      request.flush(PAGE);
+      await settle();
+
+      expect(element.querySelectorAll('tr[mat-row]').length).toBe(2);
+      expect(element.querySelector('[role="alert"]')).toBeNull();
+      // No header is left to carry the arrow of an ordering by the OLX title.
+      const sort = await TestbedHarnessEnvironment.loader(harness.fixture).getHarness(
+        MatSortHarness,
+      );
+      expect(await sort.getActiveHeader()).toBeNull();
+
+      element.querySelector<HTMLElement>('th.mat-column-titleProm')?.click();
+      await tick();
+
+      const sorted = expectRequest();
+      expect(sorted.request.params.get('sort')).toBe('titleProm');
+      expect(sorted.request.params.get('direction')).toBe('asc');
+      sorted.flush(PAGE);
+      await settle();
+    });
   });
 
   describe('published flags as icons (AC-58)', () => {
