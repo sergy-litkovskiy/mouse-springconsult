@@ -7,21 +7,10 @@ import type {
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
 import { cleanDescription } from './description/cleanDescription.ts';
-import type {
-  FieldSuggestion,
-  SuggestionField,
-  SuggestionValue,
-} from './preparation/FieldSuggestion.ts';
+import type { FieldSuggestion, SuggestionField } from './preparation/FieldSuggestion.ts';
 import type { PreparationRepository, TokenTotals } from './preparation/PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
-import {
-  GalleryFull,
-  ImageNotFound,
-  PriceSuggestionReadonly,
-  ProductNotFound,
-  SuggestionAlreadyResolved,
-  SuggestionNotFound,
-} from './ProductErrors.ts';
+import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductChanges,
@@ -39,7 +28,7 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
-  /** One per field, the newest by `createdAt`, decided or not (AC-69). */
+  /** One per field, the newest by `createdAt` (AC-69). */
   readonly latestSuggestions: readonly FieldSuggestion[];
 };
 
@@ -48,79 +37,13 @@ export type ProductSaving = ProductReading & {
   readonly discardedKeywordsCount: number;
 };
 
-/**
- * The Prom description is HTML in the card and plain text in a suggestion (ADR 0016): the text is
- * escaped, blocks between blank lines become paragraphs, a lone newline becomes a break, and the
- * result passes the very cleaning a description typed by hand goes through.
- */
-function promDescription(text: string): string {
-  const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-  return cleanDescription(
-    escaped
-      .split(/\n{2,}/)
-      .map((block) => `<p>${block.replaceAll('\n', '<br>')}</p>`)
-      .join(''),
-  );
-}
-
-/** `Array.isArray` alone narrows a readonly array to `any[]`; the predicate keeps the element type. */
-function isKeywordList(value: SuggestionValue): value is readonly string[] {
-  return Array.isArray(value);
-}
-
-/**
- * `null` for a value no column can take: `price` is a range and `products.price` a scalar, so a
- * price suggestion never reaches the card through this route at all (AC-26).
- */
-function suggestionChanges(field: SuggestionField, value: SuggestionValue): ProductChanges | null {
-  if (field === 'seo_keywords') {
-    // Through the same cap as a manual save (AC-12): nothing upstream bounds the list the model
-    // returns, so an accepted suggestion would otherwise put more keywords in the column than the
-    // form can ever save back.
-    return isKeywordList(value) ? { seoKeywords: capKeywords([...value]).seoKeywords } : null;
-  }
-  if (typeof value !== 'string') {
-    return null;
-  }
-  switch (field) {
-    case 'title_prom':
-      return { titleProm: value };
-    case 'title_olx':
-      return { titleOlx: value };
-    case 'description_prom':
-      return { descriptionProm: promDescription(value) };
-    case 'description_olx':
-      return { descriptionOlx: value };
-    case 'price':
-      return null;
-  }
-}
-
-/** Every column reachable this way holds a string or a list of strings, and JSON compares both. */
-function cardHolds(product: Product, changes: ProductChanges): boolean {
-  return Object.entries(changes).every(
-    ([column, value]) => JSON.stringify(product[column as keyof Product]) === JSON.stringify(value),
-  );
-}
-
 /** The repository hands them over oldest first, so the last one put in for a field is its latest. */
-function latestPerField(suggestions: readonly FieldSuggestion[]): {
-  accepted: Map<SuggestionField, FieldSuggestion>;
-  pending: Map<SuggestionField, FieldSuggestion>;
-  latest: Map<SuggestionField, FieldSuggestion>;
-} {
-  const accepted = new Map<SuggestionField, FieldSuggestion>();
-  const pending = new Map<SuggestionField, FieldSuggestion>();
+function latestPerField(suggestions: readonly FieldSuggestion[]): FieldSuggestion[] {
   const latest = new Map<SuggestionField, FieldSuggestion>();
   for (const suggestion of suggestions) {
     latest.set(suggestion.field, suggestion);
-    if (suggestion.resolution === 'accepted') {
-      accepted.set(suggestion.field, suggestion);
-    } else if (suggestion.resolution === null) {
-      pending.set(suggestion.field, suggestion);
-    }
   }
-  return { accepted, pending, latest };
+  return [...latest.values()];
 }
 
 function capKeywords(keywords: string[]): {
@@ -154,126 +77,19 @@ export class ProductService {
     return this.products.listCategories();
   }
 
-  /**
-   * Reading writes here, and that is the choice of sad.md §6, scenario 9: the check against the
-   * last accepted suggestion lives on the read of the card. While a field still holds what was
-   * accepted for it last — an untouched field holds the empty value it was born with — a fresh
-   * suggestion applies itself; once the two differ, the field was edited by hand and the
-   * suggestion waits for a decision (AC-11).
-   */
   async getById(id: string): Promise<ProductCardReading> {
     const product = await this.products.findById(id);
     if (product === null) {
       throw new ProductNotFound(id);
     }
 
-    const reconciled = await this.applySuggestionsToUntouchedFields(id, product);
-
-    return this.toCardReading(id, reconciled.product, reconciled.latest);
-  }
-
-  /**
-   * The latest suggestions of the card come out of this very pass while it writes nothing. Once it
-   * accepts some of them, they are read back: the decision and its time are stamped by the table.
-   */
-  private async applySuggestionsToUntouchedFields(
-    id: string,
-    product: Product,
-  ): Promise<{ product: Product; latest: FieldSuggestion[] }> {
     const suggestions = await this.preparations.findSuggestions(id);
-    const { accepted, pending, latest } = latestPerField(suggestions);
 
-    const changes: ProductChanges = {};
-    const applied: FieldSuggestion[] = [];
-    for (const [field, suggestion] of pending) {
-      const suggested = suggestionChanges(field, suggestion.value);
-      const previous = accepted.get(field)?.value ?? (field === 'seo_keywords' ? [] : '');
-      const baseline = suggestionChanges(field, previous);
-      if (suggested === null || baseline === null || !cardHolds(product, baseline)) {
-        continue;
-      }
-      Object.assign(changes, suggested);
-      applied.push(suggestion);
-    }
-    if (applied.length === 0) {
-      return { product, latest: [...latest.values()] };
-    }
-
-    for (const suggestion of applied) {
-      await this.preparations.resolveSuggestion(suggestion.id, 'accepted');
-    }
-    const saved = await this.products.update(id, changes);
-    if (saved === null) {
-      throw new ProductNotFound(id);
-    }
-    return { product: saved, latest: await this.findLatestSuggestions(id) };
-  }
-
-  /** The value reaches the card through the same save as a manual edit (AC-12). */
-  async acceptSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
-    const suggestion = await this.preparations.findSuggestion(productId, suggestionId);
-    if (suggestion === null) {
-      throw new SuggestionNotFound(suggestionId);
-    }
-
-    // Refused before anything is written: `products.price` is not touched by this route (AC-26).
-    if (suggestion.field === 'price') {
-      throw new PriceSuggestionReadonly();
-    }
-
-    const changes = suggestionChanges(suggestion.field, suggestion.value);
-    // Every other field takes what its column takes, so `null` here is a row that contradicts its
-    // own `field` — a 500 names that honestly, where the price code would blame the wrong cause.
-    if (changes === null) {
-      throw new Error(`suggestion ${suggestionId} holds a value ${suggestion.field} cannot take`);
-    }
-
-    if (!(await this.preparations.resolveSuggestion(suggestionId, 'accepted'))) {
-      throw new SuggestionAlreadyResolved(suggestionId);
-    }
-
-    const product = await this.products.update(productId, changes);
-    if (product === null) {
-      throw new ProductNotFound(productId);
-    }
-
-    return this.toCardReading(productId, product, await this.findLatestSuggestions(productId));
-  }
-
-  async rejectSuggestion(productId: string, suggestionId: string): Promise<ProductCardReading> {
-    const suggestion = await this.preparations.findSuggestion(productId, suggestionId);
-    if (suggestion === null) {
-      throw new SuggestionNotFound(suggestionId);
-    }
-
-    if (!(await this.preparations.resolveSuggestion(suggestionId, 'rejected'))) {
-      throw new SuggestionAlreadyResolved(suggestionId);
-    }
-
-    const product = await this.products.findById(productId);
-    if (product === null) {
-      throw new ProductNotFound(productId);
-    }
-
-    return this.toCardReading(productId, product, await this.findLatestSuggestions(productId));
-  }
-
-  /** Read back after the decision was written, so the answer carries the decision itself. */
-  private async findLatestSuggestions(productId: string): Promise<FieldSuggestion[]> {
-    const suggestions = await this.preparations.findSuggestions(productId);
-    return [...latestPerField(suggestions).latest.values()];
-  }
-
-  private async toCardReading(
-    productId: string,
-    product: Product,
-    latestSuggestions: readonly FieldSuggestion[],
-  ): Promise<ProductCardReading> {
     return {
       product,
       isReady: this.isReady(product),
-      tokens: await this.preparations.sumTokens(productId),
-      latestSuggestions,
+      tokens: await this.preparations.sumTokens(id),
+      latestSuggestions: latestPerField(suggestions),
     };
   }
 

@@ -210,7 +210,7 @@ export class PreparationRepository {
     return result.affected ?? 0;
   }
 
-  /** Oldest first: the check on reading a card takes the latest suggestion of each field. */
+  /** Oldest first: reading a card takes the latest suggestion of each field. */
   async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
     return this.dataSource
       .getRepository(FieldSuggestion)
@@ -220,16 +220,6 @@ export class PreparationRepository {
       .orderBy('suggestion.createdAt', 'ASC')
       .addOrderBy('suggestion.id', 'ASC')
       .getMany();
-  }
-
-  async findSuggestion(productId: string, suggestionId: string): Promise<FieldSuggestion | null> {
-    return this.dataSource
-      .getRepository(FieldSuggestion)
-      .createQueryBuilder('suggestion')
-      .innerJoin(PreparationRun, 'run', 'run.id = suggestion.runId')
-      .where('suggestion.id = :suggestionId', { suggestionId })
-      .andWhere('run.productId = :productId', { productId })
-      .getOne();
   }
 
   /**
