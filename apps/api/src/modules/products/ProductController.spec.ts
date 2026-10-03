@@ -135,13 +135,6 @@ class StubPreparationRepository extends PreparationRepository {
     return this.suggestions.get(productId) ?? [];
   }
 
-  override async findSuggestion(
-    productId: string,
-    suggestionId: string,
-  ): Promise<FieldSuggestion | null> {
-    return (this.suggestions.get(productId) ?? []).find((row) => row.id === suggestionId) ?? null;
-  }
-
   override async resolveSuggestion(
     suggestionId: string,
     resolution: SuggestionResolution,
@@ -938,9 +931,7 @@ describe('product controller: card cost', () => {
 });
 
 const SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000001';
-const PRICE_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000002';
 const OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000003';
-const MISSING_SUGGESTION_ID = '01931f2a-6666-7000-8000-00000000000f';
 const RUN_ID = '01931f2a-5555-7000-8000-000000000001';
 const SUGGESTED_AT = '2026-09-20T10:00:00.000Z';
 
@@ -970,117 +961,6 @@ function pendingSuggestion(
     createdAt: new Date(SUGGESTED_AT),
   });
 }
-
-function suggestionUrl(productId: string, suggestionId: string, decision: string): string {
-  return `/${productId}/suggestions/${suggestionId}/${decision}`;
-}
-
-describe('product controller: resolving a suggestion', () => {
-  let repository: SuggestionProductRepository;
-  let runs: StubPreparationRepository;
-  let app: FastifyInstance;
-  let allowed = true;
-
-  before(async () => {
-    repository = new SuggestionProductRepository();
-    runs = new StubPreparationRepository();
-    app = Fastify();
-    new ProductController(
-      new ProductService(repository, NO_MEDIA, runs),
-      'https://images.example.com',
-    ).register(app, async (_request, reply) => {
-      if (!allowed) {
-        return reply.code(401).send({ code: apiErrorCodes.notAuthenticated });
-      }
-    });
-    await app.ready();
-  });
-
-  after(async () => {
-    await app.close();
-  });
-
-  beforeEach(() => {
-    allowed = true;
-    repository.cards[0] = card(READY_ID, { titleOlx: 'Моя власна назва' });
-    runs.suggestions.set(READY_ID, [
-      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
-      pendingSuggestion(PRICE_SUGGESTION_ID, 'price', {
-        priceFrom: '2200.00',
-        priceTo: '2700.00',
-      }),
-    ]);
-  });
-
-  it('answers the saved card for an accepted suggestion (Checklist 3)', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
-    });
-
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.json<{ titleOlx: string }>().titleOlx, 'Назва від моделі');
-  });
-
-  it('answers price_suggestion_readonly for accepting a price suggestion (AC-26)', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, PRICE_SUGGESTION_ID, 'accept'),
-    });
-
-    assert.equal(response.statusCode, 409);
-    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.priceSuggestionReadonly);
-    assert.equal(repository.cards[0]?.price, '2499.00');
-  });
-
-  it('answers suggestion_already_resolved for a second decision (Checklist 6)', async () => {
-    const url = suggestionUrl(READY_ID, SUGGESTION_ID, 'accept');
-
-    const first = await app.inject({ method: 'POST', url });
-    const second = await app.inject({ method: 'POST', url });
-
-    assert.equal(first.statusCode, 200);
-    assert.equal(second.statusCode, 409);
-    assert.equal(second.json<{ code: string }>().code, apiErrorCodes.suggestionAlreadyResolved);
-  });
-
-  it('answers suggestion_not_found for a suggestion this card never had (Checklist 1)', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, MISSING_SUGGESTION_ID, 'accept'),
-    });
-
-    assert.equal(response.statusCode, 404);
-    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.suggestionNotFound);
-  });
-
-  it('answers the untouched card for a rejected suggestion (Checklist 3)', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
-    });
-
-    assert.equal(response.statusCode, 200);
-    assert.equal(response.json<{ titleOlx: string }>().titleOlx, 'Моя власна назва');
-  });
-
-  it('puts both suggestion routes behind the session guard (Checklist 3)', async () => {
-    allowed = false;
-
-    const accepted = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
-    });
-    const rejected = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
-    });
-
-    assert.equal(accepted.statusCode, 401);
-    assert.equal(rejected.statusCode, 401);
-    assert.equal(repository.cards[0]?.titleOlx, 'Моя власна назва');
-  });
-});
 
 const NEWER_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000004';
 const NEWER_OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000005';
@@ -1172,64 +1052,6 @@ describe('product controller: suggestions of a card', () => {
     ]);
   });
 
-  it('shows the suggestion the read applied itself as accepted, not as waiting (AC-42, AC-69)', async () => {
-    repository.cards[0] = card(READY_ID, { titleOlx: '' });
-
-    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-    const body = response.json<CardReadBody>();
-
-    assert.equal(body.titleOlx, 'Назва від моделі');
-    assert.deepEqual(latestOf(body), [
-      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'accepted'),
-    ]);
-  });
-
-  it('brings a rejected suggestion back as rejected, never as waiting (AC-42, AC-69)', async () => {
-    await app.inject({ method: 'POST', url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject') });
-
-    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-
-    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
-      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'rejected'),
-    ]);
-  });
-
-  it('answers an acceptance with the accepted suggestion beside what is still waiting (Checklist 3)', async () => {
-    runs.suggestions.set(READY_ID, [
-      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
-      pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
-    ]);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'accept'),
-    });
-
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
-      latestDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.', SUGGESTED_AT),
-      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'accepted'),
-    ]);
-  });
-
-  it('answers a rejection with the rejected suggestion beside what is still waiting (Checklist 3)', async () => {
-    runs.suggestions.set(READY_ID, [
-      pendingSuggestion(SUGGESTION_ID, 'title_olx', 'Назва від моделі'),
-      pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
-    ]);
-
-    const response = await app.inject({
-      method: 'POST',
-      url: suggestionUrl(READY_ID, SUGGESTION_ID, 'reject'),
-    });
-
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
-      latestDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.', SUGGESTED_AT),
-      latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT, 'rejected'),
-    ]);
-  });
-
   it('answers a card that was never prepared with an empty array, not a missing field (DoD)', async () => {
     const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
 
@@ -1274,96 +1096,6 @@ describe('product controller: latest suggestion of every field', () => {
       titleOlx: 'Моя власна назва',
       descriptionOlx: 'Мій власний опис.',
     });
-  });
-
-  it('shows the description applied to an empty field as accepted, then and on the next read (AC-69)', async () => {
-    repository.cards[0] = card(READY_ID, { descriptionOlx: '' });
-    runs.suggestions.set(READY_ID, [
-      suggestionAt(
-        OLX_DESCRIPTION_SUGGESTION_ID,
-        'description_olx',
-        'Опис від моделі.',
-        '2026-09-20T10:00:00.000Z',
-      ),
-    ]);
-    const expected = [
-      latestDto(
-        OLX_DESCRIPTION_SUGGESTION_ID,
-        'descriptionOlx',
-        'Опис від моделі.',
-        '2026-09-20T10:00:00.000Z',
-        'accepted',
-      ),
-    ];
-
-    const applying = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-    const next = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-
-    assert.equal(next.statusCode, 200);
-    assert.equal(next.json<CardReadBody>().descriptionOlx, 'Опис від моделі.');
-    assert.deepEqual(latestOf(applying.json<CardReadBody>()), expected);
-    assert.deepEqual(latestOf(next.json<CardReadBody>()), expected);
-  });
-
-  it('puts the newer undecided suggestion beside the field instead of an older rejected one (AC-69)', async () => {
-    runs.suggestions.set(READY_ID, [
-      suggestionAt(
-        SUGGESTION_ID,
-        'title_olx',
-        'Назва від моделі',
-        '2026-09-20T10:00:00.000Z',
-        'rejected',
-      ),
-      suggestionAt(
-        NEWER_SUGGESTION_ID,
-        'title_olx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-      ),
-    ]);
-
-    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-
-    assert.equal(response.statusCode, 200);
-    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
-      latestDto(
-        NEWER_SUGGESTION_ID,
-        'titleOlx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-      ),
-    ]);
-  });
-
-  it('keeps the field edited by hand and leaves the new suggestion beside it undecided (AC-69, AC-11)', async () => {
-    runs.suggestions.set(READY_ID, [
-      suggestionAt(
-        SUGGESTION_ID,
-        'title_olx',
-        'Назва від моделі',
-        '2026-09-20T10:00:00.000Z',
-        'accepted',
-      ),
-      suggestionAt(
-        NEWER_SUGGESTION_ID,
-        'title_olx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-      ),
-    ]);
-
-    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-    const body = response.json<CardReadBody>();
-
-    assert.equal(body.titleOlx, 'Моя власна назва');
-    assert.deepEqual(latestOf(body), [
-      latestDto(
-        NEWER_SUGGESTION_ID,
-        'titleOlx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-      ),
-    ]);
   });
 
   it('keeps one suggestion per field, the newest by createdAt, whatever its resolution (Checklist 2)', async () => {

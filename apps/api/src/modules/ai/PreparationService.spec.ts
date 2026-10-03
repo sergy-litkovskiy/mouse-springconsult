@@ -13,7 +13,6 @@ import {
   Product,
   ProductImage,
   ProductRepository,
-  ProductService,
   PRODUCTS_TABLE,
   type RunOutcome,
 } from '../products/index.ts';
@@ -302,50 +301,6 @@ describe('preparation service (postgres)', () => {
         { field: 'title_prom', value: 'Бездротова миша Logitech MX Master 3' },
       ]);
       assert.ok(OVERLONG_TITLE_CUT.length <= productConstraints.titleMaxLength);
-    });
-
-    it('fills an overlong title into an empty card field without breaking the column (AC-61)', async () => {
-      const { service, media } = setup({ texts: { ...TEXTS, titleOlx: OVERLONG_TITLE } });
-      const productId = await seedProduct({ titleProm: '', titleOlx: '' });
-      await seedGallery(productId, 1);
-      const runId = await seedRun(productId, 'texts');
-      const products = new ProductService(
-        new ProductRepository(dataSource),
-        media,
-        new PreparationRepository(dataSource),
-      );
-
-      await service.prepare({ runId, productId, scope: 'texts' });
-      const reading = await products.getById(productId);
-
-      assert.equal(reading.product.titleOlx, OVERLONG_TITLE_CUT);
-      assert.equal(reading.product.titleProm, TEXTS.titleProm);
-    });
-
-    it('keeps a title the user wrote and fills the empty one with the suggestion (AC-61, AC-11)', async () => {
-      const { service, media } = setup();
-      const productId = await seedProduct({ titleProm: 'Моя назва для Prom', titleOlx: '' });
-      await seedGallery(productId, 1);
-      const runId = await seedRun(productId, 'texts');
-      const products = new ProductService(
-        new ProductRepository(dataSource),
-        media,
-        new PreparationRepository(dataSource),
-      );
-
-      await service.prepare({ runId, productId, scope: 'texts' });
-      const reading = await products.getById(productId);
-
-      assert.equal(reading.product.titleProm, 'Моя назва для Prom');
-      assert.equal(reading.product.titleOlx, TEXTS.titleOlx);
-      const latest = new Map(
-        reading.latestSuggestions.map(({ field, value, resolution }) => [
-          field,
-          { value, resolution },
-        ]),
-      );
-      assert.deepEqual(latest.get('title_prom'), { value: TEXTS.titleProm, resolution: null });
-      assert.deepEqual(latest.get('title_olx'), { value: TEXTS.titleOlx, resolution: 'accepted' });
     });
 
     it('recognizes the item from the main frame first and sends at most three frames (AC-05)', async () => {

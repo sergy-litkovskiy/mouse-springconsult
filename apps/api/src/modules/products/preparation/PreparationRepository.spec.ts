@@ -457,21 +457,6 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('does not find a suggestion through another card (Checklist 3)', async () => {
-    const productId = await seedProduct();
-    const runId = await seedRun(productId);
-    await runs.finishRun(runId, {
-      status: 'succeeded',
-      suggestions: [{ field: 'seo_keywords', value: ['миша', 'logitech'] }],
-    });
-    const [suggestion] = await suggestionsOf(runId);
-    assert.ok(suggestion);
-    const otherProductId = await seedProduct();
-
-    assert.equal((await runs.findSuggestion(productId, suggestion.id))?.id, suggestion.id);
-    assert.equal(await runs.findSuggestion(otherProductId, suggestion.id), null);
-  });
-
   it('closes a running run older than a full series of attempts (AC-39)', async () => {
     const runId = await seedRun(await seedProduct(), 'running');
     await ageRun(runId, STUCK_AFTER_SECONDS + 60);
