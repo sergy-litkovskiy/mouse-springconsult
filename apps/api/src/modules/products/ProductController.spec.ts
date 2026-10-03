@@ -14,7 +14,6 @@ import { ImageStorage, MediaService, StorageUnavailable } from '../media/index.t
 import {
   FieldSuggestion,
   type SuggestionField,
-  type SuggestionResolution,
   type SuggestionValue,
 } from './preparation/FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
@@ -116,7 +115,7 @@ class StubProductRepository extends ProductRepository {
  */
 class StubPreparationRepository extends PreparationRepository {
   readonly totals = new Map<string, TokenTotals>();
-  /** Suggestions reach the card through their run, so the double keys them the way the join does. */
+  /** Keyed by card, the way their `product_id` column holds them. */
   readonly suggestions = new Map<string, FieldSuggestion[]>();
 
   constructor() {
@@ -133,19 +132,6 @@ class StubPreparationRepository extends PreparationRepository {
   override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
     this.suggestionQueries += 1;
     return this.suggestions.get(productId) ?? [];
-  }
-
-  override async resolveSuggestion(
-    suggestionId: string,
-    resolution: SuggestionResolution,
-  ): Promise<boolean> {
-    const row = [...this.suggestions.values()].flat().find((each) => each.id === suggestionId);
-    if (row?.resolution !== null) {
-      return false;
-    }
-    row.resolution = resolution;
-    row.resolvedAt = new Date('2026-09-20T12:00:00.000Z');
-    return true;
   }
 }
 
@@ -953,31 +939,11 @@ function pendingSuggestion(
 ): FieldSuggestion {
   return Object.assign(new FieldSuggestion(), {
     id,
+    productId: READY_ID,
     runId: RUN_ID,
     field,
     value,
-    resolution: null,
-    resolvedAt: null,
     createdAt: new Date(SUGGESTED_AT),
-  });
-}
-
-const NEWER_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000004';
-const NEWER_OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000005';
-/** What `resolveSuggestion` of the double stamps on a decision. */
-const DECIDED_AT = '2026-09-20T12:00:00.000Z';
-
-function suggestionAt(
-  id: string,
-  field: SuggestionField,
-  value: SuggestionValue,
-  createdAt: string,
-  resolution: SuggestionResolution | null = null,
-): FieldSuggestion {
-  return Object.assign(pendingSuggestion(id, field, value), {
-    createdAt: new Date(createdAt),
-    resolution,
-    resolvedAt: resolution === null ? null : new Date(DECIDED_AT),
   });
 }
 
@@ -1057,85 +1023,6 @@ describe('product controller: suggestions of a card', () => {
       latestDto(SUGGESTION_ID, 'titleOlx', 'Назва від моделі', SUGGESTED_AT),
     ]);
     assert.equal(runs.suggestionQueries, 1);
-  });
-});
-
-describe('product controller: latest suggestion of every field', () => {
-  let repository: SuggestionProductRepository;
-  let runs: StubPreparationRepository;
-  let app: FastifyInstance;
-
-  before(async () => {
-    repository = new SuggestionProductRepository();
-    runs = new StubPreparationRepository();
-    app = Fastify();
-    new ProductController(
-      new ProductService(repository, NO_MEDIA, runs),
-      'https://images.example.com',
-    ).register(app, async () => {
-      // Lets every request through: the session is not what this suite is about.
-    });
-    await app.ready();
-  });
-
-  after(async () => {
-    await app.close();
-  });
-
-  beforeEach(() => {
-    repository.cards[0] = card(READY_ID, {
-      titleOlx: 'Моя власна назва',
-      descriptionOlx: 'Мій власний опис.',
-    });
-  });
-
-  it('keeps one suggestion per field, the newest by createdAt, whatever its resolution (Checklist 2)', async () => {
-    runs.suggestions.set(READY_ID, [
-      suggestionAt(
-        SUGGESTION_ID,
-        'title_olx',
-        'Назва від моделі',
-        '2026-09-20T10:00:00.000Z',
-        'rejected',
-      ),
-      suggestionAt(
-        OLX_DESCRIPTION_SUGGESTION_ID,
-        'description_olx',
-        'Опис від моделі.',
-        '2026-09-20T10:01:00.000Z',
-      ),
-      suggestionAt(
-        NEWER_OLX_DESCRIPTION_SUGGESTION_ID,
-        'description_olx',
-        'Новий опис від моделі.',
-        '2026-09-20T10:03:00.000Z',
-        'accepted',
-      ),
-      suggestionAt(
-        NEWER_SUGGESTION_ID,
-        'title_olx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-        'rejected',
-      ),
-    ]);
-
-    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
-
-    assert.deepEqual(latestOf(response.json<CardReadBody>()), [
-      latestDto(
-        NEWER_OLX_DESCRIPTION_SUGGESTION_ID,
-        'descriptionOlx',
-        'Новий опис від моделі.',
-        '2026-09-20T10:03:00.000Z',
-      ),
-      latestDto(
-        NEWER_SUGGESTION_ID,
-        'titleOlx',
-        'Нова назва від моделі',
-        '2026-09-20T10:05:00.000Z',
-      ),
-    ]);
   });
 });
 

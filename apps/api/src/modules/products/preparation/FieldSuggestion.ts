@@ -5,8 +5,6 @@ export const FIELD_SUGGESTIONS_TABLE = 'product_field_suggestions';
 export type SuggestionField =
   'title_prom' | 'title_olx' | 'description_prom' | 'description_olx' | 'seo_keywords' | 'price';
 
-export type SuggestionResolution = 'accepted' | 'rejected';
-
 /** Decimal strings, like `products.price`: the range never passes through a float. */
 export type PriceRange = { readonly priceFrom: string; readonly priceTo: string };
 
@@ -14,13 +12,16 @@ export type PriceRange = { readonly priceFrom: string; readonly priceTo: string 
 export type SuggestionValue = string | readonly string[] | PriceRange;
 
 /**
- * No `productId`: the card is reached through the run. A copy here would be a second place for
- * the same fact, and nothing would keep the two in agreement.
+ * One row per card and field (ADR 0017): the next generation replaces the value and the run. Hence
+ * `productId` on the row itself — the run changes with every generation, the card does not.
  */
 @Entity({ name: FIELD_SUGGESTIONS_TABLE })
 export class FieldSuggestion {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'product_id', type: 'uuid' })
+  productId!: string;
 
   @Column({ name: 'run_id', type: 'uuid' })
   runId!: string;
@@ -30,13 +31,6 @@ export class FieldSuggestion {
 
   @Column({ name: 'value', type: 'jsonb' })
   value!: SuggestionValue;
-
-  /** NULL means not decided yet. */
-  @Column({ name: 'resolution', type: 'varchar', length: 16, nullable: true })
-  resolution!: SuggestionResolution | null;
-
-  @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
-  resolvedAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

@@ -278,17 +278,6 @@ describe('product card read contract', () => {
     assert.deepEqual(parsed['latestSuggestions'], [suggestion, description]);
   });
 
-  it('carries a suggestion without a decision on it (AC-11)', () => {
-    const parsed: Record<string, unknown> = productCardReadSchema.parse({
-      ...card,
-      latestSuggestions: [
-        { ...suggestion, resolution: 'accepted', resolvedAt: '2026-09-20T12:00:00.000Z' },
-      ],
-    });
-
-    assert.deepEqual(parsed['latestSuggestions'], [suggestion]);
-  });
-
   it('refuses a suggestion field spelled the way the column holds it (AC-41)', () => {
     const result = productCardReadSchema.safeParse({
       ...card,

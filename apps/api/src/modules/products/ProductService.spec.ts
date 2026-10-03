@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
-import type { FieldSuggestion, SuggestionResolution } from './preparation/FieldSuggestion.ts';
+import type { FieldSuggestion } from './preparation/FieldSuggestion.ts';
 import { Product, type ProductPage } from './Product.ts';
 import { PreparationRepository, type TokenTotals } from './preparation/PreparationRepository.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
@@ -266,8 +266,7 @@ class RecordingMediaService extends MediaService {
 
 /**
  * No test here is about the cost of a card, so no card here has ever been prepared. Suggestions
- * are keyed by card the way the join through the run reaches them, and a decision is recorded
- * once — the conditional update behind it is proven against Postgres in its own spec.
+ * are keyed by card, the way their `product_id` column holds them.
  */
 class StubPreparationRepository extends PreparationRepository {
   readonly suggestions = new Map<string, FieldSuggestion[]>();
@@ -282,19 +281,6 @@ class StubPreparationRepository extends PreparationRepository {
 
   override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
     return this.suggestions.get(productId) ?? [];
-  }
-
-  override async resolveSuggestion(
-    suggestionId: string,
-    resolution: SuggestionResolution,
-  ): Promise<boolean> {
-    const row = [...this.suggestions.values()].flat().find((each) => each.id === suggestionId);
-    if (row?.resolution !== null) {
-      return false;
-    }
-    row.resolution = resolution;
-    row.resolvedAt = new Date('2026-09-20T12:00:00.000Z');
-    return true;
   }
 }
 
@@ -955,11 +941,10 @@ function freshSuggestion(
 ): FieldSuggestion {
   return {
     id,
+    productId: CARD_ID,
     runId: '01931f2a-5555-7000-8000-000000000001',
     field,
     value,
-    resolution: null,
-    resolvedAt: null,
     createdAt: new Date('2026-09-20T10:00:00.000Z'),
   };
 }
