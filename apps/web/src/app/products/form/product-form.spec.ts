@@ -32,6 +32,7 @@ import type {
   ProductUpdateResponse,
 } from '@contracts/products.contract';
 import { ConfirmDialog } from '../../confirm-dialog';
+import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductForm, type ProductFormData } from './product-form';
 
 const CARD_ID = '11111111-1111-4111-8111-111111111111';
@@ -1800,6 +1801,263 @@ describe('ProductForm', () => {
         expect(acceptBtn?.getAttribute('aria-label')).toBe(
           'Застосувати для поля ліворуч: Пропозиція для OLX',
         );
+      });
+    });
+
+    describe('the spinner beside the control that started the run (AC-60)', () => {
+      const TEXT_FIELDS = [
+        'titleProm',
+        'titleOlx',
+        'descriptionProm',
+        'descriptionOlx',
+        'seoKeywords',
+      ] as const;
+      const RUN_URL = `/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`;
+      /** Wider than the poll interval on purpose: what matters is that the next ask happens. */
+      const NEXT_POLL_MS = 30_000;
+
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      function generateAllButton(): HTMLButtonElement {
+        const found = element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]');
+        if (found === null) {
+          throw new Error('no «Згенерувати все» button');
+        }
+        return found;
+      }
+
+      function launch(field: string, action: 'rewrite' | 'improve'): HTMLButtonElement | null {
+        return half(field).querySelector<HTMLButtonElement>(`[data-testid="${action}"]`);
+      }
+
+      function spinnerIn(scope: Element): Element | null {
+        return scope.querySelector('mat-progress-spinner');
+      }
+
+      function notice(): string {
+        return element.querySelector('.card-prepare [role="status"]')?.textContent.trim() ?? '';
+      }
+
+      async function nextPoll(answer: PreparationRunDto): Promise<void> {
+        await vi.advanceTimersByTimeAsync(NEXT_POLL_MS);
+        await settle();
+        http.expectOne(RUN_URL).flush(answer);
+        await settle();
+      }
+
+      async function startFieldRun(action: 'rewrite' | 'improve'): Promise<void> {
+        launch('descriptionOlx', action)?.click();
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}/preparation-runs`).flush(run('running'));
+        await settle();
+        http.expectOne(RUN_URL).flush(run('running'));
+        await settle();
+      }
+
+      async function finishTextsRun(card: ProductCard): Promise<void> {
+        await nextPoll({ ...run('succeeded'), scope: 'texts' });
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(card));
+        await settle();
+      }
+
+      // Mid-run checks are soft: a hard failure would leave the poll open, and the shared verify()
+      // would then fail every test after this one as well.
+      it('spins in «Згенерувати все» while a texts run is queued or running, with the field buttons off and still, then gives them back (AC-60)', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        type('descriptionOlx', 'Продам мишу.');
+        await settle();
+
+        generateAllButton().click();
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}/preparation-runs`)
+          .flush({ ...run('running'), scope: 'texts' });
+        await settle();
+        http.expectOne(RUN_URL).flush({ ...run('queued'), scope: 'texts' });
+        await settle();
+
+        expect.soft(spinnerIn(generateAllButton()), 'spinner while queued').not.toBeNull();
+        for (const field of TEXT_FIELDS) {
+          expect.soft(spinnerIn(half(field)), `spinner beside ${field}`).toBeNull();
+          expect.soft(launch(field, 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
+          expect.soft(launch(field, 'improve')?.getAttribute('aria-disabled')).toBe('true');
+        }
+
+        await nextPoll({ ...run('running'), scope: 'texts' });
+        expect.soft(spinnerIn(generateAllButton()), 'spinner while running').not.toBeNull();
+
+        await finishTextsRun(PUBLISHED_ON_PROM);
+
+        expect(spinnerIn(generateAllButton())).toBeNull();
+        expect(generateAllButton().disabled).toBe(false);
+        for (const field of TEXT_FIELDS) {
+          expect(launch(field, 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+          expect(launch(field, 'improve')?.getAttribute('aria-disabled')).toBeNull();
+        }
+      });
+
+      for (const [action, name] of [
+        ['improve', 'Покращити через AI'],
+        ['rewrite', 'Застосувати як промпт'],
+      ] as const) {
+        it(`replaces both launch buttons of the field with a spinner after «${name}» until the result arrives (AC-60)`, async () => {
+          openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+          await settle();
+          type('descriptionOlx', 'Продам мишу.');
+          await settle();
+
+          await startFieldRun(action);
+
+          const working = half('descriptionOlx');
+          expect
+            .soft(spinnerIn(working)?.getAttribute('aria-label'), 'spinner beside the field')
+            .toBe('Модель готує варіант');
+          expect.soft(launch('descriptionOlx', 'rewrite'), '«Застосувати як промпт»').toBeNull();
+          expect.soft(launch('descriptionOlx', 'improve'), '«Покращити через AI»').toBeNull();
+          expect.soft(button('descriptionOlx', 'accept')?.disabled, '«<- AI»').toBe(true);
+          expect.soft(spinnerIn(generateAllButton()), 'spinner in «Згенерувати все»').toBeNull();
+          for (const field of TEXT_FIELDS.filter((other) => other !== 'descriptionOlx')) {
+            expect.soft(spinnerIn(half(field)), `spinner beside ${field}`).toBeNull();
+            expect.soft(launch(field, 'rewrite'), `prompt button of ${field}`).not.toBeNull();
+          }
+          expect.soft(notice(), 'the general notice').toBe('Модель готує тексти…');
+
+          await nextPoll(run('succeeded'));
+          http
+            .expectOne(`/api/products/${CARD_ID}`)
+            .flush(withLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]));
+          await settle();
+
+          expect(spinnerIn(half('descriptionOlx'))).toBeNull();
+          expect(launch('descriptionOlx', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+          expect(launch('descriptionOlx', 'improve')?.getAttribute('aria-disabled')).toBeNull();
+          expect(button('descriptionOlx', 'accept')?.disabled).toBe(false);
+        });
+      }
+
+      it('drops the field spinner, shows the failure and gives the buttons back when the run fails (AC-60, AC-10)', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        type('descriptionOlx', 'Продам мишу.');
+        await settle();
+
+        await startFieldRun('improve');
+        expect.soft(spinnerIn(half('descriptionOlx')), 'spinner while running').not.toBeNull();
+
+        await nextPoll(run('failed'));
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+
+        expect(spinnerIn(half('descriptionOlx'))).toBeNull();
+        expect(actionsAlert()).toBe('Підготовка не вдалася. Спробуйте ще раз.');
+        expect(launch('descriptionOlx', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+        expect(launch('descriptionOlx', 'improve')?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      const refusals: readonly { status: number; statusText: string; refusal: ApiError }[] = [
+        {
+          status: 409,
+          statusText: 'Conflict',
+          refusal: {
+            error: {
+              code: 'preparation_input_incomplete',
+              message: 'The card lacks the input this preparation needs',
+              details: { missing: ['draft'] },
+            },
+          },
+        },
+        {
+          status: 429,
+          statusText: 'Too Many Requests',
+          refusal: {
+            error: {
+              code: 'preparation_rate_limited',
+              message: 'Too many preparation runs for this card, try again later',
+            },
+          },
+        },
+      ];
+      for (const { status, statusText, refusal } of refusals) {
+        // The texts run afterwards is what shows a refused field is not left marked as working.
+        it(`leaves no spinner beside the field whose POST got ${String(status)}, not even during the next run (AC-60)`, async () => {
+          open(PUBLISHED_ON_PROM);
+          await settle();
+          type('descriptionOlx', 'Продам мишу.');
+          await settle();
+
+          launch('descriptionOlx', 'improve')?.click();
+          await settle();
+          http
+            .expectOne(`/api/products/${CARD_ID}/preparation-runs`)
+            .flush(refusal, { status, statusText });
+          await settle();
+
+          expect.soft(actionsAlert(), 'the refusal is shown').not.toBe('');
+          expect.soft(spinnerIn(half('descriptionOlx')), 'spinner after the refusal').toBeNull();
+          expect
+            .soft(launch('descriptionOlx', 'improve')?.getAttribute('aria-disabled'))
+            .toBeNull();
+
+          generateAllButton().click();
+          await settle();
+          http
+            .expectOne(`/api/products/${CARD_ID}/preparation-runs`)
+            .flush({ ...run('running'), scope: 'texts' });
+          await settle();
+          http.expectOne(RUN_URL).flush({ ...run('running'), scope: 'texts' });
+          await settle();
+
+          expect
+            .soft(spinnerIn(generateAllButton()), 'spinner in «Згенерувати все»')
+            .not.toBeNull();
+          expect.soft(spinnerIn(half('descriptionOlx')), 'spinner beside the field').toBeNull();
+          expect.soft(launch('descriptionOlx', 'improve'), '«Покращити через AI»').not.toBeNull();
+
+          await finishTextsRun(PUBLISHED_ON_PROM);
+        });
+      }
+
+      // The form learns the field from its own request only; a run it merely watches names none.
+      it('shows no field spinner for a run the form did not start, and one for the run it starts next (AC-60)', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        type('descriptionOlx', 'Продам мишу.');
+        await settle();
+
+        const foreignRunId = '33333333-3333-4333-8333-333333333333';
+        const foreignRunUrl = `/api/products/${CARD_ID}/preparation-runs/${foreignRunId}`;
+        fixture.debugElement.injector.get(PreparationRunPoller).watch(CARD_ID, foreignRunId);
+        http.expectOne(foreignRunUrl).flush({ ...run('running'), id: foreignRunId });
+        await settle();
+
+        expect.soft(notice(), 'the general notice').toBe('Модель готує тексти…');
+        for (const field of TEXT_FIELDS) {
+          expect.soft(spinnerIn(half(field)), `spinner beside ${field}`).toBeNull();
+          expect.soft(launch(field, 'improve')?.getAttribute('aria-disabled')).toBe('true');
+        }
+
+        await vi.advanceTimersByTimeAsync(NEXT_POLL_MS);
+        await settle();
+        http.expectOne(foreignRunUrl).flush({ ...run('succeeded'), id: foreignRunId });
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+
+        await startFieldRun('improve');
+        expect
+          .soft(spinnerIn(half('descriptionOlx')), 'spinner for the run the form started')
+          .not.toBeNull();
+
+        await nextPoll(run('succeeded'));
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
       });
     });
 
