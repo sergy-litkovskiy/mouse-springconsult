@@ -1,7 +1,13 @@
 <div class="suggestion">
   <div class="suggestion__buttons">
     @if (working()) {
-      <mat-progress-spinner mode="indeterminate" diameter="40" aria-label="Модель готує варіант" />
+      <div class="suggestion__working" [class.suggestion__working--pair]="improvable()">
+        <mat-progress-spinner
+          mode="indeterminate"
+          diameter="24"
+          aria-label="Модель готує варіант"
+        />
+      </div>
     } @else {
       <button
         matIconButton
