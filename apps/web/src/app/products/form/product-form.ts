@@ -106,6 +106,12 @@ const SUCCESS_SNACK_BAR: MatSnackBarConfig = {
   verticalPosition: 'top',
 };
 
+const DISCARD_QUESTION: ConfirmDialogData = {
+  title: 'Закрити без збереження?',
+  message: 'Правки в полях картки буде втрачено.',
+  confirmLabel: 'Закрити без збереження',
+};
+
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
   { value: 'used', label: 'б/в' },
   { value: 'new', label: 'Новий' },
@@ -128,6 +134,10 @@ function parseKeywords(text: string): string[] {
 
 function fieldText(product: Pick<Product, RewritableField>, field: RewritableField): string {
   return field === 'seoKeywords' ? product.seoKeywords.join(', ') : product[field];
+}
+
+function sameKeywords(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((keyword, at) => keyword === right[at]);
 }
 
 function keywordsBound(control: AbstractControl): ValidationErrors | null {
@@ -505,10 +515,7 @@ export class ProductForm {
       for (const field of REWRITABLE_FIELDS) {
         if (field === 'seoKeywords') {
           const keywords = this.form.controls.seoKeywords;
-          if (
-            keywords.value.length === read.length &&
-            keywords.value.every((keyword, at) => keyword === read[at])
-          ) {
+          if (sameKeywords(keywords.value, read)) {
             keywords.setValue(card.seoKeywords);
           }
           continue;
@@ -525,37 +532,12 @@ export class ProductForm {
     }
   }
 
-  /**
-   * The form is compared with the card as read rather than asked whether it is dirty: the chip grid
-   * marks the keywords on every blur, and a field typed back to what the card holds is no edit.
-   * Frames are stored as they change, so they never count as unsaved.
-   */
   protected async requestClose(): Promise<void> {
-    const value = this.form.getRawValue();
-    const read = this.card();
-    const kept = read === null ? this.blank : { ...read, price: priceFieldValue(read.price) };
-    const edited = (Object.keys(value) as (keyof typeof value)[]).some((key) => {
-      if (key === 'seoKeywords') {
-        return (
-          value.seoKeywords.length !== kept.seoKeywords.length ||
-          value.seoKeywords.some((keyword, at) => keyword !== kept.seoKeywords[at])
-        );
-      }
-      if (key === 'price') {
-        return priceFromField(value.price) !== priceFromField(kept.price);
-      }
-      return value[key] !== kept[key];
-    });
-
-    if (edited) {
+    if (this.hasUnsavedEdits()) {
       const confirmed = await firstValueFrom(
         this.dialog
           .open<ConfirmDialog, ConfirmDialogData, boolean>(ConfirmDialog, {
-            data: {
-              title: 'Закрити без збереження?',
-              message: 'Правки в полях картки буде втрачено.',
-              confirmLabel: 'Закрити без збереження',
-            },
+            data: DISCARD_QUESTION,
           })
           .afterClosed(),
       );
@@ -564,6 +546,26 @@ export class ProductForm {
       }
     }
     this.dialogRef.close(this.changed());
+  }
+
+  /**
+   * The form is compared with the card as read rather than asked whether it is dirty: the chip grid
+   * marks the keywords on every blur, and a field typed back to what the card holds is no edit.
+   * Frames are stored as they change, so they never count as unsaved.
+   */
+  private hasUnsavedEdits(): boolean {
+    const value = this.form.getRawValue();
+    const read = this.card();
+    const kept = read === null ? this.blank : { ...read, price: priceFieldValue(read.price) };
+    return (Object.keys(value) as (keyof typeof value)[]).some((key) => {
+      if (key === 'seoKeywords') {
+        return !sameKeywords(value.seoKeywords, kept.seoKeywords);
+      }
+      if (key === 'price') {
+        return priceFromField(value.price) !== priceFromField(kept.price);
+      }
+      return value[key] !== kept[key];
+    });
   }
 
   protected async save(): Promise<void> {
