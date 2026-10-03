@@ -18,8 +18,9 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T91, T66 — поставка 3, пропозиції в `api` і UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
-T92 чекає на T91. Зачистка номерів з коду: T81 чекає на T66, T82 — на T91 і T92.
+**Готові до старту:** T91, T81 — поставка 3, пропозиції в `api` і зачистка номерів з коду `web`. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
+T92 чекає на T91. Зачистка номерів з коду: T82 чекає на T91 і T92.
+T66 закрито 2026-10-03: вона розблокувала T81 — остання з її `blocked_by`.
 T90 закрито 2026-10-03: вона розблокувала T91 і T66; T81 ще чекає на T66.
 T89 скасовано 2026-10-03 (`Dropped`): падіння не відтворилось на 120 прогонах під навантаженням; ребро до T81 знято.
 T87 закрито 2026-10-03 й нічого не розблокувала: T81 ще чекає на решту своїх `blocked_by`.
@@ -127,7 +128,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T63 | [Живий пошук від трьох символів](search-titles-live-from-three-chars.md) | Done | — | S | 2026-09-24 |
 | T64 | [Відмітки публікації як іконки](show-published-as-icons.md) | Done | — | XS | 2026-09-25 |
 | T65 | [Ціна й стан у комірці](edit-price-and-condition-inline.md) | Done | T64 | S | 2026-09-27 |
-| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Todo | T58, T59, T73, T74, T90 | S | — |
+| T66 | [Локальний індикатор AI](show-local-ai-progress.md) | Done | T58, T59, T73, T74, T90 | S | 2026-10-03 |
 | T67 | [Назви Prom/OLX із «Згенерувати все»](generate-titles-with-texts.md) | Done | — | S | 2026-09-27 |
 | T68 | [Опис Prom після повторного відкриття](keep-prom-description-on-reopen.md) | Done | — | XS | 2026-10-02 |
 | T69 | [«Згенерувати все» під галереєю](move-generate-all-below-gallery.md) | Done | — | XS | 2026-09-27 |
@@ -142,7 +143,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Done | T78 | S | 2026-10-02 |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Done | T75, T79 | XS | 2026-10-02 |
-| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | — |
+| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Todo | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | — |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74, T91, T92 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Done | — | S | 2026-10-03 |
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Dropped | T74 | S | — |
