@@ -1,7 +1,7 @@
 ---
 id: T86
 title: "Хибний пароль: одне повідомлення замість трьох"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: []
 blocks: []
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T86 — Хибний пароль: одне повідомлення замість трьох
@@ -84,9 +84,9 @@ email, довжина пароля) лишаються під полем, як �
 
 ## DoD
 
-- [ ] AC-79: одне повідомлення про хибні облікові дані.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `fix(web): show the credentials error once on the login page`.
+- [x] AC-79: одне повідомлення про хибні облікові дані.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `fix(web): show the credentials error once on the login page`.
 
 ## Links
 
