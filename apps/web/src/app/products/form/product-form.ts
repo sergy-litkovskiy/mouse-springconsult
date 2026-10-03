@@ -60,8 +60,8 @@ import { missingFieldsHint } from '../missing-fields-hint';
 import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductsApi } from '../products-api';
 import { runFailureMessages } from '../run-failure-messages';
-import { promDescriptionCleanup } from './prom-description-cleanup';
 import { PromDescriptionEditor } from './prom-description-editor';
+import { promDescriptionFromText } from './prom-description-from-text';
 import { SuggestionField } from './suggestion-field';
 
 /**
@@ -131,20 +131,6 @@ function fieldText(product: Pick<Product, RewritableField>, field: RewritableFie
 
 function sameKeywords(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((keyword, at) => keyword === right[at]);
-}
-
-/**
- * The model writes the Prom description as plain text and the editor holds HTML, so it is
- * converted the way the server's `promDescription` does (ADR 0016 №7).
- */
-function promDescriptionFromText(text: string): string {
-  const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-  return promDescriptionCleanup(
-    escaped
-      .split(/\n{2,}/)
-      .map((block) => `<p>${block.replaceAll('\n', '<br>')}</p>`)
-      .join(''),
-  );
 }
 
 function keywordsBound(control: AbstractControl): ValidationErrors | null {
