@@ -1385,8 +1385,6 @@ describe('ProductForm', () => {
       runId: RUN_ID,
       field: 'descriptionOlx',
       value: 'Продам мишу Logitech MX Master 3, повний комплект.',
-      resolution: null,
-      resolvedAt: null,
       createdAt: '2026-09-20T09:00:35.000Z',
     };
 
