@@ -133,6 +133,20 @@ function sameKeywords(left: readonly string[], right: readonly string[]): boolea
   return left.length === right.length && left.every((keyword, at) => keyword === right[at]);
 }
 
+/**
+ * The model writes the Prom description as plain text and the editor holds HTML, so it is
+ * converted the way the server's `promDescription` does (ADR 0016 №7).
+ */
+function promDescriptionFromText(text: string): string {
+  const escaped = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  return promDescriptionCleanup(
+    escaped
+      .split(/\n{2,}/)
+      .map((block) => `<p>${block.replaceAll('\n', '<br>')}</p>`)
+      .join(''),
+  );
+}
+
 function keywordsBound(control: AbstractControl): ValidationErrors | null {
   const tooLong = (control.value as string[]).some(
     (keyword) => keyword.length > productConstraints.keywordMaxLength,
@@ -449,9 +463,6 @@ export class ProductForm {
    * Copies the suggestion into the field on the left, and only that field, without a request: the
    * card changes on «Зберегти» alone (AC-81, ADR 0017). The rest of the form may hold edits of its
    * own, and a suggestion decides nothing about them (AC-11).
-   *
-   * The model writes the Prom description as plain text and the editor holds HTML, so it is
-   * converted the way the server's `promDescription` does (ADR 0016 №7).
    */
   protected acceptSuggestion(field: RewritableField): void {
     const value = this.suggestionFor(field)?.value;
@@ -464,18 +475,7 @@ export class ProductForm {
         (value as readonly string[]).slice(0, productConstraints.maxKeywords),
       );
     } else if (field === 'descriptionProm') {
-      const escaped = (value as string)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-      this.form.controls.descriptionProm.setValue(
-        promDescriptionCleanup(
-          escaped
-            .split(/\n{2,}/)
-            .map((block) => `<p>${block.replaceAll('\n', '<br>')}</p>`)
-            .join(''),
-        ),
-      );
+      this.form.controls.descriptionProm.setValue(promDescriptionFromText(value as string));
     } else {
       this.form.controls[field].setValue(value as string);
     }
