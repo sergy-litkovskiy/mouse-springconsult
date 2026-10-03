@@ -33,6 +33,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, type MatSnackBarConfig } from '@angular/material/snack-bar';
@@ -155,6 +156,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
@@ -253,6 +255,26 @@ export class ProductForm {
    * what spends the money, so the button is what goes; the code behind it stays for T54 to fix.
    */
   protected readonly priceLookupEnabled = false;
+
+  protected readonly generatingAll = computed(
+    () => this.preparing() && this.poller.run()?.scope === 'texts',
+  );
+
+  /** The field comes from the form's own request: a run it merely watches names none (AC-60). */
+  private readonly started = signal<{ runId: string; request: PreparationRunRequest } | null>(null);
+
+  protected readonly workingField = computed(() => {
+    const started = this.started();
+    if (
+      started === null ||
+      started.request.scope !== 'field' ||
+      !this.preparing() ||
+      this.poller.run()?.id !== started.runId
+    ) {
+      return null;
+    }
+    return started.request.field;
+  });
 
   protected readonly preparingNotice = computed(() =>
     this.poller.run()?.scope === 'price' ? 'Модель шукає ціну…' : 'Модель готує тексти…',
@@ -476,6 +498,7 @@ export class ProductForm {
     this.formError.set(null);
     try {
       const run = await firstValueFrom(this.api.startPreparationRun(id, request));
+      this.started.set({ runId: run.id, request });
       this.poller.watch(id, run.id);
     } catch (error: unknown) {
       this.formError.set(apiErrorMessage(error, PREPARATION_MESSAGES, UNAVAILABLE_MODEL_MESSAGE));

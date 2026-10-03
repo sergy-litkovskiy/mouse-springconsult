@@ -1,30 +1,34 @@
 <div class="suggestion">
   <div class="suggestion__buttons">
-    <button
-      matIconButton
-      type="button"
-      [disabled]="!canLaunch()"
-      disabledInteractive
-      [matTooltip]="canRewrite() ? 'Застосувати як промпт' : rewriteHint()"
-      [attr.aria-label]="'Застосувати як промпт: ' + label()"
-      data-testid="rewrite"
-      (click)="canLaunch() && rewrite.emit()"
-    >
-      <mat-icon>auto_awesome</mat-icon>
-    </button>
-    @if (improvable()) {
+    @if (working()) {
+      <mat-progress-spinner mode="indeterminate" diameter="40" aria-label="Модель готує варіант" />
+    } @else {
       <button
         matIconButton
         type="button"
         [disabled]="!canLaunch()"
         disabledInteractive
-        [matTooltip]="canRewrite() ? 'Покращити через AI' : rewriteHint()"
-        [attr.aria-label]="'Покращити через AI: ' + label()"
-        data-testid="improve"
-        (click)="canLaunch() && improve.emit()"
+        [matTooltip]="canRewrite() ? 'Застосувати як промпт' : rewriteHint()"
+        [attr.aria-label]="'Застосувати як промпт: ' + label()"
+        data-testid="rewrite"
+        (click)="canLaunch() && rewrite.emit()"
       >
-        <mat-icon>auto_fix_high</mat-icon>
+        <mat-icon>auto_awesome</mat-icon>
       </button>
+      @if (improvable()) {
+        <button
+          matIconButton
+          type="button"
+          [disabled]="!canLaunch()"
+          disabledInteractive
+          [matTooltip]="canRewrite() ? 'Покращити через AI' : rewriteHint()"
+          [attr.aria-label]="'Покращити через AI: ' + label()"
+          data-testid="improve"
+          (click)="canLaunch() && improve.emit()"
+        >
+          <mat-icon>auto_fix_high</mat-icon>
+        </button>
+      }
     }
     @if (acceptable()) {
       <button
