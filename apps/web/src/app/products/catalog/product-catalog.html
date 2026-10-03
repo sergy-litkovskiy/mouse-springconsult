@@ -216,12 +216,13 @@
 
         <ng-container matColumnDef="titleProm">
           <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Назва Prom</th>
-          <td mat-cell *matCellDef="let product">{{ product.titleProm }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="titleOlx">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Назва OLX</th>
-          <td mat-cell *matCellDef="let product">{{ product.titleOlx }}</td>
+          <td mat-cell *matCellDef="let product">
+            {{ product.titleProm }}
+            @let titleOlx = product.titleOlx.trim();
+            @if (titleOlx !== '' && titleOlx !== product.titleProm.trim()) {
+              <div>OLX: {{ titleOlx }}</div>
+            }
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="price">

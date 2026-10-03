@@ -285,7 +285,6 @@ export class ProductCatalog {
     'readiness',
     'failures',
     'titleProm',
-    'titleOlx',
     'price',
     'category',
     'condition',
