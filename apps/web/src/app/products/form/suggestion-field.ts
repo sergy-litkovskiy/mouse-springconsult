@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { FieldSuggestion } from '@contracts/products.contract';
 
@@ -13,7 +14,7 @@ import type { FieldSuggestion } from '@contracts/products.contract';
  */
 @Component({
   selector: 'app-suggestion-field',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
   templateUrl: './suggestion-field.html',
   styleUrl: './suggestion-field.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,6 +24,8 @@ export class SuggestionField {
   readonly suggestion = input<FieldSuggestion | null>(null);
   /** Disabled while any run of this card is going: the rate limit is shared (PRD §6.1). */
   readonly busy = input(false);
+  /** This field's own run is going: its launch buttons give way to a spinner (AC-60). */
+  readonly working = input(false);
   /** AC-22 for a text, AC-24 for the price — the reason belongs in `rewriteHint`. */
   readonly canRewrite = input(false);
   readonly rewriteHint = input('');

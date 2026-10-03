@@ -33,6 +33,20 @@
   color: color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent);
 }
 
+/* Holds the place of the launch buttons it replaces, so the arrow below does not move. */
+.suggestion__working {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+/* Two 40px buttons and the 4px gap between them. */
+.suggestion__working--pair {
+  height: 84px;
+}
+
 .suggestion__value {
   display: flex;
   flex: 1 1 auto;

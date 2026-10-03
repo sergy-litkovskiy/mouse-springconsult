@@ -1,7 +1,7 @@
 ---
 id: T66
 title: "Локальний індикатор запиту до AI біля кнопки й поля"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2500
 blocked_by: [T58, T59, T73, T74, T90]
 blocks: [T81]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T66 — Локальний індикатор запиту до AI біля кнопки й поля
@@ -111,9 +111,9 @@ updated_at: "2026-10-02"
 
 ## DoD
 
-- [ ] AC-60: локальний спінер у кнопці й замість кнопок запуску поля, загальний напис лишився.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): show AI progress next to the control that started it`.
+- [x] AC-60: локальний спінер у кнопці й замість кнопок запуску поля, загальний напис лишився.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): show AI progress next to the control that started it`.
 
 ## Links
 
