@@ -1586,6 +1586,161 @@ describe('ProductForm', () => {
       });
     });
 
+    describe('«<- AI» copies the suggestion into the form (AC-81)', () => {
+      const SUGGESTED_PROM_DESCRIPTION: FieldSuggestion = {
+        ...SUGGESTED_OLX_DESCRIPTION,
+        id: '99999999-9999-4999-8999-999999999999',
+        field: 'descriptionProm',
+        value: 'Миша Logitech MX Master 3.\nПовний комплект.\n\nСтан ідеальний.',
+      };
+
+      const THIRTY_TWO_KEYWORDS = Array.from(
+        { length: 32 },
+        (_, at) => `ключове слово ${String(at + 1)}`,
+      );
+
+      const SUGGESTED_MANY_KEYWORDS: FieldSuggestion = {
+        ...SUGGESTED_OLX_DESCRIPTION,
+        id: '77777777-7777-4777-8777-777777777777',
+        field: 'seoKeywords',
+        value: THIRTY_TWO_KEYWORDS,
+      };
+
+      beforeEach(() => {
+        // The question closes only once its exit animation is over; settle() does not wait it out.
+        TestBed.configureTestingModule({
+          providers: [{ provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } }],
+        });
+      });
+
+      afterEach(async () => {
+        TestBed.inject(MatDialog).closeAll();
+        await settle();
+      });
+
+      /**
+       * Soft, and through match() rather than expectNone(): a stray request left open would fail
+       * the shared verify() and stop TestBed from resetting for every test after this one.
+       */
+      async function copy(field: string): Promise<void> {
+        button(field, 'accept')?.click();
+        await settle();
+        const sent = http.match(() => true).map((r) => `${r.request.method} ${r.request.url}`);
+        expect.soft(sent, 'the arrow asks the api nothing').toEqual([]);
+      }
+
+      async function saved(): Promise<Record<string, unknown>> {
+        submit();
+        await settle();
+        const request = http.expectOne(`/api/products/${CARD_ID}`);
+        expect(request.request.method).toBe('PATCH');
+        const body = request.request.body as Record<string, unknown>;
+        request.flush(answer(PUBLISHED_ON_PROM));
+        await settle();
+        return body;
+      }
+
+      it('puts the OLX description suggestion into the field on the left without a request (AC-81)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+        await settle();
+
+        await copy('descriptionOlx');
+        expect(field('descriptionOlx').value).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(field('titleProm').value).toBe(PUBLISHED_ON_PROM.titleProm);
+      });
+
+      it('writes the copied suggestion to the card only on «Зберегти» (AC-81)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+        await settle();
+
+        await copy('descriptionOlx');
+
+        expect((await saved())['descriptionOlx']).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+      });
+
+      it('asks before closing a card whose field took a suggestion, and writes nothing (AC-81, AC-76)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
+        await settle();
+
+        await copy('descriptionOlx');
+        keydown.next(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+        await settle();
+
+        const dialogs = TestBed.inject(MatDialog).openDialogs;
+        expect(dialogs.length).toBe(1);
+        expect(dialogs[0]?.componentInstance).toBeInstanceOf(ConfirmDialog);
+        expect(close).not.toHaveBeenCalled();
+        http.expectNone(() => true);
+      });
+
+      it('turns the Prom description into a <p> per paragraph and <br> per single break (AC-81)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_PROM_DESCRIPTION]);
+        await settle();
+
+        await copy('descriptionProm');
+
+        expect((await saved())['descriptionProm']).toBe(
+          '<p>Миша Logitech MX Master 3.<br>Повний комплект.</p><p>Стан ідеальний.</p>',
+        );
+      });
+
+      it('escapes the markup in the Prom description suggestion instead of keeping it (AC-81)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [
+          { ...SUGGESTED_PROM_DESCRIPTION, value: 'Кабель <script>alert(1)</script> & чохол.' },
+        ]);
+        await settle();
+
+        await copy('descriptionProm');
+
+        expect((await saved())['descriptionProm']).toBe(
+          '<p>Кабель &lt;script&gt;alert(1)&lt;/script&gt; &amp; чохол.</p>',
+        );
+      });
+
+      it('puts no more than thirty keywords of a longer suggestion into the chips (AC-81)', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_MANY_KEYWORDS]);
+        await settle();
+
+        await copy('seoKeywords');
+        expect(await keywords()).toEqual(THIRTY_TWO_KEYWORDS.slice(0, 30));
+        expect((await saved())['seoKeywords']).toEqual(THIRTY_TWO_KEYWORDS.slice(0, 30));
+      });
+
+      it('leaves every field as it was when a run finishes (Checklist 2)', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]')?.click();
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}/preparation-runs`)
+          .flush({ ...run('running'), scope: 'texts', errorCode: null });
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`)
+          .flush({ ...run('succeeded'), scope: 'texts', errorCode: null });
+        await settle();
+        // Until T91 the server still writes a suggestion into an empty column on the read.
+        http.expectOne(`/api/products/${CARD_ID}`).flush(
+          withLatest(
+            {
+              ...EMPTY_WITH_FRAME,
+              titleOlx: 'Logitech MX Master 3 бездротова',
+              descriptionOlx: SUGGESTED_OLX_DESCRIPTION.value as string,
+              seoKeywords: ['миша', 'logitech'],
+            },
+            [SUGGESTED_OLX_DESCRIPTION],
+          ),
+        );
+        await settle();
+
+        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(field('titleOlx').value).toBe('');
+        expect(field('descriptionOlx').value).toBe('');
+        expect(await keywords()).toEqual([]);
+      });
+    });
+
     describe('AI action buttons (AC-68, T73)', () => {
       function improveButton(field: string): HTMLButtonElement | null {
         return half(field).querySelector<HTMLButtonElement>('[data-testid="improve"]');
