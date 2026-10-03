@@ -1,7 +1,7 @@
 ---
 id: T83
 title: "Картка не закривається мовчки, коли в полях є незбережені правки"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: []
 blocks: [T81, T90]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T83 — Картка не закривається мовчки, коли в полях є незбережені правки
@@ -91,9 +91,9 @@ updated_at: "2026-10-02"
 
 ## DoD
 
-- [ ] AC-76: правки не губляться без запитання, порожнє відкриття закривається одразу.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): ask before closing a card with unsaved edits`.
+- [x] AC-76: правки не губляться без запитання, порожнє відкриття закривається одразу.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): ask before closing a card with unsaved edits`.
 
 ## Links
 
