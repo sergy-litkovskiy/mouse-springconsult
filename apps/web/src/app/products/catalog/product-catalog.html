@@ -218,8 +218,7 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">Назва Prom</th>
           <td mat-cell *matCellDef="let product">
             {{ product.titleProm }}
-            @let titleOlx = product.titleOlx.trim();
-            @if (titleOlx !== '' && titleOlx !== product.titleProm.trim()) {
+            @if (olxTitle(product); as titleOlx) {
               <div>OLX: {{ titleOlx }}</div>
             }
           </td>
