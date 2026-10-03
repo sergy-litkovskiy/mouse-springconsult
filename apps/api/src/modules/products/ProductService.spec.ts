@@ -944,3 +944,59 @@ describe('product service: deleting a card', () => {
     await assert.rejects(service.deleteProduct(CARD_ID), ProductNotFound);
   });
 });
+
+const OLX_DESCRIPTION_SUGGESTION_ID = '01931f2a-4444-7000-8000-000000000001';
+const PROM_TITLE_SUGGESTION_ID = '01931f2a-4444-7000-8000-000000000002';
+
+function freshSuggestion(
+  id: string,
+  field: FieldSuggestion['field'],
+  value: string,
+): FieldSuggestion {
+  return {
+    id,
+    runId: '01931f2a-5555-7000-8000-000000000001',
+    field,
+    value,
+    resolution: null,
+    resolvedAt: null,
+    createdAt: new Date('2026-09-20T10:00:00.000Z'),
+  };
+}
+
+describe('product service: reading a card after a run', () => {
+  function afterRun(): ReturnType<typeof setup> {
+    const context = setup();
+    context.repository.appliesChanges = true;
+    context.repository.stored = readyCard({
+      descriptionOlx: '',
+      titleProm: 'Моя власна назва для Prom',
+    });
+    context.preparations.suggestions.set(CARD_ID, [
+      freshSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
+      freshSuggestion(PROM_TITLE_SUGGESTION_ID, 'title_prom', 'Назва для Prom від моделі'),
+    ]);
+    return context;
+  }
+
+  it('leaves an empty field and a field edited by hand as they were, with both suggestions beside them (AC-11)', async () => {
+    const { service } = afterRun();
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.equal(reading.product.descriptionOlx, '');
+    assert.equal(reading.product.titleProm, 'Моя власна назва для Prom');
+    assert.deepEqual(reading.latestSuggestions.map((suggestion) => suggestion.id).toSorted(), [
+      OLX_DESCRIPTION_SUGGESTION_ID,
+      PROM_TITLE_SUGGESTION_ID,
+    ]);
+  });
+
+  it('does not save the card on reading it (Checklist 2)', async () => {
+    const { service, repository } = afterRun();
+
+    await service.getById(CARD_ID);
+
+    assert.deepEqual(repository.changes, []);
+  });
+});

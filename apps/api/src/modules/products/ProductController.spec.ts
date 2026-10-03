@@ -986,17 +986,8 @@ function latestDto(
   field: string,
   value: unknown,
   createdAt: string,
-  resolution: SuggestionResolution | null = null,
 ): Record<string, unknown> {
-  return {
-    id,
-    runId: RUN_ID,
-    field,
-    value,
-    resolution,
-    resolvedAt: resolution === null ? null : DECIDED_AT,
-    createdAt,
-  };
+  return { id, runId: RUN_ID, field, value, createdAt };
 }
 
 type CardReadBody = {
@@ -1137,15 +1128,82 @@ describe('product controller: latest suggestion of every field', () => {
         'descriptionOlx',
         'Новий опис від моделі.',
         '2026-09-20T10:03:00.000Z',
-        'accepted',
       ),
       latestDto(
         NEWER_SUGGESTION_ID,
         'titleOlx',
         'Нова назва від моделі',
         '2026-09-20T10:05:00.000Z',
-        'rejected',
       ),
     ]);
+  });
+});
+
+const PROM_TITLE_SUGGESTION_ID = '01931f2a-6666-7000-8000-000000000006';
+
+describe('product controller: reading a card without deciding on its suggestions', () => {
+  let repository: SuggestionProductRepository;
+  let runs: StubPreparationRepository;
+  let app: FastifyInstance;
+
+  before(async () => {
+    repository = new SuggestionProductRepository();
+    runs = new StubPreparationRepository();
+    app = Fastify();
+    new ProductController(
+      new ProductService(repository, NO_MEDIA, runs),
+      'https://images.example.com',
+    ).register(app, async () => {
+      // Lets every request through: the session is not what this suite is about.
+    });
+    await app.ready();
+  });
+
+  after(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    repository.cards[0] = card(READY_ID, {
+      descriptionOlx: '',
+      titleProm: 'Моя власна назва для Prom',
+    });
+    runs.suggestions.set(READY_ID, [
+      pendingSuggestion(OLX_DESCRIPTION_SUGGESTION_ID, 'description_olx', 'Опис від моделі.'),
+      pendingSuggestion(PROM_TITLE_SUGGESTION_ID, 'title_prom', 'Назва для Prom від моделі'),
+    ]);
+  });
+
+  it('answers both fields as they were, with the suggestions beside them carrying no decision (AC-11)', async () => {
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const body = response.json<CardReadBody & { titleProm: string }>();
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.descriptionOlx, '');
+    assert.equal(body.titleProm, 'Моя власна назва для Prom');
+    assert.equal(repository.cards[0]?.descriptionOlx, '');
+    assert.deepEqual(latestOf(body), [
+      latestDto(OLX_DESCRIPTION_SUGGESTION_ID, 'descriptionOlx', 'Опис від моделі.', SUGGESTED_AT),
+      latestDto(PROM_TITLE_SUGGESTION_ID, 'titleProm', 'Назва для Prom від моделі', SUGGESTED_AT),
+    ]);
+  });
+
+  it('answers 404 to accepting a suggestion and leaves the card as it was (AC-11)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/${READY_ID}/suggestions/${OLX_DESCRIPTION_SUGGESTION_ID}/accept`,
+    });
+
+    assert.equal(response.statusCode, 404);
+    assert.equal(repository.cards[0]?.descriptionOlx, '');
+  });
+
+  it('answers 404 to rejecting a suggestion (Checklist 3)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/${READY_ID}/suggestions/${PROM_TITLE_SUGGESTION_ID}/reject`,
+    });
+
+    assert.equal(response.statusCode, 404);
   });
 });
