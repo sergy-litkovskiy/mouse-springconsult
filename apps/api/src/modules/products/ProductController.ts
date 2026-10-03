@@ -27,12 +27,7 @@ import { AppError } from '../../errors.ts';
 import { FileTooLarge } from '../media/index.ts';
 import type { FieldSuggestion, SuggestionField } from './preparation/FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
-import {
-  ImageNotFound,
-  InvalidPrice,
-  ProductNotFound,
-  SuggestionNotFound,
-} from './ProductErrors.ts';
+import { ImageNotFound, InvalidPrice, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import type {
   ProductCardReading,
@@ -78,16 +73,6 @@ export class ProductController {
     );
     app.delete('/:productId/images/:imageId', { preHandler: sessionGuard }, this.deleteImage);
     app.put('/:productId/images/:imageId/main', { preHandler: sessionGuard }, this.setMainImage);
-    app.post(
-      '/:productId/suggestions/:suggestionId/accept',
-      { preHandler: sessionGuard },
-      this.acceptSuggestion,
-    );
-    app.post(
-      '/:productId/suggestions/:suggestionId/reject',
-      { preHandler: sessionGuard },
-      this.rejectSuggestion,
-    );
   }
 
   // An arrow field rather than a method: Fastify calls the handler on its own, and a
@@ -157,18 +142,6 @@ export class ProductController {
     return reply.code(204).send();
   };
 
-  private readonly acceptSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
-    const productId = this.readProductId(request);
-    const suggestionId = this.readSuggestionId(request);
-    return this.toCardReadResponse(await this.products.acceptSuggestion(productId, suggestionId));
-  };
-
-  private readonly rejectSuggestion = async (request: FastifyRequest): Promise<ProductCardRead> => {
-    const productId = this.readProductId(request);
-    const suggestionId = this.readSuggestionId(request);
-    return this.toCardReadResponse(await this.products.rejectSuggestion(productId, suggestionId));
-  };
-
   private readonly setMainImage = async (
     request: FastifyRequest,
   ): Promise<ProductImageResponse[]> => {
@@ -199,16 +172,6 @@ export class ProductController {
     return parsed.data;
   }
 
-  /** A malformed identifier names no suggestion, so it is answered as one that does not exist. */
-  private readSuggestionId(request: FastifyRequest): string {
-    const rawSuggestionId = (request.params as { suggestionId?: unknown }).suggestionId;
-    const parsed = z.uuid().safeParse(rawSuggestionId);
-    if (!parsed.success) {
-      throw new SuggestionNotFound(String(rawSuggestionId));
-    }
-    return parsed.data;
-  }
-
   private toCardReadResponse(reading: ProductCardReading): ProductCardRead {
     return {
       ...this.toCardResponse(reading),
@@ -226,8 +189,6 @@ export class ProductController {
       runId: suggestion.runId,
       field: suggestionFieldNames[suggestion.field],
       value: suggestion.value,
-      resolution: suggestion.resolution,
-      resolvedAt: suggestion.resolvedAt?.toISOString() ?? null,
       createdAt: suggestion.createdAt.toISOString(),
     };
   }

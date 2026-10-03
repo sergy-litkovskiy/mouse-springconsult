@@ -196,8 +196,6 @@ export const fieldSuggestionSchema = z.object({
     z.array(z.string()).readonly(),
     z.object({ priceFrom: priceDecimal, priceTo: priceDecimal }),
   ]),
-  resolution: z.enum(['accepted', 'rejected']).nullable().optional(),
-  resolvedAt: z.iso.datetime().nullable().optional(),
   createdAt: z.iso.datetime(),
 });
 
@@ -206,8 +204,8 @@ export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
 /**
  * The cost of a card rides with the card itself and not with a list: it is a sum over the
  * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
- * The latest suggestion of every field rides along for the same reason: it comes out of the very
- * read that reconciles it (AC-11, AC-69), and a page of cards would look it up per row.
+ * The latest suggestion of every field rides along for the same reason: a page of cards would look
+ * it up per row (AC-69).
  */
 export const productCardReadSchema = productCardSchema.extend({
   latestSuggestions: z.array(fieldSuggestionSchema),
