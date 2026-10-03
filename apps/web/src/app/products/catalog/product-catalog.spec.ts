@@ -611,10 +611,12 @@ describe('ProductCatalog', () => {
       return text.split(part).length - 1;
     }
 
-    it('shows one title column, headed «Назва Prom», and no OLX title column (AC-80)', async () => {
+    it('shows one title column, headed «Назва Prom/Olx», and no OLX title column (AC-80)', async () => {
       await openTitles([MOUSE, KEYBOARD]);
 
-      expect(element.querySelector('th.mat-column-titleProm')?.textContent).toContain('Назва Prom');
+      expect(element.querySelector('th.mat-column-titleProm')?.textContent).toContain(
+        'Назва Prom/Olx',
+      );
       expect(element.querySelector('th.mat-column-titleOlx')).toBeNull();
       expect(element.querySelectorAll('td.mat-column-titleOlx').length).toBe(0);
       expect(element.querySelector('tr.mat-mdc-header-row')?.textContent).not.toContain(
