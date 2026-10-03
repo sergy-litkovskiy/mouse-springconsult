@@ -18,9 +18,10 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T89, T90 — поставка 3, UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
-T91 чекає на T90, T92 — на T91; T66 чекає на T90. Зачистка номерів з коду: T81 чекає на T66,
-T89 і T90, T82 — на T91 і T92.
+**Готові до старту:** T90 — поставка 3, UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
+T91 чекає на T90, T92 — на T91; T66 чекає на T90. Зачистка номерів з коду: T81 чекає на T66
+і T90, T82 — на T91 і T92.
+T89 скасовано 2026-10-03 (`Dropped`): падіння не відтворилось на 120 прогонах під навантаженням; ребро до T81 знято.
 T87 закрито 2026-10-03 й нічого не розблокувала: T81 ще чекає на решту своїх `blocked_by`.
 T86 закрито 2026-10-03 й нічого не розблокувала: від неї ніщо не залежить.
 T83 закрито 2026-10-03: вона розблокувала T90; T81 ще чекає на решту своїх `blocked_by`.
@@ -141,7 +142,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Done | T78 | S | 2026-10-02 |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Done | T75, T79 | XS | 2026-10-02 |
-| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T85, T87, T88, T89, T90 | S | — |
+| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Blocked | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | — |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Blocked | T74, T91, T92 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Done | — | S | 2026-10-03 |
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Dropped | T74 | S | — |
@@ -149,7 +150,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T86 | [Одна помилка входу](show-login-credentials-error-once.md) | Done | — | XS | 2026-10-03 |
 | T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Done | T80 | XS | 2026-10-03 |
 | T88 | [Spec-и чекають редактор за часом](wait-for-prom-editor-by-time-in-specs.md) | Done | — | XS | 2026-10-02 |
-| T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Todo | — | XS | — |
+| T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Dropped | — | XS | — |
 | T90 | [Стрілка копіює у форму](copy-suggestion-into-form-field.md) | Todo | T74, T83 | S | — |
 | T91 | [Без прийняття пропозицій в `api`](drop-server-side-suggestion-accept.md) | Blocked | T90 | S | — |
 | T92 | [Одна пропозиція на поле](keep-one-suggestion-per-field.md) | Blocked | T91 | S | — |

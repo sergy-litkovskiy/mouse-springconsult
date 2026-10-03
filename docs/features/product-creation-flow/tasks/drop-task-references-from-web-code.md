@@ -7,9 +7,9 @@ gate_profile: implementation
 owner: "Serhii"
 estimate: S
 context_budget: 2200
-blocked_by: [T66, T68, T70, T74, T80, T83, T85, T87, T88, T89, T90]
+blocked_by: [T66, T68, T70, T74, T80, T83, T85, T87, T88, T90]
 blocks: []
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T81 — Прибрати номери задач і AC з коду `web`
