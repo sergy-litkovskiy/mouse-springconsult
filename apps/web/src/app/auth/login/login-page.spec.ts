@@ -164,7 +164,7 @@ describe('LoginPage', () => {
       .flush(INVALID_CREDENTIALS, { status: 401, statusText: 'Unauthorized' });
     await settle();
 
-    expect(element.textContent?.match(/Невірний email або пароль\./g)?.length).toBe(1);
+    expect(element.textContent.match(/Невірний email або пароль\./g)?.length).toBe(1);
     expect(element.querySelector('[role="alert"]')?.textContent).toContain(
       'Невірний email або пароль.',
     );
