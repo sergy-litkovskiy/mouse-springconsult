@@ -285,7 +285,6 @@ export class ProductCatalog {
     'readiness',
     'failures',
     'titleProm',
-    'titleOlx',
     'price',
     'category',
     'condition',
@@ -470,6 +469,11 @@ export class ProductCatalog {
 
   protected mainImage(product: ProductCard): ProductImage | null {
     return product.images.find((image) => image.isMain) ?? product.images[0] ?? null;
+  }
+
+  protected olxTitle(product: ProductListItem): string | null {
+    const titleOlx = product.titleOlx.trim();
+    return titleOlx !== '' && titleOlx !== product.titleProm.trim() ? titleOlx : null;
   }
 
   /** Display only: the decimal string keeps its exact value, Intl decides how it looks. */

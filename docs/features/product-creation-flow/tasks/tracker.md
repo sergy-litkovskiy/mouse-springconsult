@@ -18,10 +18,10 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T87, T89, T90 — поставка 3, UI каталогу
-й форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
+**Готові до старту:** T89, T90 — поставка 3, UI форми. Порядок і інструменти — у [плані виконання](../execution-plan.md). Ланцюжок пропозицій:
 T91 чекає на T90, T92 — на T91; T66 чекає на T90. Зачистка номерів з коду: T81 чекає на T66,
-T87, T89 і T90, T82 — на T91 і T92.
+T89 і T90, T82 — на T91 і T92.
+T87 закрито 2026-10-03 й нічого не розблокувала: T81 ще чекає на решту своїх `blocked_by`.
 T86 закрито 2026-10-03 й нічого не розблокувала: від неї ніщо не залежить.
 T83 закрито 2026-10-03: вона розблокувала T90; T81 ще чекає на решту своїх `blocked_by`.
 T84 скасовано 2026-10-02 (`Dropped`, [ADR 0017](../adr/0017-keep-one-latest-suggestion-per-field.md)), замість неї
@@ -147,7 +147,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Dropped | T74 | S | — |
 | T85 | [Кома в ціні](accept-decimal-comma-in-price.md) | Done | — | XS | 2026-10-02 |
 | T86 | [Одна помилка входу](show-login-credentials-error-once.md) | Done | — | XS | 2026-10-03 |
-| T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Todo | T80 | XS | — |
+| T87 | [Назва OLX другим рядком](show-olx-title-under-prom-title.md) | Done | T80 | XS | 2026-10-03 |
 | T88 | [Spec-и чекають редактор за часом](wait-for-prom-editor-by-time-in-specs.md) | Done | — | XS | 2026-10-02 |
 | T89 | [Перший тест форми під навантаженням](stabilize-first-product-form-spec-test.md) | Todo | — | XS | — |
 | T90 | [Стрілка копіює у форму](copy-suggestion-into-form-field.md) | Todo | T74, T83 | S | — |

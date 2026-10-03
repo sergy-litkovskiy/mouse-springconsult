@@ -1,7 +1,7 @@
 ---
 id: T87
 title: "Назва OLX другим рядком під назвою Prom, лише коли вона інша"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1700
 blocked_by: [T80]
 blocks: [T81]
-updated_at: "2026-10-02"
+updated_at: "2026-10-03"
 ---
 
 # T87 — Назва OLX другим рядком під назвою Prom, лише коли вона інша
@@ -87,9 +87,9 @@ T80 міряє висоти вже після T79. Ширину колонок �
 
 ## DoD
 
-- [ ] AC-80: одна колонка назви, назва OLX — другим рядком лише коли вона інша.
-- [ ] Тести `web` зелені, `lint` зелений, `pw` пройдено.
-- [ ] Коміт: `feat(web): show the OLX title under the Prom title when it differs`.
+- [x] AC-80: одна колонка назви, назва OLX — другим рядком лише коли вона інша.
+- [x] Тести `web` зелені, `lint` зелений, `pw` пройдено.
+- [x] Коміт: `feat(web): show the OLX title under the Prom title when it differs`.
 
 ## Links
 

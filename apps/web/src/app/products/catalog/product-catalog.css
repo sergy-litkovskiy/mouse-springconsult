@@ -122,6 +122,11 @@
   width: 100%;
 }
 
+.catalog__title-olx {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
 .catalog__price {
   white-space: nowrap;
   text-align: right;
