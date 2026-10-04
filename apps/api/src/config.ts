@@ -144,13 +144,13 @@ export const config = {
 
   ai: {
     /**
-     * One model for every call (ADR 0004): the parameter contract is identical to Opus 5, so
+     * One model for every call (ADR 0018): the parameter contract is identical to Opus 5, so
      * raising a single call back to Opus is a constant edit, not a code change. Not an env var —
      * swapping the model changes generation quality, response shape and cost per card, so it goes
      * through a commit and a review, not a container restart.
      */
     model: 'claude-sonnet-5',
-    /** Per-call `effort`, so one call can be raised without touching the other two (ADR 0004). */
+    /** Per-call `effort`, so one call can be raised without touching the other two (ADR 0018). */
     effort: {
       texts: 'low',
       price: 'low',
