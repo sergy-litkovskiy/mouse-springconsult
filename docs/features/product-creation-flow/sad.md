@@ -1,8 +1,8 @@
 ---
-status: Draft
+status: Approved
 owner: "Serhii"
 reviewers: ["Serhii"]
-updated_at: "2026-10-02"
+updated_at: "2026-10-04"
 feature_size: M
 stage: "04-05"
 ticket: "TBD"
