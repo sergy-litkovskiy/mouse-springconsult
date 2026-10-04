@@ -2,7 +2,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * A card has to exist before its first frame — the R2 key is `products/{id}/…` — while the form
- * keeps every field disabled until that frame arrives (AC-20). So the three columns that had no
+ * keeps every field disabled until that frame arrives. So the three columns that had no
  * default could never be filled at creation time.
  *
  * `down` only drops the defaults: cards created empty in the meantime still satisfy `not null`.

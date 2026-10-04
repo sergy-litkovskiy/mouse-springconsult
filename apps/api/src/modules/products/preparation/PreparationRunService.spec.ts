@@ -167,7 +167,7 @@ function missing(expected: 'gallery' | 'title' | 'draft') {
 }
 
 describe('preparation run service: input gates', () => {
-  it('refuses to prepare texts for a card without a single frame (AC-06)', async () => {
+  it('refuses to prepare texts for a card without a single frame', async () => {
     const { service, runs, queue } = setup([card(CARD_ID, { images: [] })]);
 
     await assert.rejects(service.start(CARD_ID, { scope: 'texts' }), missing('gallery'));
@@ -176,7 +176,7 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('refuses a both run for a card without a single frame (AC-06)', async () => {
+  it('refuses a both run for a card without a single frame', async () => {
     const { service, runs, queue } = setup([card(CARD_ID, { images: [] })]);
 
     await assert.rejects(service.start(CARD_ID, { scope: 'both' }), missing('gallery'));
@@ -185,7 +185,7 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('queues a texts run once the card has a frame (AC-06)', async () => {
+  it('queues a texts run once the card has a frame', async () => {
     const { service, queue } = setup();
 
     const { run, created } = await service.start(CARD_ID, { scope: 'texts' });
@@ -195,7 +195,7 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'texts' }]);
   });
 
-  it('refuses a price run for a card with neither a Prom nor an OLX title (AC-27)', async () => {
+  it('refuses a price run for a card with neither a Prom nor an OLX title', async () => {
     const { service, runs, queue } = setup([card(CARD_ID, { titleProm: '', titleOlx: '' })]);
 
     await assert.rejects(service.start(CARD_ID, { scope: 'price' }), missing('title'));
@@ -204,7 +204,7 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('does not let a description stand in for a missing title (AC-27)', async () => {
+  it('does not let a description stand in for a missing title', async () => {
     const { service, queue } = setup([
       card(CARD_ID, {
         titleProm: '',
@@ -219,7 +219,7 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('queues a price run when only the OLX title is filled (AC-27)', async () => {
+  it('queues a price run when only the OLX title is filled', async () => {
     const { service, queue } = setup([card(CARD_ID, { titleProm: '', images: [] })]);
 
     const { run, created } = await service.start(CARD_ID, { scope: 'price' });
@@ -238,7 +238,7 @@ describe('preparation run service: input gates', () => {
 });
 
 describe('preparation run service: scopes', () => {
-  it('queues only the price for a card whose texts are ready, without re-running them (AC-10b)', async () => {
+  it('queues only the price for a card whose texts are ready, without re-running them', async () => {
     const { service, runs, queue } = setup([card(CARD_ID, { price: '0.00' })]);
 
     const { run } = await service.start(CARD_ID, { scope: 'price' });
@@ -251,7 +251,7 @@ describe('preparation run service: scopes', () => {
     assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'price' }]);
   });
 
-  it('starts a price run as a run of its own after a texts run of the same card (AC-10b)', async () => {
+  it('starts a price run as a run of its own after a texts run of the same card', async () => {
     const { service, queue } = setup();
 
     const texts = await service.start(CARD_ID, { scope: 'texts' });
@@ -288,7 +288,7 @@ describe('preparation run service: scopes', () => {
     ]);
   });
 
-  it('carries mode into the queued job (AC-66, AC-67)', async () => {
+  it('carries mode into the queued job', async () => {
     const { service, queue } = setup();
 
     const { run } = await service.start(CARD_ID, {
@@ -310,7 +310,7 @@ describe('preparation run service: scopes', () => {
     ]);
   });
 
-  it('queues a field run with the draft stripped of its markup (AC-65)', async () => {
+  it('queues a field run with the draft stripped of its markup', async () => {
     const { service, queue } = setup();
 
     const { run } = await service.start(CARD_ID, {
@@ -332,7 +332,7 @@ describe('preparation run service: scopes', () => {
     ]);
   });
 
-  it('refuses a field run whose draft is markup without text (AC-65)', async () => {
+  it('refuses a field run whose draft is markup without text', async () => {
     const { service, runs, queue } = setup();
 
     await assert.rejects(
@@ -351,7 +351,7 @@ describe('preparation run service: scopes', () => {
 });
 
 describe('preparation run service: idempotency', () => {
-  it('returns the existing run for the same input and queues nothing more (DoD idempotency)', async () => {
+  it('returns the existing run for the same input and queues nothing more', async () => {
     const { service, runs, queue } = setup();
 
     const first = await service.start(CARD_ID, { scope: 'both' });
@@ -363,7 +363,7 @@ describe('preparation run service: idempotency', () => {
     assert.equal(queue.jobs.length, 1);
   });
 
-  it('returns the running run for the same input and queues nothing more (AC-82 edge case)', async () => {
+  it('returns the running run for the same input and queues nothing more', async () => {
     const { service, runs, queue } = setup();
 
     const first = await service.start(CARD_ID, { scope: 'texts' });
@@ -376,7 +376,7 @@ describe('preparation run service: idempotency', () => {
     assert.equal(queue.jobs.length, 1);
   });
 
-  it('starts and queues a new run for the same input once the previous one succeeded (AC-82)', async () => {
+  it('starts and queues a new run for the same input once the previous one succeeded', async () => {
     const { service, runs, queue } = setup();
 
     const first = await service.start(CARD_ID, { scope: 'texts' });
@@ -446,7 +446,7 @@ describe('preparation run service: idempotency', () => {
     assert.notEqual(second.run.id, first.run.id);
   });
 
-  it('starts a new price run once the description has changed, because it is part of the query (AC-27)', async () => {
+  it('starts a new price run once the description has changed, because it is part of the query', async () => {
     const { service, products } = setup();
 
     const first = await service.start(CARD_ID, { scope: 'price' });
@@ -495,7 +495,7 @@ describe('preparation run service: idempotency', () => {
     assert.notEqual(second.run.id, first.run.id);
   });
 
-  it('starts a new run for the same draft with a different mode (AC-66 edge case)', async () => {
+  it('starts a new run for the same draft with a different mode', async () => {
     const { service } = setup();
 
     const first = await service.start(CARD_ID, {
@@ -515,7 +515,7 @@ describe('preparation run service: idempotency', () => {
     assert.notEqual(second.run.id, first.run.id);
   });
 
-  it('returns the existing run for the same draft text under different markup (AC-65)', async () => {
+  it('returns the existing run for the same draft text under different markup', async () => {
     const { service, runs, queue } = setup();
 
     const first = await service.start(CARD_ID, {

@@ -68,7 +68,7 @@ function setup(failure?: Error): { media: MediaService; storage: RecordingImageS
 }
 
 describe('media service — store', () => {
-  it('puts a valid JPEG into storage and returns its key (AC-01)', async () => {
+  it('puts a valid JPEG into storage and returns its key', async () => {
     const { media, storage } = setup();
     const bytes = file(JPEG_SIGNATURE);
 

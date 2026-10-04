@@ -7,7 +7,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * uniqueness has to hold across runs.
  *
  * Idempotency narrows to the runs that are still going. A repeat of a finished input is the person
- * asking for another generation (AC-82), and it pays again; a double click while the run is queued
+ * asking for another generation, and it pays again; a double click while the run is queued
  * or running still finds that run.
  */
 export class KeepOneSuggestionPerField1791042544223 implements MigrationInterface {

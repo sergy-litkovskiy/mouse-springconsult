@@ -24,7 +24,7 @@ export type PreparationJob =
       readonly scope: 'field';
       readonly field: RewritableField;
       readonly draftText: string;
-      /** Optional for backward compat with queue jobs enqueued before T72 deployed. */
+      /** Optional for backward compat with queue jobs enqueued before modes existed. */
       readonly mode?: FieldRewriteMode;
     };
 
@@ -42,13 +42,13 @@ function errorDetail(error: unknown): string {
 }
 
 function priceQuery(card: Product): string {
-  // Text columns are NOT NULL with '' as the default, so "absent" in AC-27 is an empty string.
+  // Text columns are NOT NULL with '' as the default, so an absent title or description is ''.
   const title = card.titleProm !== '' ? card.titleProm : card.titleOlx;
   const description = card.descriptionProm !== '' ? card.descriptionProm : card.descriptionOlx;
   return description !== '' ? `${title} ${description}` : title;
 }
 
-/** A title column is a single varchar(200) line, whatever the model wrote (AC-61). */
+/** A title column is a single varchar(200) line, whatever the model wrote. */
 function singleLineTitle(text: string): string {
   const line = text.replace(/\s+/g, ' ').trim();
   if (line.length <= productConstraints.titleMaxLength) {

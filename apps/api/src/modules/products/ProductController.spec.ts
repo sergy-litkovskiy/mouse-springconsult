@@ -152,7 +152,7 @@ describe('product controller: list', () => {
     await app.close();
   });
 
-  it('puts the derived isReady of each card into its row (AC-30)', async () => {
+  it('puts the derived isReady of each card into its row', async () => {
     const response = await app.inject({ method: 'GET', url: '/' });
     const body = response.json<ProductList>();
     const readiness = new Map(
@@ -165,7 +165,7 @@ describe('product controller: list', () => {
     }
   });
 
-  it('puts the failed-run count of each card into its row, zero when it never failed (T50)', async () => {
+  it('puts the failed-run count of each card into its row, zero when it never failed', async () => {
     repository.failedRuns.set(READY_ID, 3);
 
     const response = await app.inject({ method: 'GET', url: '/' });
@@ -214,14 +214,14 @@ describe('product controller: categories', () => {
     await app.close();
   });
 
-  it('answers the category list rather than reading categories as a card id (AC-55)', async () => {
+  it('answers the category list rather than reading categories as a card id', async () => {
     const response = await app.inject({ method: 'GET', url: '/categories' });
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.json(), ['Клавіатури', 'Миші']);
   });
 
-  it('puts the category list route behind the session guard (AC-55)', async () => {
+  it('puts the category list route behind the session guard', async () => {
     allowed = false;
     try {
       const response = await app.inject({ method: 'GET', url: '/categories' });
@@ -232,7 +232,7 @@ describe('product controller: categories', () => {
     }
   });
 
-  it('hands a repeated category to the service as a list (AC-55)', async () => {
+  it('hands a repeated category to the service as a list', async () => {
     const response = await app.inject({
       method: 'GET',
       url: `/?category=${encodeURIComponent('Миші')}&category=${encodeURIComponent('Клавіатури')}`,
@@ -267,7 +267,7 @@ describe('product controller: text filters', () => {
   });
 
   for (const url of ['/?title=ab', '/?description=%20ab%20']) {
-    it(`answers validation_failed for ${url} without reaching the list (AC-57)`, async () => {
+    it(`answers validation_failed for ${url} without reaching the list`, async () => {
       const response = await app.inject({ method: 'GET', url });
 
       assert.equal(response.statusCode, 400);
@@ -326,7 +326,7 @@ describe('product controller: main frame', () => {
     await app.close();
   });
 
-  it('answers with the whole gallery in which only the chosen frame is main (AC-03)', async () => {
+  it('answers with the whole gallery in which only the chosen frame is main', async () => {
     repository.cards[0] = twoFrameCard();
 
     const response = await app.inject({ method: 'PUT', url: mainUrl(READY_ID, BACK_ID) });
@@ -453,7 +453,7 @@ describe('product controller: create', () => {
     await app.close();
   });
 
-  it('answers 201 with an empty card for an empty body, ready to take a frame (AC-35)', async () => {
+  it('answers 201 with an empty card for an empty body, ready to take a frame', async () => {
     const response = await app.inject({ method: 'POST', url: '/', payload: {} });
     const body = response.json<ProductUpdateResponse>();
 
@@ -567,7 +567,7 @@ describe('product controller: upload', () => {
     return app.inject({ method: 'POST', url: `/${productId}/images`, ...body });
   }
 
-  it('answers 201 with the new frame and its composed address (AC-01)', async () => {
+  it('answers 201 with the new frame and its composed address', async () => {
     repository.cards[1] = card(UNPRICED_ID, { images: [] });
 
     const response = await post(UNPRICED_ID, upload(jpegOfLength(64)));
@@ -701,7 +701,7 @@ describe('product controller: delete frame', () => {
     await app.close();
   });
 
-  it('answers 204 with no body once the object and the frame are gone (AC-16)', async () => {
+  it('answers 204 with no body once the object and the frame are gone', async () => {
     repository.cards[0] = twoFrameCard();
 
     const response = await app.inject({ method: 'DELETE', url: imageUrl(READY_ID, BACK_ID) });
@@ -715,7 +715,7 @@ describe('product controller: delete frame', () => {
     );
   });
 
-  it('answers storage_unavailable and keeps the frame when storage is down (AC-17)', async () => {
+  it('answers storage_unavailable and keeps the frame when storage is down', async () => {
     repository.cards[0] = twoFrameCard();
     // The real ImageStorage turns every SDK failure into this; the double does the same.
     storage.failure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
@@ -816,7 +816,7 @@ describe('product controller: delete card', () => {
     await app.close();
   });
 
-  it('answers 204 with no body once the objects and the card are gone (AC-18)', async () => {
+  it('answers 204 with no body once the objects and the card are gone', async () => {
     repository.reset();
 
     const response = await app.inject({ method: 'DELETE', url: `/${READY_ID}` });
@@ -830,7 +830,7 @@ describe('product controller: delete card', () => {
     assert.equal(await repository.findById(READY_ID), null);
   });
 
-  it('answers storage_unavailable and keeps the card with its frames when storage is down (AC-17)', async () => {
+  it('answers storage_unavailable and keeps the card with its frames when storage is down', async () => {
     repository.reset();
     // The real ImageStorage turns every SDK failure into this; the double does the same.
     storage.failure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
@@ -891,7 +891,7 @@ describe('product controller: card cost', () => {
     await app.close();
   });
 
-  it('answers the card read with what every preparation of that card has cost (AC-14)', async () => {
+  it('answers the card read with what every preparation of that card has cost', async () => {
     runs.totals.set(READY_ID, { inputTokens: 1300, outputTokens: 250 });
 
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
@@ -904,7 +904,7 @@ describe('product controller: card cost', () => {
     );
   });
 
-  it('answers zeros for a card that has never been prepared, not an empty field (sad.md §12)', async () => {
+  it('answers zeros for a card that has never been prepared, not an empty field', async () => {
     const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
     const body = response.json<Record<string, unknown>>();
 
@@ -1000,7 +1000,7 @@ describe('product controller: suggestions of a card', () => {
     runs.suggestionQueries = 0;
   });
 
-  it('answers the card read with the suggestion waiting beside the field (AC-41)', async () => {
+  it('answers the card read with the suggestion waiting beside the field', async () => {
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
 
     assert.equal(response.statusCode, 200);
@@ -1061,7 +1061,7 @@ describe('product controller: reading a card without deciding on its suggestions
     ]);
   });
 
-  it('answers both fields as they were, with the suggestions beside them carrying no decision (AC-11)', async () => {
+  it('answers both fields as they were, with the suggestions beside them carrying no decision', async () => {
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
     const body = response.json<CardReadBody & { titleProm: string }>();
 
@@ -1075,7 +1075,7 @@ describe('product controller: reading a card without deciding on its suggestions
     ]);
   });
 
-  it('answers 404 to accepting a suggestion and leaves the card as it was (AC-11)', async () => {
+  it('answers 404 to accepting a suggestion and leaves the card as it was', async () => {
     const response = await app.inject({
       method: 'POST',
       url: `/${READY_ID}/suggestions/${OLX_DESCRIPTION_SUGGESTION_ID}/accept`,

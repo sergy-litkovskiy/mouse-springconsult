@@ -178,7 +178,7 @@ describe('database schema constraints', () => {
     );
   });
 
-  it('lets the same input succeed twice, since a finished run guards nothing (AC-82)', async () => {
+  it('lets the same input succeed twice, since a finished run guards nothing', async () => {
     const productId = await insertProduct();
     await insertRun(productId, 'card:both:frames-hash', 'both', 'succeeded');
 
@@ -199,7 +199,7 @@ describe('database schema constraints', () => {
     );
   });
 
-  it('keeps at most one suggestion per field of a card, across its runs (AC-82)', async () => {
+  it('keeps at most one suggestion per field of a card, across its runs', async () => {
     const productId = await insertProduct();
     await insertSuggestion(productId, await insertRun(productId, 'k1'), 'description_olx', 'Опис');
 

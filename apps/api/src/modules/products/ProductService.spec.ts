@@ -77,7 +77,7 @@ class StubProductRepository extends ProductRepository {
   lastCriteria: ProductListCriteria | undefined;
   lastDraft: ProductDraft | undefined;
   lastChanges: ProductChanges | undefined;
-  /** Every save in order: a suggestion reaches the card through this very call (AC-12). */
+  /** Every save in order: a suggestion reaches the card through this very call. */
   readonly changes: ProductChanges[] = [];
   readonly addedImages: ProductImage[] = [];
   /** The one card this repository holds; `null` stands for an empty table. */
@@ -366,7 +366,7 @@ describe('product service', () => {
     assert.deepEqual(page, { items: [], failedRuns: new Map(), total: 0, page: 2, pageSize: 5 });
   });
 
-  it('returns the categories the repository lists (AC-55)', async () => {
+  it('returns the categories the repository lists', async () => {
     const { service, repository } = setup();
     repository.categories = ['Клавіатури', 'Миші'];
 
@@ -375,7 +375,7 @@ describe('product service', () => {
 });
 
 describe('product service: keywords', () => {
-  it('keeps the first thirty keywords of a new card and reports the rest (AC-07)', async () => {
+  it('keeps the first thirty keywords of a new card and reports the rest', async () => {
     const { service, repository } = setup();
 
     const saved = await service.create({ ...CREATE_INPUT, seoKeywords: keywords(31) });
@@ -384,7 +384,7 @@ describe('product service: keywords', () => {
     assert.equal(saved.discardedKeywordsCount, 1);
   });
 
-  it('keeps the first thirty keywords on save and reports the rest (AC-07)', async () => {
+  it('keeps the first thirty keywords on save and reports the rest', async () => {
     const { service, repository } = setup();
 
     const saved = await service.update(CARD_ID, { seoKeywords: keywords(31) });
@@ -393,7 +393,7 @@ describe('product service: keywords', () => {
     assert.equal(saved.discardedKeywordsCount, 1);
   });
 
-  it('discards nothing when a save carries exactly thirty keywords (AC-07)', async () => {
+  it('discards nothing when a save carries exactly thirty keywords', async () => {
     const { service, repository } = setup();
 
     const saved = await service.update(CARD_ID, { seoKeywords: keywords(30) });
@@ -402,7 +402,7 @@ describe('product service: keywords', () => {
     assert.equal(saved.discardedKeywordsCount, 0);
   });
 
-  it('leaves the keywords alone when a save does not carry them (AC-07)', async () => {
+  it('leaves the keywords alone when a save does not carry them', async () => {
     const { service, repository } = setup();
 
     const saved = await service.update(CARD_ID, { price: '100.00' });
@@ -413,49 +413,49 @@ describe('product service: keywords', () => {
 });
 
 describe('product service: readiness', () => {
-  it('treats a card with both descriptions, a price and a frame as ready (AC-15)', () => {
+  it('treats a card with both descriptions, a price and a frame as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard()), true);
   });
 
-  it('does not treat a card without a Prom description as ready (AC-15)', () => {
+  it('does not treat a card without a Prom description as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ descriptionProm: '' })), false);
   });
 
-  it('does not treat a card without an OLX description as ready (AC-15)', () => {
+  it('does not treat a card without an OLX description as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ descriptionOlx: '' })), false);
   });
 
-  it('reads a zero price as not set and does not treat the card as ready (AC-15)', () => {
+  it('reads a zero price as not set and does not treat the card as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ price: '0.00' })), false);
   });
 
-  it('does not treat a card without a single frame as ready (AC-15)', () => {
+  it('does not treat a card without a single frame as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ images: [] })), false);
   });
 
-  it('does not treat a card without a Prom title as ready (AC-36)', () => {
+  it('does not treat a card without a Prom title as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ titleProm: '' })), false);
   });
 
-  it('does not treat a card without an OLX title as ready (AC-36)', () => {
+  it('does not treat a card without an OLX title as ready', () => {
     const { service } = setup();
 
     assert.equal(service.isReady(readyCard({ titleOlx: '' })), false);
   });
 
-  it('reads a card together with its derived readiness (AC-15)', async () => {
+  it('reads a card together with its derived readiness', async () => {
     const { service, repository } = setup();
 
     const ready = await service.getById(CARD_ID);
@@ -474,7 +474,7 @@ describe('product service: readiness', () => {
     await assert.rejects(service.getById(CARD_ID), ProductNotFound);
   });
 
-  it('returns the saved card together with its readiness (AC-15)', async () => {
+  it('returns the saved card together with its readiness', async () => {
     const { service, repository } = setup();
     repository.stored = readyCard({ price: '0.00' });
 
@@ -489,7 +489,7 @@ const XSS_VECTORS =
   '<script>alert(1)</script><img src=x onerror="alert(1)"><p><a href="javascript:alert(1)">x</a></p>';
 
 describe('product service: Prom description', () => {
-  it('saves browser markup without div, span and style, keeping the allowed tags (AC-46)', async () => {
+  it('saves browser markup without div, span and style, keeping the allowed tags', async () => {
     const { service, repository } = setup();
     repository.appliesChanges = true;
 
@@ -503,7 +503,7 @@ describe('product service: Prom description', () => {
     assert.equal(saved.product.descriptionProm, expected);
   });
 
-  it('keeps a script, an onerror handler and a javascript: link out of a new card (AC-46)', async () => {
+  it('keeps a script, an onerror handler and a javascript: link out of a new card', async () => {
     const { service, repository } = setup();
 
     await service.create({ ...CREATE_INPUT, descriptionProm: XSS_VECTORS });
@@ -511,7 +511,7 @@ describe('product service: Prom description', () => {
     assert.equal(repository.lastDraft?.descriptionProm, '<p><a>x</a></p>');
   });
 
-  it('keeps a script, an onerror handler and a javascript: link out of a saved card (AC-46)', async () => {
+  it('keeps a script, an onerror handler and a javascript: link out of a saved card', async () => {
     const { service, repository } = setup();
 
     await service.update(CARD_ID, { descriptionProm: XSS_VECTORS });
@@ -553,7 +553,7 @@ describe('product service: Prom description', () => {
     );
   });
 
-  it('saves an empty paragraph as an empty description and counts it empty for readiness (AC-46)', async () => {
+  it('saves an empty paragraph as an empty description and counts it empty for readiness', async () => {
     const { service, repository } = setup();
     repository.appliesChanges = true;
 
@@ -567,7 +567,7 @@ describe('product service: Prom description', () => {
   });
 });
 
-/** ADR 0016 №4: the web cleanup (T49) repeats these rows under the same describe name. */
+/** ADR 0016 №4: the web cleanup repeats these rows under the same describe name. */
 describe('Prom description cleanup: shared examples', () => {
   async function cleaned(descriptionProm: string): Promise<string | undefined> {
     const { service, repository } = setup();
@@ -575,14 +575,14 @@ describe('Prom description cleanup: shared examples', () => {
     return repository.lastChanges?.descriptionProm;
   }
 
-  it('unwraps foreign markup and drops an empty paragraph (AC-46)', async () => {
+  it('unwraps foreign markup and drops an empty paragraph', async () => {
     assert.equal(
       await cleaned('<div><span style="color:red">Червоний</span> колір</div><p>&nbsp;</p>'),
       'Червоний колір',
     );
   });
 
-  it('keeps the allowed structure, renaming b and i to strong and em (AC-46)', async () => {
+  it('keeps the allowed structure, renaming b and i to strong and em', async () => {
     assert.equal(
       await cleaned('<p><b>Жирний</b> і <i>курсив</i></p>'),
       '<p><strong>Жирний</strong> і <em>курсив</em></p>',
@@ -590,30 +590,30 @@ describe('Prom description cleanup: shared examples', () => {
     assert.equal(await cleaned('<ul><li>Пункт</li></ul>'), '<ul><li>Пункт</li></ul>');
   });
 
-  it('writes a line break the way the browser serializes it (AC-46)', async () => {
+  it('writes a line break the way the browser serializes it', async () => {
     assert.equal(await cleaned('<p>a<br/>b</p>'), '<p>a<br>b</p>');
   });
 
-  it('drops a script together with its content (AC-46)', async () => {
+  it('drops a script together with its content', async () => {
     assert.equal(await cleaned('<script>alert(1)</script><p>Текст</p>'), '<p>Текст</p>');
   });
 
-  it('drops an image together with its onerror handler (AC-46)', async () => {
+  it('drops an image together with its onerror handler', async () => {
     assert.equal(await cleaned('<img src=x onerror="alert(1)"><p>Текст</p>'), '<p>Текст</p>');
   });
 
-  it('drops a javascript: href and keeps the link text (AC-46)', async () => {
+  it('drops a javascript: href and keeps the link text', async () => {
     assert.equal(await cleaned('<a href="javascript:alert(1)">x</a>'), '<a>x</a>');
   });
 
-  it('keeps only href on a link (AC-46)', async () => {
+  it('keeps only href on a link', async () => {
     assert.equal(
       await cleaned('<a href="https://prom.ua" target="_blank">Prom</a>'),
       '<a href="https://prom.ua">Prom</a>',
     );
   });
 
-  it('turns an empty paragraph into an empty string (AC-46)', async () => {
+  it('turns an empty paragraph into an empty string', async () => {
     for (const html of ['<p></p>', '<p>&nbsp;</p>', '<p><br></p>']) {
       assert.equal(await cleaned(html), '', html);
     }
@@ -624,7 +624,7 @@ const FRONT_ID = '01931f2a-2222-7000-8000-000000000001';
 const BACK_ID = '01931f2a-2222-7000-8000-000000000002';
 const FOREIGN_IMAGE_ID = '01931f2a-2222-7000-8000-000000000099';
 
-/** Two frames, the front one main: the state AC-03 starts from. */
+/** Two frames, the front one main: the state a change of the main frame starts from. */
 function twoFrameCard(): Product {
   return readyCard({
     images: [
@@ -651,7 +651,7 @@ function mainFlags(gallery: readonly ProductImage[]): Record<string, boolean> {
 }
 
 describe('product service: main frame', () => {
-  it('makes the chosen frame the only main one and returns the whole gallery (AC-03)', async () => {
+  it('makes the chosen frame the only main one and returns the whole gallery', async () => {
     const { service, repository } = setup();
     repository.stored = twoFrameCard();
 
@@ -707,7 +707,7 @@ describe('product service: adding a frame', () => {
     assert.equal(repository.addedImages.length, 0);
   });
 
-  it('stores the file under a key of the card and adds the frame after the last one (AC-01)', async () => {
+  it('stores the file under a key of the card and adds the frame after the last one', async () => {
     const { service, repository, media } = setup();
     repository.stored = twoFrameCard();
 
@@ -727,7 +727,7 @@ describe('product service: adding a frame', () => {
     assert.equal(repository.stored.images.length, 3);
   });
 
-  it('makes the first frame of an empty gallery the main one (AC-19)', async () => {
+  it('makes the first frame of an empty gallery the main one', async () => {
     const { service, repository } = setup();
     repository.stored = readyCard({ images: [] });
 
@@ -737,7 +737,7 @@ describe('product service: adding a frame', () => {
     assert.equal(image.position, 0);
   });
 
-  it('does not make a frame main when the gallery already has one (AC-19)', async () => {
+  it('does not make a frame main when the gallery already has one', async () => {
     const { service, repository } = setup();
     repository.stored = twoFrameCard();
 
@@ -750,7 +750,7 @@ describe('product service: adding a frame', () => {
     });
   });
 
-  it('accepts the tenth frame (AC-02)', async () => {
+  it('accepts the tenth frame', async () => {
     const { service, repository } = setup();
     repository.stored = cardWithFrames(9);
 
@@ -760,7 +760,7 @@ describe('product service: adding a frame', () => {
     assert.equal(repository.stored.images.length, 10);
   });
 
-  it('refuses an eleventh frame without storing it and keeps the ten in place (AC-02)', async () => {
+  it('refuses an eleventh frame without storing it and keeps the ten in place', async () => {
     const { service, repository, media } = setup();
     repository.stored = cardWithFrames(10);
 
@@ -770,7 +770,7 @@ describe('product service: adding a frame', () => {
     assert.deepEqual(repository.stored.images, cardWithFrames(10).images);
   });
 
-  it('hands the gallery ceiling to the repository, which decides under a lock (AC-02)', async () => {
+  it('hands the gallery ceiling to the repository, which decides under a lock', async () => {
     const { service, repository } = setup();
     repository.stored = twoFrameCard();
 
@@ -779,7 +779,7 @@ describe('product service: adding a frame', () => {
     assert.equal(repository.lastMaxImages, productConstraints.maxImagesPerProduct);
   });
 
-  it('removes the stored object when the gallery filled up meanwhile (AC-02)', async () => {
+  it('removes the stored object when the gallery filled up meanwhile', async () => {
     const { service, repository, media } = setup();
     repository.stored = twoFrameCard();
     repository.fullOnInsert = true;
@@ -810,7 +810,7 @@ describe('product service: adding a frame', () => {
 });
 
 describe('product service: deleting a frame', () => {
-  it('removes the object of the frame and then its row, leaving the rest of the gallery (AC-16)', async () => {
+  it('removes the object of the frame and then its row, leaving the rest of the gallery', async () => {
     const { service, repository, media } = setup();
     repository.stored = twoFrameCard();
 
@@ -823,7 +823,7 @@ describe('product service: deleting a frame', () => {
     );
   });
 
-  it('removes the object while the row of the frame is still in place (AC-16)', async () => {
+  it('removes the object while the row of the frame is still in place', async () => {
     const { service, repository, media } = setup();
     const stored = twoFrameCard();
     repository.stored = stored;
@@ -837,7 +837,7 @@ describe('product service: deleting a frame', () => {
     assert.equal(rowPresentAtRemoval, true);
   });
 
-  it('keeps the row when storage is unavailable and reports storage_unavailable (AC-17)', async () => {
+  it('keeps the row when storage is unavailable and reports storage_unavailable', async () => {
     const { service, repository, media } = setup();
     repository.stored = twoFrameCard();
     media.removeFailure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
@@ -879,7 +879,7 @@ describe('product service: deleting a frame', () => {
 });
 
 describe('product service: deleting a card', () => {
-  it('removes every object of a ten-frame card in a single batch and then the card (AC-18)', async () => {
+  it('removes every object of a ten-frame card in a single batch and then the card', async () => {
     const { service, repository, media } = setup();
     repository.stored = cardWithFrames(10);
 
@@ -890,7 +890,7 @@ describe('product service: deleting a card', () => {
     assert.equal(await repository.findById(CARD_ID), null);
   });
 
-  it('removes the objects while the card row is still in place (AC-18)', async () => {
+  it('removes the objects while the card row is still in place', async () => {
     const { service, repository, media } = setup();
     repository.stored = cardWithFrames(10);
     let cardPresentAtRemoval: boolean | undefined;
@@ -903,7 +903,7 @@ describe('product service: deleting a card', () => {
     assert.equal(cardPresentAtRemoval, true);
   });
 
-  it('deletes a card that has no frames without removing any object (AC-18)', async () => {
+  it('deletes a card that has no frames without removing any object', async () => {
     const { service, repository, media } = setup();
     repository.stored = readyCard({ images: [] });
 
@@ -914,7 +914,7 @@ describe('product service: deleting a card', () => {
     assert.deepEqual(media.removed, []);
   });
 
-  it('deletes nothing when storage is unavailable and reports storage_unavailable (AC-17)', async () => {
+  it('deletes nothing when storage is unavailable and reports storage_unavailable', async () => {
     const { service, repository, media } = setup();
     repository.stored = cardWithFrames(10);
     media.removeFailure = new StorageUnavailable(new Error('getaddrinfo ENOTFOUND'));
@@ -964,7 +964,7 @@ describe('product service: reading a card after a run', () => {
     return context;
   }
 
-  it('leaves an empty field and a field edited by hand as they were, with both suggestions beside them (AC-11)', async () => {
+  it('leaves an empty field and a field edited by hand as they were, with both suggestions beside them', async () => {
     const { service } = afterRun();
 
     const reading = await service.getById(CARD_ID);

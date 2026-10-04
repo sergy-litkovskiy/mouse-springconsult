@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { draftPlainText } from './draftPlainText.ts';
 
 describe('draftPlainText', () => {
-  it('puts paragraphs and list items on lines of their own and turns &amp; into & (AC-65)', () => {
+  it('puts paragraphs and list items on lines of their own and turns &amp; into &', () => {
     assert.equal(
       draftPlainText(
         '<p>Миша &amp; килимок</p><ul><li>Кабель USB-C</li><li>Коробка</li></ul><p>Стан відмінний.</p>',

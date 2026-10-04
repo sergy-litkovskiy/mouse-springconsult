@@ -123,7 +123,7 @@ const cardDescription = z.string();
 const cardCategory = z.string().trim().min(1).max(productConstraints.categoryMaxLength);
 
 /**
- * Thirty is not a bound of this schema on purpose: AC-07 has the service keep the first
+ * Thirty is not a bound of this schema on purpose: the service keeps the first
  * thirty words and discard the rest, and a schema that refused the thirty-first would
  * make that impossible — the request would never reach the service to be trimmed.
  */
@@ -205,7 +205,7 @@ export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
  * The cost of a card rides with the card itself and not with a list: it is a sum over the
  * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
  * The latest suggestion of every field rides along for the same reason: a page of cards would look
- * it up per row (AC-69).
+ * it up per row.
  */
 export const productCardReadSchema = productCardSchema.extend({
   latestSuggestions: z.array(fieldSuggestionSchema),
@@ -216,7 +216,7 @@ export const productCardReadSchema = productCardSchema.extend({
 export type ProductCardRead = z.infer<typeof productCardReadSchema>;
 
 export const productListItemSchema = productCardSchema.extend({
-  /** Every `failed` preparation run of the card, counted by the same query as the page (T50). */
+  /** Every `failed` preparation run of the card, counted by the same query as the page. */
   failedRuns: z.int().nonnegative(),
 });
 
@@ -239,7 +239,7 @@ export type ProductCategoryList = z.infer<typeof productCategoryListSchema>;
 
 export const productUpdateResponseSchema = productCardSchema.extend({
   /**
-   * How many keywords past the ceiling of thirty this save threw away (AC-07): going over
+   * How many keywords past the ceiling of thirty this save threw away: going over
    * the ceiling is reported here rather than as an error.
    */
   discardedKeywordsCount: z.int().nonnegative(),

@@ -32,7 +32,7 @@ export const preparationRunSchema = z.object({
   productId: z.uuid(),
   scope: z.enum(['texts', 'price', 'both', 'field']),
   status: z.enum(['queued', 'running', 'succeeded', 'failed']),
-  /** Only on `failed`: `price_unavailable` (texts kept, AC-10b) or `preparation_failed` (AC-10). */
+  /** Only on `failed`: `price_unavailable` (texts kept) or `preparation_failed`. */
   errorCode: z.enum(['price_unavailable', 'preparation_failed']).nullable(),
   /**
    * Only on `failed`, and null on runs that failed before it was recorded: the English message of
@@ -49,7 +49,7 @@ export const preparationRunSchema = z.object({
 
 export type PreparationRunDto = z.infer<typeof preparationRunSchema>;
 
-/** Only the failures can be listed so far: that is all the catalogue asks for (T50). */
+/** Only the failures can be listed so far: that is all the catalogue asks for. */
 export const preparationRunListQuerySchema = z.object({ status: z.literal('failed') });
 
 export type PreparationRunListQuery = z.infer<typeof preparationRunListQuerySchema>;

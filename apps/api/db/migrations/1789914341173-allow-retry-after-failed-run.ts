@@ -3,9 +3,10 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 /**
  * Idempotency exists against paying twice for the same result: a double click, or a repeat while
  * the run is still going or has already succeeded. A run that ended `failed` has no result, so it
- * guards nothing — and under the full UNIQUE of T26 it held its key forever, which made a repeat of
+ * guards nothing — and under the earlier full UNIQUE it held its key forever, which made a repeat of
  * the same input impossible until the person changed a photo, a title or a text. That contradicts
- * AC-10, where a repeat is the person's own action, and it is AC-37 that this index answers.
+ * the retry a failure invites, which is the person's own action; this index answers only the
+ * double click and the repeat of a run that is still going or has succeeded.
  *
  * The invariant stays in the database rather than in the repository: two starts of the same input
  * at once both miss any lookup, and only an index settles which of them creates the run.

@@ -126,7 +126,7 @@ describe('frame limit', () => {
 });
 
 describe('generateTexts', () => {
-  it('returns the recognized item alongside both titles, both listings and usage (AC-05, AC-08, ADR 0014)', async () => {
+  it('returns the recognized item alongside both titles, both listings and usage (ADR 0014)', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
     const result: TextsResult = await adapter.generateTexts([await bigFrame(64, 64)]);
@@ -142,7 +142,7 @@ describe('generateTexts', () => {
     });
   });
 
-  it('asks for a Prom title and an OLX title along with the descriptions (AC-05)', async () => {
+  it('asks for a Prom title and an OLX title along with the descriptions', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
     await adapter.generateTexts([await bigFrame(64, 64)]);
@@ -150,7 +150,7 @@ describe('generateTexts', () => {
     assert.match(textOf(adapter.lastTextsContent), /\btitles?\b/i);
   });
 
-  it('asks for each title on a single line within the title column limit (AC-61)', async () => {
+  it('asks for each title on a single line within the title column limit', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
     await adapter.generateTexts([await bigFrame(64, 64)]);
@@ -175,7 +175,7 @@ describe('generateTexts', () => {
 });
 
 describe('findPriceRange', () => {
-  it('sends the composed query as-is and returns the range with usage (AC-08)', async () => {
+  it('sends the composed query as-is and returns the range with usage', async () => {
     const adapter = new RecordingAnthropicAdapter();
 
     const result: PriceResult = await adapter.findPriceRange('вʼязана повʼязка Zara');
@@ -222,7 +222,7 @@ describe('rewriteField', () => {
   }
 });
 
-describe('rewriteField: improve mode (AC-66)', () => {
+describe('rewriteField: improve mode', () => {
   it('names Prom.ua for a Prom field', async () => {
     const adapter = new RecordingAnthropicAdapter();
     await adapter.rewriteField('titleProm', 'чернетка', 'improve');
@@ -256,7 +256,7 @@ describe('rewriteField: improve mode (AC-66)', () => {
   });
 });
 
-describe('rewriteField: prompt mode (AC-67)', () => {
+describe('rewriteField: prompt mode', () => {
   it('names Prom.ua for a Prom field', async () => {
     const adapter = new RecordingAnthropicAdapter();
     await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');

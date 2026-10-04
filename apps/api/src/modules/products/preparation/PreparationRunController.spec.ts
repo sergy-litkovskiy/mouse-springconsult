@@ -230,7 +230,7 @@ describe('preparation run controller', () => {
     assert.deepEqual(queue.jobs, [{ runId: body.id, productId: CARD_ID, scope: 'both' }]);
   });
 
-  it('answers 200 with the same run when the same input is started again (DoD idempotency)', async () => {
+  it('answers 200 with the same run when the same input is started again', async () => {
     const first = await start(CARD_ID, { scope: 'texts' });
     const second = await start(CARD_ID, { scope: 'texts' });
 
@@ -240,7 +240,7 @@ describe('preparation run controller', () => {
     assert.equal(queue.jobs.length, 1);
   });
 
-  it('answers preparation_input_incomplete for texts on a card without frames (AC-06)', async () => {
+  it('answers preparation_input_incomplete for texts on a card without frames', async () => {
     const response = await start(BARE_CARD_ID, { scope: 'texts' });
 
     assert.equal(response.statusCode, 409);
@@ -248,7 +248,7 @@ describe('preparation run controller', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('answers preparation_input_incomplete for a price run on a card without titles (AC-27)', async () => {
+  it('answers preparation_input_incomplete for a price run on a card without titles', async () => {
     const response = await start(UNTITLED_CARD_ID, { scope: 'price' });
 
     assert.equal(response.statusCode, 409);
@@ -256,7 +256,7 @@ describe('preparation run controller', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('starts a price run on a card without frames, leaving the texts alone (AC-10b)', async () => {
+  it('starts a price run on a card without frames, leaving the texts alone', async () => {
     const response = await start(BARE_CARD_ID, { scope: 'price' });
 
     assert.equal(response.statusCode, 201);
@@ -266,7 +266,7 @@ describe('preparation run controller', () => {
     );
   });
 
-  it('rejects a field run without a draft as validation_failed (DoD field)', async () => {
+  it('rejects a field run without a draft as validation_failed', async () => {
     const response = await start(CARD_ID, { scope: 'field', field: 'titleOlx' });
 
     assert.equal(response.statusCode, 400);
@@ -274,7 +274,7 @@ describe('preparation run controller', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('rejects a field run without the field as validation_failed (DoD field)', async () => {
+  it('rejects a field run without the field as validation_failed', async () => {
     const response = await start(CARD_ID, { scope: 'field', draftText: 'Миша Logitech' });
 
     assert.equal(response.statusCode, 400);
@@ -302,7 +302,7 @@ describe('preparation run controller', () => {
     ]);
   });
 
-  it('answers preparation_input_incomplete for a field draft of markup without text (AC-65)', async () => {
+  it('answers preparation_input_incomplete for a field draft of markup without text', async () => {
     const response = await start(CARD_ID, {
       scope: 'field',
       field: 'descriptionProm',
@@ -322,7 +322,7 @@ describe('preparation run controller', () => {
     assert.deepEqual(queue.jobs, []);
   });
 
-  it('answers preparation_rate_limited once the window is used up, not silence or 500 (DoD rate limit)', async () => {
+  it('answers preparation_rate_limited once the window is used up, not silence or 500', async () => {
     runs.recentRuns = 20;
 
     const response = await start(CARD_ID, { scope: 'texts' });
@@ -370,7 +370,7 @@ describe('preparation run controller', () => {
     return app.inject({ method: 'GET', url: `${runsUrl(productId)}${query}` });
   }
 
-  it('lists the failed runs of the card with their error detail (T50)', async () => {
+  it('lists the failed runs of the card with their error detail', async () => {
     const response = await listFailures(CARD_ID);
 
     assert.equal(response.statusCode, 200);
@@ -390,14 +390,14 @@ describe('preparation run controller', () => {
     );
   });
 
-  it('answers an empty list for a card that never failed (T50)', async () => {
+  it('answers an empty list for a card that never failed', async () => {
     const response = await listFailures(BARE_CARD_ID);
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(response.json(), []);
   });
 
-  it('refuses to list runs without status=failed as validation_failed (T50)', async () => {
+  it('refuses to list runs without status=failed as validation_failed', async () => {
     for (const query of ['', '?status=succeeded']) {
       const response = await listFailures(CARD_ID, query);
 
@@ -406,13 +406,13 @@ describe('preparation run controller', () => {
     }
   });
 
-  it('answers product_not_found for the failures of a card that does not exist (T50)', async () => {
+  it('answers product_not_found for the failures of a card that does not exist', async () => {
     const response = await listFailures(MISSING_CARD_ID);
 
     assert.equal(response.statusCode, 404);
   });
 
-  it('puts every preparation route behind the session guard (Checklist 3, T50)', async () => {
+  it('puts every preparation route behind the session guard (Checklist 3)', async () => {
     allowed = false;
 
     const started = await start(CARD_ID, { scope: 'texts' });

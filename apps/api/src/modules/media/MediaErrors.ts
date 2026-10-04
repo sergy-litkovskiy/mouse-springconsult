@@ -24,7 +24,7 @@ export class FileTooLarge extends AppError {
 }
 
 /**
- * Raised after the S3 client has exhausted its own retries (sad.md scenario 2). 502 rather than
+ * Raised after the S3 client has exhausted its own retries. 502 rather than
  * 500: the fault is upstream, and everything already entered on the card survives it.
  */
 export class StorageUnavailable extends AppError {

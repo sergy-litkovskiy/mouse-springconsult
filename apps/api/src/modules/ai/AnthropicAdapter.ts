@@ -57,7 +57,7 @@ export type ModelContentBlock =
 /**
  * Covers both a `stop_reason: "refusal"` and an answer that failed to parse against its schema —
  * `ai/CLAUDE.md` requires `stop_reason` to be checked before the response is read either way, and
- * the caller (T28) treats both the same: the call produced nothing usable.
+ * the caller treats both the same: the call produced nothing usable.
  */
 export class ModelAnswerUnavailable extends Error {}
 
@@ -88,7 +88,7 @@ type RequestResult<T> = { readonly value: T; readonly usage: Usage };
 
 /**
  * Talks to `claude-sonnet-5` (ADR 0004) and nothing else — no products, no queue, no persistence.
- * Out of scope on purpose: composing the price query (T28, AC-27) and writing suggestions (T28).
+ * Out of scope on purpose: the caller composes the price query and writes the suggestions.
  */
 export class AnthropicAdapter {
   private readonly client: Anthropic;
@@ -130,7 +130,7 @@ export class AnthropicAdapter {
     return { ...value, usage };
   }
 
-  /** `query` is already composed by the caller (T28, AC-27) — this method does not read `products`. */
+  /** `query` is already composed by the caller — this method does not read `products`. */
   async findPriceRange(query: string): Promise<PriceResult> {
     const { value, usage } = await this.requestPrice([
       {

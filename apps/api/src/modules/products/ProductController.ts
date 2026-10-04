@@ -255,7 +255,7 @@ export class ProductController {
 }
 
 /**
- * A price that is the only thing wrong is reported as `invalid_price` (AC-09): the frontend puts
+ * A price that is the only thing wrong is reported as `invalid_price`: the frontend puts
  * that code on the price field. Anything else wrong makes it a plain `validation_failed` with the
  * price listed among the other fields.
  */

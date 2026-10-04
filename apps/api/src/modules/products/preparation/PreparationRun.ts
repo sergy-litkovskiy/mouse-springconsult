@@ -5,8 +5,8 @@ export const PREPARATION_RUNS_TABLE = 'product_preparation_runs';
 export type PreparationScope = 'texts' | 'price' | 'both' | 'field';
 export type PreparationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 /**
- * `price_unavailable` — the texts of a `both` run were stored, only the price is missing (AC-10b).
- * `preparation_failed` — every retry of the job failed and the run has no suggestions (AC-10).
+ * `price_unavailable` — the texts of a `both` run were stored, only the price is missing.
+ * `preparation_failed` — every retry of the job failed and the run has no suggestions.
  */
 export type PreparationErrorCode = 'price_unavailable' | 'preparation_failed';
 
@@ -34,7 +34,7 @@ export class PreparationRun {
   @Column({ name: 'error_code', type: 'varchar', length: 64, nullable: true })
   errorCode!: PreparationErrorCode | null;
 
-  /** The English message of the error that closed a failed run; null on the runs that failed before T50. */
+  /** The English message of the error that closed a failed run; null on runs older than the column. */
   @Column({ name: 'error_detail', type: 'text', nullable: true })
   errorDetail!: string | null;
 

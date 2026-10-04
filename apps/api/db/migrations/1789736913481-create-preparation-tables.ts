@@ -3,7 +3,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 /**
  * The model never writes into `products` (ADR 0006): whatever it returns lands here as a
  * suggestion, one row per field, and only a person moves a value into the card. That is what
- * makes a manual edit safe from the next run (AC-11) without any check at all.
+ * makes a manual edit safe from the next run without any check at all.
  *
  * A partial failure of `scope: both` has no column of its own: the run ends `failed` with
  * `price_unavailable`, and which part is missing is read from the absence of a `price`

@@ -21,7 +21,7 @@ const preparationJob = {
 } as const;
 
 /**
- * A queued job has to start within 5 s (PRD §6). Polling, not LISTEN/NOTIFY, is the floor:
+ * A queued job has to start within 5 s. Polling, not LISTEN/NOTIFY, is the floor:
  * one second leaves room for the fetch itself.
  */
 const POLLING_INTERVAL_SECONDS = 1;
@@ -88,15 +88,15 @@ export const config = {
     login: { max: 10, timeWindowMs: 5 * 60 * 1000 },
     global: { max: 300, timeWindowMs: 60 * 1000 },
     /**
-     * Preparation runs are paid calls, so they have their own limit, separate from login (PRD §6.1).
-     * Counted per card over every scope, from `product_preparation_runs.created_at` (T24 decision 3).
+     * Preparation runs are paid calls, so they have their own limit, separate from login.
+     * Counted per card over every scope, from `product_preparation_runs.created_at`.
      */
     preparation: { maxRuns: 20, windowSeconds: 60 * 60 },
   },
 
   storage: {
     /**
-     * The S3 client's own retries are the only ones (sad.md §9): the attempts and the per-attempt
+     * The S3 client's own retries are the only ones: the attempts and the per-attempt
      * timeout together have to fit inside `http.requestTimeoutMs`.
      */
     maxAttempts: 3,
@@ -160,7 +160,7 @@ export const config = {
       maxUses: 2,
       /**
        * `user_location.country: 'UA'` (`ai/CLAUDE.md`'s original choice) is rejected by the
-       * search provider with "Country code UA is not supported" — found on T27's live run
+       * search provider with "Country code UA is not supported" — found on a live run
        * (2026-09-19). A timezone is the closest still-supported way to localize the search.
        */
       userTimezone: 'Europe/Kyiv',
