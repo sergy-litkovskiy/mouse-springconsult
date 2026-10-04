@@ -87,7 +87,7 @@ const FieldValueSchema = z.object({
 type RequestResult<T> = { readonly value: T; readonly usage: Usage };
 
 /**
- * Talks to `claude-sonnet-5` (ADR 0004) and nothing else — no products, no queue, no persistence.
+ * Talks to `claude-sonnet-5` (ADR 0018) and nothing else — no products, no queue, no persistence.
  * Out of scope on purpose: the caller composes the price query and writes the suggestions.
  */
 export class AnthropicAdapter {
