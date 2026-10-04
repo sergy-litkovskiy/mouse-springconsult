@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-10-03"
+updated_at: "2026-10-04"
 stage: "13"
 ---
 
@@ -18,7 +18,8 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T81, T82 — поставка 3, зачистка номерів з коду `web` і `api`. Порядок і інструменти — у [плані виконання](../execution-plan.md).
+**Готові до старту:** T82 — поставка 3, зачистка номерів з коду `api`. Порядок і інструменти — у [плані виконання](../execution-plan.md).
+T81 закрито 2026-10-04 й нічого не розблокувала: від неї ніщо не залежить.
 T93 закрито 2026-10-03 й нічого не розблокувала: від неї ніщо не залежить.
 T93 заведено 2026-10-03: довга пропозиція моделі розтягує панель, і кнопки AI з'їжджають донизу. Ребер не має.
 T92 закрито 2026-10-03: вона розблокувала T82 — остання з її `blocked_by`.
@@ -146,7 +147,7 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 | T78 | [Компактні іконки редагування в комірці](shrink-cell-editor-icons.md) | Done | — | XS | 2026-10-01 |
 | T79 | [Скролиться лише вміст таблиці](pin-catalog-header-filters-and-paginator.md) | Done | T78 | S | 2026-10-02 |
 | T80 | [Нижчі тулбар, шапка й фільтри](shrink-app-bar-catalog-header-and-filters.md) | Done | T75, T79 | XS | 2026-10-02 |
-| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Todo | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | — |
+| T81 | [Номери задач і AC з коду `web`](drop-task-references-from-web-code.md) | Done | T66, T68, T70, T74, T80, T83, T85, T87, T88, T90 | S | 2026-10-04 |
 | T82 | [Номери задач і AC з коду `api`](drop-task-references-from-api-code.md) | Todo | T74, T91, T92 | S | — |
 | T83 | [Незбережені правки картки](confirm-discarding-unsaved-card-edits.md) | Done | — | S | 2026-10-03 |
 | T84 | [Відхилити пропозицію](add-reject-suggestion-button.md) | Dropped | T74 | S | — |

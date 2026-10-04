@@ -121,7 +121,7 @@ describe('PromDescriptionEditor', () => {
     expect(control.value).toBe('<p><strong>Стан</strong> ідеальний</p><ul><li>Пункт</li></ul>');
   });
 
-  it('wraps the selected word in <strong> and shows it in HTML mode (AC-47)', async () => {
+  it('wraps the selected word in <strong> and shows it in HTML mode', async () => {
     await open('<p>Миша бездротова</p>');
 
     selectFirstWord();
@@ -136,7 +136,7 @@ describe('PromDescriptionEditor', () => {
     expect(htmlArea()?.value).toBe('<p><strong>Миша</strong> бездротова</p>');
   });
 
-  it('shows a list typed in HTML mode as a list, and the form as changed (AC-47)', async () => {
+  it('shows a list typed in HTML mode as a list, and the form as changed', async () => {
     await open('<p>Опис</p>');
 
     await switchTo('HTML');
@@ -204,8 +204,8 @@ describe('PromDescriptionEditor', () => {
   });
 
   // The card's GET can land between the first render and the arrival of Tiptap's modules.
-  describe('written to while it is still loading (AC-62)', () => {
-    it('shows the last value written before it loaded, without marking the form changed (AC-62)', async () => {
+  describe('written to while it is still loading', () => {
+    it('shows the last value written before it loaded, without marking the form changed', async () => {
       await open('', {
         beforeLoad: () => {
           expect(visual()).toBeNull();
@@ -220,7 +220,7 @@ describe('PromDescriptionEditor', () => {
       expect(control.dirty).toBe(false);
     });
 
-    it('becomes editable when the form is enabled before it loaded (AC-62)', async () => {
+    it('becomes editable when the form is enabled before it loaded', async () => {
       await open('<p>Опис</p>', {
         disabled: true,
         beforeLoad: () => {
@@ -233,7 +233,7 @@ describe('PromDescriptionEditor', () => {
       expect(control.dirty).toBe(false);
     });
 
-    it('stays read-only when the form is disabled before it loaded (AC-62)', async () => {
+    it('stays read-only when the form is disabled before it loaded', async () => {
       await open('<p>Опис</p>', {
         beforeLoad: () => {
           expect(visual()).toBeNull();
@@ -248,7 +248,7 @@ describe('PromDescriptionEditor', () => {
   describe('the "Почистити html" button', () => {
     const PASTED = '<div><span style="color:red">Червоний</span> колір</div><p>&nbsp;</p>';
 
-    it('replaces the description with its cleaned version and marks the form changed (AC-48)', async () => {
+    it('replaces the description with its cleaned version and marks the form changed', async () => {
       await open(PASTED);
 
       cleanupButton().click();
@@ -260,7 +260,7 @@ describe('PromDescriptionEditor', () => {
       expect(visual()?.querySelector('span, div')).toBeNull();
     });
 
-    it('cleans the description in the HTML mode as well (AC-48)', async () => {
+    it('cleans the description in the HTML mode as well', async () => {
       await open('<p>Опис</p>');
       await switchTo('HTML');
       typeHtml(PASTED);
@@ -273,7 +273,7 @@ describe('PromDescriptionEditor', () => {
       expect(htmlArea()?.value).toBe('Червоний колір');
     });
 
-    it('leaves a clean description as it is and the form untouched (AC-48)', async () => {
+    it('leaves a clean description as it is and the form untouched', async () => {
       const clean = '<p><strong>Стан</strong> ідеальний</p><ul><li>Пункт</li></ul>';
       await open(clean);
 
@@ -284,7 +284,7 @@ describe('PromDescriptionEditor', () => {
       expect(control.dirty).toBe(false);
     });
 
-    it('shows the cleaning icon with a tooltip and an aria-label of the same text (AC-48)', async () => {
+    it('shows the cleaning icon with a tooltip and an aria-label of the same text', async () => {
       await open('<p>Опис</p>');
 
       expect(cleanupButton().querySelector('mat-icon')?.textContent.trim()).toBe(
@@ -297,14 +297,14 @@ describe('PromDescriptionEditor', () => {
       expect(await tooltip.getTooltipText()).toBe('Почистити html');
     });
 
-    it('is unavailable in a disabled form (AC-48)', async () => {
+    it('is unavailable in a disabled form', async () => {
       await open(PASTED, { disabled: true });
 
       expect(cleanupButton().disabled).toBe(true);
     });
   });
 
-  describe('in a disabled form (AC-20)', () => {
+  describe('in a disabled form', () => {
     it('cannot be edited in the visual mode', async () => {
       await open('<p>Опис</p>', { disabled: true });
 

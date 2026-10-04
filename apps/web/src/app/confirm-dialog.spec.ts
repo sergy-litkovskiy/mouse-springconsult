@@ -22,7 +22,7 @@ describe('ConfirmDialog', () => {
   let closed: boolean;
 
   /**
-   * Opens the dialog the way T21 and T22 will: the irreversible request is wired to the
+   * Opens the dialog the way the gallery and the catalogue do: the irreversible request is wired to the
    * result, so whether it goes out depends on nothing but the admin's answer.
    */
   async function askBeforeDeleting(): Promise<void> {
@@ -85,7 +85,7 @@ describe('ConfirmDialog', () => {
     expect(button('Скасувати')).toBeDefined();
   });
 
-  it('holds the request back until the admin confirms and sends it after (AC-18)', async () => {
+  it('holds the request back until the admin confirms and sends it after', async () => {
     await askBeforeDeleting();
 
     http.expectNone(DELETE_URL);

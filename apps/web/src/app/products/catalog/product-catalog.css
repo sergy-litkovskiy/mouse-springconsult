@@ -271,7 +271,7 @@
 }
 
 /* Reserves the editor's width at rest (field + two buttons + gaps + 2 × 16px padding), so
-   opening it neither widens the column nor rewraps the titles beside it (AC-73). */
+   opening it neither widens the column nor rewraps the titles beside it. */
 .mat-column-price {
   min-width: 11rem;
 }

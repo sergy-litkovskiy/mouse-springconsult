@@ -90,7 +90,7 @@ describe('PreparationRunPoller', () => {
     vi.useRealTimers();
   });
 
-  it('keeps asking for the state of a run that is still going (AC-05)', async () => {
+  it('keeps asking for the state of a run that is still going', async () => {
     poller.watch(PRODUCT_ID, RUN_ID);
 
     const first = http.expectOne(RUN_URL);
@@ -104,7 +104,7 @@ describe('PreparationRunPoller', () => {
     expect(poller.run()).toEqual(SUCCEEDED);
   });
 
-  it('stops asking once the run has succeeded (AC-05)', async () => {
+  it('stops asking once the run has succeeded', async () => {
     poller.watch(PRODUCT_ID, RUN_ID);
     http.expectOne(RUN_URL).flush(SUCCEEDED);
 

@@ -154,7 +154,7 @@ describe('LoginPage', () => {
     expect(element.querySelectorAll('mat-form-field.mat-form-field-invalid').length).toBe(2);
   });
 
-  it('shows the wrong-credentials message once, in the banner, and leaves both fields framed without text (AC-79)', async () => {
+  it('shows the wrong-credentials message once, in the banner, and leaves both fields framed without text', async () => {
     fill('admin@example.com', 'wrong-password');
     submit();
     await settle();
@@ -172,7 +172,7 @@ describe('LoginPage', () => {
     expect(element.querySelectorAll('mat-form-field mat-error').length).toBe(0);
   });
 
-  it('shows the field text again once a field is emptied after wrong credentials (AC-79)', async () => {
+  it('shows the field text again once a field is emptied after wrong credentials', async () => {
     fill('admin@example.com', 'wrong-password');
     submit();
     await settle();

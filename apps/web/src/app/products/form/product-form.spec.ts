@@ -151,7 +151,7 @@ describe('ProductForm', () => {
     }
   }
 
-  /** The three fields a read carries and a row of the list does not (T31, T53, T74). */
+  /** The three fields a read carries and a row of the list does not. */
   function asRead(card: ProductCard): ProductCardRead {
     return { ...card, latestSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
   }
@@ -334,7 +334,7 @@ describe('ProductForm', () => {
     http.verify();
   });
 
-  describe('without a single frame (AC-20)', () => {
+  describe('without a single frame', () => {
     it('keeps every field and the save button unavailable', async () => {
       open(WITHOUT_FRAMES);
       await settle();
@@ -388,7 +388,7 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('the card id under the title (AC-64)', () => {
+  describe('the card id under the title', () => {
     const COPY_LABEL = 'Скопіювати ID товару';
 
     function idLine(): HTMLElement | null {
@@ -404,7 +404,7 @@ describe('ProductForm', () => {
       return vi.spyOn(TestBed.inject(Clipboard), 'copy').mockReturnValue(true);
     }
 
-    it('shows the id of an existing card right under the title, before the gallery (AC-64)', async () => {
+    it('shows the id of an existing card right under the title, before the gallery', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -420,7 +420,7 @@ describe('ProductForm', () => {
       expect(line.compareDocumentPosition(gallery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('copies the card id with one click and confirms it with «ID скопійовано» (AC-64)', async () => {
+    it('copies the card id with one click and confirms it with «ID скопійовано»', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
       const copy = watchClipboard();
@@ -435,7 +435,7 @@ describe('ProductForm', () => {
       );
     });
 
-    it('shows no id line for a new card until the first frame has created it (AC-64)', async () => {
+    it('shows no id line for a new card until the first frame has created it', async () => {
       open(null);
       await settle();
 
@@ -456,7 +456,7 @@ describe('ProductForm', () => {
       expect(copy).toHaveBeenCalledWith(CARD_ID);
     });
 
-    it('labels the copy button «Скопіювати ID товару» and shows the same tooltip (AC-64)', async () => {
+    it('labels the copy button «Скопіювати ID товару» and shows the same tooltip', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -474,7 +474,7 @@ describe('ProductForm', () => {
     });
   });
 
-  it('saves a hand-written card with the same PATCH a suggestion uses (AC-12)', async () => {
+  it('saves a hand-written card with the same PATCH a suggestion uses', async () => {
     open(EMPTY_WITH_FRAME);
     await settle();
 
@@ -510,7 +510,7 @@ describe('ProductForm', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('shows the stored Prom description and saves it unchanged when the card arrives before its editor (AC-62)', async () => {
+  it('shows the stored Prom description and saves it unchanged when the card arrives before its editor', async () => {
     const stored: ProductCard = {
       ...PUBLISHED_ON_PROM,
       descriptionProm: '<p><strong>Стан</strong> ідеальний</p>',
@@ -559,7 +559,7 @@ describe('ProductForm', () => {
     await settle();
   });
 
-  describe('the price (AC-09)', () => {
+  describe('the price', () => {
     it('explains the format, keeps what was typed and sends nothing', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
@@ -576,7 +576,7 @@ describe('ProductForm', () => {
       http.expectNone(`/api/products/${CARD_ID}`);
     });
 
-    it('saves a price typed with a decimal comma with a dot (AC-78)', async () => {
+    it('saves a price typed with a decimal comma with a dot', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -595,7 +595,7 @@ describe('ProductForm', () => {
     });
 
     for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
-      it(`explains the format for ${invalid} and sends nothing (AC-78)`, async () => {
+      it(`explains the format for ${invalid} and sends nothing`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
 
@@ -635,7 +635,7 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('the two marketplace marks (AC-13)', () => {
+  describe('the two marketplace marks', () => {
     const combinations = [
       { flip: 'Опубліковано на OLX', expected: { publishedProm: true, publishedOlx: true } },
       { flip: 'Опубліковано на Prom', expected: { publishedProm: false, publishedOlx: false } },
@@ -663,7 +663,7 @@ describe('ProductForm', () => {
     }
   });
 
-  it('reports the keywords past the ceiling that the server threw away in the notice (AC-07, AC-43)', async () => {
+  it('reports the keywords past the ceiling that the server threw away in the notice', async () => {
     open(PUBLISHED_ON_PROM);
     await settle();
 
@@ -681,7 +681,7 @@ describe('ProductForm', () => {
     );
   });
 
-  describe('a successful save (AC-43)', () => {
+  describe('a successful save', () => {
     async function saveAccepted(): Promise<void> {
       open(PUBLISHED_ON_PROM);
       await settle();
@@ -695,13 +695,13 @@ describe('ProductForm', () => {
       await settle();
     }
 
-    it('closes the dialog with true so the catalogue re-reads its page (AC-43)', async () => {
+    it('closes the dialog with true so the catalogue re-reads its page', async () => {
       await saveAccepted();
 
       expect(close).toHaveBeenCalledWith(true);
     });
 
-    it('confirms the save with a green notice (AC-43)', async () => {
+    it('confirms the save with a green notice', async () => {
       await saveAccepted();
 
       const notice = successNotice();
@@ -710,7 +710,7 @@ describe('ProductForm', () => {
       expect(notice?.textContent).not.toContain('Понад ліміт');
     });
 
-    it('lets the notice go away by itself within a few seconds (AC-43)', async () => {
+    it('lets the notice go away by itself within a few seconds', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       try {
         await saveAccepted();
@@ -726,7 +726,7 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('a failed save (AC-44)', () => {
+  describe('a failed save', () => {
     const failures: readonly {
       readonly name: string;
       readonly fail: (request: TestRequest) => void;
@@ -772,7 +772,7 @@ describe('ProductForm', () => {
     ];
 
     for (const { name, fail, message } of failures) {
-      it(`keeps the dialog open and shows the message next to the buttons on ${name} (AC-44)`, async () => {
+      it(`keeps the dialog open and shows the message next to the buttons on ${name}`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
 
@@ -817,15 +817,15 @@ describe('ProductForm', () => {
     expect(saveButton().disabled).toBe(false);
   });
 
-  describe('the keywords as chips (AC-53)', () => {
-    it('shows every keyword of the card as a chip of its own (AC-53)', async () => {
+  describe('the keywords as chips', () => {
+    it('shows every keyword of the card as a chip of its own', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
       expect(await keywords()).toEqual(['миша', 'logitech']);
     });
 
-    it('adds a keyword on Enter and another on a comma, emptying the input each time (AC-53)', async () => {
+    it('adds a keyword on Enter and another on a comma, emptying the input each time', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -837,7 +837,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['миша', 'logitech', 'бездротова', 'mx master 3']);
     });
 
-    it('edits a keyword in place on a double click (AC-53)', async () => {
+    it('edits a keyword in place on a double click', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -847,7 +847,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['миша', 'logitech mx']);
     });
 
-    it('removes a keyword with its cross (AC-53)', async () => {
+    it('removes a keyword with its cross', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -856,7 +856,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['logitech']);
     });
 
-    it('saves the keywords as an array in the order shown on screen (AC-53)', async () => {
+    it('saves the keywords as an array in the order shown on screen', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -877,7 +877,7 @@ describe('ProductForm', () => {
       await settle();
     });
 
-    it('splits a pasted line on commas and adds no blank or repeated keyword (AC-53)', async () => {
+    it('splits a pasted line on commas and adds no blank or repeated keyword', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -887,7 +887,7 @@ describe('ProductForm', () => {
       expect(keywordInput().value).toBe('');
     });
 
-    it('adds neither a blank keyword nor one already on the list (AC-53)', async () => {
+    it('adds neither a blank keyword nor one already on the list', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -898,7 +898,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['миша', 'logitech']);
     });
 
-    it('drops a keyword edited down to nothing (AC-53)', async () => {
+    it('drops a keyword edited down to nothing', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -907,7 +907,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['миша']);
     });
 
-    it('trims an edited keyword and drops it when it repeats another (AC-53)', async () => {
+    it('trims an edited keyword and drops it when it repeats another', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -918,7 +918,7 @@ describe('ProductForm', () => {
       expect(await keywords()).toEqual(['мишка']);
     });
 
-    it('turns the text left in the input into chips when the field is left (AC-53)', async () => {
+    it('turns the text left in the input into chips when the field is left', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -931,7 +931,7 @@ describe('ProductForm', () => {
       expect(keywordInput().value).toBe('');
     });
 
-    it('shows the length error for a keyword over 60 characters and sends nothing (AC-53, AC-07)', async () => {
+    it('shows the length error for a keyword over 60 characters and sends nothing', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -946,7 +946,7 @@ describe('ProductForm', () => {
       http.expectNone(`/api/products/${CARD_ID}`);
     });
 
-    it('keeps the chips and their input unavailable until the first frame (AC-53, AC-20)', async () => {
+    it('keeps the chips and their input unavailable until the first frame', async () => {
       open(WITHOUT_FRAMES);
       await settle();
 
@@ -956,14 +956,14 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('the two titles (AC-52)', () => {
+  describe('the two titles', () => {
     const TITLES = ['titleProm', 'titleOlx'] as const;
     const LONG_TITLE =
       'Миша Logitech MX Master 3 бездротова, графітова, з зарядним кабелем USB-C, ' +
       'коробкою та приймачем Unifying, у відмінному стані після одного року використання';
 
     for (const name of TITLES) {
-      it(`shows the whole ${name} in a field that grows with the text (AC-52)`, async () => {
+      it(`shows the whole ${name} in a field that grows with the text`, async () => {
         open({ ...PUBLISHED_ON_PROM, [name]: LONG_TITLE });
         await settle();
 
@@ -977,7 +977,7 @@ describe('ProductForm', () => {
         expect(autosize?.minRows).toBe(1);
       });
 
-      it(`turns a pasted line break in ${name} into a space and saves one line (AC-52)`, async () => {
+      it(`turns a pasted line break in ${name} into a space and saves one line`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
 
@@ -993,7 +993,7 @@ describe('ProductForm', () => {
         await settle();
       });
 
-      it(`adds nothing to ${name} on Enter (AC-52)`, async () => {
+      it(`adds nothing to ${name} on Enter`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         const before = field(name).value;
@@ -1013,7 +1013,7 @@ describe('ProductForm', () => {
       });
     }
 
-    it('still refuses a title of 201 characters in the multi-line field (AC-52)', async () => {
+    it('still refuses a title of 201 characters in the multi-line field', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -1027,8 +1027,8 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('the gaps behind the readiness badge (AC-15)', () => {
-    it('names what the open card lacks in the words and order of the catalogue (AC-15)', async () => {
+  describe('the gaps behind the readiness badge', () => {
+    it('names what the open card lacks in the words and order of the catalogue', async () => {
       open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
       await settle();
 
@@ -1036,8 +1036,8 @@ describe('ProductForm', () => {
       expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
 
-    // The dialog closes on save (T45), so the fresh readiness is the catalogue's to show.
-    it('leaves the readiness of a card that came back ready to the catalogue (AC-15, AC-43)', async () => {
+    // The dialog closes on save, so the fresh readiness is the catalogue's to show.
+    it('leaves the readiness of a card that came back ready to the catalogue', async () => {
       open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
       await settle();
 
@@ -1053,7 +1053,7 @@ describe('ProductForm', () => {
       expect(close).toHaveBeenCalledWith(true);
     });
 
-    it('lists the gaps of the last server answer, not of unsaved fields (AC-15)', async () => {
+    it('lists the gaps of the last server answer, not of unsaved fields', async () => {
       open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
       await settle();
 
@@ -1076,7 +1076,7 @@ describe('ProductForm', () => {
       expect(await readinessHint()).toBe('Бракує: опис OLX, ціна');
     });
   });
-  describe('closing a card with unsaved edits (AC-76)', () => {
+  describe('closing a card with unsaved edits', () => {
     const SECOND_FRAME: ProductImage = {
       ...FRAME,
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -1198,7 +1198,7 @@ describe('ProductForm', () => {
       http.expectNone((request) => request.method === 'PATCH');
     }
 
-    it('keeps the dialog from closing by itself on Esc or a click past it (AC-76)', async () => {
+    it('keeps the dialog from closing by itself on Esc or a click past it', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -1206,7 +1206,7 @@ describe('ProductForm', () => {
     });
 
     for (const [way, leave] of WAYS_OUT) {
-      it(`asks «Закрити без збереження?» on ${way} and keeps the edited card open (AC-76)`, async () => {
+      it(`asks «Закрити без збереження?» on ${way} and keeps the edited card open`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         type('titleOlx', 'Logitech MX Master 3S');
@@ -1223,7 +1223,7 @@ describe('ProductForm', () => {
     }
 
     for (const [name, edit] of EDITS) {
-      it(`asks before discarding an edit of ${name} (AC-76)`, async () => {
+      it(`asks before discarding an edit of ${name}`, async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         await edit();
@@ -1237,7 +1237,7 @@ describe('ProductForm', () => {
       });
     }
 
-    it('asks before discarding what was typed into a new card (AC-76)', async () => {
+    it('asks before discarding what was typed into a new card', async () => {
       open(null);
       await settle();
       const created = firstValueFrom(fixture.componentInstance.ensureProduct());
@@ -1255,7 +1255,7 @@ describe('ProductForm', () => {
       expectQuestion();
     });
 
-    it('goes back to the card with its edits when the question is cancelled (AC-76)', async () => {
+    it('goes back to the card with its edits when the question is cancelled', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
       type('titleOlx', 'Logitech MX Master 3S');
@@ -1271,7 +1271,7 @@ describe('ProductForm', () => {
       expectNoPatch();
     });
 
-    it('closes the card without a PATCH once discarding is confirmed (AC-76)', async () => {
+    it('closes the card without a PATCH once discarding is confirmed', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
       type('titleOlx', 'Logitech MX Master 3S');
@@ -1286,7 +1286,7 @@ describe('ProductForm', () => {
       expectNoPatch();
     });
 
-    it('closes at once on Esc, a click past it and «Скасувати» when the card was only opened (AC-76)', async () => {
+    it('closes at once on Esc, a click past it and «Скасувати» when the card was only opened', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -1301,7 +1301,7 @@ describe('ProductForm', () => {
       }
     });
 
-    it('reads the empty price field of an unpriced card as "0.00", not as an edit (AC-76)', async () => {
+    it('reads the empty price field of an unpriced card as "0.00", not as an edit', async () => {
       open(WITHOUT_OLX_DESCRIPTION_AND_PRICE);
       await settle();
       expect(field('price').value).toBe('');
@@ -1313,7 +1313,7 @@ describe('ProductForm', () => {
       expect(dialogs().length).toBe(0);
     });
 
-    it('closes at once after the keywords were only passed through (AC-76)', async () => {
+    it('closes at once after the keywords were only passed through', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
       keywordInput().dispatchEvent(new Event('focus'));
@@ -1327,7 +1327,7 @@ describe('ProductForm', () => {
       expect(dialogs().length).toBe(0);
     });
 
-    it('closes at once when an edited field was typed back to what the card holds (AC-76)', async () => {
+    it('closes at once when an edited field was typed back to what the card holds', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
       type('titleOlx', 'Logitech MX Master 3S');
@@ -1346,7 +1346,7 @@ describe('ProductForm', () => {
       ['added', PUBLISHED_ON_PROM, [FRAME, SECOND_FRAME]],
       ['removed', TWO_FRAMES, [FRAME]],
     ] as const) {
-      it(`closes at once after a frame was ${change}, telling the catalogue to re-read (AC-76)`, async () => {
+      it(`closes at once after a frame was ${change}, telling the catalogue to re-read`, async () => {
         open(card);
         await settle();
         fixture.componentInstance.imagesChanged(frames);
@@ -1360,7 +1360,7 @@ describe('ProductForm', () => {
       });
     }
 
-    it('closes a new card at once after its first frame, telling the catalogue to re-read (AC-76)', async () => {
+    it('closes a new card at once after its first frame, telling the catalogue to re-read', async () => {
       open(null);
       await settle();
       const created = firstValueFrom(fixture.componentInstance.ensureProduct());
@@ -1377,7 +1377,7 @@ describe('ProductForm', () => {
     });
   });
 
-  describe('the preparation panel (T32)', () => {
+  describe('the preparation panel', () => {
     const RUN_ID = '44444444-4444-4444-8444-444444444444';
 
     const SUGGESTED_OLX_DESCRIPTION: FieldSuggestion = {
@@ -1395,7 +1395,7 @@ describe('ProductForm', () => {
       value: { priceFrom: '2100.00', priceTo: '2600.00' },
     };
 
-    /** A card read that carries the latest suggestion of every field, decided or not (AC-69). */
+    /** A card read that carries the latest suggestion of every field, decided or not. */
     function withLatest(card: ProductCard, latest: readonly FieldSuggestion[]): ProductCardRead {
       return { ...asRead(card), latestSuggestions: [...latest] };
     }
@@ -1437,7 +1437,7 @@ describe('ProductForm', () => {
       );
     }
 
-    it('keeps «? -> AI» unavailable while the field is empty (AC-22)', async () => {
+    it('keeps «? -> AI» unavailable while the field is empty', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -1449,7 +1449,7 @@ describe('ProductForm', () => {
       expect(button('titleOlx', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it('rewrites the one field from its draft with mode:prompt (AC-21, AC-68)', async () => {
+    it('rewrites the one field from its draft with mode:prompt', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -1477,13 +1477,13 @@ describe('ProductForm', () => {
 
     // Skipped, not deleted: the price half is hidden until T54 makes the lookup return a range
     // instead of an empty string. T54 turns the flag back on and these two go green again.
-    it.skip('keeps the price button unavailable until the card has a title (AC-24)', async () => {
+    it.skip('keeps the price button unavailable until the card has a title', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
       type('descriptionOlx', 'Продам мишу, повний комплект.');
       await settle();
-      // A description alone does not enable it: the server gates on a title (AC-27).
+      // A description alone does not enable it: the server gates on a title.
       expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
 
       type('titleOlx', 'Logitech MX Master 3 бездротова');
@@ -1492,7 +1492,7 @@ describe('ProductForm', () => {
       expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it.skip('shows the price range as text and never accepts it for the admin (AC-25)', async () => {
+    it.skip('shows the price range as text and never accepts it for the admin', async () => {
       openWithLatest(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
       await settle();
 
@@ -1502,7 +1502,7 @@ describe('ProductForm', () => {
       expect(field('price').value).toBe('');
     });
 
-    it('shows a suggestion beside the field the admin wrote, not instead of it (AC-11)', async () => {
+    it('shows a suggestion beside the field the admin wrote, not instead of it', async () => {
       openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
       await settle();
 
@@ -1513,7 +1513,7 @@ describe('ProductForm', () => {
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
     });
 
-    it('keeps «? -> AI» for the keywords unavailable until there is a chip (AC-53, AC-22)', async () => {
+    it('keeps «? -> AI» for the keywords unavailable until there is a chip', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -1524,7 +1524,7 @@ describe('ProductForm', () => {
       expect(button('seoKeywords', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it('rewrites the keywords from their chips joined with commas (AC-53, AC-21)', async () => {
+    it('rewrites the keywords from their chips joined with commas', async () => {
       open(PUBLISHED_ON_PROM);
       await settle();
 
@@ -1548,7 +1548,7 @@ describe('ProductForm', () => {
       await settle();
     });
 
-    it('shows the suggestions of a card opened without a run of its own (AC-28)', async () => {
+    it('shows the suggestions of a card opened without a run of its own', async () => {
       openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]);
       await settle();
 
@@ -1556,7 +1556,7 @@ describe('ProductForm', () => {
       // The price suggestion arrives in the read all the same; showing it comes back with T54.
     });
 
-    describe('the latest suggestion of every field (AC-69)', () => {
+    describe('the latest suggestion of every field', () => {
       const SUGGESTED_OLX_TITLE: FieldSuggestion = {
         ...SUGGESTED_OLX_DESCRIPTION,
         id: '88888888-8888-4888-8888-888888888888',
@@ -1565,7 +1565,7 @@ describe('ProductForm', () => {
         createdAt: '2026-09-21T09:00:35.000Z',
       };
 
-      it('offers the latest suggestion ready to apply (AC-69)', async () => {
+      it('offers the latest suggestion ready to apply', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
         await settle();
 
@@ -1573,7 +1573,7 @@ describe('ProductForm', () => {
         expect(button('descriptionOlx', 'accept')?.disabled).toBe(false);
       });
 
-      it('keeps the field edited by hand and offers the new suggestion beside it (AC-69, AC-11)', async () => {
+      it('keeps the field edited by hand and offers the new suggestion beside it', async () => {
         openWithLatest({ ...PUBLISHED_ON_PROM, titleOlx: 'Моя власна назва' }, [
           SUGGESTED_OLX_TITLE,
         ]);
@@ -1585,7 +1585,7 @@ describe('ProductForm', () => {
       });
     });
 
-    describe('«<- AI» copies the suggestion into the form (AC-81)', () => {
+    describe('«<- AI» copies the suggestion into the form', () => {
       const SUGGESTED_PROM_DESCRIPTION: FieldSuggestion = {
         ...SUGGESTED_OLX_DESCRIPTION,
         id: '99999999-9999-4999-8999-999999999999',
@@ -1639,7 +1639,7 @@ describe('ProductForm', () => {
         return body;
       }
 
-      it('puts the OLX description suggestion into the field on the left without a request (AC-81)', async () => {
+      it('puts the OLX description suggestion into the field on the left without a request', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
         await settle();
 
@@ -1648,7 +1648,7 @@ describe('ProductForm', () => {
         expect(field('titleProm').value).toBe(PUBLISHED_ON_PROM.titleProm);
       });
 
-      it('writes the copied suggestion to the card only on «Зберегти» (AC-81)', async () => {
+      it('writes the copied suggestion to the card only on «Зберегти»', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
         await settle();
 
@@ -1657,7 +1657,7 @@ describe('ProductForm', () => {
         expect((await saved())['descriptionOlx']).toBe(SUGGESTED_OLX_DESCRIPTION.value);
       });
 
-      it('asks before closing a card whose field took a suggestion, and writes nothing (AC-81, AC-76)', async () => {
+      it('asks before closing a card whose field took a suggestion, and writes nothing', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
         await settle();
 
@@ -1672,7 +1672,7 @@ describe('ProductForm', () => {
         http.expectNone(() => true);
       });
 
-      it('turns the Prom description into a <p> per paragraph and <br> per single break (AC-81)', async () => {
+      it('turns the Prom description into a <p> per paragraph and <br> per single break', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_PROM_DESCRIPTION]);
         await settle();
 
@@ -1683,7 +1683,7 @@ describe('ProductForm', () => {
         );
       });
 
-      it('escapes the markup in the Prom description suggestion instead of keeping it (AC-81)', async () => {
+      it('escapes the markup in the Prom description suggestion instead of keeping it', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [
           { ...SUGGESTED_PROM_DESCRIPTION, value: 'Кабель <script>alert(1)</script> & чохол.' },
         ]);
@@ -1696,7 +1696,7 @@ describe('ProductForm', () => {
         );
       });
 
-      it('puts no more than thirty keywords of a longer suggestion into the chips (AC-81)', async () => {
+      it('puts no more than thirty keywords of a longer suggestion into the chips', async () => {
         openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_MANY_KEYWORDS]);
         await settle();
 
@@ -1705,7 +1705,7 @@ describe('ProductForm', () => {
         expect((await saved())['seoKeywords']).toEqual(THIRTY_TWO_KEYWORDS.slice(0, 30));
       });
 
-      it('leaves every field as it was when a run finishes (Checklist 2)', async () => {
+      it('leaves every field as it was when a run finishes', async () => {
         open(EMPTY_WITH_FRAME);
         await settle();
 
@@ -1719,7 +1719,7 @@ describe('ProductForm', () => {
           .expectOne(`/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`)
           .flush({ ...run('succeeded'), scope: 'texts', errorCode: null });
         await settle();
-        // Until T91 the server still writes a suggestion into an empty column on the read.
+        // Even a read whose columns came back filled leaves the fields the admin sees alone.
         http.expectOne(`/api/products/${CARD_ID}`).flush(
           withLatest(
             {
@@ -1740,12 +1740,12 @@ describe('ProductForm', () => {
       });
     });
 
-    describe('AI action buttons (AC-68, T73)', () => {
+    describe('AI action buttons', () => {
       function improveButton(field: string): HTMLButtonElement | null {
         return half(field).querySelector<HTMLButtonElement>('[data-testid="improve"]');
       }
 
-      it('sends mode:improve when the auto_fix_high button is clicked (AC-68)', async () => {
+      it('sends mode:improve when the auto_fix_high button is clicked', async () => {
         open(EMPTY_WITH_FRAME);
         await settle();
 
@@ -1771,7 +1771,7 @@ describe('ProductForm', () => {
         await settle();
       });
 
-      it('sends nothing when a launch button is clicked while the field is empty (AC-22)', async () => {
+      it('sends nothing when a launch button is clicked while the field is empty', async () => {
         open(EMPTY_WITH_FRAME);
         await settle();
 
@@ -1782,7 +1782,7 @@ describe('ProductForm', () => {
         http.expectNone(`/api/products/${CARD_ID}/preparation-runs`);
       });
 
-      it('shows three AI buttons with correct aria-labels (AC-68 accessibility)', async () => {
+      it('shows three AI buttons with correct aria-labels', async () => {
         open(EMPTY_WITH_FRAME);
         await settle();
 
@@ -1802,7 +1802,7 @@ describe('ProductForm', () => {
       });
     });
 
-    describe('the spinner beside the control that started the run (AC-60)', () => {
+    describe('the spinner beside the control that started the run', () => {
       const TEXT_FIELDS = [
         'titleProm',
         'titleOlx',
@@ -1866,7 +1866,7 @@ describe('ProductForm', () => {
 
       // Mid-run checks are soft: a hard failure would leave the poll open, and the shared verify()
       // would then fail every test after this one as well.
-      it('spins in «Згенерувати все» while a texts run is queued or running, with the field buttons off and still, then gives them back (AC-60)', async () => {
+      it('spins in «Згенерувати все» while a texts run is queued or running, with the field buttons off and still, then gives them back', async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         type('descriptionOlx', 'Продам мишу.');
@@ -1905,7 +1905,7 @@ describe('ProductForm', () => {
         ['improve', 'Покращити через AI'],
         ['rewrite', 'Застосувати як промпт'],
       ] as const) {
-        it(`replaces both launch buttons of the field with a spinner after «${name}» until the result arrives (AC-60)`, async () => {
+        it(`replaces both launch buttons of the field with a spinner after «${name}» until the result arrives`, async () => {
           openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_OLX_DESCRIPTION]);
           await settle();
           type('descriptionOlx', 'Продам мишу.');
@@ -1940,7 +1940,7 @@ describe('ProductForm', () => {
         });
       }
 
-      it('drops the field spinner, shows the failure and gives the buttons back when the run fails (AC-60, AC-10)', async () => {
+      it('drops the field spinner, shows the failure and gives the buttons back when the run fails', async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         type('descriptionOlx', 'Продам мишу.');
@@ -1984,7 +1984,7 @@ describe('ProductForm', () => {
       ];
       for (const { status, statusText, refusal } of refusals) {
         // The texts run afterwards is what shows a refused field is not left marked as working.
-        it(`leaves no spinner beside the field whose POST got ${String(status)}, not even during the next run (AC-60)`, async () => {
+        it(`leaves no spinner beside the field whose POST got ${String(status)}, not even during the next run`, async () => {
           open(PUBLISHED_ON_PROM);
           await settle();
           type('descriptionOlx', 'Продам мишу.');
@@ -2023,7 +2023,7 @@ describe('ProductForm', () => {
       }
 
       // The form learns the field from its own request only; a run it merely watches names none.
-      it('shows no field spinner for a run the form did not start, and one for the run it starts next (AC-60)', async () => {
+      it('shows no field spinner for a run the form did not start, and one for the run it starts next', async () => {
         open(PUBLISHED_ON_PROM);
         await settle();
         type('descriptionOlx', 'Продам мишу.');

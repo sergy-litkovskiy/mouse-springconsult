@@ -7,10 +7,10 @@ import type { FieldSuggestion } from '@contracts/products.contract';
 
 /**
  * The right half of a paired field (mockup 2026-09-12): the model's latest suggestion beside the
- * value the admin is editing, never instead of it (AC-11).
+ * value the admin is editing, never instead of it.
  *
  * Shown, not edited — for every field, not only the price. The admin edits on the left, after
- * «<- AI» brought the text over (AC-81).
+ * «<- AI» brought the text over.
  */
 @Component({
   selector: 'app-suggestion-field',
@@ -22,14 +22,14 @@ import type { FieldSuggestion } from '@contracts/products.contract';
 export class SuggestionField {
   readonly label = input.required<string>();
   readonly suggestion = input<FieldSuggestion | null>(null);
-  /** Disabled while any run of this card is going: the rate limit is shared (PRD §6.1). */
+  /** Disabled while any run of this card is going: the rate limit is shared. */
   readonly busy = input(false);
-  /** This field's own run is going: its launch buttons give way to a spinner (AC-60). */
+  /** This field's own run is going: its launch buttons give way to a spinner. */
   readonly working = input(false);
-  /** AC-22 for a text, AC-24 for the price — the reason belongs in `rewriteHint`. */
+  /** Off for an empty draft, or a price without a title; the reason belongs in `rewriteHint`. */
   readonly canRewrite = input(false);
   readonly rewriteHint = input('');
-  /** The price has no «<- AI»: the admin types the number in by hand (AC-25). */
+  /** The price has no «<- AI»: the admin types the number in by hand. */
   readonly acceptable = input(true);
 
   readonly improvable = input(true);
@@ -42,7 +42,7 @@ export class SuggestionField {
    * no longer swallows the click — it is gated here. */
   protected readonly canLaunch = computed(() => this.canRewrite() && !this.busy());
   protected readonly text = computed(() => describe(this.suggestion()?.value));
-  /** A suggestion has no decision of its own: it is offered for as long as it is the latest (AC-69). */
+  /** A suggestion has no decision of its own: it is offered for as long as it is the latest. */
   protected readonly canAccept = computed(
     () => this.acceptable() && this.suggestion() !== null && !this.busy(),
   );

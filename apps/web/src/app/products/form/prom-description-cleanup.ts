@@ -2,7 +2,7 @@ import { promDescriptionHtml } from '@contracts/prom-description-html';
 import DOMPurify from 'dompurify';
 
 /**
- * Must produce byte for byte what the server's `cleanDescription` (T47) stores, or the saved
+ * Must produce byte for byte what the server's `cleanDescription` stores, or the saved
  * description drifts from the one shown. DOMPurify has neither `transformTags` nor
  * `allowedSchemes`, so the b/i renaming happens after sanitizing and the schemes live in the URI
  * pattern.

@@ -41,7 +41,7 @@ const DELETE_QUESTION: ConfirmDialogData = {
   confirmLabel: 'Видалити',
 };
 
-/** A chosen file on its way to the server, drawn from the local copy (QG-2). */
+/** A chosen file on its way to the server, drawn from the local copy. */
 type PendingFrame = {
   readonly key: number;
   readonly name: string;
@@ -60,7 +60,7 @@ function refusalOf(file: File): string | null {
 
 /**
  * The section at the top of the card dialog (mockup 2026-09-12). It owns the frames and reports
- * every change upwards: whether the rest of the card is editable is the form's decision (AC-20).
+ * every change upwards: whether the rest of the card is editable is the form's decision.
  */
 @Component({
   selector: 'app-product-gallery',
@@ -80,7 +80,7 @@ export class ProductGallery {
   private readonly dialog = inject(MatDialog);
 
   readonly images = input.required<readonly ProductImage[]>();
-  /** A new card has no id until its first frame; the form creates it on demand (T38). */
+  /** A new card has no id until its first frame; the form creates it on demand. */
   readonly ensureProduct = input.required<() => Observable<string>>();
   readonly imagesChange = output<readonly ProductImage[]>();
 

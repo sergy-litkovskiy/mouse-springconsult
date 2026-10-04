@@ -82,7 +82,7 @@ describe('ImageViewer', () => {
   const LAST = frame(3, 2);
   const THREE = [LAST, MAIN, FIRST];
 
-  it('opens on the main frame and counts it as the first (AC-40)', async () => {
+  it('opens on the main frame and counts it as the first', async () => {
     await open(THREE);
 
     expect(shown()).toContain(MAIN.id);
@@ -90,7 +90,7 @@ describe('ImageViewer', () => {
     expect(button('Попереднє фото').disabled).toBe(true);
   });
 
-  it('walks the other frames in position order with the button and the arrow keys (AC-40)', async () => {
+  it('walks the other frames in position order with the button and the arrow keys', async () => {
     await open(THREE);
 
     button('Наступне фото').click();
@@ -106,7 +106,7 @@ describe('ImageViewer', () => {
     expect(shown()).toContain(FIRST.id);
   });
 
-  it('stays on the last frame when asked to go further (AC-40)', async () => {
+  it('stays on the last frame when asked to go further', async () => {
     await open(THREE);
     await press('ArrowRight');
     await press('ArrowRight');

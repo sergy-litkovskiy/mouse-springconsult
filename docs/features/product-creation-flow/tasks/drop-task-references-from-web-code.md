@@ -1,7 +1,7 @@
 ---
 id: T81
 title: "Прибрати номери задач і AC з коду web"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2200
 blocked_by: [T66, T68, T70, T74, T80, T83, T85, T87, T88, T90]
 blocks: []
-updated_at: "2026-10-03"
+updated_at: "2026-10-04"
 ---
 
 # T81 — Прибрати номери задач і AC з коду `web`
@@ -102,10 +102,10 @@ updated_at: "2026-10-03"
 
 ## DoD
 
-- [ ] `rg -nP '\bT(?!54\b)\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/web/src` не друкує нічого.
-- [ ] Кількість тестів `web` та сама, що до правок; `lint` і `typecheck` зелені.
-- [ ] `tdd-test-writer.md` більше не просить id AC у назві тесту.
-- [ ] Коміт: `refactor(web): drop task and criterion references from code`.
+- [x] `rg -nP '\bT(?!54\b)\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/web/src` не друкує нічого.
+- [x] Кількість тестів `web` та сама, що до правок; `lint` і `typecheck` зелені.
+- [x] `tdd-test-writer.md` більше не просить id AC у назві тесту.
+- [x] Коміт: `refactor(web): drop task and criterion references from code`.
 
 ## Links
 

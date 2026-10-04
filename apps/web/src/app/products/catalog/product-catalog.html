@@ -391,7 +391,7 @@
         <ng-container matColumnDef="failures">
           <th mat-header-cell *matHeaderCellDef scope="col">Відмови</th>
           <td mat-cell *matCellDef="let product">
-            <!-- No failures, no control: an empty cell draws no eye (AC-49). -->
+            <!-- No failures, no control: an empty cell draws no eye. -->
             @if (product.failedRuns > 0) {
               <button
                 matButton

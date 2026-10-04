@@ -46,7 +46,7 @@
       </li>
     }
 
-    <!-- Drawn from the local file before the server answers (QG-2). -->
+    <!-- Drawn from the local file before the server answers. -->
     @for (frame of pending(); track frame.key) {
       <li class="gallery__item gallery__item--pending" data-testid="pending-frame">
         <img class="gallery__preview" [src]="frame.previewUrl" [alt]="frame.name" />
