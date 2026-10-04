@@ -54,7 +54,7 @@ export class InvalidPrice extends AppError {
   }
 }
 
-/** One code for every gate (AC-06, AC-27, AC-65): `details.missing` names what the input lacks. */
+/** One code for every gate: `details.missing` names what the input lacks. */
 export class PreparationInputIncomplete extends AppError {
   constructor(missing: 'gallery' | 'title' | 'draft') {
     super({

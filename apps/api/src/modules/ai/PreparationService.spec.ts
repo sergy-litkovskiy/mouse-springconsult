@@ -267,7 +267,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: texts', () => {
-    it('stores both titles, the Prom description, the keywords and the OLX description as five separate suggestions (AC-05)', async () => {
+    it('stores both titles, the Prom description, the keywords and the OLX description as five separate suggestions', async () => {
       const { service } = setup();
       const job = await textsJob();
 
@@ -279,7 +279,7 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.errorCode, null);
     });
 
-    it('puts each title on one line and cuts an overlong one at a word boundary, leaving the descriptions as written (AC-61)', async () => {
+    it('puts each title on one line and cuts an overlong one at a word boundary, leaving the descriptions as written', async () => {
       const multiLineDescription = `Перший рядок опису.\n${OVERLONG_TITLE}`;
       const { service } = setup({
         texts: {
@@ -303,7 +303,7 @@ describe('preparation service (postgres)', () => {
       assert.ok(OVERLONG_TITLE_CUT.length <= productConstraints.titleMaxLength);
     });
 
-    it('recognizes the item from the main frame first and sends at most three frames (AC-05)', async () => {
+    it('recognizes the item from the main frame first and sends at most three frames', async () => {
       const { service, adapter } = setup();
       const productId = await seedProduct();
       const keys = await seedGallery(productId, 4, 2);
@@ -320,7 +320,7 @@ describe('preparation service (postgres)', () => {
       );
     });
 
-    it('does not ask for a price when only the texts were requested (AC-05)', async () => {
+    it('does not ask for a price when only the texts were requested', async () => {
       const { service, adapter } = setup();
       const job = await textsJob();
 
@@ -333,7 +333,7 @@ describe('preparation service (postgres)', () => {
       );
     });
 
-    it('records the model and the tokens of the call on the run (AC-14)', async () => {
+    it('records the model and the tokens of the call on the run', async () => {
       const { service } = setup();
       const job = await textsJob();
 
@@ -347,7 +347,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: both', () => {
-    it('stores the texts and the price range as six separate suggestions (AC-05, AC-08)', async () => {
+    it('stores the texts and the price range as six separate suggestions', async () => {
       const { service } = setup();
       const job = await textsJob('both');
 
@@ -364,7 +364,7 @@ describe('preparation service (postgres)', () => {
       assert.equal((await loadRun(job.runId)).status, 'succeeded');
     });
 
-    it('adds the tokens of both calls to the run (AC-14)', async () => {
+    it('adds the tokens of both calls to the run', async () => {
       const { service } = setup();
       const job = await textsJob('both');
 
@@ -376,7 +376,7 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens + PRICE_USAGE.outputTokens);
     });
 
-    it('keeps the texts and ends the run failed with price_unavailable when the price call fails (AC-10b)', async () => {
+    it('keeps the texts and ends the run failed with price_unavailable when the price call fails', async () => {
       const { service } = setup({ priceFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob('both');
 
@@ -406,7 +406,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: price', () => {
-    it('stores the range as a single price suggestion without re-running the texts (AC-08, AC-10b)', async () => {
+    it('stores the range as a single price suggestion without re-running the texts', async () => {
       const { service, adapter, media } = setup();
       const job = await priceJob();
 
@@ -421,7 +421,7 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.outputTokens, PRICE_USAGE.outputTokens);
     });
 
-    it('ends the run failed with price_unavailable and no suggestions when the call fails (AC-10b)', async () => {
+    it('ends the run failed with price_unavailable and no suggestions when the call fails', async () => {
       const { service } = setup({ priceFailure: new ModelAnswerUnavailable('refused') });
       const job = await priceJob();
 
@@ -433,9 +433,9 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.errorCode, 'price_unavailable');
     });
 
-    // The card's text columns are NOT NULL with '' as the default, so "absent" in the AC-27
-    // formula is an empty string, not a null.
-    it('queries with the Prom title and the Prom description when the card has both of each (AC-27)', async () => {
+    // The card's text columns are NOT NULL with '' as the default, so an absent title or
+    // description in the price query is an empty string, not a null.
+    it('queries with the Prom title and the Prom description when the card has both of each', async () => {
       const { service, adapter } = setup();
       const job = await priceJob();
 
@@ -446,7 +446,7 @@ describe('preparation service (postgres)', () => {
       ]);
     });
 
-    it('falls back to the OLX title and the OLX description when the Prom ones are empty (AC-27)', async () => {
+    it('falls back to the OLX title and the OLX description when the Prom ones are empty', async () => {
       const { service, adapter } = setup();
       const job = await priceJob({ titleProm: '', descriptionProm: '' });
 
@@ -457,7 +457,7 @@ describe('preparation service (postgres)', () => {
       ]);
     });
 
-    it('queries with the title alone when the card has no description at all (AC-27)', async () => {
+    it('queries with the title alone when the card has no description at all', async () => {
       const { service, adapter } = setup();
       const job = await priceJob({ descriptionProm: '', descriptionOlx: '' });
 
@@ -466,7 +466,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(adapter.priceQueries, ['Миша Logitech MX Master 3']);
     });
 
-    it('takes the title and the description independently of each other (AC-27)', async () => {
+    it('takes the title and the description independently of each other', async () => {
       const { service, adapter } = setup();
       const job = await priceJob({ titleProm: '', descriptionOlx: '' });
 
@@ -507,7 +507,7 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.outputTokens, FIELD_USAGE.outputTokens);
     });
 
-    it('puts a rewritten title on one line (AC-61)', async () => {
+    it('puts a rewritten title on one line', async () => {
       const { service } = setup({ fieldValue: ' Миша Logitech\nMX Master 3  ' });
       const productId = await seedProduct();
       const runId = await seedRun(productId, 'field');
@@ -525,7 +525,7 @@ describe('preparation service (postgres)', () => {
       ]);
     });
 
-    it('cuts an overlong rewritten title at a word boundary within the column limit (AC-61)', async () => {
+    it('cuts an overlong rewritten title at a word boundary within the column limit', async () => {
       const { service } = setup({ fieldValue: OVERLONG_TITLE });
       const productId = await seedProduct();
       const runId = await seedRun(productId, 'field');
@@ -561,7 +561,7 @@ describe('preparation service (postgres)', () => {
       ]);
     });
 
-    it('passes improve to the adapter when job has no mode (AC-66, backward compat)', async () => {
+    it('passes improve to the adapter when job has no mode (backward compat)', async () => {
       const { service, adapter } = setup();
       const productId = await seedProduct();
       const runId = await seedRun(productId, 'field');
@@ -578,7 +578,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(adapter.fieldCalls[0]?.mode, 'improve');
     });
 
-    it('passes prompt to the adapter when job has mode prompt (AC-67)', async () => {
+    it('passes prompt to the adapter when job has mode prompt', async () => {
       const { service, adapter } = setup();
       const productId = await seedProduct();
       const runId = await seedRun(productId, 'field');
@@ -595,7 +595,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(adapter.fieldCalls[0]?.mode, 'prompt');
     });
 
-    it('normalizes a rewritten title in prompt mode too (AC-61, T67)', async () => {
+    it('normalizes a rewritten title in prompt mode too', async () => {
       const { service } = setup({ fieldValue: '  Миша Logitech\nMX Master  ' });
       const productId = await seedProduct();
       const runId = await seedRun(productId, 'field');
@@ -616,7 +616,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('retry and completion', () => {
-    it('adds the tokens of a retried attempt to those of the first one (DoD retry)', async () => {
+    it('adds the tokens of a retried attempt to those of the first one', async () => {
       const { service } = setup({}, new FlakyFinishRepository(dataSource));
       const job = await textsJob();
 
@@ -630,7 +630,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
     });
 
-    it('never shows a finished run without its suggestions when the finishing write fails (AC-28)', async () => {
+    it('never shows a finished run without its suggestions when the finishing write fails', async () => {
       const { service } = setup({}, new FlakyFinishRepository(dataSource));
       const job = await textsJob();
 
@@ -642,7 +642,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), []);
     });
 
-    it('does nothing when the job is redelivered after its run has finished (AC-28)', async () => {
+    it('does nothing when the job is redelivered after its run has finished', async () => {
       const { service, adapter } = setup();
       const job = await textsJob();
       await service.prepare(job);
@@ -656,7 +656,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
     });
 
-    it('ends the run failed with preparation_failed once the retries are spent (AC-10)', async () => {
+    it('ends the run failed with preparation_failed once the retries are spent', async () => {
       const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob();
 
@@ -712,7 +712,7 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('the sweep of stuck runs', () => {
-    it('closes a run whose last attempt died without closing it (AC-39)', async () => {
+    it('closes a run whose last attempt died without closing it', async () => {
       const { service } = setup();
       const job = await textsJob();
       await ageRun(job.runId, config.queue.preparation.stuckAfterSeconds + 60);
@@ -725,7 +725,7 @@ describe('preparation service (postgres)', () => {
       assert.deepEqual(await suggestionsOf(job.runId), []);
     });
 
-    it('leaves a run alone while its own series of attempts could still be running (AC-40)', async () => {
+    it('leaves a run alone while its own series of attempts could still be running', async () => {
       const { service } = setup();
       const job = await textsJob();
       // Older than a single attempt, younger than the whole series: the threshold has to cover

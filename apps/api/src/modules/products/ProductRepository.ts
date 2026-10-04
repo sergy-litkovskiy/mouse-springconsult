@@ -209,7 +209,7 @@ export class ProductRepository {
 
   /**
    * The frames go with the card: `product_images.product_id` is declared `on delete cascade`.
-   * Objects in R2 are another matter and another layer — see T17.
+   * Objects in R2 are another matter and another layer: `MediaService` removes them.
    */
   async delete(id: string): Promise<boolean> {
     const result = await this.dataSource.getRepository(Product).delete({ id });

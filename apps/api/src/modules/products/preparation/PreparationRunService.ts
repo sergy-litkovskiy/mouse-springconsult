@@ -121,7 +121,7 @@ function recognitionFrameKeys(product: Product): string[] {
     .map((image) => image.r2Key);
 }
 
-/** The AC-27 formula the worker builds its search from; '' is "absent" in NOT NULL text columns. */
+/** The price search input the worker builds; '' is "absent" in NOT NULL text columns. */
 function priceQueryInput(product: Product): [string, string] {
   return [
     product.titleProm !== '' ? product.titleProm : product.titleOlx,

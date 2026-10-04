@@ -47,7 +47,7 @@ export type RunClaim = {
 
 /**
  * Only a run still going answers for its key, and the UNIQUE index covers exactly these: once a run
- * has finished, either way, the same input starts a new one (AC-37, AC-82).
+ * has finished, either way, the same input starts a new one.
  */
 const UNFINISHED: PreparationStatus[] = ['queued', 'running'];
 
@@ -79,7 +79,7 @@ export class PreparationRepository {
     // Two passes, because the insert and the read after it are not one statement: the insert can be
     // ignored over a live run that then finishes — succeeded or failed — before the read, which
     // leaves the read with nothing. The second pass meets a key no row holds any more and inserts a
-    // new run, the one a repeat asks for (AC-37, AC-82). Two misses in a row would mean the same run
+    // new run, the one a repeat asks for. Two misses in a row would mean the same run
     // finished twice, so there is nothing to wait for and the caller gets the error.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const inserted = await runs
@@ -162,7 +162,7 @@ export class PreparationRepository {
   }
 
   /**
-   * One transaction: a run is never seen finished without its suggestions (AC-28). Each suggestion
+   * One transaction: a run is never seen finished without its suggestions. Each suggestion
    * replaces the card's previous one for its field, and `created_at` moves to this generation.
    */
   async finishRun(runId: string, outcome: RunOutcome): Promise<void> {

@@ -1,7 +1,7 @@
 ---
 id: T82
 title: "Прибрати номери задач і AC з коду api"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1600
 blocked_by: [T74, T91, T92]
 blocks: []
-updated_at: "2026-09-30"
+updated_at: "2026-10-04"
 ---
 
 # T82 — Прибрати номери задач і AC з коду `api`
@@ -89,9 +89,9 @@ updated_at: "2026-09-30"
 
 ## DoD
 
-- [ ] `rg -nP '\bT\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/api/src apps/api/db` не друкує нічого.
-- [ ] Кількість тестів `api` та сама, що до правок; `typecheck`, `lint` і `deps:check` зелені.
-- [ ] Коміт: `refactor(api): drop task and criterion references from code`.
+- [x] `rg -nP '\bT\d{2,3}\b|\bAC-\d|\bUS-\d|PRD §|sad\.md|\bstory\b' apps/api/src apps/api/db` не друкує нічого.
+- [x] Кількість тестів `api` та сама, що до правок; `typecheck`, `lint` і `deps:check` зелені.
+- [x] Коміт: `refactor(api): drop task and criterion references from code`.
 
 ## Links
 

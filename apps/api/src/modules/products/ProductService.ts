@@ -28,11 +28,11 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
-  /** The card keeps one per field, so these are all of its suggestions (AC-69). */
+  /** The card keeps one per field, so these are all of its suggestions. */
   readonly latestSuggestions: readonly FieldSuggestion[];
 };
 
-/** Keywords past the ceiling are reported here rather than raised as an error (AC-07). */
+/** Keywords past the ceiling are reported here rather than raised as an error. */
 export type ProductSaving = ProductReading & {
   readonly discardedKeywordsCount: number;
 };

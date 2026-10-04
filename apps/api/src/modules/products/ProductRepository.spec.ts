@@ -181,7 +181,7 @@ describe('product repository (postgres)', () => {
     assert.equal(page.total, 2);
   });
 
-  it('matches mixed-case Cyrillic in a title and in a description (AC-57)', async () => {
+  it('matches mixed-case Cyrillic in a title and in a description', async () => {
     // ILIKE folds case by the database LC_CTYPE; under C/POSIX it would not fold Cyrillic.
     const noMatch = { titleOlx: 'Logitech', descriptionProm: 'Опис.', descriptionOlx: 'Опис.' };
     await seedProduct({ ...noMatch, titleProm: 'Миша Logitech' });
@@ -268,7 +268,7 @@ describe('product repository (postgres)', () => {
     assert.deepEqual(byId.get(withoutGallery)?.images, []);
   });
 
-  it('counts the failed preparation runs of every card on the page (T50)', async () => {
+  it('counts the failed preparation runs of every card on the page', async () => {
     const failing = await seedProduct({ titleProm: 'З відмовами' });
     const clean = await seedProduct({ titleProm: 'Без відмов' });
     for (const status of ['failed', 'failed', 'succeeded', 'running']) {
@@ -297,7 +297,7 @@ describe('product repository (postgres)', () => {
     assert.equal(page.items.length, 2);
   });
 
-  it('lists every non-empty category once, in alphabetical order (AC-55)', async () => {
+  it('lists every non-empty category once, in alphabetical order', async () => {
     for (const category of ['Миші', 'Клавіатури', 'Миші', '']) {
       await seedProduct({ category });
     }
@@ -305,7 +305,7 @@ describe('product repository (postgres)', () => {
     assert.deepEqual(await products.listCategories(), ['Клавіатури', 'Миші']);
   });
 
-  it('orders categories by the Ukrainian alphabet, not by code point (AC-55)', async () => {
+  it('orders categories by the Ukrainian alphabet, not by code point', async () => {
     // Code points put І (U+0406) and Є (U+0404) before А (U+0410), Ґ (U+0490) after Я,
     // and every lowercase letter after every capital.
     for (const category of ['Яблука', 'Іграшки', 'Ґаджети', 'Єноти', 'аудіо', 'Аксесуари']) {
@@ -322,7 +322,7 @@ describe('product repository (postgres)', () => {
     ]);
   });
 
-  it('lists the cards of any of several categories and counts only them (AC-55)', async () => {
+  it('lists the cards of any of several categories and counts only them', async () => {
     const [mouse, keyboard, otherMouse] = [
       await seedProduct({ category: 'Миші' }),
       await seedProduct({ category: 'Клавіатури' }),
@@ -340,7 +340,7 @@ describe('product repository (postgres)', () => {
     );
   });
 
-  it('lists the cards of a single category as before (AC-55)', async () => {
+  it('lists the cards of a single category as before', async () => {
     await seedProduct({ category: 'Миші' });
     await seedProduct({ category: 'Клавіатури' });
     await seedProduct({ category: 'Миші' });
@@ -355,7 +355,7 @@ describe('product repository (postgres)', () => {
     );
   });
 
-  it('lists only the ready cards and counts only them (AC-29)', async () => {
+  it('lists only the ready cards and counts only them', async () => {
     const readyIds: string[] = [];
     for (const index of [0, 1, 2]) {
       const id = await seedProduct({ titleProm: `Готова ${String(index)}` });
@@ -377,7 +377,7 @@ describe('product repository (postgres)', () => {
     assert.deepEqual(all.items.map((product) => product.id).sort(), [...readyIds].sort());
   });
 
-  it('lists only the cards that are not ready and counts only them (AC-29)', async () => {
+  it('lists only the cards that are not ready and counts only them', async () => {
     const ready = await seedProduct({ titleProm: 'Готова' });
     await seedImage(ready, { position: 0, r2Key: `products/${ready}/first.jpg`, isMain: true });
     const withoutFrames = await seedProduct({ titleProm: 'Без кадрів' });
@@ -392,7 +392,7 @@ describe('product repository (postgres)', () => {
     );
   });
 
-  it('combines readiness with a publication mark through AND (AC-29)', async () => {
+  it('combines readiness with a publication mark through AND', async () => {
     const readyOnProm = await seedProduct({ titleProm: 'Готова на Prom', publishedProm: true });
     await seedImage(readyOnProm, { position: 0, r2Key: `products/${readyOnProm}/a.jpg` });
     const readyOffProm = await seedProduct({
@@ -411,7 +411,7 @@ describe('product repository (postgres)', () => {
     assert.equal(page.items[0]?.id, readyOnProm);
   });
 
-  it('selects by readiness exactly as ProductService.isReady judges each card (AC-30)', async () => {
+  it('selects by readiness exactly as ProductService.isReady judges each card', async () => {
     // One complete card and one for each missing input: the SQL expression and the in-memory
     // predicate are two sources of one rule, and only a card-by-card comparison keeps them equal.
     const seeds: readonly {
@@ -450,7 +450,7 @@ describe('product repository (postgres)', () => {
     }
   });
 
-  it('leaves a card without a title out of the ready ones, as isReady does (AC-36)', async () => {
+  it('leaves a card without a title out of the ready ones, as isReady does', async () => {
     const withoutPromTitle = await seedProduct({ titleProm: '' });
     const withoutOlxTitle = await seedProduct({ titleOlx: '' });
     const service = new ProductService(products, NO_MEDIA, NO_PREPARATIONS);
@@ -674,7 +674,7 @@ describe('product repository (postgres)', () => {
     assert.equal(notOnOlx.items[0]?.titleProm, 'Лише на Prom');
   });
 
-  it('adds the first frame of an empty gallery as the main one at position 0 (AC-19)', async () => {
+  it('adds the first frame of an empty gallery as the main one at position 0', async () => {
     const id = await seedProduct();
 
     const image = await products.addImage(id, `products/${id}/first.jpg`, 10);
@@ -698,7 +698,7 @@ describe('product repository (postgres)', () => {
     assert.equal(image.isMain, false);
   });
 
-  it('refuses a frame once the gallery holds the ceiling and writes nothing (AC-02)', async () => {
+  it('refuses a frame once the gallery holds the ceiling and writes nothing', async () => {
     const id = await seedProduct();
     await seedImage(id, { position: 0 });
     await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });
@@ -709,7 +709,7 @@ describe('product repository (postgres)', () => {
     assert.equal(await products.countImages(id), 2);
   });
 
-  it('keeps positions unique and the ceiling intact under concurrent additions (AC-02)', async () => {
+  it('keeps positions unique and the ceiling intact under concurrent additions', async () => {
     const id = await seedProduct();
     for (let position = 0; position < 8; position += 1) {
       await seedImage(id, { position, r2Key: `products/${id}/seed-${String(position)}.jpg` });
@@ -726,7 +726,7 @@ describe('product repository (postgres)', () => {
     assert.deepEqual(positions, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
-  it('makes exactly one of two concurrent first frames the main one (AC-19)', async () => {
+  it('makes exactly one of two concurrent first frames the main one', async () => {
     const id = await seedProduct();
 
     const results = await Promise.all([
@@ -778,7 +778,7 @@ describe('product repository (postgres)', () => {
 
   it('rejects two main frames for the same card at the database itself', async () => {
     // `products.setMainImage` cannot produce this state — the point is to prove the invariant
-    // is the index, not the calling code, per the story's DoD ("перевірено проти індексу").
+    // is the index, not the calling code.
     const id = await seedProduct();
     await seedImage(id, { position: 0, isMain: true });
 
@@ -866,7 +866,7 @@ describe('product repository (postgres)', () => {
     return rows.map((row) => row.id);
   }
 
-  it('leaves exactly one main frame in the database, the chosen one (AC-03)', async () => {
+  it('leaves exactly one main frame in the database, the chosen one', async () => {
     const id = await seedProduct();
     await seedImage(id, { position: 0, isMain: true });
     const chosen = await seedImage(id, { position: 1, r2Key: `products/${id}/second.jpg` });

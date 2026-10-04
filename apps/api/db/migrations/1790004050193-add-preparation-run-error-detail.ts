@@ -2,7 +2,7 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * `error_code` says which of two outcomes a failed run had, and that is all the person needs in
- * the card dialog. The catalogue lists failures after the fact (T50), and there "the preparation
+ * the card dialog. The catalogue lists failures after the fact, and there "the preparation
  * failed" without the reason — a refused region, a timeout, a malformed answer — leaves nothing to
  * act on. The reason is the English message of the error that closed the run; the Ukrainian text
  * is still composed by the frontend from `error_code`.

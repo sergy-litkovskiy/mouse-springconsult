@@ -63,7 +63,7 @@ describe('product list query contract', () => {
     assert.equal(Object.hasOwn(promOnly, 'publishedOlx'), false);
   });
 
-  it('reads ready=false as false and ready=true as true (AC-29)', () => {
+  it('reads ready=false as false and ready=true as true', () => {
     // Read through a record: the field is what this test asks the contract to grow.
     const notReady: Record<string, unknown> = productListQuerySchema.parse({ ready: 'false' });
     const ready: Record<string, unknown> = productListQuerySchema.parse({ ready: 'true' });
@@ -96,7 +96,7 @@ describe('product list query contract', () => {
     assert.equal(productListQuerySchema.safeParse({ title: '   ' }).success, false);
   });
 
-  it('takes a text filter of three characters and refuses two, counted after trimming (AC-57)', () => {
+  it('takes a text filter of three characters and refuses two, counted after trimming', () => {
     const three = productListQuerySchema.parse({ title: '  мИШ  ', description: ' опи ' });
     assert.equal(three.title, 'мИШ');
     assert.equal(three.description, 'опи');
@@ -110,14 +110,14 @@ describe('product list query contract', () => {
     }
   });
 
-  it('reads a single category as a list of one, so a saved address keeps working (AC-55)', () => {
+  it('reads a single category as a list of one, so a saved address keeps working', () => {
     // Fastify hands over one `?category=` as a string and several as an array.
     const parsed: Record<string, unknown> = productListQuerySchema.parse({ category: ' Миші ' });
 
     assert.deepEqual(parsed['category'], ['Миші']);
   });
 
-  it('reads a repeated category as a list, each value trimmed (AC-55)', () => {
+  it('reads a repeated category as a list, each value trimmed', () => {
     const parsed: Record<string, unknown> = productListQuerySchema.parse({
       category: [' Миші', 'Клавіатури '],
     });
@@ -125,7 +125,7 @@ describe('product list query contract', () => {
     assert.deepEqual(parsed['category'], ['Миші', 'Клавіатури']);
   });
 
-  it('takes up to twenty categories of up to 120 characters and refuses anything past that (AC-55)', () => {
+  it('takes up to twenty categories of up to 120 characters and refuses anything past that', () => {
     const longest = 'к'.repeat(productConstraints.categoryMaxLength);
     const tooLong = 'к'.repeat(productConstraints.categoryMaxLength + 1);
     const twenty = Array.from(
@@ -195,7 +195,7 @@ describe('product list response contract', () => {
     assert.equal(productListSchema.safeParse({ ...page, items: [row] }).success, false);
   });
 
-  it('requires a non-negative failedRuns in every row of the list (T50)', () => {
+  it('requires a non-negative failedRuns in every row of the list', () => {
     const row = {
       id: '0199c0de-0000-7000-8000-000000000001',
       titleProm: 'Миша',
@@ -257,12 +257,12 @@ describe('product card read contract', () => {
     createdAt: '2026-09-20T10:00:00.000Z',
   };
 
-  it('requires the latest suggestions of a card in its read response (AC-41, AC-69)', () => {
+  it('requires the latest suggestions of a card in its read response', () => {
     assert.equal(productCardReadSchema.safeParse({ ...card, latestSuggestions: [] }).success, true);
     assert.equal(productCardReadSchema.safeParse(card).success, false);
   });
 
-  it('carries the latest suggestion of every field whole (AC-41, AC-69)', () => {
+  it('carries the latest suggestion of every field whole', () => {
     const description = {
       ...suggestion,
       id: '0199c0de-1111-7000-8000-000000000002',
@@ -278,7 +278,7 @@ describe('product card read contract', () => {
     assert.deepEqual(parsed['latestSuggestions'], [suggestion, description]);
   });
 
-  it('refuses a suggestion field spelled the way the column holds it (AC-41)', () => {
+  it('refuses a suggestion field spelled the way the column holds it', () => {
     const result = productCardReadSchema.safeParse({
       ...card,
       latestSuggestions: [{ ...suggestion, field: 'title_olx' }],
@@ -302,7 +302,7 @@ describe('product write contracts', () => {
     assert.equal(parsed.condition, 'used');
   });
 
-  it('accepts an empty body for a new card and leaves its titles and category empty (AC-35)', () => {
+  it('accepts an empty body for a new card and leaves its titles and category empty', () => {
     const parsed = productCreateSchema.parse({});
 
     assert.deepEqual(parsed, {
@@ -323,7 +323,7 @@ describe('product write contracts', () => {
     assert.equal(productUpdateSchema.safeParse({ titleOlx: '  ' }).success, false);
   });
 
-  it('refuses a price the column cannot hold, on both write routes (AC-09)', () => {
+  it('refuses a price the column cannot hold, on both write routes', () => {
     for (const price of ['2499.999', '-1.00', '12345678901.00', 'дешево']) {
       assert.equal(
         productCreateSchema.safeParse({ ...newCard, price }).success,
@@ -338,9 +338,9 @@ describe('product write contracts', () => {
     }
   });
 
-  it('accepts the thirty-first keyword instead of rejecting it (AC-07)', () => {
+  it('accepts the thirty-first keyword instead of rejecting it', () => {
     // Trimming past the ceiling belongs to the service. A schema that refused the excess
-    // here would leave the service nothing to trim and AC-07 nothing to describe.
+    // here would leave the service nothing to trim and nothing to report.
     const tooMany = Array.from(
       { length: productConstraints.maxKeywords + 1 },
       (_, i) => `слово${String(i)}`,
@@ -371,7 +371,7 @@ describe('product write contracts', () => {
     assert.equal(Object.hasOwn(parsed, 'condition'), false);
   });
 
-  it('keeps the two publication marks independent of each other (AC-13)', () => {
+  it('keeps the two publication marks independent of each other', () => {
     const parsed = productUpdateSchema.parse({ publishedProm: true, publishedOlx: false });
 
     assert.equal(parsed.publishedProm, true);

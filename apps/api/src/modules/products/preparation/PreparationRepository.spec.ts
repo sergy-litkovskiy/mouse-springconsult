@@ -156,7 +156,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(stored.finishedAt, null);
   });
 
-  it('refuses to restart a finished run, so a redelivered job cannot reopen it (AC-28)', async () => {
+  it('refuses to restart a finished run, so a redelivered job cannot reopen it', async () => {
     const runId = await seedRun(await seedProduct(), 'queued');
     await runs.startRun(runId);
     await runs.finishRun(runId, { status: 'succeeded', suggestions: [] });
@@ -167,7 +167,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal((await loadRun(runId)).status, 'succeeded');
   });
 
-  it('adds the usage of every call to the run instead of overwriting it (AC-14, DoD retry)', async () => {
+  it('adds the usage of every call to the run instead of overwriting it', async () => {
     const runId = await seedRun(await seedProduct());
 
     await runs.recordUsage(runId, { model: MODEL, inputTokens: 1000, outputTokens: 200 });
@@ -179,7 +179,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(stored.outputTokens, 250);
   });
 
-  it('writes one row per suggestion and marks the run succeeded (AC-05, AC-28)', async () => {
+  it('writes one row per suggestion and marks the run succeeded', async () => {
     const runId = await seedRun(await seedProduct());
 
     await runs.finishRun(runId, {
@@ -209,7 +209,7 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('replaces the previous suggestion of a field with the next generation, one row per field (AC-82)', async () => {
+  it('replaces the previous suggestion of a field with the next generation, one row per field', async () => {
     const productId = await seedProduct();
     const firstRunId = await seedRun(productId);
     await runs.finishRun(firstRunId, {
@@ -248,7 +248,7 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('keeps the suggestions of a run that ends failed with its error code (AC-10b)', async () => {
+  it('keeps the suggestions of a run that ends failed with its error code', async () => {
     const runId = await seedRun(await seedProduct());
 
     await runs.finishRun(runId, {
@@ -269,7 +269,7 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('leaves the run unfinished and without suggestions when the finishing write fails (AC-28)', async () => {
+  it('leaves the run unfinished and without suggestions when the finishing write fails', async () => {
     const runId = await seedRun(await seedProduct());
 
     // The same field twice in one upsert is refused by Postgres itself: the only way to make the
@@ -291,7 +291,7 @@ describe('preparation repository (postgres)', () => {
     assert.deepEqual(await suggestionsOf(runId), []);
   });
 
-  it('sums the tokens of every run of a card and of that card only (Checklist 1, AC-14)', async () => {
+  it('sums the tokens of every run of a card and of that card only (Checklist 1)', async () => {
     const productId = await seedProduct();
     const otherProductId = await seedProduct();
     await seedRun(productId, 'succeeded', { inputTokens: 1000, outputTokens: 200 });
@@ -324,7 +324,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(stored.status, 'queued');
   });
 
-  it('returns the existing run for a repeated idempotency key without a second row (DoD idempotency)', async () => {
+  it('returns the existing run for a repeated idempotency key without a second row', async () => {
     const productId = await seedProduct();
     const draft = {
       productId,
@@ -341,7 +341,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
   });
 
-  it('leaves one row when the same input is started twice at once (DoD idempotency)', async () => {
+  it('leaves one row when the same input is started twice at once', async () => {
     const productId = await seedProduct();
     const draft = {
       productId,
@@ -357,7 +357,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(await dataSource.getRepository(PreparationRun).countBy({ productId }), 1);
   });
 
-  it('starts a new run for a key whose only run ended failed (AC-37)', async () => {
+  it('starts a new run for a key whose only run ended failed', async () => {
     const productId = await seedProduct();
     const failedRunId = await seedFailedRun(productId, 'card:texts:v1');
 
@@ -371,12 +371,12 @@ describe('preparation repository (postgres)', () => {
     assert.equal(claim.created, true);
     assert.notEqual(claim.run.id, failedRunId);
     assert.equal(claim.run.status, 'queued');
-    // The failed run stays in the history of the card, so its tokens keep counting (AC-14).
+    // The failed run stays in the history of the card, so its tokens keep counting.
     assert.equal(await countRuns(productId), 2);
     assert.equal((await loadRun(failedRunId)).status, 'failed');
   });
 
-  it('starts a new run for a key whose only run succeeded (AC-82)', async () => {
+  it('starts a new run for a key whose only run succeeded', async () => {
     const productId = await seedProduct();
     const draft = {
       productId,
@@ -396,7 +396,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal((await loadRun(first.run.id)).status, 'succeeded');
   });
 
-  it('returns the live retry rather than the failed run of the same key (AC-38)', async () => {
+  it('returns the live retry rather than the failed run of the same key', async () => {
     const productId = await seedProduct();
     await seedFailedRun(productId, 'card:texts:v1');
     const draft = {
@@ -414,14 +414,14 @@ describe('preparation repository (postgres)', () => {
     assert.equal(await countRuns(productId), 2);
   });
 
-  it('reports no run for a key whose only run ended failed (AC-37)', async () => {
+  it('reports no run for a key whose only run ended failed', async () => {
     const productId = await seedProduct();
     await seedFailedRun(productId, 'card:texts:v1');
 
     assert.equal(await runs.findRunByKey('card:texts:v1'), null);
   });
 
-  it('reports no run for a key whose only run succeeded (AC-82)', async () => {
+  it('reports no run for a key whose only run succeeded', async () => {
     const productId = await seedProduct();
     const { run } = await runs.createRunOnce({
       productId,
@@ -434,7 +434,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(await runs.findRunByKey('card:texts:v1'), null);
   });
 
-  it('finds the live retry, not the failed run, for a key that has both (AC-38)', async () => {
+  it('finds the live retry, not the failed run, for a key that has both', async () => {
     const productId = await seedProduct();
     const failedRunId = await seedFailedRun(productId, 'card:texts:v1');
     await runs.createRunOnce({
@@ -521,7 +521,7 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('closes a running run older than a full series of attempts (AC-39)', async () => {
+  it('closes a running run older than a full series of attempts', async () => {
     const runId = await seedRun(await seedProduct(), 'running');
     await ageRun(runId, STUCK_AFTER_SECONDS + 60);
 
@@ -538,7 +538,7 @@ describe('preparation repository (postgres)', () => {
     assert.deepEqual(await suggestionsOf(runId), []);
   });
 
-  it('closes a queued run whose job never reached the worker (AC-39)', async () => {
+  it('closes a queued run whose job never reached the worker', async () => {
     const runId = await seedRun(await seedProduct(), 'queued');
     await ageRun(runId, STUCK_AFTER_SECONDS + 60);
 
@@ -549,7 +549,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal(stored.errorCode, 'preparation_failed');
   });
 
-  it('leaves a run younger than the threshold alone (AC-40)', async () => {
+  it('leaves a run younger than the threshold alone', async () => {
     const productId = await seedProduct();
     const runningId = await seedRun(productId, 'running');
     const queuedId = await seedRun(productId, 'queued');
@@ -561,7 +561,7 @@ describe('preparation repository (postgres)', () => {
     assert.equal((await loadRun(queuedId)).status, 'queued');
   });
 
-  it('never changes a run that has already finished, whatever its age (AC-40)', async () => {
+  it('never changes a run that has already finished, whatever its age', async () => {
     const productId = await seedProduct();
     const succeededId = await seedRun(productId, 'running');
     await runs.finishRun(succeededId, {
@@ -592,7 +592,7 @@ describe('preparation repository (postgres)', () => {
     );
   });
 
-  it('lists only the failed runs of the card, newest first (T50)', async () => {
+  it('lists only the failed runs of the card, newest first', async () => {
     const productId = await seedProduct();
     const older = await seedFailedRun(productId, randomUUID());
     await ageRun(older, 60);
