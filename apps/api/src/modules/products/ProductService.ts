@@ -94,11 +94,15 @@ export class ProductService {
   }
 
   /**
-   * A card carried over from a Prom export. It skips the HTTP contract on purpose: the export is
-   * trusted input that `db/import-prom.ts` maps itself, and its frames follow through `addImage`.
+   * A card carried over from a Prom export. It skips the HTTP contract on purpose:
+   * `db/import-prom.ts` maps the export itself, and its frames follow through `addImage`.
    */
   async importFromProm(card: ProductDraft & { readonly promId: string }): Promise<Product> {
-    return this.products.create(card);
+    return this.products.create(
+      card.descriptionProm === undefined
+        ? card
+        : { ...card, descriptionProm: cleanDescription(card.descriptionProm) },
+    );
   }
 
   async findByPromId(promId: string): Promise<Product | null> {

@@ -519,6 +519,14 @@ describe('product service: Prom description', () => {
     assert.equal(repository.lastChanges?.descriptionProm, '<p><a>x</a></p>');
   });
 
+  it('keeps a script, an onerror handler and a javascript: link out of an imported card', async () => {
+    const { service, repository } = setup();
+
+    await service.importFromProm({ ...CREATE_INPUT, descriptionProm: XSS_VECTORS, promId: '1' });
+
+    assert.equal(repository.lastDraft?.descriptionProm, '<p><a>x</a></p>');
+  });
+
   it('cleans the Prom description of a new card and leaves the OLX one as it came', async () => {
     const { service, repository } = setup();
     const html = '<div>Опис</div>';
