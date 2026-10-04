@@ -73,7 +73,7 @@ describe('ProductsApi', () => {
     http.verify();
   });
 
-  it('sends every category of the list as a parameter of its own (AC-55)', () => {
+  it('sends every category of the list as a parameter of its own', () => {
     const { url, params } = api.listRequest({
       page: 1,
       pageSize: 20,
@@ -91,7 +91,7 @@ describe('ProductsApi', () => {
     request.flush({});
   });
 
-  it('reads the categories in use for the filter suggestions (AC-56)', async () => {
+  it('reads the categories in use for the filter suggestions', async () => {
     const pending = firstValueFrom(api.listCategories());
     const request = http.expectOne('/api/products/categories');
     expect(request.request.method).toBe('GET');
@@ -131,7 +131,7 @@ describe('ProductsApi', () => {
     expect(await pending).toEqual(PRODUCT);
   });
 
-  it('saves a hand-written card with the same PATCH that accepting a suggestion uses (AC-12)', async () => {
+  it('saves a hand-written card with the same PATCH that accepting a suggestion uses', async () => {
     const body: ProductUpdate = {
       descriptionProm: 'Опис для Prom, написаний вручну.',
       descriptionOlx: 'Опис для OLX, написаний вручну.',
@@ -211,7 +211,7 @@ describe('ProductsApi', () => {
     expect(await pending).toBeNull();
   });
 
-  it('starts a run over all the texts of the card (AC-05)', async () => {
+  it('starts a run over all the texts of the card', async () => {
     const body: PreparationRunRequest = { scope: 'texts' };
 
     const pending = firstValueFrom(api.startPreparationRun(PRODUCT_ID, body));
@@ -223,7 +223,7 @@ describe('ProductsApi', () => {
     expect(await pending).toEqual(QUEUED_RUN);
   });
 
-  it('starts a run that only looks up the price (AC-23)', async () => {
+  it('starts a run that only looks up the price', async () => {
     const body: PreparationRunRequest = { scope: 'price' };
     const started: PreparationRunDto = { ...QUEUED_RUN, scope: 'price' };
 
@@ -236,7 +236,7 @@ describe('ProductsApi', () => {
     expect(await pending).toEqual(started);
   });
 
-  it('starts a run over one field and sends its draft along (AC-21)', async () => {
+  it('starts a run over one field and sends its draft along', async () => {
     const body: PreparationRunRequest = {
       scope: 'field',
       field: 'descriptionOlx',
@@ -255,7 +255,7 @@ describe('ProductsApi', () => {
     expect(await pending).toEqual(started);
   });
 
-  it('reads the state of a started run (AC-05)', async () => {
+  it('reads the state of a started run', async () => {
     const finished: PreparationRunDto = {
       ...QUEUED_RUN,
       status: 'succeeded',

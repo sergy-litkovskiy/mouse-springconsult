@@ -140,7 +140,7 @@ describe('ProductGallery', () => {
     vi.restoreAllMocks();
   });
 
-  describe('uploading (AC-01, QG-2)', () => {
+  describe('uploading', () => {
     it('draws the chosen file before the server answers', async () => {
       await open([]);
 
@@ -174,7 +174,7 @@ describe('ProductGallery', () => {
       await settle();
     });
 
-    it('shows the first frame as the main one, the way the server returned it (AC-19)', async () => {
+    it('shows the first frame as the main one, the way the server returned it', async () => {
       await open([]);
 
       pick(file('front.jpg'));
@@ -225,7 +225,7 @@ describe('ProductGallery', () => {
     });
   });
 
-  describe('a full gallery (AC-02)', () => {
+  describe('a full gallery', () => {
     it('offers no way to add an eleventh frame and names the reason', async () => {
       await open(Array.from({ length: 10 }, (_, index) => frame(index, index === 0)));
 
@@ -274,7 +274,7 @@ describe('ProductGallery', () => {
     }
   });
 
-  it('makes another frame the main one and takes the gallery from the answer (AC-03)', async () => {
+  it('makes another frame the main one and takes the gallery from the answer', async () => {
     await open([frame(0, true), frame(1)]);
 
     button('Зробити головним').click();

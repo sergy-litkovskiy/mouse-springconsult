@@ -31,7 +31,7 @@ const UNKNOWN_ERROR_MESSAGE = 'Не вдалося завантажити від
 
 const timeFormat = new Intl.DateTimeFormat('uk-UA', { dateStyle: 'short', timeStyle: 'short' });
 
-/** Looking only: a repeat of the run stays in the card dialog (AC-23). */
+/** Looking only: a repeat of the run stays in the card dialog. */
 @Component({
   selector: 'app-preparation-failures',
   imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressBarModule],

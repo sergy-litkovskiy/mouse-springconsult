@@ -277,7 +277,7 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('sends the category from the address bar as a filter (AC-55)', async () => {
+  it('sends the category from the address bar as a filter', async () => {
     await open('/products?category=Миші');
     const request = expectRequest();
 
@@ -287,7 +287,7 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('sends every repeated category of a saved address, in its order (AC-56)', async () => {
+  it('sends every repeated category of a saved address, in its order', async () => {
     await open('/products?category=Миші&category=Клавіатури');
     const request = expectRequest();
 
@@ -308,7 +308,7 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  describe('several categories picked from suggestions (AC-56)', () => {
+  describe('several categories picked from suggestions', () => {
     const MICE: ProductListItem = { ...MOUSE, category: 'Миші' };
     const HEADPHONES: ProductListItem = {
       ...KEYBOARD,
@@ -368,7 +368,7 @@ describe('ProductCatalog', () => {
       return rows().map((row) => row.querySelector('td.mat-column-category')?.textContent.trim());
     }
 
-    it('suggests the categories holding the typed text, whatever its case (AC-56)', async () => {
+    it('suggests the categories holding the typed text, whatever its case', async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -377,7 +377,7 @@ describe('ProductCatalog', () => {
       expect(await suggestionsFor('кЛАВ')).toEqual(['Клавіатури']);
     });
 
-    it('applies two picked categories to the URL, the request and the table (AC-56)', async () => {
+    it('applies two picked categories to the URL, the request and the table', async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -398,7 +398,7 @@ describe('ProductCatalog', () => {
       expect(categoryCells()).toEqual(['Миші', 'Навушники']);
     });
 
-    it('leaves a category already picked out of the suggestions (AC-56)', async () => {
+    it('leaves a category already picked out of the suggestions', async () => {
       await open('/products?category=Миші');
       expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
       await settle();
@@ -407,7 +407,7 @@ describe('ProductCatalog', () => {
       expect(await suggestionsFor('ми')).toEqual([]);
     });
 
-    it('adds no second chip for a category already picked (AC-56)', async () => {
+    it('adds no second chip for a category already picked', async () => {
       await open('/products?category=Миші');
       expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
       await settle();
@@ -417,7 +417,7 @@ describe('ProductCatalog', () => {
       expect(await categoryChips()).toEqual(['Миші']);
     });
 
-    it('turns text that names no category into no chip (AC-56)', async () => {
+    it('turns text that names no category into no chip', async () => {
       await open('/products?category=Миші');
       expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
       await settle();
@@ -427,7 +427,7 @@ describe('ProductCatalog', () => {
       expect(await categoryChips()).toEqual(['Миші']);
     });
 
-    it('opens a saved address with one category as one chip over a filtered table (AC-56)', async () => {
+    it('opens a saved address with one category as one chip over a filtered table', async () => {
       await open('/products?category=Миші');
       const request = expectRequest();
       expect(request.request.params.getAll('category')).toEqual(['Миші']);
@@ -438,7 +438,7 @@ describe('ProductCatalog', () => {
       expect(categoryCells()).toEqual(['Миші']);
     });
 
-    it('keeps the picked chips working and shows no error when the list failed to load (AC-56)', async () => {
+    it('keeps the picked chips working and shows no error when the list failed to load', async () => {
       await open('/products?category=Миші', 'unavailable');
       expectRequest().flush({ ...PAGE, items: [MICE], total: 1 });
       await settle();
@@ -456,7 +456,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('drops the category from the URL and the request once every chip is removed (AC-56)', async () => {
+    it('drops the category from the URL and the request once every chip is removed', async () => {
       await open('/products?category=Миші&category=Навушники');
       const first = expectRequest();
       expect(first.request.params.getAll('category')).toEqual(['Миші', 'Навушники']);
@@ -479,7 +479,7 @@ describe('ProductCatalog', () => {
       expect(rows().length).toBe(3);
     });
 
-    it('drops the category from the URL and the request on reset (AC-56)', async () => {
+    it('drops the category from the URL and the request on reset', async () => {
       await open('/products?category=Миші&category=Навушники');
       expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
       await settle();
@@ -500,7 +500,7 @@ describe('ProductCatalog', () => {
       expect(rows().length).toBe(3);
     });
 
-    it('keeps chips and filter text not yet applied when the page of two categories changes (AC-56)', async () => {
+    it('keeps chips and filter text not yet applied when the page of two categories changes', async () => {
       await open('/products?category=Миші&category=Навушники');
       expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], total: 100 });
       await settle();
@@ -517,7 +517,7 @@ describe('ProductCatalog', () => {
       expect(priceMin?.value).toBe('1000.00');
     });
 
-    it('suggests nothing once the filter holds as many categories as the API takes (AC-56)', async () => {
+    it('suggests nothing once the filter holds as many categories as the API takes', async () => {
       const names = Array.from(
         { length: productConstraints.categoryFilterMaxItems + 1 },
         (_, index) => `Категорія ${String(index + 1)}`,
@@ -587,7 +587,7 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('Знайдено: 2');
   });
 
-  describe('the OLX title under the Prom title (AC-80)', () => {
+  describe('the OLX title under the Prom title', () => {
     async function openTitles(items: ProductListItem[]): Promise<void> {
       await open();
       expectRequest().flush({ ...PAGE, items, total: items.length });
@@ -611,7 +611,7 @@ describe('ProductCatalog', () => {
       return text.split(part).length - 1;
     }
 
-    it('shows one title column, headed «Назва Prom/Olx», and no OLX title column (AC-80)', async () => {
+    it('shows one title column, headed «Назва Prom/Olx», and no OLX title column', async () => {
       await openTitles([MOUSE, KEYBOARD]);
 
       expect(element.querySelector('th.mat-column-titleProm')?.textContent).toContain(
@@ -624,14 +624,14 @@ describe('ProductCatalog', () => {
       );
     });
 
-    it('puts «OLX: <title>» on its own line under the Prom title when the two differ (AC-80)', async () => {
+    it('puts «OLX: <title>» on its own line under the Prom title when the two differ', async () => {
       await openTitles([MOUSE]);
 
       expect(titleCell(0)?.textContent).toContain(MOUSE.titleProm);
       expect(olxLine(0)?.textContent.trim()).toBe(`OLX: ${MOUSE.titleOlx}`);
     });
 
-    it('gives a card whose OLX title matches its Prom title no second line (AC-80)', async () => {
+    it('gives a card whose OLX title matches its Prom title no second line', async () => {
       const same: ProductListItem = { ...KEYBOARD, titleOlx: KEYBOARD.titleProm };
       await openTitles([MOUSE, same]);
 
@@ -640,7 +640,7 @@ describe('ProductCatalog', () => {
       expect(occurrences(row(1)?.textContent ?? '', KEYBOARD.titleProm)).toBe(1);
     });
 
-    it('gives a card with an empty OLX title no second line (AC-80)', async () => {
+    it('gives a card with an empty OLX title no second line', async () => {
       const blank: ProductListItem = { ...KEYBOARD, titleOlx: '' };
       await openTitles([MOUSE, blank]);
 
@@ -649,7 +649,7 @@ describe('ProductCatalog', () => {
       expect(titleCell(1)?.textContent).not.toContain('OLX:');
     });
 
-    it('gives a card whose OLX title differs only by spaces at the edges no second line (AC-80)', async () => {
+    it('gives a card whose OLX title differs only by spaces at the edges no second line', async () => {
       const padded: ProductListItem = { ...KEYBOARD, titleOlx: `  ${KEYBOARD.titleProm} ` };
       await openTitles([MOUSE, padded]);
 
@@ -658,7 +658,7 @@ describe('ProductCatalog', () => {
       expect(occurrences(row(1)?.textContent ?? '', KEYBOARD.titleProm)).toBe(1);
     });
 
-    it('opens a saved address sorted by the OLX title and sorts by the Prom title on its header (AC-80)', async () => {
+    it('opens a saved address sorted by the OLX title and sorts by the Prom title on its header', async () => {
       await open('/products?sort=titleOlx');
       const request = expectRequest();
       expect(request.request.params.get('sort')).toBe('titleOlx');
@@ -684,7 +684,7 @@ describe('ProductCatalog', () => {
     });
   });
 
-  describe('published flags as icons (AC-58)', () => {
+  describe('published flags as icons', () => {
     // MOUSE: Prom yes, OLX no; the second row flips both, so every column shows both states.
     const FLIPPED: ProductListItem = { ...KEYBOARD, publishedProm: false, publishedOlx: true };
 
@@ -723,7 +723,7 @@ describe('ProductCatalog', () => {
       return text;
     }
 
-    it('shows an icon instead of the published or not text in both columns (AC-58)', async () => {
+    it('shows an icon instead of the published or not text in both columns', async () => {
       await openFlags();
 
       for (const row of [0, 1]) {
@@ -736,7 +736,7 @@ describe('ProductCatalog', () => {
       }
     });
 
-    it('draws a published flag as check_circle and styles it apart from an unpublished one (AC-58)', async () => {
+    it('draws a published flag as check_circle and styles it apart from an unpublished one', async () => {
       await openFlags();
 
       expect(flagIcon(0, 'publishedProm')?.textContent.trim()).toBe('check_circle');
@@ -749,7 +749,7 @@ describe('ProductCatalog', () => {
       expect(flagIcon(0, 'publishedOlx')?.className).toBe(flagIcon(1, 'publishedProm')?.className);
     });
 
-    it('names the marketplace and the state in the aria-label of each icon (AC-58)', async () => {
+    it('names the marketplace and the state in the aria-label of each icon', async () => {
       await openFlags();
 
       expect(flagIcon(0, 'publishedProm')?.getAttribute('aria-label')).toBe('Опубліковано на Prom');
@@ -762,7 +762,7 @@ describe('ProductCatalog', () => {
       expect(flagIcon(1, 'publishedOlx')?.getAttribute('aria-label')).toBe('Опубліковано на OLX');
     });
 
-    it('keeps the icons audible to a screen reader (AC-58)', async () => {
+    it('keeps the icons audible to a screen reader', async () => {
       await openFlags();
 
       // mat-icon hides itself with aria-hidden="true" unless told otherwise.
@@ -774,7 +774,7 @@ describe('ProductCatalog', () => {
       }
     });
 
-    it('repeats the aria-label in the tooltip of each icon (AC-58)', async () => {
+    it('repeats the aria-label in the tooltip of each icon', async () => {
       await openFlags();
 
       expect(await flagTooltip(0, 'publishedProm')).toBe('Опубліковано на Prom');
@@ -800,7 +800,7 @@ describe('ProductCatalog', () => {
     expect(counters[1]?.disabled).toBe(true);
   });
 
-  it('opens the photo viewer, not the card, when the image count is clicked (AC-40)', async () => {
+  it('opens the photo viewer, not the card, when the image count is clicked', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -815,7 +815,7 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('opens the photo viewer, not the card, when the thumbnail is clicked (AC-40)', async () => {
+  it('opens the photo viewer, not the card, when the thumbnail is clicked', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -834,7 +834,7 @@ describe('ProductCatalog', () => {
     return rows()[row]?.querySelector<HTMLButtonElement>('[data-testid="failures"]') ?? null;
   }
 
-  it('shows the failed-run count only in the row of a card that failed (AC-49)', async () => {
+  it('shows the failed-run count only in the row of a card that failed', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -844,7 +844,7 @@ describe('ProductCatalog', () => {
     expect(failuresButton(1)).toBeNull();
   });
 
-  it('opens the list of failures, not the card, and words them in Ukrainian (AC-49)', async () => {
+  it('opens the list of failures, not the card, and words them in Ukrainian', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -880,7 +880,7 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('offers no viewer for a card without photos, only its form (AC-41)', async () => {
+  it('offers no viewer for a card without photos, only its form', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -939,7 +939,7 @@ describe('ProductCatalog', () => {
     expect(element.textContent).toContain('Ціна виглядає як');
   });
 
-  it('writes a lower bound typed with a decimal comma into the URL with a dot (AC-78)', async () => {
+  it('writes a lower bound typed with a decimal comma into the URL with a dot', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -956,7 +956,7 @@ describe('ProductCatalog', () => {
   });
 
   for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
-    it(`refuses a lower bound of ${invalid} with the format hint instead of asking the server (AC-78)`, async () => {
+    it(`refuses a lower bound of ${invalid} with the format hint instead of asking the server`, async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -1020,7 +1020,7 @@ describe('ProductCatalog', () => {
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(0);
   });
 
-  describe('live search by title and description (AC-57)', () => {
+  describe('live search by title and description', () => {
     const DEBOUNCE_MS = 300;
 
     beforeEach(() => {
@@ -1041,7 +1041,7 @@ describe('ProductCatalog', () => {
       await tick();
     }
 
-    it('applies a title of three characters by itself once the typing pauses (AC-57)', async () => {
+    it('applies a title of three characters by itself once the typing pauses', async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -1061,7 +1061,7 @@ describe('ProductCatalog', () => {
       expect(element.querySelectorAll('tr[mat-row]').length).toBe(1);
     });
 
-    it('applies a description of three characters by itself once the typing pauses (AC-57)', async () => {
+    it('applies a description of three characters by itself once the typing pauses', async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -1076,7 +1076,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('keeps the table and the URL on two characters and drops the filter on an empty field (AC-57)', async () => {
+    it('keeps the table and the URL on two characters and drops the filter on an empty field', async () => {
       await open('/products?title=миш');
       expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
       await settle();
@@ -1097,7 +1097,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('keeps the applied title while the field holds more characters than the API accepts (AC-57)', async () => {
+    it('keeps the applied title while the field holds more characters than the API accepts', async () => {
       await open('/products?title=миш');
       expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
       await settle();
@@ -1109,7 +1109,7 @@ describe('ProductCatalog', () => {
       expect(urlParam('title')).toBe('миш');
     });
 
-    it('opens a saved address with a two-character title or description without either filter (AC-57)', async () => {
+    it('opens a saved address with a two-character title or description without either filter', async () => {
       await open('/products?title=ми&description=%20ab%20');
       const request = expectRequest();
 
@@ -1130,7 +1130,7 @@ describe('ProductCatalog', () => {
   }
 
   for (const name of ['publishedProm', 'publishedOlx'] as const) {
-    it(`offers all, yes and no in the ${name} filter with all chosen by default (AC-32)`, async () => {
+    it(`offers all, yes and no in the ${name} filter with all chosen by default`, async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -1154,7 +1154,7 @@ describe('ProductCatalog', () => {
     });
   }
 
-  it('labels the published filters of a saved address with no and yes (AC-13)', async () => {
+  it('labels the published filters of a saved address with no and yes', async () => {
     await open('/products?publishedProm=false&publishedOlx=true');
     const request = expectRequest();
 
@@ -1175,7 +1175,7 @@ describe('ProductCatalog', () => {
     );
   }
 
-  it('carries ready=false from the address into the request and the select (AC-29)', async () => {
+  it('carries ready=false from the address into the request and the select', async () => {
     await open('/products?ready=false');
     const request = expectRequest();
 
@@ -1191,7 +1191,7 @@ describe('ProductCatalog', () => {
     ['Так', 'true'],
     ['Ні', 'false'],
   ] as const) {
-    it(`writes ready=${value} into the URL and returns to the first page when «${label}» is applied (AC-29)`, async () => {
+    it(`writes ready=${value} into the URL and returns to the first page when «${label}» is applied`, async () => {
       await open('/products?page=2');
       expectRequest().flush({ ...PAGE, page: 2 });
       await settle();
@@ -1213,7 +1213,7 @@ describe('ProductCatalog', () => {
     });
   }
 
-  it('offers all, yes and no in the readiness filter with all chosen by default (AC-31)', async () => {
+  it('offers all, yes and no in the readiness filter with all chosen by default', async () => {
     await open();
     const request = expectRequest();
 
@@ -1235,7 +1235,7 @@ describe('ProductCatalog', () => {
     await select.close();
   });
 
-  it('reads an invalid ready from the address as all and leaves it out of the request (AC-31)', async () => {
+  it('reads an invalid ready from the address as all and leaves it out of the request', async () => {
     await open('/products?ready=yes');
     const request = expectRequest();
 
@@ -1247,7 +1247,7 @@ describe('ProductCatalog', () => {
     expect(await (await readySelect()).getValueText()).toBe('Всі');
   });
 
-  it('drops ready from the URL and the request on reset (AC-31)', async () => {
+  it('drops ready from the URL and the request on reset', async () => {
     await open('/products?ready=true');
     expectRequest().flush(PAGE);
     await settle();
@@ -1287,7 +1287,7 @@ describe('ProductCatalog', () => {
   }
 
   /**
-   * The card form reads the card it was given (T32): the row of the list carries neither the
+   * The card form reads the card it was given: the row of the list carries neither the
    * suggestions waiting for a decision nor the cost of the card, so the dialog asks for them.
    */
   async function answerCardRead(card: ProductCard): Promise<void> {
@@ -1429,7 +1429,7 @@ describe('ProductCatalog', () => {
     http.expectNone((request) => request.url === '/api/products');
   });
 
-  it('marks each row ready or not ready from isReady with no way to switch it (AC-15)', async () => {
+  it('marks each row ready or not ready from isReady with no way to switch it', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -1451,7 +1451,7 @@ describe('ProductCatalog', () => {
     expect(element.textContent).not.toContain('Позначити готовою');
   });
 
-  it('shows the readiness the server reported rather than recomputing it (AC-15)', async () => {
+  it('shows the readiness the server reported rather than recomputing it', async () => {
     await open();
     // Every field is filled, yet the server says no: the badge believes the server.
     expectRequest().flush({ ...PAGE, items: [{ ...MOUSE, isReady: false }], total: 1 });
@@ -1461,7 +1461,7 @@ describe('ProductCatalog', () => {
     expect(badge(0)?.textContent.trim()).toContain('Неготово');
   });
 
-  it('names the missing gallery on a card without frames (AC-15)', async () => {
+  it('names the missing gallery on a card without frames', async () => {
     await open();
     expectRequest().flush({ ...PAGE, items: [KEYBOARD], total: 1 });
     await settle();
@@ -1473,7 +1473,7 @@ describe('ProductCatalog', () => {
     expect(hint).not.toContain('заголовок');
   });
 
-  it('names the missing price on a card priced at zero (AC-15)', async () => {
+  it('names the missing price on a card priced at zero', async () => {
     await open();
     expectRequest().flush({ ...PAGE, items: [UNPRICED], total: 1 });
     await settle();
@@ -1485,7 +1485,7 @@ describe('ProductCatalog', () => {
     expect(hint).not.toContain('заголовок');
   });
 
-  it('names the one missing text on a card that lacks it (AC-15)', async () => {
+  it('names the one missing text on a card that lacks it', async () => {
     await open();
     expectRequest().flush({ ...PAGE, items: [WITHOUT_OLX_DESCRIPTION], total: 1 });
     await settle();
@@ -1498,7 +1498,7 @@ describe('ProductCatalog', () => {
     expect(hint).not.toContain('галерея');
   });
 
-  it('names every gap of an empty card (AC-15)', async () => {
+  it('names every gap of an empty card', async () => {
     await open();
     expectRequest().flush({ ...PAGE, items: [EMPTY_CARD], total: 1 });
     await settle();
@@ -1516,7 +1516,7 @@ describe('ProductCatalog', () => {
     }
   });
 
-  it('gives a ready card no list of gaps (AC-15)', async () => {
+  it('gives a ready card no list of gaps', async () => {
     await open();
     expectRequest().flush({ ...PAGE, items: [MOUSE], total: 1 });
     await settle();
@@ -1578,7 +1578,7 @@ describe('ProductCatalog', () => {
     ['false', 'true'],
     ['false', 'false'],
   ] as const) {
-    it(`sends publishedProm=${prom} and publishedOlx=${olx} as two separate filters (AC-13)`, async () => {
+    it(`sends publishedProm=${prom} and publishedOlx=${olx} as two separate filters`, async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
@@ -1665,7 +1665,7 @@ describe('ProductCatalog', () => {
     return { range: await found.getRangeLabel(), pageSize: await found.getPageSize() };
   }
 
-  it('shows one paginator, below the table, with the page, size and total and none above it (AC-51)', async () => {
+  it('shows one paginator, below the table, with the page, size and total and none above it', async () => {
     await open();
     expectRequest().flush({ ...PAGE, total: 100 });
     await settle();
@@ -1683,7 +1683,7 @@ describe('ProductCatalog', () => {
     expect(table?.compareDocumentPosition(below!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it('keeps the header row of the table in place while its rows scroll (AC-74)', async () => {
+  it('keeps the header row of the table in place while its rows scroll', async () => {
     await open();
     expectRequest().flush(PAGE);
     await settle();
@@ -1694,7 +1694,7 @@ describe('ProductCatalog', () => {
     expect(headerCells.every((cell) => cell.classList.contains('mat-mdc-table-sticky'))).toBe(true);
   });
 
-  it('moves the URL, the request and the paginator to the page chosen in it (AC-51)', async () => {
+  it('moves the URL, the request and the paginator to the page chosen in it', async () => {
     await open();
     expectRequest().flush({ ...PAGE, total: 100 });
     await settle();
@@ -1714,7 +1714,7 @@ describe('ProductCatalog', () => {
     expect(await paginatorState()).toEqual({ range: '21–40 з 100', pageSize: 20 });
   });
 
-  it('moves the URL, the request and the paginator to the size chosen in it (AC-51)', async () => {
+  it('moves the URL, the request and the paginator to the size chosen in it', async () => {
     await open();
     expectRequest().flush({ ...PAGE, total: 100 });
     await settle();
@@ -1732,7 +1732,7 @@ describe('ProductCatalog', () => {
     expect(await paginatorState()).toEqual({ range: '1–10 з 100', pageSize: 10 });
   });
 
-  it('reopens the paginator on the page and size a reloaded address carries (AC-51)', async () => {
+  it('reopens the paginator on the page and size a reloaded address carries', async () => {
     await open('/products?page=2&pageSize=10');
     expectRequest().flush({ ...PAGE, page: 2, pageSize: 10, total: 100 });
     await settle();
@@ -1768,7 +1768,7 @@ describe('ProductCatalog', () => {
     expect(element.querySelector('mat-progress-bar')).toBeNull();
   });
 
-  describe('price and condition edited in the cell (AC-59)', () => {
+  describe('price and condition edited in the cell', () => {
     type EditableColumn = 'price' | 'condition';
 
     const PENCIL_LABELS: Readonly<Record<EditableColumn, string>> = {
@@ -1858,7 +1858,7 @@ describe('ProductCatalog', () => {
       );
     }
 
-    it('saves a new price as a PATCH of the price alone and re-reads the page (AC-59)', async () => {
+    it('saves a new price as a PATCH of the price alone and re-reads the page', async () => {
       await openCatalog([UNPRICED, KEYBOARD]);
 
       await startEditing(0, 'price');
@@ -1885,7 +1885,7 @@ describe('ProductCatalog', () => {
       expect(badge(0)?.textContent.trim()).toBe('Готово');
     });
 
-    it('saves a new condition as a PATCH of the condition alone and re-reads the page (AC-59)', async () => {
+    it('saves a new condition as a PATCH of the condition alone and re-reads the page', async () => {
       await openCatalog([UNPRICED]);
 
       await startEditing(0, 'condition');
@@ -1914,7 +1914,7 @@ describe('ProductCatalog', () => {
       expect(cell(0, 'condition')?.textContent).toContain('Новий');
     });
 
-    it('saves the price on Enter as on the tick (AC-59)', async () => {
+    it('saves the price on Enter as on the tick', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -1934,7 +1934,7 @@ describe('ProductCatalog', () => {
       expect(shownPrice(0)).toContain('3100,00');
     });
 
-    it('saves an emptied price as 0.00, as the card form does (AC-59)', async () => {
+    it('saves an emptied price as 0.00, as the card form does', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -1952,7 +1952,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('puts the focus in the field the pencil opens, so Esc and typing reach it (AC-59)', async () => {
+    it('puts the focus in the field the pencil opens, so Esc and typing reach it', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -1962,7 +1962,7 @@ describe('ProductCatalog', () => {
       expect(document.activeElement).toBe(cell(0, 'condition')?.querySelector('mat-select'));
     });
 
-    it('shows a price of 0.00 as an empty field, as the card form does (AC-59)', async () => {
+    it('shows a price of 0.00 as an empty field, as the card form does', async () => {
       await openCatalog([UNPRICED]);
 
       await startEditing(0, 'price');
@@ -1970,7 +1970,7 @@ describe('ProductCatalog', () => {
       expect(priceField(0)?.value).toBe('');
     });
 
-    it('sends nothing for a price or a condition left as it was (AC-59)', async () => {
+    it('sends nothing for a price or a condition left as it was', async () => {
       await openCatalog([MOUSE, UNPRICED]);
 
       await startEditing(0, 'price');
@@ -1993,7 +1993,7 @@ describe('ProductCatalog', () => {
     });
 
     for (const invalid of ['-5', '12,345']) {
-      it(`refuses ${invalid} without asking the server and keeps it in the open field (AC-59)`, async () => {
+      it(`refuses ${invalid} without asking the server and keeps it in the open field`, async () => {
         await openCatalog([MOUSE]);
 
         await startEditing(0, 'price');
@@ -2009,7 +2009,7 @@ describe('ProductCatalog', () => {
       });
     }
 
-    it('saves a price typed with a decimal comma as a PATCH with a dot (AC-78)', async () => {
+    it('saves a price typed with a decimal comma as a PATCH with a dot', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2030,7 +2030,7 @@ describe('ProductCatalog', () => {
     });
 
     for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
-      it(`refuses ${invalid} with the format hint and sends nothing (AC-78)`, async () => {
+      it(`refuses ${invalid} with the format hint and sends nothing`, async () => {
         await openCatalog([MOUSE]);
 
         await startEditing(0, 'price');
@@ -2044,7 +2044,7 @@ describe('ProductCatalog', () => {
       });
     }
 
-    it('shows invalid_price from the server in the cell and keeps the typed value open (AC-59)', async () => {
+    it('shows invalid_price from the server in the cell and keeps the typed value open', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2067,7 +2067,7 @@ describe('ProductCatalog', () => {
       expect(cell(0, 'price')?.textContent).toContain(PRICE_FORMAT_MESSAGE);
     });
 
-    it('shows a lost connection in the cell and keeps the typed value open (AC-59)', async () => {
+    it('shows a lost connection in the cell and keeps the typed value open', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2083,7 +2083,7 @@ describe('ProductCatalog', () => {
       expect(cell(0, 'price')?.textContent).toContain('Немає зв’язку із сервером');
     });
 
-    it('turns both buttons off while the save is in flight, so a second click sends nothing (AC-59)', async () => {
+    it('turns both buttons off while the save is in flight, so a second click sends nothing', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2105,7 +2105,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('sends nothing for Enter while the save is in flight (AC-59)', async () => {
+    it('sends nothing for Enter while the save is in flight', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2124,7 +2124,7 @@ describe('ProductCatalog', () => {
       await settle();
     });
 
-    it('puts the saved price back without a request on the cross (AC-59)', async () => {
+    it('puts the saved price back without a request on the cross', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2141,7 +2141,7 @@ describe('ProductCatalog', () => {
       expect(priceField(0)?.value).toBe('2499.00');
     });
 
-    it('puts the saved price back without a request on Esc (AC-59)', async () => {
+    it('puts the saved price back without a request on Esc', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');
@@ -2157,7 +2157,7 @@ describe('ProductCatalog', () => {
       expect(priceField(0)?.value).toBe('2499.00');
     });
 
-    it('puts the saved condition back without a request on the cross (AC-59)', async () => {
+    it('puts the saved condition back without a request on the cross', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'condition');
@@ -2170,7 +2170,7 @@ describe('ProductCatalog', () => {
       expect(cell(0, 'condition')?.textContent).toContain('б/в');
     });
 
-    it('keeps one cell in edit mode across the table and drops the draft it leaves (AC-59)', async () => {
+    it('keeps one cell in edit mode across the table and drops the draft it leaves', async () => {
       await openCatalog([MOUSE, KEYBOARD]);
 
       await startEditing(0, 'price');
@@ -2191,7 +2191,7 @@ describe('ProductCatalog', () => {
       expect(dialogs().length).toBe(0);
     });
 
-    it('opens no card form on a click at the pencil, the field or the buttons (AC-59)', async () => {
+    it('opens no card form on a click at the pencil, the field or the buttons', async () => {
       await openCatalog([MOUSE]);
 
       await startEditing(0, 'price');

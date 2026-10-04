@@ -4,7 +4,7 @@ import { MatTooltipHarness } from '@angular/material/tooltip/testing';
 import { SuggestionField } from './suggestion-field';
 
 describe('SuggestionField', () => {
-  it('hides the improve button when improvable is false (AC-68)', () => {
+  it('hides the improve button when improvable is false', () => {
     TestBed.configureTestingModule({ imports: [SuggestionField] });
     const sf = TestBed.createComponent(SuggestionField);
     sf.componentRef.setInput('label', 'Ціна від моделі');
@@ -14,7 +14,7 @@ describe('SuggestionField', () => {
     expect((sf.nativeElement as HTMLElement).querySelector('[data-testid="improve"]')).toBeNull();
   });
 
-  it('gives the disabled improve button the same hint as the prompt button (AC-68)', async () => {
+  it('gives the disabled improve button the same hint as the prompt button', async () => {
     TestBed.configureTestingModule({ imports: [SuggestionField] });
     const sf = TestBed.createComponent(SuggestionField);
     sf.componentRef.setInput('label', 'Назва для Prom');

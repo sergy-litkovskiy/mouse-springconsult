@@ -2,7 +2,7 @@ import type { PreparationRunDto } from '@contracts/ai.contract';
 
 /**
  * `errorCode` of a finished run, which is a different vocabulary from an HTTP failure. The card
- * dialog shows it the moment a run fails, the catalogue lists it afterwards (T50), and both have
+ * dialog shows it the moment a run fails, the catalogue lists it afterwards, and both have
  * to word the same failure alike.
  */
 export const runFailureMessages: Readonly<

@@ -69,7 +69,7 @@ import { SuggestionField } from './suggestion-field';
  * `null` opens an empty dialog: the card itself is created once the first frame is chosen.
  *
  * An identifier rather than the card the catalogue already holds: the suggestions waiting for a
- * decision and the cost of the card ride only with the read of one card (T31, T53), and a row of
+ * decision and the cost of the card ride only with the read of one card, and a row of
  * the list carries neither. The dialog therefore reads the card it was given.
  */
 export type ProductFormData = {
@@ -140,7 +140,7 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
 
 /**
  * One dialog for both a new card and an existing one (mockup 2026-09-12). The manual path has no
- * route of its own: saving is the same `PATCH` that accepting a suggestion will use (AC-12).
+ * route of its own: a card typed by hand is saved by the same `PATCH` as one the model helped with.
  */
 @Component({
   selector: 'app-product-form',
@@ -184,7 +184,7 @@ export class ProductForm {
   protected readonly card = signal<ProductCardRead | null>(null);
   protected readonly images = signal<readonly ProductImage[]>([]);
 
-  /** Every field waits for the first frame (AC-20): the texts are written about the photos. */
+  /** Every field waits for the first frame: the texts are written about the photos. */
   protected readonly hasFrames = computed(() => this.images().length > 0);
   /**
    * Derived by the server (ADR 0009) and only shown here: there is no "mark as ready". The badge
@@ -233,14 +233,14 @@ export class ProductForm {
     initialValue: this.form.invalid,
   });
 
-  /** Same reason, for the disabled states of AC-22 and AC-24, which read what is typed. */
+  /** Same reason, for the buttons that stay off until there is a draft or a title to work from. */
   private readonly draft = toSignal(this.form.events.pipe(map(() => this.form.getRawValue())), {
     initialValue: this.form.getRawValue(),
   });
 
   private readonly poller = inject(PreparationRunPoller);
 
-  /** One rate limit for the whole card, so one run at a time (PRD §6.1). */
+  /** One rate limit for the whole card, so one run at a time. */
   protected readonly preparing = computed(() => {
     const status = this.poller.run()?.status;
     return status === 'queued' || status === 'running';
@@ -257,7 +257,7 @@ export class ProductForm {
     () => this.preparing() && this.poller.run()?.scope === 'texts',
   );
 
-  /** The field comes from the form's own request: a run it merely watches names none (AC-60). */
+  /** The field comes from the form's own request: a run it merely watches names none. */
   private readonly started = signal<{ runId: string; request: PreparationRunRequest } | null>(null);
 
   protected readonly workingField = computed(() => {
@@ -294,7 +294,7 @@ export class ProductForm {
     () => this.hasFrames() && this.productId() !== null && !this.preparing(),
   );
 
-  /** AC-24: a description alone does not enable the price button — the server gates on a title. */
+  /** A description alone does not enable the price button — the server gates on a title. */
   protected readonly canLookUpPrice = computed(() => {
     const value = this.draft();
     return (
@@ -346,8 +346,8 @@ export class ProductForm {
           run.errorCode === null ? UNAVAILABLE_MODEL_MESSAGE : runFailureMessages[run.errorCode],
         );
       }
-      // Even a failed run may have left texts behind: the price alone can be what went missing
-      // (AC-10b), and the suggestions are counted by the read of the card, never by this screen.
+      // Even a failed run may have left texts behind (the price alone can be what went missing),
+      // and the suggestions are counted by the read of the card, never by this screen.
       void this.reread();
     });
   }
@@ -356,7 +356,7 @@ export class ProductForm {
   private settledRunId: string | null = null;
 
   /**
-   * The gallery section reports every change of the frames here. That is what lifts AC-20 for a
+   * The gallery section reports every change of the frames here. That is what unlocks the fields of a
    * card that had none.
    */
   imagesChanged(images: readonly ProductImage[]): void {
@@ -366,7 +366,7 @@ export class ProductForm {
 
   /**
    * A frame is stored under `products/{id}/…`, so a new card has to exist before its first frame
-   * is uploaded. It is created empty (T38) and from then on edited like any other card.
+   * is uploaded. It is created empty and from then on edited like any other card.
    */
   ensureProduct(): Observable<string> {
     const id = this.productId();
@@ -393,8 +393,8 @@ export class ProductForm {
   }
 
   /**
-   * One field from the draft on the left, without the photos (ADR 0015, AC-21): `improve` adapts the
-   * draft, `prompt` follows it as an instruction (AC-66, AC-67).
+   * One field from the draft on the left, without the photos (ADR 0015): `improve` adapts the
+   * draft, `prompt` follows it as an instruction.
    */
   protected rewriteField(field: RewritableField, mode: FieldRewriteMode): Promise<void> {
     return this.startRun({
@@ -412,7 +412,7 @@ export class ProductForm {
 
   /**
    * The marketplaces take a title without line breaks, so the textarea wraps only visually: a
-   * pasted break becomes a space before the value reaches the control (AC-52).
+   * pasted break becomes a space before the value reaches the control.
    */
   protected keepOnOneLine(field: HTMLTextAreaElement, title: 'titleProm' | 'titleOlx'): void {
     field.value = field.value.replaceAll('\n', ' ');
@@ -465,8 +465,8 @@ export class ProductForm {
 
   /**
    * Copies the suggestion into the field on the left, and only that field, without a request: the
-   * card changes on «Зберегти» alone (AC-81, ADR 0017). The rest of the form may hold edits of its
-   * own, and a suggestion decides nothing about them (AC-11).
+   * card changes on «Зберегти» alone (ADR 0017). The rest of the form may hold edits of its
+   * own, and a suggestion decides nothing about them.
    */
   protected acceptSuggestion(field: RewritableField): void {
     const value = this.suggestionFor(field)?.value;
@@ -503,7 +503,7 @@ export class ProductForm {
 
   /**
    * Re-reads the card for its suggestions and leaves the fields alone: a run writes nothing into
-   * the card (ADR 0017), and what the admin typed while it was going stays (AC-11).
+   * the card (ADR 0017), and what the admin typed while it was going stays.
    */
   private async reread(): Promise<void> {
     const id = this.productId();
@@ -577,7 +577,7 @@ export class ProductForm {
       );
       this.dialogRef.close(true);
     } catch (error: unknown) {
-      // What the admin typed stays in the fields (AC-09): only the message changes.
+      // What the admin typed stays in the fields: only the message changes.
       this.formError.set(apiErrorMessage(error, ERROR_MESSAGES, UNKNOWN_ERROR_MESSAGE));
     } finally {
       this.saving.set(false);

@@ -2,7 +2,7 @@ import type { ProductCard } from '@contracts/products.contract';
 
 /**
  * Only the list of gaps is worked out here; whether the card is ready is the server's answer
- * (ADR 0009). The catalogue and the open card share it so that both name the gaps alike (AC-15).
+ * (ADR 0009). The catalogue and the open card share it so that both name the gaps alike.
  */
 export function missingFieldsHint(product: ProductCard): string {
   const missing = [
