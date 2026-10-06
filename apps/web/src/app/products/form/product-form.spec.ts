@@ -151,9 +151,19 @@ describe('ProductForm', () => {
     }
   }
 
-  /** The three fields a read carries and a row of the list does not. */
-  function asRead(card: ProductCard): ProductCardRead {
-    return { ...card, latestSuggestions: [], totalInputTokens: 0, totalOutputTokens: 0 };
+  /** The four fields a read carries and a row of the list does not. */
+  function asRead(
+    card: ProductCard,
+    overrides: { estimatedCostUsd?: string | null } = {},
+  ): ProductCardRead {
+    return {
+      ...card,
+      latestSuggestions: [],
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      estimatedCostUsd:
+        'estimatedCostUsd' in overrides ? (overrides.estimatedCostUsd ?? null) : '0.0000',
+    };
   }
 
   /**
@@ -2096,5 +2106,65 @@ describe('ProductForm', () => {
         finishedAt: null,
       };
     }
+  });
+
+  describe('the card cost tail', () => {
+    function openWithCost(cost: string | null): void {
+      const data: ProductFormData = { productId: EMPTY_WITH_FRAME.id };
+      TestBed.configureTestingModule({
+        imports: [ProductForm],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: MAT_DIALOG_DATA, useValue: data },
+          { provide: MatDialogRef, useValue: dialogRefDouble() },
+        ],
+      });
+      fixture = TestBed.createComponent(ProductForm);
+      http = TestBed.inject(HttpTestingController);
+      element = fixture.nativeElement as HTMLElement;
+      http
+        .expectOne(`/api/products/${EMPTY_WITH_FRAME.id}`)
+        .flush(asRead(EMPTY_WITH_FRAME, { estimatedCostUsd: cost }));
+    }
+
+    function costLine(): string {
+      return element.querySelector('[data-testid="card-cost"]')?.textContent.trim() ?? '';
+    }
+
+    it('ends in «· ≈ $0,00» when nothing has been spent yet', async () => {
+      openWithCost('0.0000');
+      await settle();
+
+      expect(costLine()).toMatch(/· ≈ \$0,00$/);
+    });
+
+    it('ends in «· < $0,01» for a cost below one cent instead of a rounded «$0,00»', async () => {
+      openWithCost('0.0030');
+      await settle();
+
+      expect(costLine()).toMatch(/· < \$0,01$/);
+    });
+
+    it('ends in «· ≈ $0,04» for a cost of «0.0412»', async () => {
+      openWithCost('0.0412');
+      await settle();
+
+      expect(costLine()).toMatch(/· ≈ \$0,04$/);
+    });
+
+    it('ends in «· вартість невідома» when the cost is null', async () => {
+      openWithCost(null);
+      await settle();
+
+      expect(costLine()).toMatch(/· вартість невідома$/);
+    });
+
+    it('keeps the token readout from T31 next to the cost tail', async () => {
+      openWithCost('0.0412');
+      await settle();
+
+      expect(costLine()).toContain('Витрачено токенів: 0 вхідних, 0 вихідних');
+    });
   });
 });

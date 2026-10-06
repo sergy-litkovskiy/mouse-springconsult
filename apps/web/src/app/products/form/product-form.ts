@@ -139,6 +139,45 @@ function keywordsBound(control: AbstractControl): ValidationErrors | null {
 }
 
 /**
+ * uk-UA formats USD as "0,04 $"; the admin reads the hint next to «≈» as the prefix "$0,04",
+ * so the parts of the narrow-symbol locale are reassembled rather than carrying a second
+ * formatter whose decimal is a comma for a different reason.
+ */
+const COST_FORMATTER = new Intl.NumberFormat('uk-UA', {
+  style: 'currency',
+  currency: 'USD',
+  currencyDisplay: 'narrowSymbol',
+});
+
+function formatCostUsd(value: number): string {
+  const parts = COST_FORMATTER.formatToParts(value);
+  const symbol = parts.find((part) => part.type === 'currency')?.value ?? '$';
+  const number = parts
+    .filter((part) => part.type !== 'currency' && part.type !== 'literal')
+    .map((part) => part.value)
+    .join('');
+  return `${symbol}${number}`;
+}
+
+/**
+ * Compared with the threshold before formatting: a cost between "0.0001" and "0.0099" would round
+ * to a misleading "$0,00" or an overstated "$0,01" through the formatter alone.
+ */
+function costTail(estimatedCostUsd: string | null): string {
+  if (estimatedCostUsd === null) {
+    return 'вартість невідома';
+  }
+  const value = Number(estimatedCostUsd);
+  if (value === 0) {
+    return `≈ ${formatCostUsd(0)}`;
+  }
+  if (value < 0.01) {
+    return `< ${formatCostUsd(0.01)}`;
+  }
+  return `≈ ${formatCostUsd(value)}`;
+}
+
+/**
  * One dialog for both a new card and an existing one (mockup 2026-09-12). The manual path has no
  * route of its own: a card typed by hand is saved by the same `PATCH` as one the model helped with.
  */
@@ -286,7 +325,13 @@ export class ProductForm {
 
   protected readonly totalTokens = computed(() => {
     const card = this.card();
-    return card === null ? null : { input: card.totalInputTokens, output: card.totalOutputTokens };
+    return card === null
+      ? null
+      : {
+          input: card.totalInputTokens,
+          output: card.totalOutputTokens,
+          cost: costTail(card.estimatedCostUsd),
+        };
   });
 
   /** «Generate all» writes about the photos, so it waits for the same first frame as the fields. */
