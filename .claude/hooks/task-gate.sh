@@ -18,7 +18,7 @@ web() {
 
 set -o pipefail
 case "$subject" in
-  '[api]'*) docker compose run --rm -T api sh -c 'npm run typecheck && npm run lint && npm run test && npm run deps:check' ;;
+  '[api]'*) docker compose run --rm -T --no-deps api sh -c 'npm run typecheck && npm run lint && npm run test && npm run deps:check' ;;
   '[web-form]'*) web form ;;
   '[web-catalog]'*) web catalog ;;
   '[docs]'*) for d in docs/features/*/tasks/; do python3 .claude/skills/feature-break-tasks/references/gate-check.py "$d" || exit 1; done ;;
