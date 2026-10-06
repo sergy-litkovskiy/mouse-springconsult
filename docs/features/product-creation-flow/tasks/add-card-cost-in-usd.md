@@ -1,7 +1,7 @@
 ---
 id: T94
 title: "Вартість картки в доларах у відповіді читання"
-status: Todo
+status: Done
 delivery: 4
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2400
 blocked_by: []
 blocks: [T95, T97]
-updated_at: "2026-10-05"
+updated_at: "2026-10-06"
 ---
 
 # T94 — Вартість картки в доларах у відповіді читання
@@ -63,19 +63,20 @@ updated_at: "2026-10-05"
 
 ```yaml
     ProductCardRead:
-          required: [latestSuggestions, totalInputTokens, totalOutputTokens]
+          required:
+            [latestSuggestions, totalInputTokens, totalOutputTokens, estimatedCostUsd]
             totalInputTokens:
               type: integer
               minimum: 0
-                Сума `product_preparation_runs.input_tokens` по картці (AC-14). Гроші не
-                показуються: перевід токенів у вартість потребує ціни моделі, якої немає
-                в data-model.md (PRD §8, відкрите питання) — контракт не вигадує курс.
+                Сума `product_preparation_runs.input_tokens` по картці (AC-14). Поруч
+                з'явилось `estimatedCostUsd` — переклад тих самих токенів у долари за
+                тарифом з ADR 0018 (AC-84).
             totalOutputTokens: { type: integer, minimum: 0 }
+            estimatedCostUsd:
+              type: [string, "null"]
+              pattern: '^\d+\.\d{4}$'
+              example: "0.0052"
 ```
-
-Опис `totalInputTokens` застарів разом з цим рішенням, тож крок 6 чекліста його переписує.
-Поруч з'являється `estimatedCostUsd: { type: [string, null] }` з прикладом `"0.0412"`,
-і він входить у `required`.
 
 ## Acceptance criteria
 
@@ -115,10 +116,10 @@ AC-84 нове, до [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-84: три випадки покрито тестами, сума рахується одним запитом.
-- [ ] У коді вартості немає `number` з дробовою частиною: лише цілі µ$ і рядок на виході.
-- [ ] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
-- [ ] Коміт: `feat(products): expose the card cost in USD`.
+- [x] AC-84: три випадки покрито тестами, сума рахується одним запитом.
+- [x] У коді вартості немає `number` з дробовою частиною: лише цілі µ$ і рядок на виході.
+- [x] Тести `api` зелені, `typecheck`, `lint`, `deps:check` зелені.
+- [x] Коміт: `feat(products): expose the card cost in USD`.
 
 ## Links
 
