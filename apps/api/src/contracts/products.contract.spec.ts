@@ -248,6 +248,7 @@ describe('product card read contract', () => {
     isReady: false,
     totalInputTokens: 0,
     totalOutputTokens: 0,
+    estimatedCostUsd: '0.0000',
   };
   const suggestion = {
     id: '0199c0de-1111-7000-8000-000000000001',
@@ -285,6 +286,30 @@ describe('product card read contract', () => {
     });
 
     assert.equal(result.success, false);
+  });
+
+  it('requires estimatedCostUsd as a four-digit decimal string or null (AC-84)', () => {
+    const base = { ...card, latestSuggestions: [] };
+
+    assert.equal(productCardReadSchema.safeParse(base).success, true);
+    assert.equal(
+      productCardReadSchema.safeParse({ ...base, estimatedCostUsd: '0.0052' }).success,
+      true,
+    );
+    assert.equal(
+      productCardReadSchema.safeParse({ ...base, estimatedCostUsd: null }).success,
+      true,
+    );
+    for (const invalid of ['0', '0.00', '0.00000', '-0.0000']) {
+      assert.equal(
+        productCardReadSchema.safeParse({ ...base, estimatedCostUsd: invalid }).success,
+        false,
+        invalid,
+      );
+    }
+    const withoutCost: Record<string, unknown> = { ...base };
+    delete withoutCost['estimatedCostUsd'];
+    assert.equal(productCardReadSchema.safeParse(withoutCost).success, false);
   });
 });
 

@@ -5,7 +5,10 @@ import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
 import type { FieldSuggestion } from './preparation/FieldSuggestion.ts';
 import { Product, type ProductPage } from './Product.ts';
-import { PreparationRepository, type TokenTotals } from './preparation/PreparationRepository.ts';
+import {
+  PreparationRepository,
+  type ModelTokenTotals,
+} from './preparation/PreparationRepository.ts';
 import { GalleryFull, ImageNotFound, ProductNotFound } from './ProductErrors.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
@@ -275,8 +278,8 @@ class StubPreparationRepository extends PreparationRepository {
     super(NO_DATA_SOURCE);
   }
 
-  override async sumTokens(): Promise<TokenTotals> {
-    return { inputTokens: 0, outputTokens: 0 };
+  override async sumTokensByModel(): Promise<ModelTokenTotals[]> {
+    return [];
   }
 
   override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {

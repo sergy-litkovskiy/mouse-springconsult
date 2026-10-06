@@ -6,7 +6,9 @@ import type {
 } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import type { MediaService } from '../media/index.ts';
+import { config } from '../../config.ts';
 import { cleanDescription } from './description/cleanDescription.ts';
+import { estimateCostUsd } from './preparation/estimateCostUsd.ts';
 import type { FieldSuggestion } from './preparation/FieldSuggestion.ts';
 import type { PreparationRepository, TokenTotals } from './preparation/PreparationRepository.ts';
 import type { Product, ProductPage } from './Product.ts';
@@ -28,6 +30,11 @@ export type ProductReading = {
 /** The cost of a card is summed over its runs on read and never stored as a number (ADR 0006). */
 export type ProductCardReading = ProductReading & {
   readonly tokens: TokenTotals;
+  /**
+   * A decimal string with four digits, or `null` when at least one run of the card used a model
+   * whose price `config.ai.pricing` does not hold: a shown number would then be understated.
+   */
+  readonly estimatedCostUsd: string | null;
   /** The card keeps one per field, so these are all of its suggestions. */
   readonly latestSuggestions: readonly FieldSuggestion[];
 };
@@ -74,10 +81,19 @@ export class ProductService {
       throw new ProductNotFound(id);
     }
 
+    const usage = await this.preparations.sumTokensByModel(id);
+    const tokens: TokenTotals = usage.reduce<TokenTotals>(
+      (totals, row) => ({
+        inputTokens: totals.inputTokens + row.inputTokens,
+        outputTokens: totals.outputTokens + row.outputTokens,
+      }),
+      { inputTokens: 0, outputTokens: 0 },
+    );
     return {
       product,
       isReady: this.isReady(product),
-      tokens: await this.preparations.sumTokens(id),
+      tokens,
+      estimatedCostUsd: estimateCostUsd(usage, config.ai.pricing),
       latestSuggestions: await this.preparations.findSuggestions(id),
     };
   }

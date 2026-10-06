@@ -600,7 +600,8 @@ components:
           description: >-
             Читання однієї картки, а не рядок каталогу: обидві добавки рахуються по
             одній картці, і сторінка з 50 рядків рахувала б їх 50 разів.
-          required: [latestSuggestions, totalInputTokens, totalOutputTokens]
+          required:
+            [latestSuggestions, totalInputTokens, totalOutputTokens, estimatedCostUsd]
           properties:
             latestSuggestions:
               type: array
@@ -615,10 +616,20 @@ components:
               type: integer
               minimum: 0
               description: >-
-                Сума `product_preparation_runs.input_tokens` по картці (AC-14). Гроші не
-                показуються: перевід токенів у вартість потребує ціни моделі, якої немає
-                в data-model.md (PRD §8, відкрите питання) — контракт не вигадує курс.
+                Сума `product_preparation_runs.input_tokens` по картці (AC-14). Поруч
+                з'явилось `estimatedCostUsd` — переклад тих самих токенів у долари за
+                тарифом з ADR 0018 (AC-84).
             totalOutputTokens: { type: integer, minimum: 0 }
+            estimatedCostUsd:
+              type: [string, "null"]
+              pattern: '^\d+\.\d{4}$'
+              example: "0.0052"
+              description: >-
+                Сумарна вартість карточки у доларах — десятковий рядок з чотирма знаками,
+                рахується цілочисельно у мікродоларах за тарифом `config.ai.pricing`
+                (ADR 0018). `null`, якщо хоч один запуск картки використав модель, якої
+                в таблиці тарифів немає: показане число було б заниженим. Картка без
+                запусків — `"0.0000"`: витрат не було (AC-84).
 
     ProductList:
       type: object
@@ -879,5 +890,6 @@ components:
             createdAt: "2026-09-03T11:20:00.000Z"
         totalInputTokens: 1840
         totalOutputTokens: 620
+        estimatedCostUsd: "0.0099"
         createdAt: "2026-09-01T10:00:00.000Z"
         updatedAt: "2026-09-03T11:30:00.000Z"

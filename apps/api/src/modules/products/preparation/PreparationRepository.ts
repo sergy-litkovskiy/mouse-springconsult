@@ -39,6 +39,13 @@ export type TokenTotals = {
   readonly outputTokens: number;
 };
 
+/** Tokens of one model summed across every run of the card, so pricing it is one lookup per model. */
+export type ModelTokenTotals = {
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+};
+
 export type RunClaim = {
   readonly run: PreparationRun;
   /** `false` when a run with the same idempotency key already existed and was returned instead. */
@@ -222,15 +229,21 @@ export class PreparationRepository {
     });
   }
 
-  async sumTokens(productId: string): Promise<TokenTotals> {
+  /**
+   * One row per model, so pricing a card is a lookup per model rather than per run; a card with
+   * no runs comes back as an empty list, which the cost function then prices as "0.0000".
+   */
+  async sumTokensByModel(productId: string): Promise<ModelTokenTotals[]> {
     // `sum` over int is bigint, which the driver hands over as a string; the cast keeps it a number.
-    const totals = await this.dataSource
+    return this.dataSource
       .getRepository(PreparationRun)
       .createQueryBuilder('run')
-      .select('coalesce(sum(run.inputTokens), 0)::int', 'inputTokens')
+      .select('run.model', 'model')
+      .addSelect('coalesce(sum(run.inputTokens), 0)::int', 'inputTokens')
       .addSelect('coalesce(sum(run.outputTokens), 0)::int', 'outputTokens')
       .where('run.productId = :productId', { productId })
-      .getRawOne<TokenTotals>();
-    return totals ?? { inputTokens: 0, outputTokens: 0 };
+      .groupBy('run.model')
+      .orderBy('run.model', 'ASC')
+      .getRawMany<ModelTokenTotals>();
   }
 }
