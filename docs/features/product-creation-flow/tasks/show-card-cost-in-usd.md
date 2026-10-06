@@ -1,7 +1,7 @@
 ---
 id: T95
 title: "Форма показує вартість картки в доларах"
-status: Blocked
+status: Done
 delivery: 4
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1400
 blocked_by: [T94]
 blocks: [T100]
-updated_at: "2026-10-05"
+updated_at: "2026-10-06"
 ---
 
 # T95 — Форма показує вартість картки в доларах
@@ -53,12 +53,14 @@ currency: 'USD' })` з двома знаками. Рядок з `api` у `number
 
 ```yaml
     ProductCardRead:
-          required: [latestSuggestions, totalInputTokens, totalOutputTokens]
+          required:
+            [latestSuggestions, totalInputTokens, totalOutputTokens, estimatedCostUsd]
             totalOutputTokens: { type: integer, minimum: 0 }
+            estimatedCostUsd:
+              type: [string, "null"]
+              pattern: '^\d+\.\d{4}$'
+              example: "0.0052"
 ```
-
-`estimatedCostUsd` у цій схемі з'являється з [T94](add-card-cost-in-usd.md), і його рядок
-стає частиною excerpt-у після мержу T94.
 
 ## Acceptance criteria
 
@@ -94,9 +96,9 @@ AC-85 нове, до [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-85: чотири стани покрито тестами.
-- [ ] Тести `web` і `lint` зелені, `pw` пройдено.
-- [ ] Коміт: `feat(web): show the card cost in USD`.
+- [x] AC-85: чотири стани покрито тестами.
+- [x] Тести `web` і `lint` зелені, `pw` пройдено.
+- [x] Коміт: `feat(web): show the card cost in USD`.
 
 ## Links
 

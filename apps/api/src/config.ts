@@ -181,6 +181,20 @@ export const config = {
      * not the payload.
      */
     errorDetailMaxLength: 500,
+    /**
+     * Model pricing in integer micro-dollars (µ$ = $1e-6) per token. Integer on purpose: the sum
+     * of a card is counted without floats, and only the formatted answer becomes a decimal string
+     * ("Гроші" у CLAUDE.md). A run with a model not listed here turns the card's cost into
+     * `null`: a shown number would be understated, which is worse than "unknown". The table is a
+     * constant rather than env — the model changes with a commit (ADR 0018), so does the rate.
+     * Prices as of 2026-10-05 from ADR 0018: `claude-sonnet-5` costs $2/1M in and $10/1M out.
+     */
+    pricing: {
+      'claude-sonnet-5': {
+        inputMicroDollarsPerToken: 2,
+        outputMicroDollarsPerToken: 10,
+      },
+    },
   },
 } as const;
 

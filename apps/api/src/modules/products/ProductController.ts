@@ -180,6 +180,7 @@ export class ProductController {
       ),
       totalInputTokens: reading.tokens.inputTokens,
       totalOutputTokens: reading.tokens.outputTokens,
+      estimatedCostUsd: reading.estimatedCostUsd,
     };
   }
 

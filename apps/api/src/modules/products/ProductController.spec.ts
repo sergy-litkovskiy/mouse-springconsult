@@ -17,7 +17,10 @@ import {
   type SuggestionValue,
 } from './preparation/FieldSuggestion.ts';
 import type { Product, ProductPage } from './Product.ts';
-import { PreparationRepository, type TokenTotals } from './preparation/PreparationRepository.ts';
+import {
+  PreparationRepository,
+  type ModelTokenTotals,
+} from './preparation/PreparationRepository.ts';
 import { ProductController } from './ProductController.ts';
 import type { ProductImage } from './ProductImage.ts';
 import {
@@ -114,7 +117,7 @@ class StubProductRepository extends ProductRepository {
  * has never been prepared.
  */
 class StubPreparationRepository extends PreparationRepository {
-  readonly totals = new Map<string, TokenTotals>();
+  readonly usage = new Map<string, ModelTokenTotals[]>();
   /** Keyed by card, the way their `product_id` column holds them. */
   readonly suggestions = new Map<string, FieldSuggestion[]>();
 
@@ -122,8 +125,8 @@ class StubPreparationRepository extends PreparationRepository {
     super(NO_DATA_SOURCE);
   }
 
-  override async sumTokens(productId: string): Promise<TokenTotals> {
-    return this.totals.get(productId) ?? { inputTokens: 0, outputTokens: 0 };
+  override async sumTokensByModel(productId: string): Promise<ModelTokenTotals[]> {
+    return this.usage.get(productId) ?? [];
   }
 
   /** Counts the trips to the table: a card read takes its suggestions from one of them. */
@@ -891,27 +894,55 @@ describe('product controller: card cost', () => {
     await app.close();
   });
 
-  it('answers the card read with what every preparation of that card has cost', async () => {
-    runs.totals.set(READY_ID, { inputTokens: 1300, outputTokens: 250 });
+  it('answers the card read with what every preparation of that card has cost (AC-84 happy path)', async () => {
+    runs.usage.set(READY_ID, [{ model: 'claude-sonnet-5', inputTokens: 1340, outputTokens: 255 }]);
 
     const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
     const body = response.json<Record<string, unknown>>();
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(
-      { totalInputTokens: body['totalInputTokens'], totalOutputTokens: body['totalOutputTokens'] },
-      { totalInputTokens: 1300, totalOutputTokens: 250 },
+      {
+        totalInputTokens: body['totalInputTokens'],
+        totalOutputTokens: body['totalOutputTokens'],
+        estimatedCostUsd: body['estimatedCostUsd'],
+      },
+      { totalInputTokens: 1340, totalOutputTokens: 255, estimatedCostUsd: '0.0052' },
     );
   });
 
-  it('answers zeros for a card that has never been prepared, not an empty field', async () => {
+  it('answers zeros and "0.0000" for a card that has never been prepared, not a missing field (AC-84 edge)', async () => {
     const response = await app.inject({ method: 'GET', url: `/${UNPRICED_ID}` });
     const body = response.json<Record<string, unknown>>();
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual(
-      { totalInputTokens: body['totalInputTokens'], totalOutputTokens: body['totalOutputTokens'] },
-      { totalInputTokens: 0, totalOutputTokens: 0 },
+      {
+        totalInputTokens: body['totalInputTokens'],
+        totalOutputTokens: body['totalOutputTokens'],
+        estimatedCostUsd: body['estimatedCostUsd'],
+      },
+      { totalInputTokens: 0, totalOutputTokens: 0, estimatedCostUsd: '0.0000' },
+    );
+  });
+
+  it('answers null for a card whose history names a model without a price, with tokens still shown (AC-84 error)', async () => {
+    runs.usage.set(READY_ID, [
+      { model: 'claude-sonnet-5', inputTokens: 1000, outputTokens: 200 },
+      { model: 'claude-opus-5', inputTokens: 500, outputTokens: 100 },
+    ]);
+
+    const response = await app.inject({ method: 'GET', url: `/${READY_ID}` });
+    const body = response.json<Record<string, unknown>>();
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(
+      {
+        totalInputTokens: body['totalInputTokens'],
+        totalOutputTokens: body['totalOutputTokens'],
+        estimatedCostUsd: body['estimatedCostUsd'],
+      },
+      { totalInputTokens: 1500, totalOutputTokens: 300, estimatedCostUsd: null },
     );
   });
 });

@@ -202,6 +202,17 @@ export const fieldSuggestionSchema = z.object({
 export type FieldSuggestion = z.infer<typeof fieldSuggestionSchema>;
 
 /**
+ * A decimal string with four fractional digits, like "0.0412"; `null` when at least one run of
+ * the card used a model whose price is not in `config.ai.pricing`, so a shown number would be
+ * silently understated. A card with no runs is "0.0000", not `null`: nothing was spent, as
+ * opposed to unknown.
+ */
+const estimatedCostUsd = z
+  .string()
+  .regex(/^\d+\.\d{4}$/, 'Cost must be a decimal such as 0.0412')
+  .nullable();
+
+/**
  * The cost of a card rides with the card itself and not with a list: it is a sum over the
  * preparation runs of one card (ADR 0006), and a page of cards would take that sum per row.
  * The latest suggestion of every field rides along for the same reason: a page of cards would look
@@ -211,6 +222,7 @@ export const productCardReadSchema = productCardSchema.extend({
   latestSuggestions: z.array(fieldSuggestionSchema),
   totalInputTokens: z.int().nonnegative(),
   totalOutputTokens: z.int().nonnegative(),
+  estimatedCostUsd,
 });
 
 export type ProductCardRead = z.infer<typeof productCardReadSchema>;

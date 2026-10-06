@@ -65,7 +65,8 @@
     }
     @if (totalTokens(); as tokens) {
       <span class="card-prepare__cost" data-testid="card-cost">
-        Витрачено токенів: {{ tokens.input }} вхідних, {{ tokens.output }} вихідних
+        Витрачено токенів: {{ tokens.input }} вхідних, {{ tokens.output }} вихідних ·
+        {{ tokens.cost }}
       </span>
     }
   </div>

@@ -291,20 +291,36 @@ describe('preparation repository (postgres)', () => {
     assert.deepEqual(await suggestionsOf(runId), []);
   });
 
-  it('sums the tokens of every run of a card and of that card only (Checklist 1)', async () => {
+  it('sums the tokens of every run of a card by model, with no row of another card (Checklist 2)', async () => {
     const productId = await seedProduct();
     const otherProductId = await seedProduct();
     await seedRun(productId, 'succeeded', { inputTokens: 1000, outputTokens: 200 });
-    await seedRun(productId, 'failed', { inputTokens: 300, outputTokens: 50 });
+    await seedRun(productId, 'failed', { inputTokens: 340, outputTokens: 55 });
+    // A second model on the same card so a cost based on the sum knows every rate it needs.
+    await dataSource.getRepository(PreparationRun).save({
+      productId,
+      scope: 'both',
+      idempotencyKey: randomUUID(),
+      status: 'succeeded',
+      errorCode: null,
+      model: 'claude-opus-5',
+      inputTokens: 500,
+      outputTokens: 100,
+      startedAt: null,
+      finishedAt: null,
+    });
     await seedRun(otherProductId, 'succeeded', { inputTokens: 7000, outputTokens: 900 });
 
-    assert.deepEqual(await runs.sumTokens(productId), { inputTokens: 1300, outputTokens: 250 });
+    assert.deepEqual(await runs.sumTokensByModel(productId), [
+      { model: 'claude-opus-5', inputTokens: 500, outputTokens: 100 },
+      { model: MODEL, inputTokens: 1340, outputTokens: 255 },
+    ]);
   });
 
-  it('reports zero tokens for a card that has never been prepared (Checklist 1)', async () => {
+  it('reports an empty list for a card that has never been prepared (Checklist 2)', async () => {
     const productId = await seedProduct();
 
-    assert.deepEqual(await runs.sumTokens(productId), { inputTokens: 0, outputTokens: 0 });
+    assert.deepEqual(await runs.sumTokensByModel(productId), []);
   });
 
   it('inserts a queued run for an input it has not seen and reports it as created (Checklist 6)', async () => {
