@@ -1,7 +1,7 @@
 ---
 id: T97
 title: "Запуск пам'ятає кількість пошуків, а вартість картки їх враховує"
-status: Blocked
+status: Deferred
 delivery: 4
 gate_profile: implementation
 owner: "Serhii"
@@ -9,10 +9,15 @@ estimate: S
 context_budget: 1700
 blocked_by: [T94, T96]
 blocks: [T98]
-updated_at: "2026-10-05"
+updated_at: "2026-10-07"
 ---
 
 # T97 — Запуск пам'ятає кількість пошуків, а вартість картки їх враховує
+
+> **Відкладено 2026-10-07 рішенням власника** ([ADR 0019](../adr/0019-keep-price-search-out-of-generate-all.md)).
+> Замір [T96](decide-price-range-in-generate-all.md) дав no-go: вилку не знайдено в трьох викликах із
+> чотирьох, а вартість одного «Згенерувати все» з ціною сягала $0,17–0,36 при стелі $0,15. Нижче —
+> story на момент відкладення, без змін.
 
 ## Context
 
