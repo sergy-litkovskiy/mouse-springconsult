@@ -107,6 +107,10 @@ export function normalizePrice(value: string): string {
   return value.trim().replace(',', '.');
 }
 
+export function isEnoughForPriceFilter(value: string): boolean {
+  throw new Error('Not implemented');
+}
+
 export function priceFromField(value: string): string {
   const price = normalizePrice(value);
   return price === '' ? UNPRICED : price;

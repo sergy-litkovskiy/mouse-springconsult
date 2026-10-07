@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -14,7 +15,7 @@ import { MatPaginatorHarness } from '@angular/material/paginator/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { MatSortHarness } from '@angular/material/sort/testing';
 import { MatTooltipHarness } from '@angular/material/tooltip/testing';
-import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
+import { NavigationStart, provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import type { PreparationRunDto } from '@contracts/ai.contract';
 import type {
@@ -204,8 +205,57 @@ describe('ProductCatalog', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  function submitFilters(): void {
-    element.querySelector('form')?.dispatchEvent(new Event('submit'));
+  /** A field error shows once the field is left, as `mat-form-field` shows any. */
+  function leave(name: string): void {
+    element
+      .querySelector<HTMLInputElement>(`input[formcontrolname="${name}"]`)
+      ?.dispatchEvent(new Event('blur'));
+  }
+
+  const DEBOUNCE_MS = 300;
+
+  function urlParam(name: string): string | undefined {
+    const router = TestBed.inject(Router);
+    return router.parseUrl(router.url).queryParamMap.get(name) ?? undefined;
+  }
+
+  async function waitOutDebounce(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    await tick();
+  }
+
+  /**
+   * A filter applies itself, and a harness waits for the app to settle after its click — which
+   * the app cannot do while the request the click started is unanswered. So the answer goes out
+   * before the click is awaited.
+   */
+  async function answerBeforeSettling(
+    click: Promise<void>,
+    answer: (request: TestRequest) => void,
+  ): Promise<void> {
+    await tick();
+    answer(expectRequest());
+    await click;
+    await settle();
+  }
+
+  async function choose(
+    select: MatSelectHarness,
+    label: string,
+    answer: (request: TestRequest) => void,
+  ): Promise<void> {
+    await select.open();
+    const [option] = await select.getOptions({ text: label });
+    if (option === undefined) {
+      throw new Error(`no option ${label}`);
+    }
+    await answerBeforeSettling(option.click(), answer);
+  }
+
+  function resetButton(): HTMLButtonElement | undefined {
+    return [...element.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent.trim() === 'Скинути',
+    );
   }
 
   beforeEach(() => {
@@ -335,12 +385,19 @@ describe('ProductCatalog', () => {
       return Promise.all(options.map((option) => option.getText()));
     }
 
-    async function pick(text: string, category: string): Promise<void> {
+    async function pick(
+      text: string,
+      category: string,
+      answer: (request: TestRequest) => void,
+    ): Promise<void> {
       const input = await loader().getHarness(MatAutocompleteHarness);
       await input.clear();
       await input.enterText(text);
-      await input.selectOption({ text: category });
-      await settle();
+      const [option] = await input.getOptions({ text: category });
+      if (option === undefined) {
+        throw new Error(`no suggestion ${category}`);
+      }
+      await answerBeforeSettling(option.click(), answer);
     }
 
     async function typeAndPressEnter(text: string): Promise<void> {
@@ -350,13 +407,15 @@ describe('ProductCatalog', () => {
       await settle();
     }
 
-    async function removeChip(index: number): Promise<void> {
+    async function removeChip(
+      index: number,
+      answer: (request: TestRequest) => void,
+    ): Promise<void> {
       const row = (await (await loader().getHarness(MatChipGridHarness)).getRows())[index];
       if (row === undefined) {
         throw new Error(`no category chip #${String(index)}`);
       }
-      await (await row.getRemoveButton()).click();
-      await settle();
+      await answerBeforeSettling((await row.getRemoveButton()).click(), answer);
     }
 
     function urlCategories(): string[] {
@@ -382,19 +441,19 @@ describe('ProductCatalog', () => {
       expectRequest().flush(PAGE);
       await settle();
 
-      await pick('ш', 'Миші');
-      await pick('ш', 'Навушники');
+      await pick('ш', 'Миші', (request) => {
+        expect(request.request.params.getAll('category')).toEqual(['Миші']);
+        request.flush({ ...PAGE, items: [MICE], total: 1 });
+      });
+      expect(urlCategories()).toEqual(['Миші']);
+
+      await pick('ш', 'Навушники', (request) => {
+        expect(request.request.params.getAll('category')).toEqual(['Миші', 'Навушники']);
+        request.flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
+      });
+
       expect(await categoryChips()).toEqual(['Миші', 'Навушники']);
-
-      submitFilters();
-      await tick();
-
       expect(urlCategories()).toEqual(['Миші', 'Навушники']);
-      const request = expectRequest();
-      expect(request.request.params.getAll('category')).toEqual(['Миші', 'Навушники']);
-      request.flush({ ...PAGE, items: [MICE, HEADPHONES], total: 2 });
-      await settle();
-
       expect(categoryCells()).toEqual(['Миші', 'Навушники']);
     });
 
@@ -446,14 +505,10 @@ describe('ProductCatalog', () => {
       expect(await categoryChips()).toEqual(['Миші']);
       expect(element.querySelector('[role="alert"]')).toBeNull();
 
-      await removeChip(0);
-      submitFilters();
-      await tick();
-
-      const request = expectRequest();
-      expect(request.request.params.has('category')).toBe(false);
-      request.flush(PAGE);
-      await settle();
+      await removeChip(0, (request) => {
+        expect(request.request.params.has('category')).toBe(false);
+        request.flush(PAGE);
+      });
     });
 
     it('drops the category from the URL and the request once every chip is removed', async () => {
@@ -464,18 +519,19 @@ describe('ProductCatalog', () => {
       await settle();
       expect(await categoryChips()).toEqual(['Миші', 'Навушники']);
 
-      await removeChip(1);
-      await removeChip(0);
-      submitFilters();
-      await tick();
+      await removeChip(1, (request) => {
+        expect(request.request.params.getAll('category')).toEqual(['Миші']);
+        request.flush({ ...PAGE, items: [MICE], total: 1 });
+      });
+      expect(urlCategories()).toEqual(['Миші']);
+
+      await removeChip(0, (request) => {
+        expect(request.request.params.has('category')).toBe(false);
+        request.flush({ ...PAGE, items: [MICE, KEYBOARD, HEADPHONES], total: 3 });
+      });
 
       // Not an empty `category=`: the API answers that with 400.
       expect(TestBed.inject(Router).url).not.toContain('category');
-      const request = expectRequest();
-      expect(request.request.params.has('category')).toBe(false);
-      request.flush({ ...PAGE, items: [MICE, KEYBOARD, HEADPHONES], total: 3 });
-      await settle();
-
       expect(rows().length).toBe(3);
     });
 
@@ -500,21 +556,30 @@ describe('ProductCatalog', () => {
       expect(rows().length).toBe(3);
     });
 
-    it('keeps chips and filter text not yet applied when the page of two categories changes', async () => {
+    it('keeps the picked chips and a price too short to apply when the page changes', async () => {
       await open('/products?category=Миші&category=Навушники');
       expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], total: 100 });
       await settle();
 
-      await pick('лав', 'Клавіатури');
-      type('priceMin', '1000.00');
-      await harness.navigateByUrl('/products?category=Миші&category=Навушники&page=2');
+      await pick('лав', 'Клавіатури', (request) => {
+        expect(request.request.params.getAll('category')).toEqual([
+          'Миші',
+          'Навушники',
+          'Клавіатури',
+        ]);
+        request.flush({ ...PAGE, items: [MICE, HEADPHONES], total: 100 });
+      });
+      type('priceMin', '1');
+      await harness.navigateByUrl(
+        '/products?category=Миші&category=Навушники&category=Клавіатури&page=2',
+      );
       await tick();
       expectRequest().flush({ ...PAGE, items: [MICE, HEADPHONES], page: 2, total: 100 });
       await settle();
 
       expect(await categoryChips()).toEqual(['Миші', 'Навушники', 'Клавіатури']);
       const priceMin = element.querySelector<HTMLInputElement>('input[formcontrolname="priceMin"]');
-      expect(priceMin?.value).toBe('1000.00');
+      expect(priceMin?.value).toBe('1');
     });
 
     it('suggests nothing once the filter holds as many categories as the API takes', async () => {
@@ -898,90 +963,270 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
-  it('writes the applied filters into the URL and returns to the first page', async () => {
-    await open('/products?page=2');
-    expectRequest().flush({ ...PAGE, page: 2 });
-    await settle();
+  describe('filters applied as they change', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
 
-    type('title', '  миша  ');
-    type('priceMin', '1000.50');
-    submitFilters();
-    await tick();
+    afterEach(() => {
+      vi.useRealTimers();
+    });
 
-    const url = TestBed.inject(Router).url;
-    expect(url).toContain('priceMin=1000.50');
-    expect(url).not.toContain('page=');
+    it('writes the applied filters into the URL and returns to the first page', async () => {
+      await open('/products?page=2');
+      expectRequest().flush({ ...PAGE, page: 2 });
+      await settle();
 
-    const request = expectRequest();
-    expect(request.request.params.get('title')).toBe('миша');
-    // The price travels as the decimal the admin typed; nothing rescales it on the way.
-    expect(request.request.params.get('priceMin')).toBe('1000.50');
-    expect(request.request.params.get('page')).toBe('1');
-    expect(request.request.params.has('description')).toBe(false);
-    expect(request.request.params.has('priceMax')).toBe(false);
+      type('priceMin', '1000.50');
+      await waitOutDebounce();
 
-    request.flush({ ...PAGE, items: [MOUSE], total: 1 });
-    await settle();
+      const url = TestBed.inject(Router).url;
+      expect(url).toContain('priceMin=1000.50');
+      expect(url).not.toContain('page=');
+      const first = expectRequest();
+      // The price travels as the decimal the admin typed; nothing rescales it on the way.
+      expect(first.request.params.get('priceMin')).toBe('1000.50');
+      expect(first.request.params.get('page')).toBe('1');
+      first.flush(PAGE);
+      await settle();
 
-    expect(element.querySelectorAll('tr[mat-row]').length).toBe(1);
-  });
+      type('title', '  миша  ');
+      await waitOutDebounce();
 
-  it('refuses a price the contract would reject instead of asking the server', async () => {
-    await open();
-    expectRequest().flush(PAGE);
-    await settle();
+      const request = expectRequest();
+      expect(request.request.params.get('title')).toBe('миша');
+      expect(request.request.params.get('priceMin')).toBe('1000.50');
+      expect(request.request.params.has('description')).toBe(false);
+      expect(request.request.params.has('priceMax')).toBe(false);
 
-    type('priceMin', '1000.555');
-    submitFilters();
-    await tick();
+      request.flush({ ...PAGE, items: [MOUSE], total: 1 });
+      await settle();
 
-    http.expectNone((request) => request.url === '/api/products');
-    expect(element.textContent).toContain('Ціна виглядає як');
-  });
+      expect(element.querySelectorAll('tr[mat-row]').length).toBe(1);
+    });
 
-  it('writes a lower bound typed with a decimal comma into the URL with a dot', async () => {
-    await open();
-    expectRequest().flush(PAGE);
-    await settle();
-
-    type('priceMin', '100,5');
-    submitFilters();
-    await tick();
-
-    expect(TestBed.inject(Router).url).toContain('priceMin=100.5');
-    const request = expectRequest();
-    expect(request.request.params.get('priceMin')).toBe('100.5');
-    request.flush(PAGE);
-    await settle();
-  });
-
-  for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
-    it(`refuses a lower bound of ${invalid} with the format hint instead of asking the server`, async () => {
+    it('applies no lower bound of one digit and one of two digits once the typing pauses', async () => {
       await open();
       expectRequest().flush(PAGE);
       await settle();
 
-      type('priceMin', invalid);
-      submitFilters();
-      await tick();
+      type('priceMin', '1');
+      await waitOutDebounce();
 
       http.expectNone((request) => request.url === '/api/products');
-      expect(element.textContent).toContain('Ціна виглядає як 2499, 2499.00 або 2499,00.');
+      expect(urlParam('priceMin')).toBeUndefined();
+
+      type('priceMin', '10');
+      await tick();
+      http.expectNone((request) => request.url === '/api/products');
+
+      await waitOutDebounce();
+
+      expect(urlParam('priceMin')).toBe('10');
+      const request = expectRequest();
+      expect(request.request.params.get('priceMin')).toBe('10');
+      request.flush(PAGE);
+      await settle();
     });
-  }
 
-  it('refuses an upper bound below the lower one', async () => {
-    await open();
-    expectRequest().flush(PAGE);
-    await settle();
+    it('sends one request for a bound typed digit by digit without a pause', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
 
-    type('priceMin', '5000.00');
-    type('priceMax', '1000.00');
-    submitFilters();
-    await tick();
+      for (const value of ['1', '10', '100', '1000']) {
+        type('priceMin', value);
+        await tick();
+      }
+      await waitOutDebounce();
 
-    http.expectNone((request) => request.url === '/api/products');
-    expect(element.textContent).toContain('не може бути меншою');
+      expect(urlParam('priceMin')).toBe('1000');
+      const request = expectRequest();
+      expect(request.request.params.get('priceMin')).toBe('1000');
+      request.flush(PAGE);
+      await settle();
+    });
+
+    it('applies an upper bound once the typing pauses', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('priceMax', '5000');
+      await waitOutDebounce();
+
+      expect(urlParam('priceMax')).toBe('5000');
+      const request = expectRequest();
+      expect(request.request.params.get('priceMax')).toBe('5000');
+      request.flush(PAGE);
+      await settle();
+    });
+
+    it('keeps a saved one-digit lower bound and drops it once the field is emptied', async () => {
+      // The two-digit rule belongs to typing; an address saved with one digit filters as before.
+      await open('/products?priceMin=5');
+      const saved = expectRequest();
+      expect(saved.request.params.get('priceMin')).toBe('5');
+      saved.flush(PAGE);
+      await settle();
+
+      await waitOutDebounce();
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('priceMin')).toBe('5');
+
+      type('priceMin', '');
+      await waitOutDebounce();
+
+      expect(urlParam('priceMin')).toBeUndefined();
+      const request = expectRequest();
+      expect(request.request.params.has('priceMin')).toBe(false);
+      request.flush(PAGE);
+      await settle();
+    });
+
+    async function applyLowerBound(value: string): Promise<void> {
+      type('priceMin', value);
+      await waitOutDebounce();
+      expectRequest().flush(PAGE);
+      await settle();
+    }
+
+    it('keeps the applied lower bound instead of asking the server about a price the contract would reject', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+      await applyLowerBound('1000');
+
+      type('priceMin', '1000.555');
+      leave('priceMin');
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('priceMin')).toBe('1000');
+      expect(element.textContent).toContain('Ціна виглядає як');
+    });
+
+    it('writes a lower bound typed with a decimal comma into the URL with a dot', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('priceMin', '100,5');
+      await waitOutDebounce();
+
+      expect(TestBed.inject(Router).url).toContain('priceMin=100.5');
+      const request = expectRequest();
+      expect(request.request.params.get('priceMin')).toBe('100.5');
+      request.flush(PAGE);
+      await settle();
+    });
+
+    for (const invalid of ['1,000.50', '2,5,0', '235,505']) {
+      it(`keeps the applied lower bound and shows the format hint for ${invalid} instead of asking the server`, async () => {
+        await open();
+        expectRequest().flush(PAGE);
+        await settle();
+        await applyLowerBound('1000');
+
+        type('priceMin', invalid);
+        leave('priceMin');
+        await waitOutDebounce();
+
+        http.expectNone((request) => request.url === '/api/products');
+        expect(urlParam('priceMin')).toBe('1000');
+        expect(element.textContent).toContain('Ціна виглядає як 2499, 2499.00 або 2499,00.');
+      });
+    }
+
+    it('refuses an upper bound below the applied lower one', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+      await applyLowerBound('500');
+
+      type('priceMax', '100');
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(element.textContent).toContain('не може бути меншою');
+      expect(urlParam('priceMin')).toBe('500');
+      expect(urlParam('priceMax')).toBeUndefined();
+    });
+
+    it('makes one navigation on reset, dropping every filter and the sort', async () => {
+      await open('/products?category=Миші&sort=price&direction=asc');
+      expectRequest().flush(PAGE);
+      await settle();
+      await choose(await readySelect(), 'Так', (request) => {
+        request.flush(PAGE);
+      });
+      expect(urlParam('ready')).toBe('true');
+
+      let navigations = 0;
+      const counting = TestBed.inject(Router).events.subscribe((event) => {
+        if (event instanceof NavigationStart) {
+          navigations += 1;
+        }
+      });
+      resetButton()?.click();
+      await tick();
+
+      const request = expectRequest();
+      expect(request.request.params.has('ready')).toBe(false);
+      expect(request.request.params.has('category')).toBe(false);
+      expect(request.request.params.get('sort')).toBe('createdAt');
+      expect(request.request.params.get('direction')).toBe('desc');
+      request.flush(PAGE);
+      await settle();
+      await waitOutDebounce();
+      counting.unsubscribe();
+
+      http.expectNone((pending) => pending.url === '/api/products');
+      expect(navigations).toBe(1);
+      expect(TestBed.inject(Router).url).toBe('/products');
+    });
+
+    it('steps Back to the filter and the page it left without navigating again', async () => {
+      await open('/products?ready=true&page=2');
+      // A browser gets this from the app's first navigation, which TestBed never runs; without
+      // it Back moves the address bar and not the router.
+      TestBed.inject(Router).setUpLocationChangeListener();
+      expectRequest().flush({ ...PAGE, page: 2, total: 100 });
+      await settle();
+
+      await choose(await readySelect(), 'Ні', (request) => {
+        expect(request.request.params.get('ready')).toBe('false');
+        request.flush({ ...PAGE, total: 100 });
+      });
+      expect(urlParam('page')).toBeUndefined();
+
+      TestBed.inject(Location).back();
+      await tick();
+
+      const request = expectRequest();
+      expect(request.request.params.get('ready')).toBe('true');
+      expect(request.request.params.get('page')).toBe('2');
+      request.flush({ ...PAGE, page: 2, total: 100 });
+      await settle();
+      await waitOutDebounce();
+
+      http.expectNone((pending) => pending.url === '/api/products');
+      expect(urlParam('ready')).toBe('true');
+      expect(urlParam('page')).toBe('2');
+      expect(await (await readySelect()).getValueText()).toBe('Так');
+    });
+
+    it('offers no apply button, only the reset', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      const labels = [...element.querySelectorAll('button')].map((button) =>
+        button.textContent.trim(),
+      );
+      expect(labels).not.toContain('Застосувати');
+      expect(labels).toContain('Скинути');
+    });
   });
 
   it('abandons the page in flight instead of letting two answers race', async () => {
@@ -1006,23 +1251,18 @@ describe('ProductCatalog', () => {
     expectRequest().flush(PAGE);
     await settle();
 
-    type('title', 'нічого');
-    submitFilters();
-    await tick();
-
-    expectRequest().flush(
-      { error: { code: 'not_authenticated', message: 'Authentication required' } },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-    await settle();
+    await choose(await readySelect(), 'Так', (request) => {
+      request.flush(
+        { error: { code: 'not_authenticated', message: 'Authentication required' } },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+    });
 
     expect(element.textContent).toContain('Сесія завершилась');
     expect(element.querySelectorAll('tr[mat-row]').length).toBe(0);
   });
 
   describe('live search by title and description', () => {
-    const DEBOUNCE_MS = 300;
-
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
     });
@@ -1030,16 +1270,6 @@ describe('ProductCatalog', () => {
     afterEach(() => {
       vi.useRealTimers();
     });
-
-    function urlParam(name: string): string | undefined {
-      const router = TestBed.inject(Router);
-      return router.parseUrl(router.url).queryParamMap.get(name) ?? undefined;
-    }
-
-    async function waitOutDebounce(): Promise<void> {
-      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-      await tick();
-    }
 
     it('applies a title of three characters by itself once the typing pauses', async () => {
       await open();
@@ -1191,25 +1421,21 @@ describe('ProductCatalog', () => {
     ['Так', 'true'],
     ['Ні', 'false'],
   ] as const) {
-    it(`writes ready=${value} into the URL and returns to the first page when «${label}» is applied`, async () => {
+    it(`writes ready=${value} into the URL and returns to the first page once «${label}» is chosen`, async () => {
       await open('/products?page=2');
-      expectRequest().flush({ ...PAGE, page: 2 });
+      expectRequest().flush({ ...PAGE, page: 2, total: 100 });
       await settle();
 
-      await (await readySelect()).clickOptions({ text: label });
-      submitFilters();
-      await tick();
+      await choose(await readySelect(), label, (request) => {
+        expect(request.request.params.get('ready')).toBe(value);
+        expect(request.request.params.get('page')).toBe('1');
+        request.flush({ ...PAGE, total: 100 });
+      });
 
       const url = TestBed.inject(Router).url;
       expect(url).toContain(`ready=${value}`);
       expect(url).not.toContain('page=');
-
-      const request = expectRequest();
-      expect(request.request.params.get('ready')).toBe(value);
-      expect(request.request.params.get('page')).toBe('1');
-
-      request.flush(PAGE);
-      await settle();
+      expect(await paginatorState()).toEqual({ range: '1–20 з 100', pageSize: 20 });
     });
   }
 
@@ -1639,17 +1865,15 @@ describe('ProductCatalog', () => {
       await settle();
 
       const label = (value: 'true' | 'false'): string => (value === 'true' ? 'Так' : 'Ні');
-      await (await publishedSelect('publishedProm')).clickOptions({ text: label(prom) });
-      await (await publishedSelect('publishedOlx')).clickOptions({ text: label(olx) });
-      submitFilters();
-      await tick();
-
-      const request = expectRequest();
-      expect(request.request.params.get('publishedProm')).toBe(prom);
-      expect(request.request.params.get('publishedOlx')).toBe(olx);
-
-      request.flush(PAGE);
-      await settle();
+      await choose(await publishedSelect('publishedProm'), label(prom), (request) => {
+        expect(request.request.params.get('publishedProm')).toBe(prom);
+        request.flush(PAGE);
+      });
+      await choose(await publishedSelect('publishedOlx'), label(olx), (request) => {
+        expect(request.request.params.get('publishedProm')).toBe(prom);
+        expect(request.request.params.get('publishedOlx')).toBe(olx);
+        request.flush(PAGE);
+      });
     });
   }
 
@@ -1814,7 +2038,7 @@ describe('ProductCatalog', () => {
     const filterButtons = [
       ...element.querySelectorAll<HTMLButtonElement>('.filters__actions button'),
     ];
-    expect(filterButtons.map((button) => button.disabled)).toEqual([true, true]);
+    expect(filterButtons.map((button) => button.disabled)).toEqual([true]);
 
     expectRequest().flush({ ...PAGE, page: 2, total: 100 });
     await moving;
