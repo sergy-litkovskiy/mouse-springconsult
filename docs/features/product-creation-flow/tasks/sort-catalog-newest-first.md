@@ -57,11 +57,11 @@ updated_at: "2026-10-07"
     Sort:
       name: sort
       in: query
-      schema: { type: string, enum: [titleProm, titleOlx, price], default: titleProm }
+      schema: { type: string, enum: [titleProm, titleOlx, price, createdAt], default: createdAt }
     Direction:
       name: direction
       in: query
-      schema: { type: string, enum: [asc, desc], default: asc }
+      schema: { type: string, enum: [asc, desc], default: desc }
 ```
 
 Крок 6 чекліста переписує обидва рядки `schema`: `Sort` отримує `createdAt` в `enum` і

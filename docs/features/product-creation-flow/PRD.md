@@ -1107,6 +1107,26 @@ UX-аудит 2026-10-02, [T87](tasks/show-olx-title-under-prom-title.md).
 **When** `user` відкриває картку
 **Then** рядок закінчується на «· вартість невідома», а токени показуються як раніше
 
+### AC-92 (US-07) — happy path
+
+Запит 2026-10-07, [T101](tasks/sort-catalog-newest-first.md).
+
+**Given** `user` на першій сторінці каталогу без фільтрів і без `sort` в адресі
+**When** він створює нову картку й зберігає її
+**Then** нова картка стоїть першим рядком таблиці, а запит до `api` іде з `sort=createdAt&direction=desc`
+
+### AC-92 (US-07) — edge case
+
+**Given** `user` клікнув заголовок «Ціна», і адреса містить `sort=price`
+**When** він тисне «Скинути»
+**Then** таблиця знову йде від найсвіжішої картки, в адресі немає ні `sort`, ні `direction`; збережена адреса `/products?sort=titleProm` відкривається з порядком за назвою Prom
+
+### AC-92 (US-07) — error
+
+**Given** запит до `api` в обхід форми
+**When** `GET /products?sort=created_at`
+**Then** відповідь `400` з полем `sort` у `details`
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
