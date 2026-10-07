@@ -47,6 +47,7 @@ const SORT_COLUMNS: Readonly<Record<ProductSortField, string>> = {
   titleProm: 'product.titleProm',
   titleOlx: 'product.titleOlx',
   price: 'product.price',
+  createdAt: 'product.createdAt',
 };
 
 /**

@@ -421,7 +421,23 @@ export class ProductCatalog {
   protected resetFilters(): void {
     this.filters.reset();
     this.pickedCategories.set([]);
-    this.applyFilters();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: {
+        page: null,
+        title: null,
+        description: null,
+        priceMin: null,
+        priceMax: null,
+        category: null,
+        publishedProm: null,
+        publishedOlx: null,
+        ready: null,
+        sort: null,
+        direction: null,
+      },
+    });
   }
 
   protected pickCategory(category: string): void {
