@@ -107,9 +107,12 @@ export function normalizePrice(value: string): string {
   return value.trim().replace(',', '.');
 }
 
+const priceFilterMinDigits = 2;
+
 export function isEnoughForPriceFilter(value: string): boolean {
   const price = normalizePrice(value);
-  return productConstraints.pricePattern.test(price) && /^\d{2}/.test(price);
+  const wholeDigits = price.split('.')[0]?.length ?? 0;
+  return productConstraints.pricePattern.test(price) && wholeDigits >= priceFilterMinDigits;
 }
 
 export function priceFromField(value: string): string {
