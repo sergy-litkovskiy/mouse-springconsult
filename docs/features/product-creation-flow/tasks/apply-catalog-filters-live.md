@@ -1,7 +1,7 @@
 ---
 id: T102
 title: "Фільтри каталогу застосовуються самі, без кнопки «Застосувати»"
-status: Blocked
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -115,10 +115,10 @@ AC-93 нове; до [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-93: селекти, категорія, ціна й «Скинути» покрито тестами з фейковим часом.
-- [ ] Тести `web` і `lint` зелені, `pw` пройдено.
-- [ ] `PRD.md §5` оновлено.
-- [ ] Коміт: `feat(web): apply catalogue filters as they change`.
+- [x] AC-93: селекти, категорія, ціна й «Скинути» покрито тестами з фейковим часом.
+- [x] Тести `web` і `lint` зелені, `pw` пройдено.
+- [x] `PRD.md §5` оновлено.
+- [x] Коміт: `feat(web): apply catalogue filters as they change`.
 
 ## Links
 
