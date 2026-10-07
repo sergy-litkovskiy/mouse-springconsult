@@ -1,7 +1,7 @@
 ---
 id: T99
 title: "«Згенерувати все» шукає ціну за щойно згенерованими текстами"
-status: Blocked
+status: Deferred
 delivery: 4
 gate_profile: implementation
 owner: "Serhii"
@@ -9,10 +9,15 @@ estimate: S
 context_budget: 2400
 blocked_by: [T98]
 blocks: [T100]
-updated_at: "2026-10-05"
+updated_at: "2026-10-07"
 ---
 
 # T99 — «Згенерувати все» шукає ціну за щойно згенерованими текстами
+
+> **Відкладено 2026-10-07 рішенням власника** ([ADR 0019](../adr/0019-keep-price-search-out-of-generate-all.md)).
+> Замір [T96](decide-price-range-in-generate-all.md) дав no-go: вилку не знайдено в трьох викликах із
+> чотирьох, а вартість одного «Згенерувати все» з ціною сягала $0,17–0,36 при стелі $0,15. Нижче —
+> story на момент відкладення, без змін.
 
 ## Context
 

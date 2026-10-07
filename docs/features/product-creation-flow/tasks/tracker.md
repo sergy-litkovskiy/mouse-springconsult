@@ -18,7 +18,8 @@ stage: "13"
 
 ## Зараз
 
-**Готові до старту:** T96.
+**Готові до старту:** немає — відкритих задач не лишилось.
+T96 закрито 2026-10-07 з no-go ([ADR 0019](../adr/0019-keep-price-search-out-of-generate-all.md)): пошук ціни в «Згенерувати все» не повертається, T97–T100 відкладено (`Deferred`).
 T102 закрито 2026-10-07 й нічого не розблокувала: від неї ніщо не залежить.
 T101 закрито 2026-10-07: вона розблокувала T102 — остання з її `blocked_by`.
 T101–T102 заведено 2026-10-07 (поставка 3): каталог за замовчуванням — найсвіжіші зверху, фільтри застосовуються самі. Ребро T101 → T102 — спільні `product-catalog.*`.
@@ -175,17 +176,17 @@ T34–T49 — доопрацювання за запитами 17–18 вере�
 ## Поставка 4 — вартість і ціна від AI
 
 Запит 2026-10-05. Ребро T95 → T100 — спільні `product-form.*`, а не смисл; решта ребер змістовні,
-деталі — в [_epic.md](_epic.md). Якщо замір T96 дасть no-go, T97–T100 стають `Deferred`.
+деталі — в [_epic.md](_epic.md). Замір T96 дав no-go ([ADR 0019](../adr/0019-keep-price-search-out-of-generate-all.md)), тож T97–T100 — `Deferred`.
 
 | ID | Задача | Статус | blocked_by | Est | Закрито |
 |----|--------|--------|------------|-----|---------|
 | T94 | [Вартість картки в доларах в `api`](add-card-cost-in-usd.md) | Done | — | S | 2026-10-06 |
 | T95 | [Вартість картки в доларах у формі](show-card-cost-in-usd.md) | Done | T94 | XS | 2026-10-06 |
-| T96 | [Рішення: ціна в «Згенерувати все»](decide-price-range-in-generate-all.md) | Todo | — | S | — |
-| T97 | [Кількість пошуків у запуску](record-web-searches-per-run.md) | Blocked | T94, T96 | S | — |
-| T98 | [Пошук ціни падає видимо](make-price-lookup-fail-loudly.md) | Blocked | T96, T97 | S | — |
-| T99 | [Ціна за згенерованими текстами](find-price-from-generated-texts.md) | Blocked | T98 | S | — |
-| T100 | [Вилка — підказкою під ціною](show-ai-price-range-as-hint.md) | Blocked | T95, T99 | S | — |
+| T96 | [Рішення: ціна в «Згенерувати все»](decide-price-range-in-generate-all.md) | Done | — | S | 2026-10-07 |
+| T97 | [Кількість пошуків у запуску](record-web-searches-per-run.md) | Deferred | T94, T96 | S | — |
+| T98 | [Пошук ціни падає видимо](make-price-lookup-fail-loudly.md) | Deferred | T96, T97 | S | — |
+| T99 | [Ціна за згенерованими текстами](find-price-from-generated-texts.md) | Deferred | T98 | S | — |
+| T100 | [Вилка — підказкою під ціною](show-ai-price-range-as-hint.md) | Deferred | T95, T99 | S | — |
 
 ## Спільний DoD
 
