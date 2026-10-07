@@ -1178,6 +1178,21 @@ describe('ProductCatalog', () => {
       );
     });
 
+    it('applies no upper bound below a lower bound held back from a shorter field', async () => {
+      await open('/products?priceMin=100');
+      expectRequest().flush(PAGE);
+      await settle();
+      type('priceMin', '1');
+      await waitOutDebounce();
+
+      type('priceMax', '50');
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('priceMin')).toBe('100');
+      expect(urlParam('priceMax')).toBeUndefined();
+    });
+
     it('keeps a bound too short to apply in its field while another filter applies', async () => {
       await open();
       expectRequest().flush(PAGE);
@@ -1393,6 +1408,39 @@ describe('ProductCatalog', () => {
 
       http.expectNone((request) => request.url === '/api/products');
       expect(urlParam('title')).toBe('миш');
+    });
+
+    it('keeps the space the admin typed after an applied title', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('title', 'red ');
+      await waitOutDebounce();
+      expect(urlParam('title')).toBe('red');
+      expectRequest().flush(PAGE);
+      await settle();
+
+      expect(element.querySelector<HTMLInputElement>('[formcontrolname="title"]')?.value).toBe(
+        'red ',
+      );
+    });
+
+    it('drops a title still waiting out the pause when the filters are reset', async () => {
+      await open('/products?ready=true');
+      expectRequest().flush(PAGE);
+      await settle();
+
+      type('title', 'миша');
+      resetButton()?.click();
+      await tick();
+      expectRequest().flush(PAGE);
+      await settle();
+      await waitOutDebounce();
+
+      http.expectNone((request) => request.url === '/api/products');
+      expect(urlParam('title')).toBeUndefined();
+      expect(element.querySelector<HTMLInputElement>('[formcontrolname="title"]')?.value).toBe('');
     });
 
     it('opens a saved address with a two-character title or description without either filter', async () => {

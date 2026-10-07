@@ -107,6 +107,11 @@ export function normalizePrice(value: string): string {
   return value.trim().replace(',', '.');
 }
 
+/** What a filter field's text amounts to once applied, so the two can be compared. */
+export function filterFieldValue(name: string, text: string): string {
+  return name === 'priceMin' || name === 'priceMax' ? normalizePrice(text) : text.trim();
+}
+
 const priceFilterMinDigits = 2;
 
 export function isEnoughForPriceFilter(value: string): boolean {

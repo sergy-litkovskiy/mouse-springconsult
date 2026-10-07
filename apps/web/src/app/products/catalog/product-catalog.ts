@@ -55,6 +55,7 @@ import { apiErrorMessage } from '../../api-error-message';
 import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
+  filterFieldValue,
   isEnoughForPriceFilter,
   normalizePrice,
   priceBound,
@@ -367,8 +368,12 @@ export class ProductCatalog {
       };
       const before = previous;
       previous = applied;
+      // A field that already reads as the applied value keeps its text: rewriting `red ` as
+      // `red` while the admin types would eat the space before the next word.
       const moved = (Object.keys(value) as (keyof typeof value)[]).filter(
-        (name) => before === undefined || applied[name] !== before[name],
+        (name) =>
+          (before === undefined || applied[name] !== before[name]) &&
+          filterFieldValue(name, this.filters.controls[name].value) !== value[name],
       );
       // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
       // URL got backwards has to reach the message rather than only the validator.
@@ -381,7 +386,10 @@ export class ProductCatalog {
     for (const name of ['title', 'description'] as const) {
       this.filters.controls[name].valueChanges
         .pipe(debounceTime(300), takeUntilDestroyed())
-        .subscribe((value) => {
+        .subscribe(() => {
+          // Read when the pause ends, not when the key was pressed: a silenced reset in between
+          // has emptied the field without replacing the value waiting here.
+          const value = this.filters.controls[name].value;
           if (this.filters.controls[name].invalid) {
             return;
           }
@@ -473,6 +481,15 @@ export class ProductCatalog {
       }
     }
     if (next.priceMin === this.priceMin() && next.priceMax === this.priceMax()) {
+      return;
+    }
+    // The fields can agree while what would apply does not: a lower bound held back from a
+    // shorter field still stands against the new upper one.
+    if (
+      next.priceMin !== undefined &&
+      next.priceMax !== undefined &&
+      Number(next.priceMin) > Number(next.priceMax)
+    ) {
       return;
     }
     this.applyFilter({ priceMin: next.priceMin ?? null, priceMax: next.priceMax ?? null });
