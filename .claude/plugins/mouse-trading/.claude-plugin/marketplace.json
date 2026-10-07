@@ -1,0 +1,19 @@
+{
+  "name": "mouse-trading",
+  "description": "Single-plugin marketplace: the feature-slice workflow for the mouse-springconsult admin panel.",
+  "owner": {
+    "name": "Serhii"
+  },
+  "plugins": [
+    {
+      "name": "mouse-trading",
+      "version": "0.5.0",
+      "description": "Plans, scaffolds and ships an end-to-end feature slice in the mouse-springconsult modular monolith.",
+      "author": {
+        "name": "Serhii"
+      },
+      "category": "workflow",
+      "source": "./"
+    }
+  ]
+}
