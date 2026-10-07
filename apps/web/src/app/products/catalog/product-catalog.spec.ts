@@ -232,8 +232,8 @@ describe('ProductCatalog', () => {
 
     expect(request.request.params.get('page')).toBe('1');
     expect(request.request.params.get('pageSize')).toBe('20');
-    expect(request.request.params.get('sort')).toBe('titleProm');
-    expect(request.request.params.get('direction')).toBe('asc');
+    expect(request.request.params.get('sort')).toBe('createdAt');
+    expect(request.request.params.get('direction')).toBe('desc');
     // An empty filter is not sent at all: the backend would reject an empty string.
     expect(request.request.params.has('title')).toBe(false);
 
@@ -270,8 +270,8 @@ describe('ProductCatalog', () => {
 
     expect(request.request.params.get('page')).toBe('1');
     expect(request.request.params.get('pageSize')).toBe('20');
-    expect(request.request.params.get('sort')).toBe('titleProm');
-    expect(request.request.params.get('direction')).toBe('asc');
+    expect(request.request.params.get('sort')).toBe('createdAt');
+    expect(request.request.params.get('direction')).toBe('desc');
 
     request.flush(PAGE);
     await settle();
@@ -1267,6 +1267,30 @@ describe('ProductCatalog', () => {
     expect(await (await readySelect()).getValueText()).toBe('Всі');
   });
 
+  it('drops the sort a header click put into the URL on reset and asks for the newest first', async () => {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    element.querySelector<HTMLElement>('th.mat-column-price')?.click();
+    await tick();
+    expect(TestBed.inject(Router).url).toContain('sort=price');
+    expectRequest().flush(PAGE);
+    await settle();
+
+    [...element.querySelectorAll<HTMLButtonElement>('.filters__actions button')]
+      .find((button) => button.textContent.trim() === 'Скинути')
+      ?.click();
+    await tick();
+
+    expect(TestBed.inject(Router).url).toBe('/products');
+    const request = expectRequest();
+    expect(request.request.params.get('sort')).toBe('createdAt');
+    expect(request.request.params.get('direction')).toBe('desc');
+    request.flush(PAGE);
+    await settle();
+  });
+
   it('puts the readiness select back in line with the address on Back', async () => {
     await open('/products?ready=true');
     expectRequest().flush(PAGE);
@@ -1419,6 +1443,31 @@ describe('ProductCatalog', () => {
     await settle();
 
     expect(element.textContent).toContain('Знайдено: 3');
+  });
+
+  it('shows a card created from the default view as the first row', async () => {
+    const created: ProductListItem = {
+      ...KEYBOARD,
+      id: '77777777-7777-4777-8777-777777777777',
+      titleProm: 'Навушники Sony WH-1000XM4',
+      createdAt: '2026-10-07T09:00:00.000Z',
+      updatedAt: '2026-10-07T09:00:00.000Z',
+    };
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    createButton()?.click();
+    await settle();
+    await closeDialog(true);
+
+    const request = expectRequest();
+    expect(request.request.params.get('sort')).toBe('createdAt');
+    expect(request.request.params.get('direction')).toBe('desc');
+    request.flush({ ...PAGE, items: [created, MOUSE, KEYBOARD], total: 3 });
+    await settle();
+
+    expect(rows()[0]?.textContent).toContain(created.titleProm);
   });
 
   it('keeps the page as it is when the form closes without changes', async () => {

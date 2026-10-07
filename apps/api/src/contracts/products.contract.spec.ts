@@ -16,8 +16,16 @@ describe('product list query contract', () => {
 
     assert.equal(parsed.page, productPagination.defaultPage);
     assert.equal(parsed.pageSize, productPagination.defaultPageSize);
-    assert.equal(parsed.sort, 'titleProm');
-    assert.equal(parsed.direction, 'asc');
+    assert.equal(parsed.sort, 'createdAt');
+    assert.equal(parsed.direction, 'desc');
+  });
+
+  it('takes createdAt as a sort column', () => {
+    const result = productListQuerySchema.safeParse({ sort: 'createdAt', direction: 'desc' });
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.sort, 'createdAt');
+    assert.equal(result.data.direction, 'desc');
   });
 
   it('coerces the numbers a querystring delivers as strings', () => {
@@ -87,7 +95,9 @@ describe('product list query contract', () => {
 
   it('refuses a sort column that is not on the list', () => {
     // The value ends up in an ORDER BY, so an open string has no business getting here.
-    assert.equal(productListQuerySchema.safeParse({ sort: 'createdAt' }).success, false);
+    const column = productListQuerySchema.safeParse({ sort: 'created_at' });
+    assert.equal(column.success, false);
+    assert.equal(column.error.issues[0]?.path[0], 'sort');
     assert.equal(productListQuerySchema.safeParse({ direction: 'sideways' }).success, false);
   });
 

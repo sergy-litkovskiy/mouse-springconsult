@@ -252,6 +252,36 @@ describe('product repository (postgres)', () => {
     );
   });
 
+  it('lists the cards from the newest to the oldest by creation time', async () => {
+    // Insertion order is neither the expected order nor its reverse, so neither the id
+    // tie-breaker nor a dropped direction can produce it by accident.
+    const older = await seedProduct({ titleProm: 'Б' });
+    const newest = await seedProduct({ titleProm: 'В' });
+    const oldest = await seedProduct({ titleProm: 'А' });
+    for (const [id, createdAt] of [
+      [older, '2026-09-02T10:00:00.000Z'],
+      [newest, '2026-09-03T10:00:00.000Z'],
+      [oldest, '2026-09-01T10:00:00.000Z'],
+    ] as const) {
+      await dataSource.query(`update ${PRODUCTS_TABLE} set created_at = $2 where id = $1`, [
+        id,
+        createdAt,
+      ]);
+    }
+
+    const page = await products.list({
+      ...BASE_CRITERIA,
+      // Through string: the column is what this test asks the sort list to grow.
+      sort: 'createdAt' as string as ProductListCriteria['sort'],
+      direction: 'desc',
+    });
+
+    assert.deepEqual(
+      page.items.map((product) => product.id),
+      [newest, older, oldest],
+    );
+  });
+
   it('attaches the gallery of every card in position order', async () => {
     const withGallery = await seedProduct({ titleProm: 'З галереєю' });
     const withoutGallery = await seedProduct({ titleProm: 'Без галереї' });
