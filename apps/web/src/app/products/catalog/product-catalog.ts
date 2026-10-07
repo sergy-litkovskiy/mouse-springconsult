@@ -32,7 +32,7 @@ import { type MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, type Params, Router } from '@angular/router';
 import { catchError, debounceTime, firstValueFrom, map, of } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
@@ -384,11 +384,7 @@ export class ProductCatalog {
           if ((cleaned === '' ? undefined : cleaned) === this[name]()) {
             return;
           }
-          void this.router.navigate([], {
-            relativeTo: this.route,
-            queryParamsHandling: 'merge',
-            queryParams: { page: null, [name]: asQueryParam(value) },
-          });
+          this.applyFilter({ [name]: asQueryParam(value) });
         });
     }
 
@@ -408,11 +404,7 @@ export class ProductCatalog {
           if ((price === '' ? undefined : price) === this[name]()) {
             return;
           }
-          void this.router.navigate([], {
-            relativeTo: this.route,
-            queryParamsHandling: 'merge',
-            queryParams: { page: null, [name]: asQueryParam(price) },
-          });
+          this.applyFilter({ [name]: asQueryParam(price) });
         });
     }
 
@@ -421,11 +413,7 @@ export class ProductCatalog {
         if (value === flagControlValue(this[name]())) {
           return;
         }
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParamsHandling: 'merge',
-          queryParams: { page: null, [name]: asQueryParam(value) },
-        });
+        this.applyFilter({ [name]: asQueryParam(value) });
       });
     }
   }
@@ -457,21 +445,22 @@ export class ProductCatalog {
     const categories = [...this.pickedCategories(), category];
     this.pickedCategories.set(categories);
     this.filters.controls.category.setValue('');
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParamsHandling: 'merge',
-      queryParams: { page: null, category: categories },
-    });
+    this.applyFilter({ category: categories });
   }
 
   protected removeCategory(category: string): void {
     const categories = this.pickedCategories().filter((item) => item !== category);
     this.pickedCategories.set(categories);
+    // Not an empty `category=`: the API answers that with 400.
+    this.applyFilter({ category: categories.length === 0 ? null : categories });
+  }
+
+  /** A new filter set means a new result set, so the paginator starts over. */
+  private applyFilter(queryParams: Params): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParamsHandling: 'merge',
-      // Not an empty `category=`: the API answers that with 400.
-      queryParams: { page: null, category: categories.length === 0 ? null : categories },
+      queryParams: { ...queryParams, page: null },
     });
   }
 
