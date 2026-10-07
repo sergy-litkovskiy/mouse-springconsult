@@ -55,6 +55,7 @@ import { apiErrorMessage } from '../../api-error-message';
 import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
+  isEnoughForPriceFilter,
   normalizePrice,
   priceBound,
   priceFieldValue,
@@ -366,9 +367,9 @@ export class ProductCatalog {
       });
     });
 
-    // The two text fields apply themselves once typing pauses; the rest of the panel waits for
-    // the button. A value equal to the applied one is skipped: the effect above writes the URL
-    // back into the form, and navigating on that echo would drop the page the admin is on.
+    // Every field applies itself, the typed ones once typing pauses. A value equal to the applied
+    // one is skipped: the effect above writes the URL back into the form, and navigating on that
+    // echo would drop the page the admin is on.
     for (const name of ['title', 'description'] as const) {
       this.filters.controls[name].valueChanges
         .pipe(debounceTime(300), takeUntilDestroyed())
@@ -390,36 +391,48 @@ export class ProductCatalog {
           });
         });
     }
-  }
 
-  protected applyFilters(): void {
-    if (this.filters.invalid) {
-      this.filters.markAllAsTouched();
-      return;
+    // A one-digit bound is skipped while typing, as almost every price passes it; a saved
+    // address with one still filters, since the URL goes through the input transform instead.
+    for (const name of ['priceMin', 'priceMax'] as const) {
+      this.filters.controls[name].valueChanges
+        .pipe(debounceTime(300), takeUntilDestroyed())
+        .subscribe((value) => {
+          if (this.filters.hasError('priceRange')) {
+            return;
+          }
+          const price = normalizePrice(value);
+          if (price !== '' && !isEnoughForPriceFilter(price)) {
+            return;
+          }
+          if ((price === '' ? undefined : price) === this[name]()) {
+            return;
+          }
+          void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParamsHandling: 'merge',
+            queryParams: { page: null, [name]: asQueryParam(price) },
+          });
+        });
     }
 
-    const value = this.filters.getRawValue();
-    const categories = this.pickedCategories();
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParamsHandling: 'merge',
-      queryParams: {
-        // A new filter set means a new result set, so the paginator starts over.
-        page: null,
-        title: asQueryParam(value.title),
-        description: asQueryParam(value.description),
-        priceMin: asQueryParam(normalizePrice(value.priceMin)),
-        priceMax: asQueryParam(normalizePrice(value.priceMax)),
-        category: categories.length === 0 ? null : categories,
-        publishedProm: asQueryParam(value.publishedProm),
-        publishedOlx: asQueryParam(value.publishedOlx),
-        ready: asQueryParam(value.ready),
-      },
-    });
+    for (const name of ['publishedProm', 'publishedOlx', 'ready'] as const) {
+      this.filters.controls[name].valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+        if (value === flagControlValue(this[name]())) {
+          return;
+        }
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParamsHandling: 'merge',
+          queryParams: { page: null, [name]: asQueryParam(value) },
+        });
+      });
+    }
   }
 
   protected resetFilters(): void {
-    this.filters.reset();
+    // Silenced, or each select would apply its own cleared value: one navigation, not four.
+    this.filters.reset(undefined, { emitEvent: false });
     this.pickedCategories.set([]);
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -441,12 +454,25 @@ export class ProductCatalog {
   }
 
   protected pickCategory(category: string): void {
-    this.pickedCategories.update((picked) => [...picked, category]);
+    const categories = [...this.pickedCategories(), category];
+    this.pickedCategories.set(categories);
     this.filters.controls.category.setValue('');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { page: null, category: categories },
+    });
   }
 
   protected removeCategory(category: string): void {
-    this.pickedCategories.update((picked) => picked.filter((item) => item !== category));
+    const categories = this.pickedCategories().filter((item) => item !== category);
+    this.pickedCategories.set(categories);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      // Not an empty `category=`: the API answers that with 400.
+      queryParams: { page: null, category: categories.length === 0 ? null : categories },
+    });
   }
 
   protected changePage(event: PageEvent): void {

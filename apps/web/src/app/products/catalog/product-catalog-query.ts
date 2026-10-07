@@ -108,7 +108,8 @@ export function normalizePrice(value: string): string {
 }
 
 export function isEnoughForPriceFilter(value: string): boolean {
-  throw new Error('Not implemented');
+  const price = normalizePrice(value);
+  return productConstraints.pricePattern.test(price) && /^\d{2}/.test(price);
 }
 
 export function priceFromField(value: string): string {
