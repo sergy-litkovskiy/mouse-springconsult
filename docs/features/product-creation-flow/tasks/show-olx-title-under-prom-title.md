@@ -54,7 +54,7 @@ T80 міряє висоти вже після T79. Ширину колонок �
       operationId: listProducts
         titleProm: { type: string, maxLength: 200 }
         titleOlx: { type: string, maxLength: 200 }
-      schema: { type: string, enum: [titleProm, titleOlx, price], default: titleProm }
+      schema: { type: string, enum: [titleProm, titleOlx, price, createdAt], default: createdAt }
 ```
 
 ## Acceptance criteria

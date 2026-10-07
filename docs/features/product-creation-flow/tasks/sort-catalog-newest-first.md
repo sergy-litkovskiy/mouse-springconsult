@@ -1,7 +1,7 @@
 ---
 id: T101
 title: "Каталог за замовчуванням — найсвіжіші картки зверху"
-status: Todo
+status: Done
 delivery: 3
 gate_profile: implementation
 owner: "Serhii"
@@ -57,11 +57,11 @@ updated_at: "2026-10-07"
     Sort:
       name: sort
       in: query
-      schema: { type: string, enum: [titleProm, titleOlx, price], default: titleProm }
+      schema: { type: string, enum: [titleProm, titleOlx, price, createdAt], default: createdAt }
     Direction:
       name: direction
       in: query
-      schema: { type: string, enum: [asc, desc], default: asc }
+      schema: { type: string, enum: [asc, desc], default: desc }
 ```
 
 Крок 6 чекліста переписує обидва рядки `schema`: `Sort` отримує `createdAt` в `enum` і
@@ -105,10 +105,10 @@ AC-92 нове; до [PRD §5](../PRD.md#5-acceptance-criteria) його вно�
 
 ## DoD
 
-- [ ] AC-92: дефолтний порядок і «Скинути» покрито тестами, порядок на живій базі доведено.
-- [ ] `api` і `web`: тести, `typecheck`, `lint` зелені.
-- [ ] `openapi.yaml` і `PRD.md §5` оновлено.
-- [ ] Коміт: `feat(products): sort the catalogue newest first by default`.
+- [x] AC-92: дефолтний порядок і «Скинути» покрито тестами, порядок на живій базі доведено.
+- [x] `api` і `web`: тести, `typecheck`, `lint` зелені.
+- [x] `openapi.yaml` і `PRD.md §5` оновлено.
+- [x] Коміт: `feat(products): sort the catalogue newest first by default`.
 
 ## Links
 

@@ -508,11 +508,11 @@ components:
     Sort:
       name: sort
       in: query
-      schema: { type: string, enum: [titleProm, titleOlx, price], default: titleProm }
+      schema: { type: string, enum: [titleProm, titleOlx, price, createdAt], default: createdAt }
     Direction:
       name: direction
       in: query
-      schema: { type: string, enum: [asc, desc], default: asc }
+      schema: { type: string, enum: [asc, desc], default: desc }
 
   schemas:
     ErrorResponse:

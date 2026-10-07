@@ -43,13 +43,13 @@ export const productConditions = ['new', 'used'] as const;
 export type ProductCondition = (typeof productConditions)[number];
 
 /** A closed list rather than a free-form string: the value goes into an ORDER BY. */
-export const productSortFields = ['titleProm', 'titleOlx', 'price'] as const;
+export const productSortFields = ['titleProm', 'titleOlx', 'price', 'createdAt'] as const;
 export type ProductSortField = (typeof productSortFields)[number];
 
 export const productSortDirections = ['asc', 'desc'] as const;
 export type ProductSortDirection = (typeof productSortDirections)[number];
 
 export const productSortDefaults = {
-  field: 'titleProm',
-  direction: 'asc',
+  field: 'createdAt',
+  direction: 'desc',
 } as const satisfies { field: ProductSortField; direction: ProductSortDirection };
