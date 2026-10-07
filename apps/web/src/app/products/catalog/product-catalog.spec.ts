@@ -1153,6 +1153,62 @@ describe('ProductCatalog', () => {
       expect(urlParam('priceMax')).toBeUndefined();
     });
 
+    it('applies the waiting upper bound once the lower one is lowered below it', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+      await applyLowerBound('500');
+      type('priceMax', '100');
+      await waitOutDebounce();
+
+      type('priceMin', '50');
+      await waitOutDebounce();
+
+      const request = expectRequest();
+      expect(request.request.params.get('priceMin')).toBe('50');
+      expect(request.request.params.get('priceMax')).toBe('100');
+      request.flush(PAGE);
+      await settle();
+      await waitOutDebounce();
+
+      http.expectNone((pending) => pending.url === '/api/products');
+      expect(urlParam('priceMax')).toBe('100');
+      expect(element.querySelector<HTMLInputElement>('[formcontrolname="priceMax"]')?.value).toBe(
+        '100',
+      );
+    });
+
+    it('keeps a bound too short to apply in its field while another filter applies', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+      type('priceMin', '5');
+      await waitOutDebounce();
+
+      await choose(await readySelect(), 'Так', (request) => {
+        request.flush(PAGE);
+      });
+
+      expect(element.querySelector<HTMLInputElement>('[formcontrolname="priceMin"]')?.value).toBe(
+        '5',
+      );
+    });
+
+    it('drops the range message together with the bounds on reset', async () => {
+      await open();
+      expectRequest().flush(PAGE);
+      await settle();
+      type('priceMin', '5');
+      type('priceMax', '3');
+      await waitOutDebounce();
+      expect(element.textContent).toContain('не може бути меншою');
+
+      resetButton()?.click();
+      await settle();
+
+      expect(element.textContent).not.toContain('не може бути меншою');
+    });
+
     it('makes one navigation on reset, dropping every filter and the sort', async () => {
       await open('/products?category=Миші&sort=price&direction=asc');
       expectRequest().flush(PAGE);

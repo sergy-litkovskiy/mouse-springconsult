@@ -350,12 +350,12 @@ export class ProductCatalog {
     afterRenderEffect(() => this.conditionSelect()?.focus());
 
     // After a reload, or a Back out of a filtered page, the fields have to agree with the
-    // rows underneath them.
+    // rows underneath them. Only the fields whose applied value moved are written: applying one
+    // filter must not wipe what the admin is still typing into another.
+    let previous: ReturnType<typeof this.appliedFilters> | undefined;
     effect(() => {
       const applied = this.appliedFilters();
-      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
-      // URL got backwards has to reach the message rather than only the validator.
-      this.filters.setValue({
+      const value = {
         title: applied.title ?? '',
         description: applied.description ?? '',
         priceMin: applied.priceMin ?? '',
@@ -364,7 +364,15 @@ export class ProductCatalog {
         publishedProm: flagControlValue(applied.publishedProm),
         publishedOlx: flagControlValue(applied.publishedOlx),
         ready: flagControlValue(applied.ready),
-      });
+      };
+      const before = previous;
+      previous = applied;
+      const moved = (Object.keys(value) as (keyof typeof value)[]).filter(
+        (name) => before === undefined || applied[name] !== before[name],
+      );
+      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
+      // URL got backwards has to reach the message rather than only the validator.
+      this.filters.patchValue(Object.fromEntries(moved.map((name) => [name, value[name]])));
     });
 
     // Every field applies itself, the typed ones once typing pauses. A value equal to the applied
@@ -393,18 +401,8 @@ export class ProductCatalog {
     for (const name of ['priceMin', 'priceMax'] as const) {
       this.filters.controls[name].valueChanges
         .pipe(debounceTime(300), takeUntilDestroyed())
-        .subscribe((value) => {
-          if (this.filters.hasError('priceRange')) {
-            return;
-          }
-          const price = normalizePrice(value);
-          if (price !== '' && !isEnoughForPriceFilter(price)) {
-            return;
-          }
-          if ((price === '' ? undefined : price) === this[name]()) {
-            return;
-          }
-          this.applyFilter({ [name]: asQueryParam(price) });
+        .subscribe(() => {
+          this.applyPrices();
         });
     }
 
@@ -421,6 +419,8 @@ export class ProductCatalog {
   protected resetFilters(): void {
     // Silenced, or each select would apply its own cleared value: one navigation, not four.
     this.filters.reset(undefined, { emitEvent: false });
+    // The group alone re-emits, so `priceRangeInvalid` sees the cleared range and no select applies.
+    this.filters.updateValueAndValidity();
     this.pickedCategories.set([]);
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -453,6 +453,29 @@ export class ProductCatalog {
     this.pickedCategories.set(categories);
     // Not an empty `category=`: the API answers that with 400.
     this.applyFilter({ category: categories.length === 0 ? null : categories });
+  }
+
+  /**
+   * The bounds go together: one held back while the range was backwards has to follow once the
+   * other bound fixes it, and a bound too short to apply leaves the applied one standing.
+   */
+  private applyPrices(): void {
+    if (this.filters.hasError('priceRange')) {
+      return;
+    }
+    const next = { priceMin: this.priceMin(), priceMax: this.priceMax() };
+    for (const name of ['priceMin', 'priceMax'] as const) {
+      const price = normalizePrice(this.filters.controls[name].value);
+      if (price === '') {
+        next[name] = undefined;
+      } else if (isEnoughForPriceFilter(price)) {
+        next[name] = price;
+      }
+    }
+    if (next.priceMin === this.priceMin() && next.priceMax === this.priceMax()) {
+      return;
+    }
+    this.applyFilter({ priceMin: next.priceMin ?? null, priceMax: next.priceMax ?? null });
   }
 
   /** A new filter set means a new result set, so the paginator starts over. */
