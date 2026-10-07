@@ -1,6 +1,7 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import { productConstraints } from '@contracts/products-limits';
 import {
+  isEnoughForPriceFilter,
   normalizePrice,
   priceBound,
   priceFromField,
@@ -34,6 +35,20 @@ describe('priceBound', () => {
     expect(priceBound(new FormControl('235,50'))).toBeNull();
     for (const value of NOT_A_DECIMAL_COMMA) {
       expect(priceBound(new FormControl(value)), value).toEqual({ price: true });
+    }
+  });
+});
+
+describe('isEnoughForPriceFilter', () => {
+  it('takes a bound with at least two whole digits, written with a dot or a comma', () => {
+    for (const value of ['10', '1000', '10.5', '10,50', ' 25 ']) {
+      expect(isEnoughForPriceFilter(value), value).toBe(true);
+    }
+  });
+
+  it('takes no bound with one whole digit or of a shape the contract rejects', () => {
+    for (const value of ['1', '5.50', '1,5', '1000.555', ...NOT_A_DECIMAL_COMMA]) {
+      expect(isEnoughForPriceFilter(value), value).toBe(false);
     }
   });
 });

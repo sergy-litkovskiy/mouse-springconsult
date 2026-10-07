@@ -8,7 +8,7 @@
   </header>
 
   <mat-card class="catalog__filters" appearance="outlined">
-    <form class="filters" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
+    <form class="filters" [formGroup]="filters" novalidate>
       <mat-form-field
         class="filters__field filters__field--wide"
         appearance="outline"
@@ -128,7 +128,6 @@
       </mat-form-field>
 
       <div class="filters__actions">
-        <button matButton="filled" type="submit" [disabled]="loading()">Застосувати</button>
         <button matButton type="button" (click)="resetFilters()" [disabled]="loading()">
           Скинути
         </button>

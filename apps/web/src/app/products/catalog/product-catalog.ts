@@ -32,7 +32,7 @@ import { type MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, type Params, Router } from '@angular/router';
 import { catchError, debounceTime, firstValueFrom, map, of } from 'rxjs';
 import { apiErrorCodes } from '@contracts/error-codes';
 import type {
@@ -55,6 +55,8 @@ import { apiErrorMessage } from '../../api-error-message';
 import { ConfirmDialog, type ConfirmDialogData } from '../../confirm-dialog';
 import {
   asQueryParam,
+  filterFieldValue,
+  isEnoughForPriceFilter,
   normalizePrice,
   priceBound,
   priceFieldValue,
@@ -349,12 +351,12 @@ export class ProductCatalog {
     afterRenderEffect(() => this.conditionSelect()?.focus());
 
     // After a reload, or a Back out of a filtered page, the fields have to agree with the
-    // rows underneath them.
+    // rows underneath them. Only the fields whose applied value moved are written: applying one
+    // filter must not wipe what the admin is still typing into another.
+    let previous: ReturnType<typeof this.appliedFilters> | undefined;
     effect(() => {
       const applied = this.appliedFilters();
-      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
-      // URL got backwards has to reach the message rather than only the validator.
-      this.filters.setValue({
+      const value = {
         title: applied.title ?? '',
         description: applied.description ?? '',
         priceMin: applied.priceMin ?? '',
@@ -363,16 +365,31 @@ export class ProductCatalog {
         publishedProm: flagControlValue(applied.publishedProm),
         publishedOlx: flagControlValue(applied.publishedOlx),
         ready: flagControlValue(applied.ready),
-      });
+      };
+      const before = previous;
+      previous = applied;
+      // A field that already reads as the applied value keeps its text: rewriting `red ` as
+      // `red` while the admin types would eat the space before the next word.
+      const moved = (Object.keys(value) as (keyof typeof value)[]).filter(
+        (name) =>
+          (before === undefined || applied[name] !== before[name]) &&
+          filterFieldValue(name, this.filters.controls[name].value) !== value[name],
+      );
+      // The write is not silenced: `events` is what feeds `priceRangeInvalid`, so a range the
+      // URL got backwards has to reach the message rather than only the validator.
+      this.filters.patchValue(Object.fromEntries(moved.map((name) => [name, value[name]])));
     });
 
-    // The two text fields apply themselves once typing pauses; the rest of the panel waits for
-    // the button. A value equal to the applied one is skipped: the effect above writes the URL
-    // back into the form, and navigating on that echo would drop the page the admin is on.
+    // Every field applies itself, the typed ones once typing pauses. A value equal to the applied
+    // one is skipped: the effect above writes the URL back into the form, and navigating on that
+    // echo would drop the page the admin is on.
     for (const name of ['title', 'description'] as const) {
       this.filters.controls[name].valueChanges
         .pipe(debounceTime(300), takeUntilDestroyed())
-        .subscribe((value) => {
+        .subscribe(() => {
+          // Read when the pause ends, not when the key was pressed: a silenced reset in between
+          // has emptied the field without replacing the value waiting here.
+          const value = this.filters.controls[name].value;
           if (this.filters.controls[name].invalid) {
             return;
           }
@@ -383,43 +400,35 @@ export class ProductCatalog {
           if ((cleaned === '' ? undefined : cleaned) === this[name]()) {
             return;
           }
-          void this.router.navigate([], {
-            relativeTo: this.route,
-            queryParamsHandling: 'merge',
-            queryParams: { page: null, [name]: asQueryParam(value) },
-          });
+          this.applyFilter({ [name]: asQueryParam(value) });
         });
     }
-  }
 
-  protected applyFilters(): void {
-    if (this.filters.invalid) {
-      this.filters.markAllAsTouched();
-      return;
+    // A one-digit bound is skipped while typing, as almost every price passes it; a saved
+    // address with one still filters, since the URL goes through the input transform instead.
+    for (const name of ['priceMin', 'priceMax'] as const) {
+      this.filters.controls[name].valueChanges
+        .pipe(debounceTime(300), takeUntilDestroyed())
+        .subscribe(() => {
+          this.applyPrices();
+        });
     }
 
-    const value = this.filters.getRawValue();
-    const categories = this.pickedCategories();
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParamsHandling: 'merge',
-      queryParams: {
-        // A new filter set means a new result set, so the paginator starts over.
-        page: null,
-        title: asQueryParam(value.title),
-        description: asQueryParam(value.description),
-        priceMin: asQueryParam(normalizePrice(value.priceMin)),
-        priceMax: asQueryParam(normalizePrice(value.priceMax)),
-        category: categories.length === 0 ? null : categories,
-        publishedProm: asQueryParam(value.publishedProm),
-        publishedOlx: asQueryParam(value.publishedOlx),
-        ready: asQueryParam(value.ready),
-      },
-    });
+    for (const name of ['publishedProm', 'publishedOlx', 'ready'] as const) {
+      this.filters.controls[name].valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+        if (value === flagControlValue(this[name]())) {
+          return;
+        }
+        this.applyFilter({ [name]: asQueryParam(value) });
+      });
+    }
   }
 
   protected resetFilters(): void {
-    this.filters.reset();
+    // Silenced, or each select would apply its own cleared value: one navigation, not four.
+    this.filters.reset(undefined, { emitEvent: false });
+    // The group alone re-emits, so `priceRangeInvalid` sees the cleared range and no select applies.
+    this.filters.updateValueAndValidity();
     this.pickedCategories.set([]);
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -441,12 +450,58 @@ export class ProductCatalog {
   }
 
   protected pickCategory(category: string): void {
-    this.pickedCategories.update((picked) => [...picked, category]);
+    const categories = [...this.pickedCategories(), category];
+    this.pickedCategories.set(categories);
     this.filters.controls.category.setValue('');
+    this.applyFilter({ category: categories });
   }
 
   protected removeCategory(category: string): void {
-    this.pickedCategories.update((picked) => picked.filter((item) => item !== category));
+    const categories = this.pickedCategories().filter((item) => item !== category);
+    this.pickedCategories.set(categories);
+    // Not an empty `category=`: the API answers that with 400.
+    this.applyFilter({ category: categories.length === 0 ? null : categories });
+  }
+
+  /**
+   * The bounds go together: one held back while the range was backwards has to follow once the
+   * other bound fixes it, and a bound too short to apply leaves the applied one standing.
+   */
+  private applyPrices(): void {
+    if (this.filters.hasError('priceRange')) {
+      return;
+    }
+    const next = { priceMin: this.priceMin(), priceMax: this.priceMax() };
+    for (const name of ['priceMin', 'priceMax'] as const) {
+      const price = normalizePrice(this.filters.controls[name].value);
+      if (price === '') {
+        next[name] = undefined;
+      } else if (isEnoughForPriceFilter(price)) {
+        next[name] = price;
+      }
+    }
+    if (next.priceMin === this.priceMin() && next.priceMax === this.priceMax()) {
+      return;
+    }
+    // The fields can agree while what would apply does not: a lower bound held back from a
+    // shorter field still stands against the new upper one.
+    if (
+      next.priceMin !== undefined &&
+      next.priceMax !== undefined &&
+      Number(next.priceMin) > Number(next.priceMax)
+    ) {
+      return;
+    }
+    this.applyFilter({ priceMin: next.priceMin ?? null, priceMax: next.priceMax ?? null });
+  }
+
+  /** A new filter set means a new result set, so the paginator starts over. */
+  private applyFilter(queryParams: Params): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParamsHandling: 'merge',
+      queryParams: { ...queryParams, page: null },
+    });
   }
 
   protected changePage(event: PageEvent): void {
