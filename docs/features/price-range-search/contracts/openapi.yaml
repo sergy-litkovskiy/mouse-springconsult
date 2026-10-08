@@ -1,0 +1,626 @@
+openapi: 3.1.0
+info:
+  title: price-range-search API
+  version: 0.1.0
+  description: |
+    Вилку цін на вживані речі user зараз шукає в зовнішньому AI-чаті: 1–3 хв на картку, і
+    джерела в картці не лишаються ([idea-brief](../idea-brief.md) §2). Фіча переносить
+    пошук у картку. Gemini з пошуком Google знаходить вилку з оголошеннями-джерелами, вона
+    лягає пропозицією поля `price`, а єдину ціну картки user вписує сам (PRD AC-06).
+
+    Нових маршрутів немає. Контракт описує дельту трьох наявних маршрутів з
+    [контракту product-creation-flow](../../product-creation-flow/contracts/openapi.yaml):
+
+    - **старт запуску** — тіло `scope: price` несе назви й описи з чернетки форми
+      ([ADR 0021](../adr/0021-search-prices-from-the-run-input-not-the-saved-card.md));
+      умова запуску — назва й опис, а не лише назва (AC-02);
+    - **стан і список запусків** — два нові коди невдачі пошуку
+      ([ADR 0023](../adr/0023-classify-price-search-failures-and-never-retry-them.md));
+    - **читання картки** — пропозиція `price` несе `listings`
+      ([ADR 0022](../adr/0022-keep-price-listings-inside-the-price-suggestion.md)).
+
+    Незмінні частини (`Product`, параметри, спільні відповіді помилок) взято з контракту
+    product-creation-flow через `$ref`, а не скопійовано.
+
+    Джерела: [PRD](../PRD.md) · [data-model.md](../data-model.md) · [sad.md §6](../sad.md).
+    Аудит розбіжностей — [api-sync-report.md](./api-sync-report.md).
+
+servers:
+  - url: https://mouse.springconsult.com.ua/api
+    description: Production (Caddy handle_path /api/* → api:3000, префікс знято)
+  - url: http://localhost:4200/api
+    description: Local dev (ng serve proxy.conf.json, той самий префікс)
+
+security:
+  - sessionCookie: []
+
+tags:
+  - name: preparation
+    description: Запуски підготовки AI; `price` і ціна в `both` тепер ідуть через Gemini
+  - name: products
+    description: Картка товару — лише читання з пропозиціями
+
+paths:
+  /products/{productId}:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+
+    get:
+      tags: [products]
+      summary: Отримати картку з останньою пропозицією кожного поля
+      description: >-
+        Маршрут той самий. Змінюється лише форма `value` пропозиції `field: price`: поруч з
+        межами вилки — оголошення-джерела (AC-01, AC-05). Дата пошуку — `createdAt`
+        пропозиції, окремого `searchedAt` немає (ADR 0022 №2). Після `succeeded` запуску
+        `price` чи `both` фронт перечитує картку саме цим маршрутом (sad.md сценарії 1, 2).
+      operationId: getProduct
+      responses:
+        "200":
+          description: Картка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductCardRead" }
+              examples:
+                withPriceRange: { $ref: "#/components/examples/ProductCardReadWithPriceRange" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+
+  /products/{productId}/preparation-runs:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+
+    get:
+      tags: [preparation]
+      summary: Невдалі запуски картки
+      description: >-
+        Маршрут без змін. Нові лише значення `errorCode` у відповіді: каталог показує й
+        невдалі пошуки ціни (`price_not_found`, `price_quota_exhausted`).
+      operationId: listFailedPreparationRuns
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string, enum: [failed] }
+      responses:
+        "200":
+          description: Невдалі запуски картки, найновіші першими; порожній масив, якщо їх не було
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRunList" }
+              examples:
+                quotaExhausted: { $ref: "#/components/examples/FailedRunsList" }
+        "400": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ValidationError" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+
+    post:
+      tags: [preparation]
+      summary: Запустити підготовку — тексти, пошук ціни, обидва або одне поле
+      description: >-
+        **`scope: price`** (US-01, AC-01, AC-02, AC-07) несе в тілі назви й описи обох
+        майданчиків з чернетки форми, як `field` несе `draftText`. Збережених полів картки
+        пошук не читає ніколи (ADR 0021). `api` обирає назву (Prom, інакше OLX) й опис
+        (Prom, інакше OLX). Опис проходить `draftPlainText`, бо опис Prom — HTML
+        ([ADR 0016](../../product-creation-flow/adr/0016-store-the-prom-description-as-html.md)),
+        і обидва рядки обрізаються до `config.ai.priceSearch.maxInputChars`. Якщо після цього
+        бракує назви чи опису — `409`, задача не ставиться (sad.md сценарій 1, `alt`). Кадрів
+        `price` не вимагає.
+
+
+        **`scope: both`** (US-02, AC-03) тіла, крім `scope`, не несе: ціну шукають за назвою
+        й описом, які щойно згенерував виклик текстів того самого запуску. Умова запуску
+        `both` — як і раніше, кадр у галереї.
+
+
+        **Ідемпотентність** — ключ сервера, а не заголовок клієнта: (картка, область, версія
+        входу), частковий `UNIQUE` на `idempotency_key` серед `queued`/`running`. Для
+        `price` версія входу — обрана пара «назва + опис» після очищення й обрізання. Той
+        самий вхід, поки запуск у черзі чи йде, повертає його (`200`) — другий пошук не
+        стартує (sad.md сценарій 4). Після `succeeded` чи `failed` той самий вхід ставить
+        новий запуск (`201`) з новим запитом до Google (AC-07). Повтор ліміту частоти не
+        витрачає: наявний запуск повертається раніше, ніж рахується ліміт.
+
+
+        **Вихід** — тільки через полінг `GET .../preparation-runs/{runId}`: запуск `price`
+        закривається `succeeded` (пропозиція `price` записана) чи `failed` з одним із кодів
+        `PreparationRun.errorCode`. Без `GEMINI_API_KEY` у `worker` запуск усе одно
+        приймається (`201`) і закривається `price_unavailable` без запиту до Google
+        (sad.md §7).
+      operationId: startPreparationRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreparationRunCreateRequest" }
+            examples:
+              price:
+                $ref: "#/components/examples/PriceRunRequest"
+              priceFromOlxTitle:
+                summary: Назва лише OLX, опис лише Prom — змішана пара (AC-01)
+                value:
+                  scope: price
+                  titleProm: ""
+                  titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+                  descriptionProm: "<p>Автоматична кавомашина, <strong>б/у</strong>, повний комплект.</p>"
+                  descriptionOlx: ""
+              both:
+                summary: «Згенерувати все» — тексти, потім вилка
+                value: { scope: both }
+      responses:
+        "201":
+          description: Новий запуск поставлено в чергу
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+              examples:
+                queued: { $ref: "#/components/examples/PriceRunQueued" }
+        "200":
+          description: Той самий вхід уже має запуск у черзі чи в роботі — повернуто його
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+              examples:
+                queued: { $ref: "#/components/examples/PriceRunQueued" }
+        "400": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ValidationError" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+        "409":
+          description: >-
+            Бракує входу для області: кадру для `texts`/`both`, назви чи опису з будь-якого
+            майданчика для `price` (AC-02), тексту чернетки для `field`. `details.missing`
+            перелічує все, чого бракує: для `price` без назви й без опису — обидва.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationInputIncompleteError" }
+              examples:
+                priceWithoutDescription:
+                  value:
+                    error:
+                      code: preparation_input_incomplete
+                      message: "The card lacks the input this preparation needs"
+                      details: { missing: [description] }
+                priceWithoutTitleAndDescription:
+                  value:
+                    error:
+                      code: preparation_input_incomplete
+                      message: "The card lacks the input this preparation needs"
+                      details: { missing: [title, description] }
+                gallery:
+                  value:
+                    error:
+                      code: preparation_input_incomplete
+                      message: "The card lacks the input this preparation needs"
+                      details: { missing: [gallery] }
+        "429":
+          description: >-
+            20 запусків на картку за годину, спільних для всіх областей (PRD §1). Це ліміт
+            частоти самого `api`, а не квота Gemini: вичерпану денну квоту запуск отримує
+            вже у `worker` як `errorCode: price_quota_exhausted` (AC-09).
+          content:
+            application/json:
+              schema: { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: preparation_rate_limited, message: "Too many preparation runs for this card, try again later" }
+
+  /products/{productId}/preparation-runs/{runId}:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/RunId" }
+
+    get:
+      tags: [preparation]
+      summary: Стан запуску (полінг)
+      description: >-
+        Маршрут без змін. Нові значення `errorCode` і `model` запуску `price` (id моделі
+        Gemini, токени 0 — [ADR 0025](../adr/0025-keep-gemini-calls-out-of-the-token-ledger.md)).
+        Невдалий запуск пропозиції `price` не пише, тож попередня вилка в картці лишається
+        (AC-08, AC-10).
+      operationId: getPreparationRun
+      responses:
+        "200":
+          description: Стан запуску
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparationRun" }
+              examples:
+                succeeded: { $ref: "#/components/examples/PriceRunSucceeded" }
+                notFound: { $ref: "#/components/examples/PriceRunNotFound" }
+                quotaExhausted: { $ref: "#/components/examples/PriceRunQuotaExhausted" }
+                bothWithoutPrice: { $ref: "#/components/examples/BothRunPriceUnavailable" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404":
+          description: Картку або запуск не знайдено; запуск чужої картки — теж 404
+          content:
+            application/json:
+              schema: { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: product_not_found, message: "Product not found" }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: mouse_session
+      description: >-
+        Та сама сесія, що й у product-creation-flow: JWT у HttpOnly-cookie,
+        `sessionGuard` на маршрутах запусків, ролей немає (PRD §6.1 «Доступ»).
+
+  schemas:
+    Money:
+      type: string
+      pattern: '^\d{1,10}(\.\d{1,2})?$'
+      description: >-
+        Десятковий рядок у гривнях, як `products.price` (`decimal(12,2)`,
+        `productConstraints.pricePattern`). Ні `number`, ні копійок.
+      example: "1200.00"
+
+    PreparationRunCreateRequest:
+      description: >-
+        `z.discriminatedUnion('scope', …)` у `ai.contract.ts`. Гілка `price` — нова
+        (ADR 0021); `texts`/`both` і `field` — без змін.
+      oneOf:
+        - { $ref: "#/components/schemas/TextsRunRequest" }
+        - { $ref: "#/components/schemas/PriceRunRequest" }
+        - { $ref: "#/components/schemas/FieldRunRequest" }
+
+    TextsRunRequest:
+      type: object
+      required: [scope]
+      additionalProperties: false
+      properties:
+        scope:
+          type: string
+          enum: [texts, both]
+          description: >-
+            `both` після текстів шукає вилку за щойно згенерованими назвою й описом, ще до
+            їх збереження (AC-03).
+
+    PriceRunRequest:
+      type: object
+      required: [scope, titleProm, titleOlx, descriptionProm, descriptionOlx]
+      additionalProperties: false
+      description: >-
+        Чотири рядки — поточна чернетка форми, не збережена картка (ADR 0021 №1). Порожній
+        рядок означає «на цьому майданчику поля немає»: пара обирається як Prom, інакше OLX.
+        Без `maxLength`: це вхід пошуку, а не поле картки. Сервер сам обрізає обрані рядки
+        до `config.ai.priceSearch.maxInputChars`, а опис і в картці не обмежений довжиною
+        (ADR 0016 №6). Загальну межу тримає `bodyLimit` Fastify.
+      properties:
+        scope: { type: string, const: price }
+        titleProm: { type: string }
+        titleOlx: { type: string }
+        descriptionProm:
+          type: string
+          description: HTML з міні-редактора; до пошуку йде лише текст після `draftPlainText`
+        descriptionOlx: { type: string }
+
+    FieldRunRequest:
+      type: object
+      required: [scope, field, draftText]
+      additionalProperties: false
+      description: >-
+        Без змін ([ADR 0015](../../product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md)).
+      properties:
+        scope: { type: string, const: field }
+        field:
+          type: string
+          enum: [titleProm, titleOlx, descriptionProm, descriptionOlx, seoKeywords]
+        draftText: { type: string }
+        mode: { type: string, enum: [improve, prompt], default: improve }
+
+    PreparationRun:
+      type: object
+      required:
+        [id, productId, scope, status, errorCode, errorDetail, model, inputTokens, outputTokens, createdAt, startedAt, finishedAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        scope: { type: string, enum: [texts, price, both, field] }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        errorCode:
+          type: [string, "null"]
+          enum: [price_unavailable, price_not_found, price_quota_exhausted, preparation_failed, null]
+          description: >-
+            Лише при `status: failed` (ADR 0023). Для `both` перші три означають, що тексти
+            записано пропозиціями, а ціни немає — пошук окремо запускає `scope: price`
+            (AC-04). Пропозиція `price` при жодному з них не пишеться.
+
+
+            - `price_not_found` — відповідь не розібралась як вилка: немає 1–5 оголошень з
+              адресою `http(s)` до 2048 символів, межі не додатні, або `priceFrom > priceTo`
+              (AC-10).
+
+            - `price_quota_exhausted` — Gemini відповів 429 з ознакою добової квоти (AC-09).
+
+            - `price_unavailable` — решта відмов пошуку: мережа, 5xx, таймаут, недійсний чи
+              відсутній ключ, відмова моделі (AC-08).
+
+            - `preparation_failed` — без змін: усі спроби задачі впали, пропозицій немає.
+        errorDetail:
+          type: [string, "null"]
+          description: >-
+            Лише при `failed`: англійське повідомлення помилки, технічна примітка під
+            українським текстом за `errorCode`.
+        model:
+          type: string
+          maxLength: 64
+          description: >-
+            `price` — id моделі Gemini з `config.ai.priceSearch.model`; `both` — модель
+            Claude, бо поле означає «модель текстів» (ADR 0025).
+          example: gemini-2.5-flash
+        inputTokens:
+          type: integer
+          minimum: 0
+          description: Для `price` завжди 0; токени Gemini лише в лозі `worker` (ADR 0025)
+        outputTokens: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, "null"], format: date-time }
+        finishedAt: { type: [string, "null"], format: date-time }
+
+    PreparationRunList:
+      type: array
+      items: { $ref: "#/components/schemas/PreparationRun" }
+
+    PreparationInputIncompleteError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { type: string, const: preparation_input_incomplete }
+            message: { type: string }
+            details:
+              type: object
+              required: [missing]
+              properties:
+                missing:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items:
+                    type: string
+                    enum: [gallery, title, description, draft]
+                  description: >-
+                    `description` — нове значення (AC-02). Значення `title` тепер означає
+                    «у чернетці немає жодної назви», а не «у збереженій картці».
+
+    PriceListing:
+      type: object
+      required: [price, url]
+      additionalProperties: false
+      description: >-
+        Оголошення-джерело вилки (AC-05). Посилання прийшло з відповіді моделі, тож це
+        недовірений ввід (PRD §6.1). У пропозицію воно потрапляє лише з `http:`/`https:`, а
+        `web` відкриває його як `<a target="_blank" rel="noopener noreferrer">` (ADR 0024).
+      properties:
+        price: { $ref: "#/components/schemas/Money" }
+        url:
+          type: string
+          format: uri
+          pattern: '^https?://'
+          maxLength: 2048
+          description: >-
+            Задовге посилання не обрізається й не відкидається поодинці: `GeminiAdapter` не
+            розбирає таку відповідь, і запуск закривається `price_not_found` (рішення етапу
+            контракту, data-model.md Open items).
+
+    PriceRange:
+      type: object
+      required: [priceFrom, priceTo, listings]
+      additionalProperties: false
+      description: >-
+        Вилка — значення пропозиції `field: price` (data-model.md, `product_field_suggestions.value`).
+        Інваріант тримає код, а не БД: обидві межі > 0 і `priceFrom ≤ priceTo` (ADR 0023 №2).
+        Ціни оголошень у межах вилки бути не мусять: модель може лишити поза вилкою
+        оголошення-викид, а user однаково бачить усі джерела.
+      properties:
+        priceFrom: { $ref: "#/components/schemas/Money" }
+        priceTo: { $ref: "#/components/schemas/Money" }
+        listings:
+          type: array
+          minItems: 1
+          maxItems: 5
+          description: "`productConstraints.maxPriceListings` (5); без жодного оголошення вилки немає (AC-10)"
+          items: { $ref: "#/components/schemas/PriceListing" }
+
+    FieldSuggestion:
+      description: >-
+        Одна остання пропозиція на (картка, поле)
+        ([ADR 0017](../../product-creation-flow/adr/0017-keep-one-latest-suggestion-per-field.md)).
+        Форма `value` залежить від `field`; гілка `price` тепер несе `listings`. Пропозицію
+        `price` форма в поле не копіює й кнопки прийняття не має (AC-06).
+      oneOf:
+        - { $ref: "#/components/schemas/TextFieldSuggestion" }
+        - { $ref: "#/components/schemas/KeywordsFieldSuggestion" }
+        - { $ref: "#/components/schemas/PriceFieldSuggestion" }
+
+    TextFieldSuggestion:
+      type: object
+      required: [id, runId, field, value, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        field: { type: string, enum: [titleProm, titleOlx, descriptionProm, descriptionOlx] }
+        value: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    KeywordsFieldSuggestion:
+      type: object
+      required: [id, runId, field, value, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        field: { type: string, const: seoKeywords }
+        value:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    PriceFieldSuggestion:
+      type: object
+      required: [id, runId, field, value, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        field: { type: string, const: price }
+        value: { $ref: "#/components/schemas/PriceRange" }
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата пошуку, яку показує вікно з оголошеннями (AC-05); рухається з кожним новим пошуком
+
+    ProductCardRead:
+      description: >-
+        Картка з контракту product-creation-flow, у якій `latestSuggestions` звужено до
+        `FieldSuggestion` цього контракту.
+      allOf:
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ProductCardRead" }
+        - type: object
+          required: [latestSuggestions]
+          properties:
+            latestSuggestions:
+              type: array
+              items: { $ref: "#/components/schemas/FieldSuggestion" }
+
+  examples:
+    PriceRunRequest:
+      summary: Пошук ціни з чернетки форми
+      value:
+        scope: price
+        titleProm: "Кавомашина DeLonghi ECAM, б/у"
+        titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+        descriptionProm: "<p>Кавомашина DeLonghi ECAM у гарному стані. Автоматичний капучинатор.</p>"
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно."
+
+    PriceRunQueued:
+      value:
+        id: "01930000-0000-7000-8000-000000000010"
+        productId: "01930000-0000-7000-8000-000000000001"
+        scope: price
+        status: queued
+        errorCode: null
+        errorDetail: null
+        model: gemini-2.5-flash
+        inputTokens: 0
+        outputTokens: 0
+        createdAt: "2026-10-08T09:00:00.000Z"
+        startedAt: null
+        finishedAt: null
+
+    PriceRunSucceeded:
+      value:
+        id: "01930000-0000-7000-8000-000000000010"
+        productId: "01930000-0000-7000-8000-000000000001"
+        scope: price
+        status: succeeded
+        errorCode: null
+        errorDetail: null
+        model: gemini-2.5-flash
+        inputTokens: 0
+        outputTokens: 0
+        createdAt: "2026-10-08T09:00:00.000Z"
+        startedAt: "2026-10-08T09:00:01.000Z"
+        finishedAt: "2026-10-08T09:00:09.000Z"
+
+    PriceRunNotFound:
+      value:
+        id: "01930000-0000-7000-8000-000000000011"
+        productId: "01930000-0000-7000-8000-000000000001"
+        scope: price
+        status: failed
+        errorCode: price_not_found
+        errorDetail: "The price search returned no listings"
+        model: gemini-2.5-flash
+        inputTokens: 0
+        outputTokens: 0
+        createdAt: "2026-10-08T09:10:00.000Z"
+        startedAt: "2026-10-08T09:10:01.000Z"
+        finishedAt: "2026-10-08T09:10:07.000Z"
+
+    PriceRunQuotaExhausted:
+      value:
+        id: "01930000-0000-7000-8000-000000000012"
+        productId: "01930000-0000-7000-8000-000000000001"
+        scope: price
+        status: failed
+        errorCode: price_quota_exhausted
+        errorDetail: "The daily request quota of the price search is exhausted"
+        model: gemini-2.5-flash
+        inputTokens: 0
+        outputTokens: 0
+        createdAt: "2026-10-08T21:00:00.000Z"
+        startedAt: "2026-10-08T21:00:01.000Z"
+        finishedAt: "2026-10-08T21:00:02.000Z"
+
+    BothRunPriceUnavailable:
+      description: «Згенерувати все» — тексти записано пропозиціями, пошук ціни не пройшов (AC-04)
+      value:
+        id: "01930000-0000-7000-8000-000000000013"
+        productId: "01930000-0000-7000-8000-000000000001"
+        scope: both
+        status: failed
+        errorCode: price_unavailable
+        errorDetail: "The price search service did not respond in time"
+        model: claude-sonnet-5
+        inputTokens: 1840
+        outputTokens: 620
+        createdAt: "2026-10-08T09:20:00.000Z"
+        startedAt: "2026-10-08T09:20:01.000Z"
+        finishedAt: "2026-10-08T09:20:40.000Z"
+
+    FailedRunsList:
+      summary: Невдалий пошук ціни в переліку каталогу
+      value:
+        - id: "01930000-0000-7000-8000-000000000012"
+          productId: "01930000-0000-7000-8000-000000000001"
+          scope: price
+          status: failed
+          errorCode: price_quota_exhausted
+          errorDetail: "The daily request quota of the price search is exhausted"
+          model: gemini-2.5-flash
+          inputTokens: 0
+          outputTokens: 0
+          createdAt: "2026-10-08T21:00:00.000Z"
+          startedAt: "2026-10-08T21:00:01.000Z"
+          finishedAt: "2026-10-08T21:00:02.000Z"
+
+    ProductCardReadWithPriceRange:
+      summary: Картка з вилкою й трьома оголошеннями
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: "Кавомашина DeLonghi ECAM, б/у"
+        descriptionProm: "<p>Кавомашина DeLonghi ECAM у гарному стані. Автоматичний капучинатор.</p>"
+        titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно."
+        price: "0.00"
+        seoKeywords: ["кавомашина", "delonghi", "ecam"]
+        category: "Побутова техніка"
+        publishedProm: false
+        publishedOlx: false
+        condition: used
+        images: []
+        isReady: false
+        latestSuggestions:
+          - id: "01930000-0000-7000-8000-000000000020"
+            runId: "01930000-0000-7000-8000-000000000010"
+            field: price
+            value:
+              priceFrom: "6500.00"
+              priceTo: "9000.00"
+              listings:
+                - { price: "6500.00", url: "https://www.olx.ua/d/uk/obyavlenie/kavomashina-delonghi-ecam-IDexample1.html" }
+                - { price: "7800.00", url: "https://prom.ua/ua/p0000000001-kavomashina-delonghi-ecam.html" }
+                - { price: "9000.00", url: "https://www.olx.ua/d/uk/obyavlenie/delonghi-ecam-b-u-IDexample2.html" }
+            createdAt: "2026-10-08T09:00:09.000Z"
+        totalInputTokens: 0
+        totalOutputTokens: 0
+        estimatedCostUsd: "0.0000"
+        createdAt: "2026-10-08T08:50:00.000Z"
+        updatedAt: "2026-10-08T08:55:00.000Z"
