@@ -64,7 +64,9 @@ export class PreparationFailures {
 
   /** Every failed run carries a code; the fallback only satisfies the nullable type. */
   protected message(run: PreparationRunDto): string {
-    return runFailureMessages[run.errorCode ?? 'preparation_failed'];
+    return run.scope === 'price' && run.errorCode === 'price_unavailable'
+      ? 'Пошук ціни не пройшов — спробуйте ще раз.'
+      : runFailureMessages[run.errorCode ?? 'preparation_failed'];
   }
 
   protected time(run: PreparationRunDto): string {

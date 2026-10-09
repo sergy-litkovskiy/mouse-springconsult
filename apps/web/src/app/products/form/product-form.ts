@@ -285,13 +285,6 @@ export class ProductForm {
     return status === 'queued' || status === 'running';
   });
 
-  /**
-   * Turned off until [T54]: measured 2026-09-20, `scope: price` returns an empty range for every
-   * item and costs $0.27-$0.77 a call, twenty times the texts of the whole card. The button is
-   * what spends the money, so the button is what goes; the code behind it stays for T54 to fix.
-   */
-  protected readonly priceLookupEnabled = false;
-
   protected readonly generatingAll = computed(
     () => this.preparing() && this.poller.run()?.scope === 'texts',
   );
@@ -339,13 +332,15 @@ export class ProductForm {
     () => this.hasFrames() && this.productId() !== null && !this.preparing(),
   );
 
-  /** A description alone does not enable the price button — the server gates on a title. */
+  /** The server searches by a title and a description, so the button waits for both. */
   protected readonly canLookUpPrice = computed(() => {
     const value = this.draft();
     return (
       this.productId() !== null &&
       !this.preparing() &&
-      (value.titleProm.trim() !== '' || value.titleOlx.trim() !== '')
+      (value.titleProm.trim() !== '' || value.titleOlx.trim() !== '') &&
+      (value.descriptionProm.replaceAll(/<[^>]*>/g, '').trim() !== '' ||
+        value.descriptionOlx.trim() !== '')
     );
   });
 
@@ -388,7 +383,11 @@ export class ProductForm {
       this.settledRunId = run.id;
       if (run.status === 'failed') {
         this.formError.set(
-          run.errorCode === null ? UNAVAILABLE_MODEL_MESSAGE : runFailureMessages[run.errorCode],
+          run.errorCode === null
+            ? UNAVAILABLE_MODEL_MESSAGE
+            : run.scope === 'price' && run.errorCode === 'price_unavailable'
+              ? 'Пошук ціни не пройшов — спробуйте ще раз.'
+              : runFailureMessages[run.errorCode],
         );
       }
       // Even a failed run may have left texts behind (the price alone can be what went missing),
