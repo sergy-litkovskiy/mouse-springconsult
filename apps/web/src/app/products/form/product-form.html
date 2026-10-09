@@ -60,6 +60,14 @@
       }
       Згенерувати все
     </button>
+    <mat-slide-toggle
+      data-testid="price-search"
+      matTooltip="Пошук ціни платний і триває кілька секунд."
+      [checked]="priceSearch()"
+      (change)="switchPriceSearch($event.checked)"
+    >
+      Пошук ціни
+    </mat-slide-toggle>
     @if (preparing()) {
       <span class="card-prepare__state" role="status">{{ preparingNotice() }}</span>
     }
@@ -242,7 +250,11 @@
           [busy]="preparing()"
           [canRewrite]="canLookUpPrice()"
           rewriteLabel="Знайти ціну"
-          rewriteHint="Потрібні хоча б одна назва й хоча б один опис з будь-якого майданчика."
+          [rewriteHint]="
+            priceSearch()
+              ? 'Потрібні хоча б одна назва й хоча б один опис з будь-якого майданчика.'
+              : 'Увімкніть «Пошук ціни» вгорі картки.'
+          "
           [acceptable]="false"
           [improvable]="false"
           (rewrite)="lookUpPrice()"

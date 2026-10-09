@@ -333,10 +333,17 @@ export class ProductForm {
     () => this.hasFrames() && this.productId() !== null && !this.preparing(),
   );
 
+  /**
+   * Kept per browser, not per card or on the server: the search is paid, and the admin decides
+   * once whether to spend on it. Off until switched on.
+   */
+  protected readonly priceSearch = signal(false);
+
   /** The server searches by a title and a description, so the button waits for both. */
   protected readonly canLookUpPrice = computed(() => {
     const value = this.draft();
     return (
+      this.priceSearch() &&
       this.productId() !== null &&
       !this.preparing() &&
       (value.titleProm.trim() !== '' || value.titleOlx.trim() !== '') &&
@@ -360,6 +367,12 @@ export class ProductForm {
       .pipe(filter((event) => event.key === 'Escape'))
       .subscribe(() => void this.requestClose());
     this.dialogRef.backdropClick().subscribe(() => void this.requestClose());
+
+    try {
+      this.priceSearch.set(localStorage.getItem('mouse.priceSearch') === 'true');
+    } catch {
+      // A browser that refuses the storage still gets the switch, only not remembered.
+    }
 
     if (this.data.productId !== null) {
       void this.read(this.data.productId);
@@ -431,11 +444,20 @@ export class ProductForm {
   }
 
   /**
-   * Recognises the item from the main frame, fills every text at once (ADR 0014), then searches
-   * the price range.
+   * Recognises the item from the main frame and fills every text at once (ADR 0014); with the
+   * price search on, it then searches the price range.
    */
   protected generateAll(): Promise<void> {
-    return this.startRun({ scope: 'both' });
+    return this.startRun({ scope: this.priceSearch() ? 'both' : 'texts' });
+  }
+
+  protected switchPriceSearch(on: boolean): void {
+    this.priceSearch.set(on);
+    try {
+      localStorage.setItem('mouse.priceSearch', String(on));
+    } catch {
+      // Not remembered for the next card, but the switch holds for this one.
+    }
   }
 
   /**
