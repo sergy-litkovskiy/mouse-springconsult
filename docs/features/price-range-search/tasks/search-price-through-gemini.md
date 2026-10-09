@@ -1,7 +1,7 @@
 ---
 id: T112
 title: "Запуск price через Gemini: три невдачі без повтору, інваріант вилки, worker"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2400
 blocked_by: [T107, T108, T109, T111, T120]
 blocks: [T113, T115]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T112 — Запуск price через Gemini: три невдачі без повтору, інваріант вилки, worker
@@ -93,11 +93,11 @@ Anthropic ([ADR 0020](../adr/0020-search-price-ranges-through-gemini-in-the-ai-m
 
 ## DoD
 
-- [ ] Жодна відмова Gemini не дає `retry` у pg-boss: перевірено тестом на кожен код.
-- [ ] `worker` стартує без `GEMINI_API_KEY`, а з ним створює адаптер: перевірено локальним стеком.
-- [ ] Ключ Gemini й пара з чернетки не потрапляють у лог.
-- [ ] `typecheck` · `lint` · `test` · `deps:check` зелені.
-- [ ] Коміт: `feat(ai): search the price range through Gemini`.
+- [x] Жодна відмова Gemini не дає `retry` у pg-boss: перевірено тестом на кожен код.
+- [x] `worker` стартує без `GEMINI_API_KEY`, а з ним створює адаптер: перевірено локальним стеком.
+- [x] Ключ Gemini й пара з чернетки не потрапляють у лог.
+- [x] `typecheck` · `lint` · `test` · `deps:check` зелені.
+- [x] Коміт: `feat(ai): search the price range through Gemini`.
 
 ## Links
 
