@@ -337,7 +337,7 @@ describe('product card read contract', () => {
     const result = readWithPrice(value);
 
     assert.equal(result.success, true);
-    assert.deepEqual(result.data?.latestSuggestions[0]?.value, value);
+    assert.deepEqual(result.data.latestSuggestions[0]?.value, value);
   });
 
   it('refuses a price range with no listings or with more than five', () => {
