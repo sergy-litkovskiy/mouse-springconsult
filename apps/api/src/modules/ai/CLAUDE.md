@@ -29,13 +29,6 @@
   під час збереження картки
   ([ADR 0016](../../../../../docs/features/product-creation-flow/adr/0016-store-the-prom-description-as-html.md) №7,
   [ADR 0017](../../../../../docs/features/product-creation-flow/adr/0017-keep-one-latest-suggestion-per-field.md) №5).
-- **Живе до [T107](../../../../../docs/features/price-range-search/tasks/remove-anthropic-price-search.md)**,
-  яка прибирає пошук через Anthropic після go на гейті заміру.
-  Пошук ринкових цін — server tool `web_search_20260209`; повертаємо діапазон + посилання
-  на джерела, ціну не вигадуємо. `user_location` — `timezone: 'Europe/Kyiv'`, не
-  `country: 'UA'`: провайдер пошуку відмовляє на цьому коді країни («not supported»,
-  знайдено на живому прогоні 2026-09-19). Локалізацію «в Україні, у гривнях» несе
-  сам текст запиту.
 - **Адаптер Gemini.** `@google/genai` імпортує лише `GeminiAdapter.ts` (правило
   `google-genai-sdk-stays-in-the-adapter`). Виклик — без `retryOptions`: один запит на запуск,
   а відмову `PreparationService` класифікує в `price_not_found` / `price_quota_exhausted` /

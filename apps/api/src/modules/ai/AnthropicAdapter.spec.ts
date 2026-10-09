@@ -7,7 +7,6 @@ import {
   AnthropicAdapter,
   type FieldRewriteResult,
   type ModelContentBlock,
-  type PriceResult,
   type TextsResult,
 } from './AnthropicAdapter.ts';
 
@@ -44,7 +43,6 @@ function textOf(content: readonly ModelContentBlock[] | undefined): string {
 /** Never talks to Anthropic: every method that would reach the SDK client is overridden. */
 class RecordingAnthropicAdapter extends AnthropicAdapter {
   lastTextsContent: readonly ModelContentBlock[] | undefined;
-  lastPriceContent: readonly ModelContentBlock[] | undefined;
   lastFieldContent: readonly ModelContentBlock[] | undefined;
 
   constructor() {
@@ -62,14 +60,6 @@ class RecordingAnthropicAdapter extends AnthropicAdapter {
         descriptionOlx: 'Опис для OLX.',
         seoKeywords: ['пов’язка', 'вʼязана'],
       },
-      usage: USAGE,
-    };
-  }
-
-  override async requestPrice(content: readonly ModelContentBlock[]) {
-    this.lastPriceContent = content;
-    return {
-      value: { priceFrom: '200.00', priceTo: '350.00', sources: ['https://example.com/item'] },
       usage: USAGE,
     };
   }
@@ -174,22 +164,6 @@ describe('generateTexts', () => {
   });
 });
 
-describe('findPriceRange', () => {
-  it('sends the composed query as-is and returns the range with usage', async () => {
-    const adapter = new RecordingAnthropicAdapter();
-
-    const result: PriceResult = await adapter.findPriceRange('вʼязана повʼязка Zara');
-
-    assert.equal(textOf(adapter.lastPriceContent).includes('вʼязана повʼязка Zara'), true);
-    assert.deepEqual(result, {
-      priceFrom: '200.00',
-      priceTo: '350.00',
-      sources: ['https://example.com/item'],
-      usage: USAGE,
-    });
-  });
-});
-
 describe('rewriteField', () => {
   it('sends the draft text and returns a single string for a title field (ADR 0015)', async () => {
     const adapter = new RecordingAnthropicAdapter();
@@ -248,12 +222,6 @@ describe('rewriteField: improve mode', () => {
     assert.match(prompt, /keep all facts/i);
     assert.match(prompt, /do not invent/i);
   });
-
-  it('does not use web_search (no price request)', async () => {
-    const adapter = new RecordingAnthropicAdapter();
-    await adapter.rewriteField('titleProm', 'чернетка', 'improve');
-    assert.equal(adapter.lastPriceContent, undefined);
-  });
 });
 
 describe('rewriteField: prompt mode', () => {
@@ -281,11 +249,5 @@ describe('rewriteField: prompt mode', () => {
     const prompt = textOf(adapter.lastFieldContent);
     assert.match(prompt, /do not add/i);
     assert.match(prompt, /not mentioned/i);
-  });
-
-  it('does not use web_search (no price request)', async () => {
-    const adapter = new RecordingAnthropicAdapter();
-    await adapter.rewriteField('descriptionProm', 'інструкція', 'prompt');
-    assert.equal(adapter.lastPriceContent, undefined);
   });
 });

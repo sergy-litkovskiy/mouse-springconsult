@@ -150,20 +150,10 @@ export const config = {
      * through a commit and a review, not a container restart.
      */
     model: 'claude-sonnet-5',
-    /** Per-call `effort`, so one call can be raised without touching the other two (ADR 0018). */
+    /** Per-call `effort`, so one call can be raised without touching the other (ADR 0018). */
     effort: {
       texts: 'low',
-      price: 'low',
       field: 'low',
-    },
-    webSearch: {
-      maxUses: 2,
-      /**
-       * `user_location.country: 'UA'` (`ai/CLAUDE.md`'s original choice) is rejected by the
-       * search provider with "Country code UA is not supported" — found on a live run
-       * (2026-09-19). A timezone is the closest still-supported way to localize the search.
-       */
-      userTimezone: 'Europe/Kyiv',
     },
     /**
      * Deliberate cost reduction, not a model limit — `claude-sonnet-5` accepts up to 2576 px on
