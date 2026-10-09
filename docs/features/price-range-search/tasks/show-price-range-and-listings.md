@@ -1,7 +1,7 @@
 ---
 id: T114
 title: "Вилка «від — до ₴» під ціною й оголошення за інфо-іконкою"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1600
 blocked_by: [T109]
 blocks: [T115]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T114 — Вилка «від — до ₴» під ціною й оголошення за інфо-іконкою
@@ -81,9 +81,9 @@ Playwright по формі робиться там, а тут достатньо
 
 ## DoD
 
-- [ ] `test` і `lint` для `web` зелені; zoneless spec компонентів.
-- [ ] Прохід `security-review` по diff: посилання від моделі в UI ([PRD §6.1](../PRD.md#61-security--privacy)).
-- [ ] Коміт: `feat(web): show the price range with its source listings`.
+- [x] `test` і `lint` для `web` зелені; zoneless spec компонентів.
+- [x] Прохід `security-review` по diff: посилання від моделі в UI ([PRD §6.1](../PRD.md#61-security--privacy)).
+- [x] Коміт: `feat(web): show the price range with its source listings`.
 
 ## Links
 
