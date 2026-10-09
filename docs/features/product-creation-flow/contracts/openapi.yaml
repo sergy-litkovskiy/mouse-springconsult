@@ -374,7 +374,9 @@ paths:
             У галереї немає жодного кадру для scope: texts/both (AC-06), в
             картці немає ні titleProm, ні titleOlx для scope: price (AC-27), або
             draftText для scope: field після зняття тегів порожній (AC-65) —
-            три різні missing під тим самим кодом
+            три різні missing під тим самим кодом. Вхід scope: price тепер береться з
+            назв і описів чернетки в тілі запиту, а missing може назвати й description
+            ([контракт price-range-search](../../price-range-search/contracts/openapi.yaml)).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }

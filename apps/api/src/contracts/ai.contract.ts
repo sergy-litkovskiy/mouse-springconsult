@@ -14,9 +14,20 @@ export const fieldRewriteModeSchema = z.enum(['improve', 'prompt']);
 
 export type FieldRewriteMode = z.infer<typeof fieldRewriteModeSchema>;
 
-/** `field` rewrites one text from the draft in the form, so only it carries `field` and `draftText` (ADR 0015). */
+/**
+ * `field` rewrites one text from the draft in the form, so only it carries `field` and `draftText`
+ * (ADR 0015). `price` searches by the draft too (ADR 0021): its strings are not bounded by the card
+ * limits, because the search input is cut later.
+ */
 export const preparationRunRequestSchema = z.discriminatedUnion('scope', [
-  z.object({ scope: z.enum(['texts', 'price', 'both']) }),
+  z.object({ scope: z.enum(['texts', 'both']) }),
+  z.object({
+    scope: z.literal('price'),
+    titleProm: z.string(),
+    titleOlx: z.string(),
+    descriptionProm: z.string(),
+    descriptionOlx: z.string(),
+  }),
   z.object({
     scope: z.literal('field'),
     field: rewritableFieldSchema,

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { config } from '../../config.ts';
 import type { ProductCreate, ProductListQuery } from '../../contracts/products.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
 import { MediaService, StorageUnavailable, type ImageStorage } from '../media/index.ts';
@@ -268,18 +269,19 @@ class RecordingMediaService extends MediaService {
 }
 
 /**
- * No test here is about the cost of a card, so no card here has ever been prepared. Suggestions
- * are keyed by card, the way their `product_id` column holds them.
+ * A card has never been prepared unless a test says otherwise through `usage`. Suggestions are
+ * keyed by card, the way their `product_id` column holds them.
  */
 class StubPreparationRepository extends PreparationRepository {
   readonly suggestions = new Map<string, FieldSuggestion[]>();
+  usage: ModelTokenTotals[] = [];
 
   constructor() {
     super(NO_DATA_SOURCE);
   }
 
   override async sumTokensByModel(): Promise<ModelTokenTotals[]> {
-    return [];
+    return this.usage;
   }
 
   override async findSuggestions(productId: string): Promise<FieldSuggestion[]> {
@@ -994,5 +996,14 @@ describe('product service: reading a card after a run', () => {
     await service.getById(CARD_ID);
 
     assert.deepEqual(repository.changes, []);
+  });
+
+  it('counts a price search run as costing nothing, not as a model of unknown price', async () => {
+    const { service, preparations } = afterRun();
+    preparations.usage = [{ model: config.ai.priceSearch.model, inputTokens: 0, outputTokens: 0 }];
+
+    const reading = await service.getById(CARD_ID);
+
+    assert.equal(reading.estimatedCostUsd, '0.0000');
   });
 });

@@ -6,6 +6,7 @@ import type { PreparationRun } from './PreparationRun.ts';
 import type { Product } from '../Product.ts';
 import { draftPlainText } from '../description/draftPlainText.ts';
 import type { PreparationQueue, RewritableCardField } from './PreparationQueue.ts';
+import { priceSearchInput, type PriceSearchDraft } from './priceSearchInput.ts';
 import {
   PreparationInputIncomplete,
   PreparationRateLimited,
@@ -14,7 +15,8 @@ import {
 import type { ProductRepository } from '../ProductRepository.ts';
 
 export type PreparationRequest =
-  | { readonly scope: 'texts' | 'price' | 'both' }
+  | { readonly scope: 'texts' | 'both' }
+  | ({ readonly scope: 'price' } & PriceSearchDraft)
   | {
       readonly scope: 'field';
       readonly field: RewritableCardField;
@@ -42,17 +44,19 @@ export class PreparationRunService {
     }
 
     const readsFrames = request.scope === 'texts' || request.scope === 'both';
-    const readsTitles = request.scope === 'price' || request.scope === 'both';
     if (readsFrames && product.images.length === 0) {
       throw new PreparationInputIncomplete('gallery');
     }
-    if (request.scope === 'price' && product.titleProm === '' && product.titleOlx === '') {
-      throw new PreparationInputIncomplete('title');
+    const search = request.scope === 'price' ? priceSearchInput(request) : null;
+    if (search?.kind === 'missing') {
+      throw new PreparationInputIncomplete(...search.missing);
     }
     const job =
       request.scope === 'field'
         ? { ...request, draftText: draftPlainText(request.draftText) }
-        : request;
+        : search !== null
+          ? { scope: 'price' as const, title: search.title, description: search.description }
+          : request;
     if (job.scope === 'field' && job.draftText === '') {
       throw new PreparationInputIncomplete('draft');
     }
@@ -61,7 +65,7 @@ export class PreparationRunService {
     // changed input starts a new run and an unchanged one returns the run it already has.
     const input = {
       frames: readsFrames ? recognitionFrameKeys(product) : null,
-      priceQuery: readsTitles ? priceQueryInput(product) : null,
+      priceQuery: search !== null ? [search.title, search.description] : null,
       field: job.scope === 'field' ? [job.field, job.mode, job.draftText] : null,
     };
     const inputVersion = createHash('sha256').update(JSON.stringify(input)).digest('hex');
@@ -82,7 +86,7 @@ export class PreparationRunService {
             productId,
             scope: request.scope,
             idempotencyKey,
-            model: config.ai.model,
+            model: request.scope === 'price' ? config.ai.priceSearch.model : config.ai.model,
           })
         : { run: existing, created: false };
     // The row and the job are two writes: a run still queued may have lost its send, and queueing
@@ -119,12 +123,4 @@ function recognitionFrameKeys(product: Product): string[] {
     )
     .slice(0, config.ai.maxFramesPerRequest)
     .map((image) => image.r2Key);
-}
-
-/** The price search input the worker builds; '' is "absent" in NOT NULL text columns. */
-function priceQueryInput(product: Product): [string, string] {
-  return [
-    product.titleProm !== '' ? product.titleProm : product.titleOlx,
-    product.descriptionProm !== '' ? product.descriptionProm : product.descriptionOlx,
-  ];
 }

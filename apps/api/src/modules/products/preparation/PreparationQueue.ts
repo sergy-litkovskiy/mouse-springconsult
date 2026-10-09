@@ -13,6 +13,13 @@ export type PreparationRunJob =
   | {
       readonly runId: string;
       readonly productId: string;
+      readonly scope: 'price';
+      readonly title: string;
+      readonly description: string;
+    }
+  | {
+      readonly runId: string;
+      readonly productId: string;
       readonly scope: 'field';
       readonly field: RewritableCardField;
       readonly draftText: string;

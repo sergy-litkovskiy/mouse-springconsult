@@ -450,9 +450,10 @@ export class ProductForm {
     });
   }
 
-  /** The price never reads the draft — it searches the web, so it is a scope of its own. */
+  /** The price is searched by the title and description of the draft, not of the saved card. */
   protected lookUpPrice(): Promise<void> {
-    return this.startRun({ scope: 'price' });
+    const { titleProm, titleOlx, descriptionProm, descriptionOlx } = this.draft();
+    return this.startRun({ scope: 'price', titleProm, titleOlx, descriptionProm, descriptionOlx });
   }
 
   /**
