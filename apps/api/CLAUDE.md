@@ -68,4 +68,4 @@
 - **БД.** Snake_case в SQL, camelCase у TS. Зміни схеми — тільки міграцією в
   `apps/api/db/migrations`. Ручний DDL на проді заборонено.
 - **Логи.** pino, JSON, structured. У логи не потрапляють: паролі, токени сесій,
-  ключі R2/Anthropic, повні тіла зображень.
+  ключі R2/Anthropic/Gemini, повні тіла зображень.

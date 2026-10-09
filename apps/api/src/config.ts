@@ -177,6 +177,25 @@ export const config = {
     /** Additional frames upload without AI; recognition never sees more than this many. */
     maxFramesPerRequest: 3,
     /**
+     * The price range search goes to Gemini with Google Search grounding (ADR 0020), not to the
+     * model above. A constant for the same reason as `model`: it changes quality and the daily
+     * free-tier quota.
+     */
+    priceSearch: {
+      /** The starting point; the measurement gate picks between Flash and Flash-Lite. */
+      model: 'gemini-2.5-flash',
+      /**
+       * The only upper bound on a grounded call, whose length the search provider sets. Well
+       * below `queue.preparation.expireInSeconds`, so a hung call closes the run itself instead
+       * of being presumed dead.
+       */
+      timeoutMs: 60_000,
+      /** 0–3 frames per search; the measurement gate decides whether frames help at all. */
+      maxFrames: 3,
+      /** The queue payload carries the title and description, so both are cut to this length. */
+      maxInputChars: 2_000,
+    },
+    /**
      * An SDK error can carry a whole response body in its message; the catalogue needs the reason,
      * not the payload.
      */
@@ -240,6 +259,11 @@ const envSchema = z.object({
    * required schema entry would make every test process load-fail without it.
    */
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  /**
+   * Optional for the same reason as `ANTHROPIC_API_KEY`: tests and CI never set it, and without it
+   * the worker starts with the price search unavailable rather than refusing to start.
+   */
+  GEMINI_API_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

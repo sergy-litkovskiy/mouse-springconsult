@@ -132,6 +132,17 @@ module.exports = {
     },
 
     {
+      name: 'google-genai-sdk-stays-in-the-adapter',
+      severity: 'error',
+      comment:
+        'GeminiAdapter.ts is the only file that knows the price search goes through the ' +
+        'Google Gen AI SDK (ADR 0020). An import anywhere else makes swapping providers a change ' +
+        'across modules instead of one file.',
+      from: { pathNot: ['^src/modules/ai/GeminiAdapter\\.ts$'] },
+      to: { dependencyTypes: ['npm'], path: '^node_modules/@google/genai' },
+    },
+
+    {
       name: 'no-deep-import-between-modules',
       severity: 'error',
       comment: 'A module sees another module only through its index.ts.',
