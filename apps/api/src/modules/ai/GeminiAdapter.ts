@@ -105,6 +105,8 @@ const SEARCH_REDIRECT = 'https://vertexaisearch.cloud.google.com/grounding-api-r
 const LISTING_PAGE = [
   /^https:\/\/(www\.|m\.)?olx\.ua\/(d\/)?(uk\/)?obyavlenie\/[^/]+\.html$/,
   /^https:\/\/prom\.ua\/(ua\/)?p\d+-[^/]+\.html$/,
+  /^https:\/\/(www\.)?kloomba\.com\/o\/[^/]+-\d+\/$/,
+  /^https:\/\/(www\.)?shafa\.ua\/([a-z-]+\/)*\d+-[^/]+$/,
 ];
 
 /**
@@ -265,7 +267,8 @@ export class GeminiAdapter {
 
 function pricePrompt(title: string, description: string): string {
   return (
-    'Знайди в Google оголошення OLX і Prom (Україна) про цей вживаний товар.\n' +
+    'Знайди в Google оголошення OLX, Prom, Shafa і Kloomba (Україна) про цей вживаний ' +
+    'товар.\n' +
     `Назва: ${title}\nОпис: ${description}\n` +
     'Відповідь — лише JSON: {"priceFrom":"1500","priceTo":"2500","listings":[{"price":"1800",' +
     '"url":"..."}]}. 1–5 оголошень, ціна в гривнях числом, url — посилання з результатів ' +

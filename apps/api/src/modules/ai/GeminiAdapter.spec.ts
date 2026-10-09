@@ -157,6 +157,41 @@ describe('GeminiAdapter', () => {
     );
   });
 
+  it('keeps listing pages of Shafa and Kloomba', async () => {
+    const pages = [
+      'https://shafa.ua/item/221547323-lavandovyy-ametist-gran-6mm',
+      'https://shafa.ua/uk/item/221618837-futbolka-dlya-divchinki-ff-blakitna',
+      'https://shafa.ua/women/sport-otdyh/sportivnyye-kostyumy/216943978-kostyum-sportivniy',
+      'https://kloomba.com/o/kovdra-praporc-48069987/',
+    ];
+    const text = rangeText(pages.map((_, i) => ({ price: '900', url: redirect(String(i)) })));
+
+    const result = await search(
+      leadingTo(text, Object.fromEntries(pages.map((page, i) => [redirect(String(i)), page]))),
+    );
+
+    assert.ok(result.kind === 'found');
+    assert.deepEqual(
+      result.listings.map((listing) => listing.url),
+      pages,
+    );
+  });
+
+  it('drops category pages of Shafa and Kloomba', async () => {
+    const categories = [
+      'https://shafa.ua/women',
+      'https://shafa.ua/uk/women/platya',
+      'https://kloomba.com/market/detskaya-odezhda/',
+    ];
+    const text = rangeText(categories.map((_, i) => ({ price: '900', url: redirect(String(i)) })));
+
+    const result = await search(
+      leadingTo(text, Object.fromEntries(categories.map((page, i) => [redirect(String(i)), page]))),
+    );
+
+    assert.equal(result.kind, 'unparsed');
+  });
+
   it('reports an unparsed reply when every redirect leads to a search or a home page', async () => {
     const text = rangeText([
       { price: '7000', url: redirect('list') },

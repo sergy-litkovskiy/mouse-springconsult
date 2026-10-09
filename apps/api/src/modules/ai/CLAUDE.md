@@ -44,8 +44,8 @@
   JSON вилки розбирається з тексту відповіді zod-схемою; збій розбору — `price_not_found`, а не
   падіння. Модель — `gemini-3.5-flash-lite` на платному рівні з `thinkingLevel: MEDIUM`: нижче
   вона не шукає, а пише адреси з пам'яті. Оголошення лишається, лише якщо прийшло редиректом
-  пошуку `vertexaisearch` і веде на сторінку оголошення OLX чи Prom; вилка будується з цін цих
-  оголошень, а не з відповіді моделі
+  пошуку `vertexaisearch` і веде на сторінку оголошення OLX, Prom, Shafa чи Kloomba;
+  вилка будується з цін цих оголошень, а не з відповіді моделі
   ([ADR 0026](../../../../../docs/features/price-range-search/adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)).
 - Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`
   не використовуємо — параметр видалено на цій моделі. Ціну знижуємо через
