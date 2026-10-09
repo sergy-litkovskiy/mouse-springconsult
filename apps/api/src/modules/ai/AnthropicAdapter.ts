@@ -230,7 +230,7 @@ export class AnthropicAdapter {
  * not a model limit. `.rotate()` first: without it, stripping EXIF drops the orientation tag and
  * a phone photo taken in portrait would reach the model sideways.
  */
-async function optimizeFrame(bytes: Uint8Array): Promise<Uint8Array> {
+export async function optimizeFrame(bytes: Uint8Array): Promise<Uint8Array> {
   const optimized = await sharp(bytes)
     .rotate()
     .resize({

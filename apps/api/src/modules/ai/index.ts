@@ -6,5 +6,7 @@ export type {
   TextsResult,
   Usage,
 } from './AnthropicAdapter.ts';
+export { GeminiAdapter } from './GeminiAdapter.ts';
+export type { PriceSearchResult } from './GeminiAdapter.ts';
 export { PreparationService } from './PreparationService.ts';
 export type { PreparationJob } from './PreparationService.ts';
