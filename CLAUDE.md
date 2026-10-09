@@ -11,7 +11,7 @@
 - **TypeScript 6.0.3** — жорсткий пін: Angular 22 вимагає `>=6.0 <6.1`.
 - UI — Angular 22 standalone, signals, **zoneless**.
 - `apps/api` збирається `tsc` у `dist/` через декоратори TypeORM (див. `apps/api/CLAUDE.md`).
-- Хостинг — Hetzner VPS.
+- Хостинг — VPS: Hetzner або OVH (VPS-1).
 
 ## Структура репозиторію
 

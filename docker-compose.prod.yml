@@ -1,4 +1,4 @@
-# Production on a Hetzner VPS. This file, together with .env, is placed in /opt/mouse —
+# Production on a VPS (Hetzner or OVH). This file, together with .env, is placed in /opt/mouse —
 # no repository is needed on the server, the images come from GitHub Container Registry.
 #
 #   docker compose -f docker-compose.prod.yml pull
