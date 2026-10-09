@@ -104,6 +104,23 @@ const FAILED_TEXTS_RUN: PreparationRunDto = {
   finishedAt: '2026-09-19T09:05:00.000Z',
 };
 
+const PRICE_NOT_FOUND_RUN = {
+  ...FAILED_PRICE_RUN,
+  id: '66666666-6666-4666-8666-666666666666',
+  scope: 'price',
+  errorCode: 'price_not_found',
+  errorDetail: null,
+  model: 'gemini-3.5-flash-lite',
+  inputTokens: 0,
+  outputTokens: 0,
+};
+
+const PRICE_QUOTA_EXHAUSTED_RUN = {
+  ...PRICE_NOT_FOUND_RUN,
+  id: '77777777-7777-4777-8777-777777777777',
+  errorCode: 'price_quota_exhausted',
+};
+
 const PAGE: ProductList = { items: [MOUSE, KEYBOARD], total: 2, page: 1, pageSize: 20 };
 
 const EMPTY_CARD: ProductListItem = {
@@ -940,6 +957,50 @@ describe('ProductCatalog', () => {
     const dialogText = document.querySelector('mat-dialog-container')?.textContent ?? '';
     expect(dialogText).not.toContain('price_unavailable');
     expect(dialogText).not.toContain('preparation_failed');
+
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
+  async function openFailures(runs: readonly object[]): Promise<HTMLElement[]> {
+    await open();
+    expectRequest().flush(PAGE);
+    await settle();
+
+    failuresButton(0)?.click();
+    await tick();
+    http
+      .expectOne((request) => request.url === `/api/products/${MOUSE.id}/preparation-runs`)
+      .flush(runs);
+    await settle();
+
+    return [...document.querySelectorAll<HTMLElement>('[data-testid="failure"]')];
+  }
+
+  it('words a price run that found no range as a hint to retry or refine the title', async () => {
+    const items = await openFailures([PRICE_NOT_FOUND_RUN]);
+
+    expect(items.length).toBe(1);
+    expect(items[0]?.textContent).toContain('Вилку не знайдено — повторіть чи уточніть назву.');
+    expect(document.querySelector('mat-dialog-container')?.textContent).not.toContain(
+      'price_not_found',
+    );
+
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
+  it('words an exhausted daily search limit apart from an ordinary failure', async () => {
+    const items = await openFailures([PRICE_QUOTA_EXHAUSTED_RUN]);
+
+    expect(items.length).toBe(1);
+    const text = items[0]?.textContent ?? '';
+    expect(text).toContain('Ліміт пошуку на сьогодні вичерпано — спробуйте наступного дня.');
+    expect(text).not.toContain('Ціну знайти не вдалося');
+    expect(text).not.toContain('Підготовка не вдалася');
+    expect(document.querySelector('mat-dialog-container')?.textContent).not.toContain(
+      'price_quota_exhausted',
+    );
 
     TestBed.inject(MatDialog).closeAll();
     await settle();
