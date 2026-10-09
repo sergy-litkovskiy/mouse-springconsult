@@ -180,13 +180,13 @@ const priceListing = z.object({
   url: z
     .string()
     .regex(/^https?:\/\//)
-    .max(2048),
+    .max(productConstraints.listingUrlMaxLength),
 });
 
 const priceRange = z.object({
   priceFrom: priceDecimal,
   priceTo: priceDecimal,
-  listings: z.array(priceListing).min(1).max(5).readonly(),
+  listings: z.array(priceListing).min(1).max(productConstraints.maxPriceListings).readonly(),
 });
 
 /**
