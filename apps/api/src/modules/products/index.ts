@@ -36,6 +36,7 @@ export type { PreparationRunJob } from './preparation/PreparationQueue.ts';
 export { PreparationRunService } from './preparation/PreparationRunService.ts';
 export type { PreparationRequest, PreparationStart } from './preparation/PreparationRunService.ts';
 export { PreparationRunController } from './preparation/PreparationRunController.ts';
+export { priceSearchInput } from './preparation/priceSearchInput.ts';
 
 export { ProductService } from './ProductService.ts';
 export { ProductController } from './ProductController.ts';
