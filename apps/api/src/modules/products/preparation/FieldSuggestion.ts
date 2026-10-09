@@ -6,7 +6,11 @@ export type SuggestionField =
   'title_prom' | 'title_olx' | 'description_prom' | 'description_olx' | 'seo_keywords' | 'price';
 
 /** Decimal strings, like `products.price`: the range never passes through a float. */
-export type PriceRange = { readonly priceFrom: string; readonly priceTo: string };
+export type PriceRange = {
+  readonly priceFrom: string;
+  readonly priceTo: string;
+  readonly listings: readonly { readonly price: string; readonly url: string }[];
+};
 
 /** A string for titles and descriptions, a list for keywords, a range for the price. */
 export type SuggestionValue = string | readonly string[] | PriceRange;

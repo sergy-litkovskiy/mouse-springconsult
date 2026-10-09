@@ -23,6 +23,15 @@ let runs: PreparationRepository;
 
 const MODEL = 'claude-sonnet-5';
 
+const PRICE_RANGE = {
+  priceFrom: '1800.00',
+  priceTo: '2400.00',
+  listings: [
+    { price: '1800.00', url: 'https://www.olx.ua/d/uk/obyavlenie/mysha-logitech-mx-master-3.html' },
+    { price: '2400.00', url: 'https://prom.ua/ua/p2400-logitech-mx-master-3.html' },
+  ],
+};
+
 async function seedProduct(): Promise<string> {
   const saved = await dataSource.getRepository(Product).save({
     titleProm: 'Миша Logitech MX Master 3',
@@ -188,7 +197,7 @@ describe('preparation repository (postgres)', () => {
         { field: 'description_prom', value: 'Опис для Prom.' },
         { field: 'description_olx', value: 'Опис для OLX.' },
         { field: 'seo_keywords', value: ['миша', 'logitech'] },
-        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } },
+        { field: 'price', value: PRICE_RANGE },
       ],
     });
 
@@ -203,7 +212,7 @@ describe('preparation repository (postgres)', () => {
       [
         { field: 'description_olx', value: 'Опис для OLX.' },
         { field: 'description_prom', value: 'Опис для Prom.' },
-        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } },
+        { field: 'price', value: PRICE_RANGE },
         { field: 'seo_keywords', value: ['миша', 'logitech'] },
       ],
     );

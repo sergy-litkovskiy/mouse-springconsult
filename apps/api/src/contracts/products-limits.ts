@@ -24,6 +24,12 @@ export const productConstraints = {
    * is refused here as well as by `products_price_non_negative_check`.
    */
   pricePattern: /^\d{1,10}(\.\d{1,2})?$/,
+  maxPriceListings: 5,
+  /**
+   * A longer link is refused, never cut: a truncated URL opens some other page, and the range
+   * would then cite a listing it was not built from.
+   */
+  listingUrlMaxLength: 2048,
 } as const;
 
 export const productPagination = {
