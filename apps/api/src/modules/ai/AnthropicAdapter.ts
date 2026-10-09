@@ -26,13 +26,6 @@ export type TextsResult = {
   readonly usage: Usage;
 };
 
-export type PriceResult = {
-  readonly priceFrom: string;
-  readonly priceTo: string;
-  readonly sources: readonly string[];
-  readonly usage: Usage;
-};
-
 export type FieldRewriteResult = {
   readonly value: string | readonly string[];
   readonly usage: Usage;
@@ -74,12 +67,6 @@ const TextsSchema = z.object({
   seoKeywords: z.array(z.string()),
 });
 
-const PriceSchema = z.object({
-  priceFrom: z.string(),
-  priceTo: z.string(),
-  sources: z.array(z.string()),
-});
-
 const FieldValueSchema = z.object({
   value: z.union([z.string(), z.array(z.string())]),
 });
@@ -88,7 +75,7 @@ type RequestResult<T> = { readonly value: T; readonly usage: Usage };
 
 /**
  * Talks to `claude-sonnet-5` (ADR 0018) and nothing else — no products, no queue, no persistence.
- * Out of scope on purpose: the caller composes the price query and writes the suggestions.
+ * Out of scope on purpose: the caller writes the suggestions.
  */
 export class AnthropicAdapter {
   private readonly client: Anthropic;
@@ -130,20 +117,6 @@ export class AnthropicAdapter {
     return { ...value, usage };
   }
 
-  /** `query` is already composed by the caller — this method does not read `products`. */
-  async findPriceRange(query: string): Promise<PriceResult> {
-    const { value, usage } = await this.requestPrice([
-      {
-        type: 'text',
-        text:
-          `Search the web for the current secondhand market price range, in Ukraine, for: ` +
-          `${query}. Report it as a "from – to" range in Ukrainian hryvnias and list only the ` +
-          `source URLs you actually used — never invent a price or a source. ${PLAIN_TEXT_RULE}`,
-      },
-    ]);
-    return { ...value, usage };
-  }
-
   /** Text-only rewrite of one field from its draft — no photos, no read of `products` (ADR 0015). */
   async rewriteField(
     field: RewritableField,
@@ -167,19 +140,6 @@ export class AnthropicAdapter {
     return this.request(content, TextsSchema, config.ai.effort.texts);
   }
 
-  protected async requestPrice(
-    content: readonly ModelContentBlock[],
-  ): Promise<RequestResult<z.infer<typeof PriceSchema>>> {
-    return this.request(content, PriceSchema, config.ai.effort.price, [
-      {
-        type: 'web_search_20260209',
-        name: 'web_search',
-        max_uses: config.ai.webSearch.maxUses,
-        user_location: { type: 'approximate', timezone: config.ai.webSearch.userTimezone },
-      },
-    ]);
-  }
-
   protected async requestFieldRewrite(
     content: readonly ModelContentBlock[],
   ): Promise<RequestResult<z.infer<typeof FieldValueSchema>>> {
@@ -194,14 +154,12 @@ export class AnthropicAdapter {
     content: readonly ModelContentBlock[],
     schema: z.ZodType<T>,
     effort: (typeof config.ai.effort)[keyof typeof config.ai.effort],
-    tools?: Anthropic.Messages.ToolUnion[],
   ): Promise<RequestResult<T>> {
     const response = await this.client.messages.parse({
       model: config.ai.model,
       max_tokens: 16_000,
       thinking: { type: 'adaptive' },
       output_config: { format: zodOutputFormat(schema), effort },
-      ...(tools === undefined ? {} : { tools }),
       messages: [{ role: 'user', content: [...content] }],
     });
 

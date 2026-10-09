@@ -10,7 +10,7 @@ import {
   type SuggestionDraft,
   type SuggestionField,
 } from '../products/index.ts';
-import type { AnthropicAdapter, PriceResult, RewritableField } from './AnthropicAdapter.ts';
+import type { AnthropicAdapter, RewritableField } from './AnthropicAdapter.ts';
 
 export type PreparationJob =
   | {
@@ -39,13 +39,6 @@ const SUGGESTION_FIELDS: Record<RewritableField, SuggestionField> = {
 function errorDetail(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.slice(0, config.ai.errorDetailMaxLength);
-}
-
-function priceQuery(card: Product): string {
-  // Text columns are NOT NULL with '' as the default, so an absent title or description is ''.
-  const title = card.titleProm !== '' ? card.titleProm : card.titleOlx;
-  const description = card.descriptionProm !== '' ? card.descriptionProm : card.descriptionOlx;
-  return description !== '' ? `${title} ${description}` : title;
 }
 
 /** A title column is a single varchar(200) line, whatever the model wrote. */
@@ -113,24 +106,15 @@ export class PreparationService {
     }
 
     if (job.scope === 'price' || job.scope === 'both') {
-      let price: PriceResult;
-      try {
-        price = await this.adapter.findPriceRange(priceQuery(card));
-      } catch (error) {
-        // The texts already paid for stay with the run; only the price is reported missing.
-        await this.runs.finishRun(job.runId, {
-          status: 'failed',
-          errorCode: 'price_unavailable',
-          errorDetail: errorDetail(error),
-          suggestions,
-        });
-        return;
-      }
-      await this.runs.recordUsage(job.runId, price.usage);
-      suggestions.push({
-        field: 'price',
-        value: { priceFrom: price.priceFrom, priceTo: price.priceTo },
+      // No price search adapter is wired in yet: the texts already paid for stay with the run,
+      // and the run closes without a throw so pg-boss does not retry it.
+      await this.runs.finishRun(job.runId, {
+        status: 'failed',
+        errorCode: 'price_unavailable',
+        errorDetail: 'price search is not configured',
+        suggestions,
       });
+      return;
     }
 
     await this.runs.finishRun(job.runId, { status: 'succeeded', suggestions });
