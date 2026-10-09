@@ -37,6 +37,9 @@ import { ProductForm, type ProductFormData } from './product-form';
 
 const CARD_ID = '11111111-1111-4111-8111-111111111111';
 
+/** The switch is stored per browser and read back on the next card, so its format is a contract. */
+const PRICE_SEARCH_STORAGE_KEY = 'mouse.priceSearch';
+
 const FRAME: ProductImage = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   r2Key: `products/${CARD_ID}/front.jpg`,
@@ -92,6 +95,30 @@ type DialogRefDouble = {
   keydownEvents: () => Observable<KeyboardEvent>;
   backdropClick: () => Observable<MouseEvent>;
 };
+
+/**
+ * Node 26 puts its own `localStorage` over the one of jsdom, and without `--localstorage-file` it
+ * is undefined, so a test hands the browser storage in itself.
+ */
+function memoryStorage(): Storage {
+  const items = new Map<string, string>();
+  return {
+    get length() {
+      return items.size;
+    },
+    key: (index) => [...items.keys()][index] ?? null,
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => {
+      items.set(key, value);
+    },
+    removeItem: (key) => {
+      items.delete(key);
+    },
+    clear: () => {
+      items.clear();
+    },
+  };
+}
 
 function answer(card: ProductCard, discardedKeywordsCount = 0): ProductUpdateResponse {
   return { ...card, discardedKeywordsCount };
@@ -812,7 +839,11 @@ describe('ProductForm', () => {
     const loader = TestbedHarnessEnvironment.loader(fixture);
     const toggles = await loader.getAllHarnesses(MatSlideToggleHarness);
     const labels = await Promise.all(toggles.map((harness) => harness.getLabelText()));
-    expect(labels).toEqual(['Опубліковано на Prom', 'Опубліковано на OLX']);
+    // The price search switch belongs to the browser, not to the card or its readiness.
+    expect(labels.filter((label) => label !== 'Пошук ціни')).toEqual([
+      'Опубліковано на Prom',
+      'Опубліковано на OLX',
+    ]);
   });
 
   it('turns the save button off through a signal while a field is invalid', async () => {
@@ -1410,6 +1441,19 @@ describe('ProductForm', () => {
       field: 'price',
       value: SUGGESTED_PRICE_RANGE,
     };
+
+    /**
+     * The panel was written while the price search was always on, so it runs with the switch on;
+     * the switch itself is specified by its own block below.
+     */
+    beforeEach(() => {
+      vi.stubGlobal('localStorage', memoryStorage());
+      localStorage.setItem(PRICE_SEARCH_STORAGE_KEY, 'true');
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
 
     /** A card read that carries the latest suggestion of every field, decided or not. */
     function withLatest(card: ProductCard, latest: readonly FieldSuggestion[]): ProductCardRead {
@@ -2487,6 +2531,205 @@ describe('ProductForm', () => {
         await settle();
 
         expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+      });
+    });
+
+    describe('the price search switch', () => {
+      const RUNS_URL = `/api/products/${CARD_ID}/preparation-runs`;
+      const RUN_URL = `${RUNS_URL}/${RUN_ID}`;
+
+      beforeEach(() => {
+        localStorage.removeItem(PRICE_SEARCH_STORAGE_KEY);
+      });
+
+      function priceSearch(): Promise<MatSlideToggleHarness> {
+        return toggle('Пошук ціни');
+      }
+
+      function generateAllButton(): HTMLButtonElement {
+        const found = element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]');
+        if (found === null) {
+          throw new Error('no «Згенерувати все» button');
+        }
+        return found;
+      }
+
+      async function tooltipOf(selector: string): Promise<string> {
+        const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarnessOrNull(
+          MatTooltipHarness.with({ selector }),
+        );
+        expect(tooltip, `${selector} carries no tooltip`).not.toBeNull();
+        if (tooltip === null) {
+          return '';
+        }
+        await tooltip.show();
+        const text = await tooltip.getTooltipText();
+        await tooltip.hide();
+        return text;
+      }
+
+      /**
+       * The body is returned rather than asserted here: a failed assertion before the run is
+       * answered would leave the poll open for the shared verify().
+       */
+      async function generateAll(card: ProductCard): Promise<unknown> {
+        generateAllButton().click();
+        await settle();
+        const request = http.expectOne(RUNS_URL);
+        const body = request.request.body as { scope: 'texts' | 'both' };
+        request.flush({ ...run('running'), scope: body.scope });
+        await settle();
+        http.expectOne(RUN_URL).flush({ ...run('succeeded'), scope: body.scope });
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(card));
+        await settle();
+        return body;
+      }
+
+      async function reopen(card: ProductCard): Promise<void> {
+        http.verify();
+        TestBed.resetTestingModule();
+        open(card);
+        await settle();
+      }
+
+      it('sits at the top of the card and says the search is paid and takes a few seconds', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        await priceSearch();
+        const host = element.querySelector('[data-testid="price-search"]');
+        const form = element.querySelector('form');
+        expect(host, 'no price search switch').not.toBeNull();
+        if (host === null || form === null) {
+          return;
+        }
+        expect(host.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        const hint = await tooltipOf('[data-testid="price-search"]');
+        expect(hint).toMatch(/платн/i);
+        expect(hint).toMatch(/секунд/i);
+      });
+
+      it('starts switched off with nothing stored, so «Згенерувати все» prepares the texts only', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        const checked = await (await priceSearch()).isChecked();
+        const body = await generateAll(PUBLISHED_ON_PROM);
+
+        expect(checked).toBe(false);
+        expect(body).toEqual({ scope: 'texts' });
+      });
+
+      it('keeps «Знайти ціну» off while the switch is off and points to the switch at the top of the card', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
+        const hint = await tooltipOf(
+          'app-suggestion-field[data-field="price"] [data-testid="rewrite"]',
+        );
+        expect(hint).toMatch(/пошук ціни/i);
+        expect(hint).toContain('вгорі картки');
+
+        button('price', 'rewrite')?.click();
+        await settle();
+        http.expectNone(RUNS_URL);
+      });
+
+      it('writes the switch turned on to the browser storage', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        await (await priceSearch()).check();
+        await settle();
+
+        expect(localStorage.getItem(PRICE_SEARCH_STORAGE_KEY)).toBe('true');
+      });
+
+      it('opens switched on when the browser remembers it, so «Згенерувати все» starts the texts and the price', async () => {
+        localStorage.setItem(PRICE_SEARCH_STORAGE_KEY, 'true');
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        const checked = await (await priceSearch()).isChecked();
+        const body = await generateAll(PUBLISHED_ON_PROM);
+
+        expect(checked).toBe(true);
+        expect(body).toEqual({ scope: 'both' });
+      });
+
+      it('keeps the switch on for the next card opened after it was switched on', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+        await (await priceSearch()).check();
+        await settle();
+
+        await reopen(PUBLISHED_ON_PROM);
+
+        expect(await (await priceSearch()).isChecked()).toBe(true);
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      it('keeps the switch off for the next card once it was switched back off', async () => {
+        localStorage.setItem(PRICE_SEARCH_STORAGE_KEY, 'true');
+        open(PUBLISHED_ON_PROM);
+        await settle();
+        await (await priceSearch()).uncheck();
+        await settle();
+
+        await reopen(PUBLISHED_ON_PROM);
+
+        expect(await (await priceSearch()).isChecked()).toBe(false);
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
+      });
+
+      it('leaves «Знайти ціну» to the title and description rules once the switch is on', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+        await (await priceSearch()).check();
+        await settle();
+
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBe('true');
+        expect(
+          await tooltipOf('app-suggestion-field[data-field="price"] [data-testid="rewrite"]'),
+        ).toContain('хоча б одна назва й хоча б один опис з будь-якого майданчика');
+
+        type('titleOlx', 'Logitech MX Master 3 бездротова');
+        type('descriptionOlx', 'Продам мишу, повний комплект.');
+        await settle();
+
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      describe('when the browser storage throws', () => {
+        beforeEach(() => {
+          const denied = (): never => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+          };
+          const storage = memoryStorage();
+          storage.getItem = denied;
+          storage.setItem = denied;
+          storage.removeItem = denied;
+          vi.stubGlobal('localStorage', storage);
+        });
+
+        it('opens the card switched off and still switches within the page', async () => {
+          open(PUBLISHED_ON_PROM);
+          await settle();
+
+          const switchOn = await priceSearch();
+          const checkedAtFirst = await switchOn.isChecked();
+          await switchOn.check();
+          await settle();
+          const checkedAfterClick = await switchOn.isChecked();
+          const body = await generateAll(PUBLISHED_ON_PROM);
+
+          expect(checkedAtFirst).toBe(false);
+          expect(checkedAfterClick).toBe(true);
+          expect(body).toEqual({ scope: 'both' });
+          expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+        });
       });
     });
 
