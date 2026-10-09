@@ -2350,6 +2350,146 @@ describe('ProductForm', () => {
       }
     });
 
+    describe('«Згенерувати все»', () => {
+      const RUNS_URL = `/api/products/${CARD_ID}/preparation-runs`;
+      const RUN_URL = `${RUNS_URL}/${RUN_ID}`;
+      const NEXT_POLL_MS = 30_000;
+
+      const SUGGESTED_OLX_TITLE: FieldSuggestion = {
+        ...SUGGESTED_OLX_DESCRIPTION,
+        id: '88888888-8888-4888-8888-888888888888',
+        field: 'titleOlx',
+        value: 'Logitech MX Master 3 бездротова',
+      };
+
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      function generateAllButton(): HTMLButtonElement {
+        const found = element.querySelector<HTMLButtonElement>('[data-testid="generate-all"]');
+        if (found === null) {
+          throw new Error('no «Згенерувати все» button');
+        }
+        return found;
+      }
+
+      function spinnerIn(scope: Element): Element | null {
+        return scope.querySelector('mat-progress-spinner');
+      }
+
+      function bothRun(
+        status: PreparationRunDto['status'],
+        errorCode: PreparationRunDto['errorCode'] = null,
+      ): PreparationRunDto {
+        return { ...run(status), scope: 'both', errorCode };
+      }
+
+      /**
+       * The body is returned rather than asserted here: a failed assertion before the poll is
+       * answered would leave it open for the shared verify().
+       */
+      async function startGenerateAll(): Promise<unknown> {
+        generateAllButton().click();
+        await settle();
+        const request = http.expectOne(RUNS_URL);
+        const body: unknown = request.request.body;
+        request.flush(bothRun('running'));
+        await settle();
+        return body;
+      }
+
+      it('starts one run of the texts followed by the price range', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        const body = await startGenerateAll();
+        http.expectOne(RUN_URL).flush(bothRun('succeeded'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+
+        expect(body).toEqual({ scope: 'both' });
+      });
+
+      // Mid-run checks are soft: a hard failure would leave the poll open, and the shared verify()
+      // would then fail every test after this one as well.
+      it('spins in «Згенерувати все» while the run of the texts and the price is queued or running', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        await startGenerateAll();
+        http.expectOne(RUN_URL).flush(bothRun('queued'));
+        await settle();
+        expect.soft(spinnerIn(generateAllButton()), 'spinner while queued').not.toBeNull();
+
+        await vi.advanceTimersByTimeAsync(NEXT_POLL_MS);
+        await settle();
+        http.expectOne(RUN_URL).flush(bothRun('running'));
+        await settle();
+        expect.soft(spinnerIn(generateAllButton()), 'spinner while running').not.toBeNull();
+
+        await vi.advanceTimersByTimeAsync(NEXT_POLL_MS);
+        await settle();
+        http.expectOne(RUN_URL).flush(bothRun('succeeded'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+
+        expect(spinnerIn(generateAllButton())).toBeNull();
+      });
+
+      it('shows the texts beside the fields and the range under the price without saving anything', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        const body = await startGenerateAll();
+        http.expectOne(RUN_URL).flush(bothRun('succeeded'));
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}`)
+          .flush(withLatest(EMPTY_WITH_FRAME, [SUGGESTED_OLX_DESCRIPTION, SUGGESTED_PRICE]));
+        await settle();
+
+        expect(body).toEqual({ scope: 'both' });
+        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
+        expect(field('descriptionOlx').value).toBe('');
+        expect(field('price').value).toBe('');
+      });
+
+      it('keeps the texts, explains the missing price and offers «Знайти ціну» when only the price search failed', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        const body = await startGenerateAll();
+        http.expectOne(RUN_URL).flush(bothRun('failed', 'price_unavailable'));
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}`)
+          .flush(withLatest(EMPTY_WITH_FRAME, [SUGGESTED_OLX_TITLE, SUGGESTED_OLX_DESCRIPTION]));
+        await settle();
+
+        expect(body).toEqual({ scope: 'both' });
+        expect(suggestionText('titleOlx')).toBe(SUGGESTED_OLX_TITLE.value);
+        expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
+        expect(actionsAlert()).toBe(
+          'Ціну знайти не вдалося. Тексти на місці — спробуйте запросити ціну ще раз.',
+        );
+
+        // The search reads the draft, so the prepared texts reach it through «<- AI», not a new run.
+        button('titleOlx', 'accept')?.click();
+        button('descriptionOlx', 'accept')?.click();
+        await settle();
+
+        expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
+      });
+    });
+
     function run(status: PreparationRunDto['status']): PreparationRunDto {
       return {
         id: RUN_ID,
