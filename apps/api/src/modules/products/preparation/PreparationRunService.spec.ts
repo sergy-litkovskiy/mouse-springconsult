@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { config } from '../../../config.ts';
 import type { PgBoss } from '../../../queue.ts';
 import type { Product } from '../Product.ts';
 import {
@@ -158,12 +159,23 @@ function setup(cards: Product[] = [card(CARD_ID)], queue = new RecordingQueue())
   return { products, runs, queue, service };
 }
 
-function missing(expected: 'gallery' | 'title' | 'draft') {
+function missing(...expected: ('gallery' | 'title' | 'description' | 'draft')[]) {
   return (error: unknown): boolean => {
     assert.ok(error instanceof PreparationInputIncomplete);
-    assert.deepEqual(error.details, { missing: [expected] });
+    assert.deepEqual(error.details, { missing: expected });
     return true;
   };
+}
+
+const PRICE_DRAFT = {
+  titleProm: 'Миша Logitech MX Master 3',
+  titleOlx: 'Миша Logitech MX Master 3 бездротова',
+  descriptionProm: '<p>Бездротова миша, <strong>стан відмінний</strong>.</p>',
+  descriptionOlx: 'Продаю бездротову мишу, стан відмінний.',
+};
+
+function priceRun(draft: Partial<typeof PRICE_DRAFT> = {}) {
+  return { scope: 'price' as const, ...PRICE_DRAFT, ...draft };
 }
 
 describe('preparation run service: input gates', () => {
@@ -440,6 +452,182 @@ describe('preparation run service: idempotency', () => {
     assert.equal(second.created, false);
     assert.equal(second.run.id, first.run.id);
     assert.equal(runs.rows.length, 1);
+    assert.equal(queue.jobs.length, 1);
+  });
+
+  it('keeps the both run when only the saved titles and descriptions change', async () => {
+    const { service, products, queue } = setup();
+
+    const first = await service.start(CARD_ID, { scope: 'both' });
+    products.cards[0] = card(CARD_ID, {
+      titleProm: 'Миша Logitech MX Master 3S',
+      descriptionProm: 'Нова батарея, повний комплект.',
+    });
+    const second = await service.start(CARD_ID, { scope: 'both' });
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+    assert.equal(queue.jobs.length, 1);
+  });
+});
+
+describe('preparation run service: price run', () => {
+  const PAIR = {
+    title: 'Миша Logitech MX Master 3',
+    description: 'Бездротова миша, стан відмінний.',
+  };
+
+  it('queues the OLX title and the plain-text Prom description when each exists on one marketplace only', async () => {
+    const { service, queue } = setup();
+
+    const { run, created } = await service.start(
+      CARD_ID,
+      priceRun({ titleProm: '', descriptionOlx: '' }),
+    );
+
+    assert.equal(created, true);
+    assert.equal(run.scope, 'price');
+    assert.deepEqual(queue.jobs, [
+      {
+        runId: run.id,
+        productId: CARD_ID,
+        scope: 'price',
+        title: 'Миша Logitech MX Master 3 бездротова',
+        description: 'Бездротова миша, стан відмінний.',
+      },
+    ]);
+  });
+
+  it('starts a price run from the draft while the saved card has neither titles nor frames', async () => {
+    const { service, queue } = setup([
+      card(CARD_ID, {
+        titleProm: '',
+        titleOlx: '',
+        descriptionProm: '',
+        descriptionOlx: '',
+        images: [],
+      }),
+    ]);
+
+    const { run, created } = await service.start(CARD_ID, priceRun());
+
+    assert.equal(created, true);
+    assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'price', ...PAIR }]);
+  });
+
+  it('refuses a price run whose draft has neither a title nor a description', async () => {
+    const { service, runs, queue } = setup();
+
+    await assert.rejects(
+      service.start(
+        CARD_ID,
+        priceRun({ titleProm: '', titleOlx: ' ', descriptionProm: '', descriptionOlx: '' }),
+      ),
+      missing('title', 'description'),
+    );
+
+    assert.equal(runs.rows.length, 0);
+    assert.deepEqual(queue.jobs, []);
+  });
+
+  it('refuses a price run whose draft has descriptions but no title', async () => {
+    const { service, runs, queue } = setup();
+
+    await assert.rejects(
+      service.start(CARD_ID, priceRun({ titleProm: '', titleOlx: '' })),
+      missing('title'),
+    );
+
+    assert.equal(runs.rows.length, 0);
+    assert.deepEqual(queue.jobs, []);
+  });
+
+  it('refuses a price run whose only description is markup without text', async () => {
+    const { service, runs, queue } = setup();
+
+    await assert.rejects(
+      service.start(
+        CARD_ID,
+        priceRun({ descriptionProm: '<p></p><p><br></p>', descriptionOlx: '' }),
+      ),
+      missing('description'),
+    );
+
+    assert.equal(runs.rows.length, 0);
+    assert.deepEqual(queue.jobs, []);
+  });
+
+  it('records the price run under the price search model, not the texts model', async () => {
+    const { service, runs } = setup();
+
+    const { run } = await service.start(CARD_ID, priceRun());
+
+    assert.equal(run.model, config.ai.priceSearch.model);
+    assert.deepEqual(
+      runs.rows.map((row) => row.model),
+      [config.ai.priceSearch.model],
+    );
+  });
+
+  it('returns the queued price run for a draft with the same pair, whatever else has changed', async () => {
+    const { service, products, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, priceRun());
+    products.cards[0] = card(CARD_ID, { titleProm: 'Миша Logitech MX Master 3S' });
+    const second = await service.start(
+      CARD_ID,
+      priceRun({
+        titleOlx: 'Інша назва для OLX',
+        descriptionProm: '<p>Бездротова миша, стан <em>відмінний</em>.</p>',
+      }),
+    );
+
+    assert.equal(second.created, false);
+    assert.equal(second.run.id, first.run.id);
+    assert.equal(runs.rows.length, 1);
+    assert.equal(queue.jobs.length, 1);
+  });
+
+  it('starts a new price run once the draft pair has changed', async () => {
+    const { service } = setup();
+
+    const first = await service.start(CARD_ID, priceRun());
+    const second = await service.start(
+      CARD_ID,
+      priceRun({ descriptionProm: '<p>Нова батарея, повний комплект.</p>' }),
+    );
+
+    assert.equal(second.created, true);
+    assert.notEqual(second.run.id, first.run.id);
+  });
+
+  it('starts and queues a new price run for the same draft once the previous one failed', async () => {
+    const { service, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, priceRun());
+    first.run.status = 'failed';
+    const repeat = await service.start(CARD_ID, priceRun());
+
+    assert.equal(repeat.created, true);
+    assert.notEqual(repeat.run.id, first.run.id);
+    assert.equal(runs.rows.length, 2);
+    assert.deepEqual(queue.jobs, [
+      { runId: first.run.id, productId: CARD_ID, scope: 'price', ...PAIR },
+      { runId: repeat.run.id, productId: CARD_ID, scope: 'price', ...PAIR },
+    ]);
+  });
+
+  it('returns the queued price run for the same draft before counting the limit of the card', async () => {
+    const { service, products, runs, queue } = setup();
+
+    const first = await service.start(CARD_ID, priceRun());
+    // The saved card is not the input: emptying it must not turn the repeat into a refusal.
+    products.cards[0] = card(CARD_ID, { titleProm: '', titleOlx: '' });
+    runs.recentRuns[CARD_ID] = 20;
+    const repeat = await service.start(CARD_ID, priceRun());
+
+    assert.equal(repeat.created, false);
+    assert.equal(repeat.run.id, first.run.id);
     assert.equal(queue.jobs.length, 1);
   });
 });
