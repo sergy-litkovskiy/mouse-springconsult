@@ -99,6 +99,22 @@ const QuotaErrorSchema = z.object({
   }),
 });
 
+/** Only the offer of a JSON-LD `Product` block on a listing page. */
+const OfferSchema = z.object({
+  '@type': z.literal('Product'),
+  offers: z.object({
+    price: z.union([z.number(), z.string()]).optional(),
+    priceCurrency: z.string().optional(),
+    availability: z.string().optional(),
+    itemCondition: z.string().optional(),
+  }),
+});
+
+type Offer = z.infer<typeof OfferSchema>['offers'];
+
+/** Pages write schema.org terms under both `http` and `https`. */
+const SCHEMA_ORG = /^https?:\/\/schema\.org\//;
+
 const NORMAL_FINISH = new Set(['STOP', 'MAX_TOKENS']);
 
 /**
@@ -162,8 +178,7 @@ export class GeminiAdapter {
   /**
    * Keeps the listings that came from the search and lead to a listing page, under its own address
    * rather than the redirect. The range is then rebuilt from them, so a price the model took from a
-   * search page never makes it into the range. Outside OLX the page itself has the last word: a
-   * removed, sold out or new item is dropped, and its UAH price replaces the model's.
+   * search page never makes it into the range. Outside OLX the page itself has the last word.
    */
   private async listingPages(listings: readonly PriceListing[]): Promise<PriceListing[]> {
     const resolved = await Promise.all(
@@ -184,60 +199,7 @@ export class GeminiAdapter {
         if (/(^|\.)olx\.ua$/.test(page.hostname)) {
           return { price: listing.price, url };
         }
-        let answer: ListingPage;
-        try {
-          answer = await this.readPage(url);
-        } catch {
-          return { price: listing.price, url };
-        }
-        if (answer.status === 404 || answer.status === 410) {
-          return undefined;
-        }
-        const OfferSchema = z.object({
-          '@type': z.literal('Product'),
-          offers: z.object({
-            price: z.union([z.number(), z.string()]).optional(),
-            priceCurrency: z.string().optional(),
-            availability: z.string().optional(),
-            itemCondition: z.string().optional(),
-          }),
-        });
-        let offer: z.infer<typeof OfferSchema>['offers'] | undefined;
-        for (const match of answer.html.matchAll(
-          /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi,
-        )) {
-          let json: unknown;
-          try {
-            json = JSON.parse(match[1] ?? '');
-          } catch {
-            continue;
-          }
-          const parsed = OfferSchema.safeParse(json);
-          if (parsed.success) {
-            offer = parsed.data.offers;
-            break;
-          }
-        }
-        if (offer === undefined) {
-          return { price: listing.price, url };
-        }
-        const availability = offer.availability?.replace(/^https?:\/\/schema\.org\//, '');
-        const condition = offer.itemCondition?.replace(/^https?:\/\/schema\.org\//, '');
-        if (availability === 'OutOfStock' || availability === 'SoldOut') {
-          return undefined;
-        }
-        if (condition === 'NewCondition') {
-          return undefined;
-        }
-        if (offer.priceCurrency !== undefined && offer.priceCurrency !== 'UAH') {
-          return undefined;
-        }
-        const price = String(offer.price);
-        return offer.priceCurrency === 'UAH' &&
-          PriceSchema.safeParse(price).success &&
-          Number(price) > 0
-          ? { price, url }
-          : { price: listing.price, url };
+        return this.checkedOnPage({ price: listing.price, url });
       }),
     );
     const seen = new Set<string>();
@@ -248,6 +210,43 @@ export class GeminiAdapter {
       seen.add(listing.url);
       return true;
     });
+  }
+
+  /**
+   * The listing as its own page shows it: gone when the page is removed, sold out, new or priced in
+   * another currency; at the page's UAH price when it has one; as the model gave it otherwise.
+   */
+  private async checkedOnPage(listing: PriceListing): Promise<PriceListing | undefined> {
+    let answer: ListingPage;
+    try {
+      answer = await this.readPage(listing.url);
+    } catch {
+      return listing;
+    }
+    if (answer.status === 404 || answer.status === 410) {
+      return undefined;
+    }
+    const offer = pageOffer(answer.html);
+    if (offer === undefined) {
+      return listing;
+    }
+    const availability = offer.availability?.replace(SCHEMA_ORG, '');
+    const condition = offer.itemCondition?.replace(SCHEMA_ORG, '');
+    if (availability === 'OutOfStock' || availability === 'SoldOut') {
+      return undefined;
+    }
+    if (condition === 'NewCondition') {
+      return undefined;
+    }
+    if (offer.priceCurrency !== undefined && offer.priceCurrency !== 'UAH') {
+      return undefined;
+    }
+    const price = String(offer.price);
+    return offer.priceCurrency === 'UAH' &&
+      PriceSchema.safeParse(price).success &&
+      Number(price) > 0
+      ? { price, url: listing.url }
+      : listing;
   }
 
   /** Reads where a search redirect points without following it to the marketplace. */
@@ -389,4 +388,23 @@ function isDailyQuota(body: string): boolean {
       (detail.violations ?? []).some((violation) => violation.quotaId?.includes('PerDay')),
     )
   );
+}
+
+/** The first JSON-LD block on the page that reads as a `Product`; a broken block is skipped. */
+function pageOffer(html: string): Offer | undefined {
+  for (const match of html.matchAll(
+    /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
+    let json: unknown;
+    try {
+      json = JSON.parse(match[1] ?? '');
+    } catch {
+      continue;
+    }
+    const parsed = OfferSchema.safeParse(json);
+    if (parsed.success) {
+      return parsed.data.offers;
+    }
+  }
+  return undefined;
 }
