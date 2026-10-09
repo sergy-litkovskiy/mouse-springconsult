@@ -20,7 +20,13 @@ const CALL = {
   outputTokens: 80,
 };
 
-const LISTING = { price: '1800', url: 'https://www.olx.ua/d/uk/obyavlenie/sony-IDabc.html' };
+const REDIRECT = 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQsony';
+const LISTING_URL = 'https://www.olx.ua/d/uk/obyavlenie/sony-IDabc.html';
+const LISTING = { price: '1800', url: REDIRECT };
+
+function redirect(id: string): string {
+  return `https://vertexaisearch.cloud.google.com/grounding-api-redirect/${id}`;
+}
 
 function rangeText(listings: readonly { price: string; url: string }[] = [LISTING]): string {
   return JSON.stringify({ priceFrom: '1500', priceTo: '2500.00', listings });
@@ -48,11 +54,17 @@ function quotaBody(quotaId: string): string {
   });
 }
 
-/** Never talks to Gemini: the one method that reaches the SDK is replaced by a script. */
+/**
+ * Never talks to Gemini or to the redirect host: both methods that reach the network are replaced
+ * by a script.
+ */
 class ScriptedGeminiAdapter extends GeminiAdapter {
   readonly requests: GeminiRequest[] = [];
 
-  constructor(private readonly script: () => GeminiReply) {
+  constructor(
+    private readonly script: () => GeminiReply,
+    private readonly redirects: ReadonlyMap<string, string> = new Map([[REDIRECT, LISTING_URL]]),
+  ) {
     super(API_KEY);
   }
 
@@ -60,10 +72,26 @@ class ScriptedGeminiAdapter extends GeminiAdapter {
     this.requests.push(request);
     return this.script();
   }
+
+  protected override async resolveRedirect(url: string): Promise<string | undefined> {
+    const target = this.redirects.get(url);
+    if (target === 'unreachable') {
+      throw new TypeError('fetch failed');
+    }
+    return target;
+  }
 }
 
-function answering(text: string | undefined, refusal?: string): ScriptedGeminiAdapter {
-  return new ScriptedGeminiAdapter(() => ({ text, refusal, call: CALL }));
+function answering(
+  text: string | undefined,
+  refusal?: string,
+  redirects?: ReadonlyMap<string, string>,
+): ScriptedGeminiAdapter {
+  return new ScriptedGeminiAdapter(() => ({ text, refusal, call: CALL }), redirects);
+}
+
+function leadingTo(text: string, redirects: Record<string, string>): ScriptedGeminiAdapter {
+  return answering(text, undefined, new Map(Object.entries(redirects)));
 }
 
 function failingWith(error: unknown): ScriptedGeminiAdapter {
@@ -82,11 +110,131 @@ describe('GeminiAdapter', () => {
 
     assert.deepEqual(result, {
       kind: 'found',
-      priceFrom: '1500',
-      priceTo: '2500.00',
-      listings: [LISTING],
+      priceFrom: '1800',
+      priceTo: '1800',
+      listings: [{ price: '1800', url: LISTING_URL }],
       call: CALL,
     });
+  });
+
+  it('rebuilds the range from the kept listings instead of the one the model named', async () => {
+    const text = rangeText([
+      { price: '650', url: redirect('a') },
+      { price: '4200', url: redirect('search') },
+      { price: '375', url: redirect('b') },
+    ]);
+
+    const result = await search(
+      leadingTo(text, {
+        [redirect('a')]: 'https://www.olx.ua/d/obyavlenie/casio-mtp-1084-IDYFNh2.html',
+        [redirect('search')]: 'https://www.olx.ua/uk/list/q-casio-mtp/',
+        [redirect('b')]: 'https://prom.ua/ua/p1898742664-casio-mtp.html',
+      }),
+    );
+
+    assert.ok(result.kind === 'found');
+    assert.equal(result.priceFrom, '375');
+    assert.equal(result.priceTo, '650');
+    assert.deepEqual(
+      result.listings.map((listing) => listing.url),
+      [
+        'https://www.olx.ua/d/obyavlenie/casio-mtp-1084-IDYFNh2.html',
+        'https://prom.ua/ua/p1898742664-casio-mtp.html',
+      ],
+    );
+  });
+
+  it('drops a listing URL the model wrote itself rather than took from the search', async () => {
+    const text = rangeText([LISTING, { price: '900', url: LISTING_URL }]);
+
+    const result = await search(answering(text));
+
+    assert.ok(result.kind === 'found');
+    assert.deepEqual(result.listings, [{ price: '1800', url: LISTING_URL }]);
+    assert.equal(
+      (await search(answering(rangeText([{ price: '900', url: LISTING_URL }])))).kind,
+      'unparsed',
+    );
+  });
+
+  it('keeps listing pages of Shafa and Kloomba', async () => {
+    const pages = [
+      'https://shafa.ua/item/221547323-lavandovyy-ametist-gran-6mm',
+      'https://shafa.ua/uk/item/221618837-futbolka-dlya-divchinki-ff-blakitna',
+      'https://shafa.ua/women/sport-otdyh/sportivnyye-kostyumy/216943978-kostyum-sportivniy',
+      'https://kloomba.com/o/kovdra-praporc-48069987/',
+    ];
+    const text = rangeText(pages.map((_, i) => ({ price: '900', url: redirect(String(i)) })));
+
+    const result = await search(
+      leadingTo(text, Object.fromEntries(pages.map((page, i) => [redirect(String(i)), page]))),
+    );
+
+    assert.ok(result.kind === 'found');
+    assert.deepEqual(
+      result.listings.map((listing) => listing.url),
+      pages,
+    );
+  });
+
+  it('drops category pages of Shafa and Kloomba', async () => {
+    const categories = [
+      'https://shafa.ua/women',
+      'https://shafa.ua/uk/women/platya',
+      'https://kloomba.com/market/detskaya-odezhda/',
+    ];
+    const text = rangeText(categories.map((_, i) => ({ price: '900', url: redirect(String(i)) })));
+
+    const result = await search(
+      leadingTo(text, Object.fromEntries(categories.map((page, i) => [redirect(String(i)), page]))),
+    );
+
+    assert.equal(result.kind, 'unparsed');
+  });
+
+  it('reports an unparsed reply when every redirect leads to a search or a home page', async () => {
+    const text = rangeText([
+      { price: '7000', url: redirect('list') },
+      { price: '9500', url: redirect('home') },
+    ]);
+
+    const result = await search(
+      leadingTo(text, {
+        [redirect('list')]: 'https://www.olx.ua/uk/hobbi-otdyh-i-sport/q-lego-ev3/',
+        [redirect('home')]: 'https://www.olx.ua/',
+      }),
+    );
+
+    assert.equal(result.kind, 'unparsed');
+  });
+
+  it('reports an unparsed reply instead of throwing when a redirect cannot be resolved', async () => {
+    const text = rangeText([
+      { price: '1800', url: redirect('down') },
+      { price: '1900', url: redirect('nowhere') },
+    ]);
+
+    const result = await search(leadingTo(text, { [redirect('down')]: 'unreachable' }));
+
+    assert.equal(result.kind, 'unparsed');
+  });
+
+  it('keeps the listing address without its query string and keeps it once', async () => {
+    const text = rangeText([
+      { price: '50', url: redirect('a') },
+      { price: '50', url: redirect('b') },
+    ]);
+    const page = 'https://m.olx.ua/d/obyavlenie/perehdnik-ca-44-IDZicGT.html';
+
+    const result = await search(
+      leadingTo(text, {
+        [redirect('a')]: `${page}?reason=ip%7Ccool%3Abase#gallery`,
+        [redirect('b')]: page,
+      }),
+    );
+
+    assert.ok(result.kind === 'found');
+    assert.deepEqual(result.listings, [{ price: '50', url: page }]);
   });
 
   it('reads the JSON out of a ```json fence with prose around it', async () => {
@@ -97,13 +245,17 @@ describe('GeminiAdapter', () => {
     assert.equal(result.kind, 'found');
   });
 
-  it('accepts a 2048-character listing URL', async () => {
-    const url = `https://olx.ua/${'a'.repeat(2048 - 'https://olx.ua/'.length)}`;
-    assert.equal(url.length, 2048);
+  it('keeps a listing whose address is 2048 characters and drops one of 2049', async () => {
+    const prefix = 'https://www.olx.ua/d/obyavlenie/';
+    const page = (length: number): string =>
+      `${prefix}${'a'.repeat(length - prefix.length - '.html'.length)}.html`;
+    assert.equal(page(2048).length, 2048);
 
-    const result = await search(answering(rangeText([{ price: '1800', url }])));
+    const at = await search(leadingTo(rangeText(), { [REDIRECT]: page(2048) }));
+    const past = await search(leadingTo(rangeText(), { [REDIRECT]: page(2049) }));
 
-    assert.equal(result.kind, 'found');
+    assert.equal(at.kind, 'found');
+    assert.equal(past.kind, 'unparsed');
   });
 
   it('reports an unparsed reply, with the call details, when there is no JSON', async () => {

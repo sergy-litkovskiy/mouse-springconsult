@@ -1,7 +1,7 @@
 ---
 id: T107
 title: "Прибрати пошук ціни через Anthropic"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"

@@ -1,7 +1,7 @@
 ---
 id: T110
 title: "priceSearchInput: пара назва + опис для пошуку ціни"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"

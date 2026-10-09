@@ -1,4 +1,4 @@
-import { ApiError, GoogleGenAI } from '@google/genai';
+import { ApiError, GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { z } from 'zod';
 import { config } from '../../config.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
@@ -96,6 +96,20 @@ const QuotaErrorSchema = z.object({
 const NORMAL_FINISH = new Set(['STOP', 'MAX_TOKENS']);
 
 /**
+ * A URL the model writes itself is made up as often as not; only a search result arrives as one
+ * of these redirects (ADR 0026).
+ */
+const SEARCH_REDIRECT = 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/';
+
+/** A single listing page, not a search, a category or a home page the search also returns. */
+const LISTING_PAGE = [
+  /^https:\/\/(www\.|m\.)?olx\.ua\/(d\/)?(uk\/)?obyavlenie\/[^/]+\.html$/,
+  /^https:\/\/prom\.ua\/(ua\/)?p\d+-[^/]+\.html$/,
+  /^https:\/\/(www\.)?kloomba\.com\/o\/[^/]+-\d+\/$/,
+  /^https:\/\/(www\.)?shafa\.ua\/([a-z-]+\/)*\d+-[^/]+$/,
+];
+
+/**
  * Talks to Gemini with Google Search grounding (ADR 0020) and nothing else — it never sees a card,
  * the Prom-else-OLX choice or the database. Every failure comes back as a result, never a throw:
  * the run must close without pg-boss retrying it (ADR 0023).
@@ -123,10 +137,61 @@ export class GeminiAdapter {
       return { kind: 'unavailable', reason: `The model declined to answer (${reply.refusal})` };
     }
     const range = parseRange(reply.text);
-    if (range === undefined) {
+    const listings = range === undefined ? [] : await this.listingPages(range.listings);
+    const byPrice = [...listings].sort((a, b) => Number(a.price) - Number(b.price));
+    const cheapest = byPrice.at(0);
+    const dearest = byPrice.at(-1);
+    if (cheapest === undefined || dearest === undefined) {
       return { kind: 'unparsed', call: reply.call };
     }
-    return { kind: 'found', ...range, call: reply.call };
+    return {
+      kind: 'found',
+      priceFrom: cheapest.price,
+      priceTo: dearest.price,
+      listings,
+      call: reply.call,
+    };
+  }
+
+  /**
+   * Keeps the listings that came from the search and lead to a listing page, under its own address
+   * rather than the redirect. The range is then rebuilt from them, so a price the model took from a
+   * search page never makes it into the range.
+   */
+  private async listingPages(listings: readonly PriceListing[]): Promise<PriceListing[]> {
+    const resolved = await Promise.all(
+      listings.map(async (listing) => {
+        if (!listing.url.startsWith(SEARCH_REDIRECT)) {
+          return undefined;
+        }
+        const target = await this.resolveRedirect(listing.url).catch(() => undefined);
+        if (target === undefined || !URL.canParse(target)) {
+          return undefined;
+        }
+        const page = new URL(target);
+        const url = `${page.origin}${page.pathname}`;
+        return url.length <= 2048 && LISTING_PAGE.some((pattern) => pattern.test(url))
+          ? { price: listing.price, url }
+          : undefined;
+      }),
+    );
+    const seen = new Set<string>();
+    return resolved.filter((listing): listing is PriceListing => {
+      if (listing === undefined || seen.has(listing.url)) {
+        return false;
+      }
+      seen.add(listing.url);
+      return true;
+    });
+  }
+
+  /** Reads where a search redirect points without following it to the marketplace. */
+  protected async resolveRedirect(url: string): Promise<string | undefined> {
+    const response = await fetch(url, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(config.ai.priceSearch.redirectTimeoutMs),
+    });
+    return response.headers.get('location') ?? undefined;
   }
 
   /** One request per run: the SDK only repeats a call when asked to, and it is not asked here. */
@@ -146,6 +211,7 @@ export class GeminiAdapter {
         ],
         config: {
           tools: [{ googleSearch: {} }],
+          thinkingConfig: { thinkingLevel: ThinkingLevel[config.ai.priceSearch.thinkingLevel] },
           httpOptions: { timeout: config.ai.priceSearch.timeoutMs },
         },
       });
@@ -201,13 +267,12 @@ export class GeminiAdapter {
 
 function pricePrompt(title: string, description: string): string {
   return (
-    'Знайди в пошуку актуальну ціну вживаного товару на українських майданчиках (OLX, Prom, ' +
-    'інші оголошення в Україні) і назви вилку цін у гривнях.\n\n' +
-    `Назва: ${title}\nОпис: ${description}\n\n` +
-    'Наведи від 1 до 5 оголошень, які ти справді знайшов, з ціною й посиланням на сторінку ' +
-    'оголошення. Не вигадуй ні цін, ні посилань. Відповідь — лише JSON без жодного тексту ' +
-    'навколо, ціни — рядками з десятковим числом без валюти й пробілів:\n' +
-    '{"priceFrom": "1500", "priceTo": "2500", "listings": [{"price": "1800", "url": "https://..."}]}'
+    'Знайди в Google оголошення OLX, Prom, Shafa і Kloomba (Україна) про цей вживаний ' +
+    'товар.\n' +
+    `Назва: ${title}\nОпис: ${description}\n` +
+    'Відповідь — лише JSON: {"priceFrom":"1500","priceTo":"2500","listings":[{"price":"1800",' +
+    '"url":"..."}]}. 1–5 оголошень, ціна в гривнях числом, url — посилання з результатів ' +
+    'пошуку, нічого не вигадуй.'
   );
 }
 

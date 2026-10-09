@@ -178,20 +178,27 @@ export const config = {
     maxFramesPerRequest: 3,
     /**
      * The price range search goes to Gemini with Google Search grounding (ADR 0020), not to the
-     * model above. A constant for the same reason as `model`: it changes quality and the daily
-     * free-tier quota.
+     * model above. A constant for the same reason as `model`: it changes quality and the cost of
+     * a search.
      */
     priceSearch: {
-      /** The starting point; the measurement gate picks between Flash and Flash-Lite. */
-      model: 'gemini-2.5-flash',
+      /** 2.5 is closed to new projects, and search on 3.x needs the paid tier (ADR 0026). */
+      model: 'gemini-3.5-flash-lite',
+      /**
+       * Below `MEDIUM` the model skips the search and writes listing URLs from memory — all of
+       * them dead on the measurement (ADR 0026). Thinking is most of the cost of a call.
+       */
+      thinkingLevel: 'MEDIUM',
       /**
        * The only upper bound on a grounded call, whose length the search provider sets. Well
        * below `queue.preparation.expireInSeconds`, so a hung call closes the run itself instead
        * of being presumed dead.
        */
       timeoutMs: 60_000,
-      /** 0–3 frames per search; the measurement gate decides whether frames help at all. */
-      maxFrames: 3,
+      /** Frames did not improve a single range on the measurement, only the cost (ADR 0026). */
+      maxFrames: 0,
+      /** Resolving one search redirect into the listing address it points to. */
+      redirectTimeoutMs: 5_000,
       /** The queue payload carries the title and description, so both are cut to this length. */
       maxInputChars: 2_000,
     },
