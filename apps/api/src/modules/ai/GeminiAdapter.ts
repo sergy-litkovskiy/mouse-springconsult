@@ -162,7 +162,8 @@ export class GeminiAdapter {
   /**
    * Keeps the listings that came from the search and lead to a listing page, under its own address
    * rather than the redirect. The range is then rebuilt from them, so a price the model took from a
-   * search page never makes it into the range.
+   * search page never makes it into the range. Outside OLX the page itself has the last word: a
+   * removed, sold out or new item is dropped, and its UAH price replaces the model's.
    */
   private async listingPages(listings: readonly PriceListing[]): Promise<PriceListing[]> {
     const resolved = await Promise.all(
@@ -176,9 +177,67 @@ export class GeminiAdapter {
         }
         const page = new URL(target);
         const url = `${page.origin}${page.pathname}`;
-        return url.length <= 2048 && LISTING_PAGE.some((pattern) => pattern.test(url))
-          ? { price: listing.price, url }
-          : undefined;
+        if (url.length > 2048 || !LISTING_PAGE.some((pattern) => pattern.test(url))) {
+          return undefined;
+        }
+        // OLX answers a server with 403, so its listing stays at the model's price.
+        if (/(^|\.)olx\.ua$/.test(page.hostname)) {
+          return { price: listing.price, url };
+        }
+        let answer: ListingPage;
+        try {
+          answer = await this.readPage(url);
+        } catch {
+          return { price: listing.price, url };
+        }
+        if (answer.status === 404 || answer.status === 410) {
+          return undefined;
+        }
+        const OfferSchema = z.object({
+          '@type': z.literal('Product'),
+          offers: z.object({
+            price: z.union([z.number(), z.string()]).optional(),
+            priceCurrency: z.string().optional(),
+            availability: z.string().optional(),
+            itemCondition: z.string().optional(),
+          }),
+        });
+        let offer: z.infer<typeof OfferSchema>['offers'] | undefined;
+        for (const match of answer.html.matchAll(
+          /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi,
+        )) {
+          let json: unknown;
+          try {
+            json = JSON.parse(match[1] ?? '');
+          } catch {
+            continue;
+          }
+          const parsed = OfferSchema.safeParse(json);
+          if (parsed.success) {
+            offer = parsed.data.offers;
+            break;
+          }
+        }
+        if (offer === undefined) {
+          return { price: listing.price, url };
+        }
+        const availability = offer.availability?.replace(/^https?:\/\/schema\.org\//, '');
+        const condition = offer.itemCondition?.replace(/^https?:\/\/schema\.org\//, '');
+        if (availability === 'OutOfStock' || availability === 'SoldOut') {
+          return undefined;
+        }
+        if (condition === 'NewCondition') {
+          return undefined;
+        }
+        if (offer.priceCurrency !== undefined && offer.priceCurrency !== 'UAH') {
+          return undefined;
+        }
+        const price = String(offer.price);
+        return offer.priceCurrency === 'UAH' &&
+          PriceSchema.safeParse(price).success &&
+          Number(price) > 0
+          ? { price, url }
+          : { price: listing.price, url };
       }),
     );
     const seen = new Set<string>();
@@ -200,8 +259,11 @@ export class GeminiAdapter {
     return response.headers.get('location') ?? undefined;
   }
 
-  protected readPage(url: string): Promise<ListingPage> {
-    throw new Error('Not implemented');
+  protected async readPage(url: string): Promise<ListingPage> {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(config.ai.priceSearch.redirectTimeoutMs),
+    });
+    return { status: response.status, html: await response.text() };
   }
 
   /** One request per run: the SDK only repeats a call when asked to, and it is not asked here. */
