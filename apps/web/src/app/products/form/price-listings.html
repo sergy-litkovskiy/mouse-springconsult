@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>Оголошення-джерела</h2>
+<mat-dialog-content>
+  <p class="listings__date" data-testid="price-listings-date">Пошук: {{ searchedAt }}</p>
+  <ul class="listings">
+    @for (listing of listings; track $index) {
+      <li class="listings__item" data-testid="price-listing">
+        <span class="listings__price">{{ listing.price }}</span>
+        <a
+          class="listings__link"
+          [href]="listing.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          [title]="listing.url"
+          >{{ listing.url }}</a
+        >
+      </li>
+    }
+  </ul>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>Закрити</button>
+</mat-dialog-actions>

@@ -189,6 +189,8 @@ const priceRange = z.object({
   listings: z.array(priceListing).min(1).max(productConstraints.maxPriceListings).readonly(),
 });
 
+export type PriceRange = z.infer<typeof priceRange>;
+
 /**
  * `field` is spelled the way the contract spells the card's own fields, while the column holds
  * `title_olx`: the card controller maps between the two.
