@@ -17,7 +17,8 @@ stage: "06"
 
 ## Зараз
 
-**Готові до старту:** T108, T109, T110, T120.
+**Готові до старту:** T109, T110, T120.
+2026-10-09 закрито T108 (коди запуску `price_not_found` і `price_quota_exhausted` у контракті, union і текстах `web`): нічого не розблокувала — T112 чекає ще на T109, T111 і T120, T115 — на T111, T112 і T114.
 2026-10-09 закрито T107 (пошук ціни через Anthropic прибрано, `price` і ціна в `both` закриваються `price_unavailable` без throw): вона розблокувала T109; T112 чекає ще на T108, T109, T111 і T120.
 2026-10-09 закрито T106 (гейт заміру): **go** на `gemini-3.5-flash-lite` з пошуком Google на платному рівні, 7 з 10 карток ([ADR 0026](../adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)). Того ж дня заведено T119 (перемикач пошуку ціни у формі) і T120 (перевірка оголошень Prom, Shafa й Kloomba за JSON-LD).
 2026-10-09 закрито T105 (`GeminiAdapter`): вона розблокувала гейт заміру T106.
@@ -35,7 +36,7 @@ T104–T118 заведено 2026-10-08. Поставка 2 (T107–T119) ста
 | T105 | [`GeminiAdapter`](add-gemini-adapter.md) | Done | T104 | S | 2026-10-09 |
 | T106 | [Гейт заміру: go / no-go](measure-price-search-on-ten-cards.md) | Done | T105 | S | 2026-10-09 |
 | T107 | [Прибрати пошук ціни через Anthropic](remove-anthropic-price-search.md) | Done | T106 | S | 2026-10-09 |
-| T108 | [Коди запуску ціни](add-price-search-run-codes.md) | Todo | T106 | XS | — |
+| T108 | [Коди запуску ціни](add-price-search-run-codes.md) | Done | T106 | XS | 2026-10-09 |
 | T109 | [Оголошення в пропозиції `price`](add-price-listings-to-suggestion.md) | Todo | T107 | XS | — |
 | T110 | [`priceSearchInput`](add-price-search-input.md) | Todo | T104, T106 | XS | — |
 | T111 | [Запуск `price` з чернетки](start-price-run-from-draft.md) | Blocked | T110 | S | — |
