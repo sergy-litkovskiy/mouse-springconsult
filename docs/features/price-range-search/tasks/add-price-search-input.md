@@ -1,7 +1,7 @@
 ---
 id: T110
 title: "priceSearchInput: пара назва + опис для пошуку ціни"
-status: Todo
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1600
 blocked_by: [T104, T106]
 blocks: [T111, T113]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T110 — priceSearchInput: пара назва + опис для пошуку ціни
@@ -79,9 +79,9 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] Функція не читає ні БД, ні картку: на вході лише рядки.
-- [ ] `deps:check` зелений: `ai` бачить функцію лише через `products/index.ts`.
-- [ ] Коміт: `feat(products): pick the title and description pair for the price search`.
+- [x] Функція не читає ні БД, ні картку: на вході лише рядки.
+- [x] `deps:check` зелений: `ai` бачить функцію лише через `products/index.ts`.
+- [x] Коміт: `feat(products): pick the title and description pair for the price search`.
 
 ## Links
 
