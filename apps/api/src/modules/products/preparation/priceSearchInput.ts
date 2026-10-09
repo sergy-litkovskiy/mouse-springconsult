@@ -15,13 +15,11 @@ export type PriceSearchInput =
   | { readonly kind: 'missing'; readonly missing: readonly PriceSearchGap[] };
 
 export function priceSearchInput(draft: PriceSearchDraft): PriceSearchInput {
-  const title = (draft.titleProm.trim() || draft.titleOlx.trim()).slice(
-    0,
-    config.ai.priceSearch.maxInputChars,
-  );
+  const { maxInputChars } = config.ai.priceSearch;
+  const title = (draft.titleProm.trim() || draft.titleOlx.trim()).slice(0, maxInputChars);
   const description = (draftPlainText(draft.descriptionProm) || draft.descriptionOlx.trim()).slice(
     0,
-    config.ai.priceSearch.maxInputChars,
+    maxInputChars,
   );
   const missing: PriceSearchGap[] = [];
   if (!title) missing.push('title');
