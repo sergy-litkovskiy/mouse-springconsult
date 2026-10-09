@@ -30,8 +30,12 @@ export class SuggestionField {
   readonly busy = input(false);
   /** This field's own run is going: its launch buttons give way to a spinner. */
   readonly working = input(false);
-  /** Off for an empty draft, or a price without a title; the reason belongs in `rewriteHint`. */
+  /**
+   * Off for an empty draft, or a price without a title and a description; the reason belongs in
+   * `rewriteHint`.
+   */
   readonly canRewrite = input(false);
+  readonly rewriteLabel = input('Застосувати як промпт');
   readonly rewriteHint = input('');
   /** The price has no «<- AI»: the admin types the number in by hand. */
   readonly acceptable = input(true);

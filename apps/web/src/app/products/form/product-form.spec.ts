@@ -1491,9 +1491,7 @@ describe('ProductForm', () => {
       await settle();
     });
 
-    // Skipped, not deleted: the price half is hidden until T54 makes the lookup return a range
-    // instead of an empty string. T54 turns the flag back on and these two go green again.
-    it.skip('keeps the price button unavailable until the card has a title', async () => {
+    it('keeps the price button unavailable until the card has a title', async () => {
       open(EMPTY_WITH_FRAME);
       await settle();
 
@@ -1508,7 +1506,7 @@ describe('ProductForm', () => {
       expect(button('price', 'rewrite')?.getAttribute('aria-disabled')).toBeNull();
     });
 
-    it.skip('shows the price range as text and never accepts it for the admin', async () => {
+    it('shows the price range as text and never accepts it for the admin', async () => {
       openWithLatest(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]);
       await settle();
 
@@ -1569,7 +1567,6 @@ describe('ProductForm', () => {
       await settle();
 
       expect(suggestionText('descriptionOlx')).toBe(SUGGESTED_OLX_DESCRIPTION.value);
-      // The price suggestion arrives in the read all the same; showing it comes back with T54.
     });
 
     describe('the latest suggestion of every field', () => {
@@ -2094,6 +2091,263 @@ describe('ProductForm', () => {
         'Забагато запусків підготовки для цієї картки. Спробуйте за годину.',
       );
       expect(actionsAlert()).not.toContain('preparation_rate_limited');
+    });
+
+    describe('«Знайти ціну»', () => {
+      const RUN_URL = `/api/products/${CARD_ID}/preparation-runs/${RUN_ID}`;
+      const NEXT_POLL_MS = 30_000;
+
+      const NEWER_PRICE: FieldSuggestion = {
+        ...SUGGESTED_PRICE,
+        id: '99999999-9999-4999-8999-999999999999',
+        runId: RUN_ID,
+        value: { ...SUGGESTED_PRICE_RANGE, priceFrom: '2300.00', priceTo: '2800.00' },
+        createdAt: '2026-10-09T09:00:35.000Z',
+      };
+
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      function priceButton(): HTMLButtonElement | null {
+        return button('price', 'rewrite');
+      }
+
+      function priceRun(
+        status: PreparationRunDto['status'],
+        errorCode: PreparationRunDto['errorCode'] = null,
+      ): PreparationRunDto {
+        return { ...run(status), scope: 'price', errorCode, model: 'gemini-3.5-flash-lite' };
+      }
+
+      async function priceTooltip(): Promise<string> {
+        const tooltip = await TestbedHarnessEnvironment.loader(fixture).getHarnessOrNull(
+          MatTooltipHarness.with({
+            selector: 'app-suggestion-field[data-field="price"] [data-testid="rewrite"]',
+          }),
+        );
+        expect(tooltip, 'the price button carries no tooltip').not.toBeNull();
+        if (tooltip === null) {
+          return '';
+        }
+        await tooltip.show();
+        const text = await tooltip.getTooltipText();
+        await tooltip.hide();
+        return text;
+      }
+
+      function notice(): string {
+        return element.querySelector('.card-prepare [role="status"]')?.textContent.trim() ?? '';
+      }
+
+      async function startPriceRun(): Promise<void> {
+        priceButton()?.click();
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}/preparation-runs`).flush(priceRun('running'));
+        await settle();
+      }
+
+      it('stays unavailable for a draft with a title and no description', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        type('titleOlx', 'Logitech MX Master 3 бездротова');
+        await settle();
+
+        expect(priceButton()?.getAttribute('aria-disabled')).toBe('true');
+
+        type('descriptionOlx', 'Продам мишу, повний комплект.');
+        await settle();
+
+        expect(priceButton()?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      it('counts a Prom description of tags alone as no description', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        type('titleProm', 'Миша Logitech MX Master 3');
+        await typePromDescription('<p><br></p>');
+        await settle();
+
+        expect(priceButton()?.getAttribute('aria-disabled')).toBe('true');
+
+        const area = element.querySelector<HTMLTextAreaElement>(
+          'app-prom-description-editor textarea',
+        );
+        if (area === null) {
+          throw new Error('the Prom description editor left its HTML mode');
+        }
+        area.value = '<p>Бездротова миша у відмінному стані.</p>';
+        area.dispatchEvent(new Event('input'));
+        await settle();
+
+        expect(priceButton()?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      const mixedPairs: readonly { name: string; fill: () => Promise<void> }[] = [
+        {
+          name: 'the Prom title and the OLX description',
+          fill: async () => {
+            type('titleProm', 'Миша Logitech MX Master 3');
+            type('descriptionOlx', 'Продам мишу, повний комплект.');
+            await settle();
+          },
+        },
+        {
+          name: 'the OLX title and the Prom description',
+          fill: async () => {
+            type('titleOlx', 'Logitech MX Master 3 бездротова');
+            await typePromDescription('<p>Бездротова миша у відмінному стані.</p>');
+            await settle();
+          },
+        },
+      ];
+      for (const { name, fill } of mixedPairs) {
+        it(`becomes available with ${name}`, async () => {
+          open(EMPTY_WITH_FRAME);
+          await settle();
+
+          await fill();
+
+          expect(priceButton()?.getAttribute('aria-disabled')).toBeNull();
+        });
+      }
+
+      it('explains on the unavailable button that a title and a description are both needed', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+
+        expect(await priceTooltip()).toContain(
+          'хоча б одна назва й хоча б один опис з будь-якого майданчика',
+        );
+      });
+
+      it('is labelled «Знайти ціну»', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        const label = priceButton()?.getAttribute('aria-label') ?? '';
+        expect(label).toContain('Знайти ціну');
+        expect(label).not.toContain('Застосувати як промпт');
+        expect(await priceTooltip()).toContain('Знайти ціну');
+      });
+
+      it('searches by the draft in the form, not by the saved card', async () => {
+        open(PUBLISHED_ON_PROM);
+        await settle();
+
+        type('titleProm', 'Миша Logitech MX Master 3S');
+        type('descriptionOlx', 'Продам мишу 3S, коробка в комплекті.');
+        await settle();
+        priceButton()?.click();
+        await settle();
+
+        const request = http.expectOne(`/api/products/${CARD_ID}/preparation-runs`);
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual({
+          scope: 'price',
+          titleProm: 'Миша Logitech MX Master 3S',
+          titleOlx: PUBLISHED_ON_PROM.titleOlx,
+          descriptionProm: PUBLISHED_ON_PROM.descriptionProm,
+          descriptionOlx: 'Продам мишу 3S, коробка в комплекті.',
+        });
+        request.flush(priceRun('running'));
+        await settle();
+
+        http.expectOne(RUN_URL).flush(priceRun('succeeded'));
+        await settle();
+        http.expectOne(`/api/products/${CARD_ID}`).flush(asRead(PUBLISHED_ON_PROM));
+        await settle();
+      });
+
+      // Mid-run checks are soft: a hard failure would leave the poll open, and the shared verify()
+      // would then fail every test after this one as well.
+      it('searches again over an existing range, stays off while the search goes and shows the new range', async () => {
+        openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_PRICE]);
+        await settle();
+
+        await startPriceRun();
+        http.expectOne(RUN_URL).flush(priceRun('running'));
+        await settle();
+
+        expect
+          .soft(priceButton()?.getAttribute('aria-disabled'), 'button while running')
+          .toBe('true');
+        expect.soft(notice(), 'the general notice').toBe('Модель шукає ціну…');
+        priceButton()?.click();
+        await settle();
+        http.expectNone(`/api/products/${CARD_ID}/preparation-runs`);
+
+        await vi.advanceTimersByTimeAsync(NEXT_POLL_MS);
+        await settle();
+        http.expectOne(RUN_URL).flush(priceRun('succeeded'));
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}`)
+          .flush(withLatest(PUBLISHED_ON_PROM, [NEWER_PRICE]));
+        await settle();
+
+        expect(suggestionText('price')).toBe('від 2300.00 до 2800.00 ₴');
+        expect(priceButton()?.getAttribute('aria-disabled')).toBeNull();
+      });
+
+      it('leaves the price field empty after a search that found a range', async () => {
+        open(EMPTY_WITH_FRAME);
+        await settle();
+        type('titleOlx', 'Logitech MX Master 3 бездротова');
+        type('descriptionOlx', 'Продам мишу, повний комплект.');
+        await settle();
+
+        await startPriceRun();
+        http.expectOne(RUN_URL).flush(priceRun('succeeded'));
+        await settle();
+        http
+          .expectOne(`/api/products/${CARD_ID}`)
+          .flush(withLatest(EMPTY_WITH_FRAME, [SUGGESTED_PRICE]));
+        await settle();
+
+        expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
+        expect(field('price').value).toBe('');
+      });
+
+      const failures: readonly {
+        code: NonNullable<PreparationRunDto['errorCode']>;
+        message: string;
+      }[] = [
+        { code: 'price_unavailable', message: 'Пошук ціни не пройшов — спробуйте ще раз.' },
+        { code: 'price_not_found', message: 'Вилку не знайдено — повторіть чи уточніть назву.' },
+        {
+          code: 'price_quota_exhausted',
+          message: 'Ліміт пошуку на сьогодні вичерпано — спробуйте наступного дня.',
+        },
+      ];
+      for (const { code, message } of failures) {
+        it(`shows «${message}» for ${code}, keeps the draft and the previous range, and offers the button again`, async () => {
+          openWithLatest(PUBLISHED_ON_PROM, [SUGGESTED_PRICE]);
+          await settle();
+          type('descriptionOlx', 'Мій власний опис.');
+          await settle();
+
+          await startPriceRun();
+          http.expectOne(RUN_URL).flush(priceRun('failed', code));
+          await settle();
+          http
+            .expectOne(`/api/products/${CARD_ID}`)
+            .flush(withLatest(PUBLISHED_ON_PROM, [SUGGESTED_PRICE]));
+          await settle();
+
+          expect(actionsAlert()).toBe(message);
+          expect(actionsAlert()).not.toMatch(/текст/i);
+          expect(field('descriptionOlx').value).toBe('Мій власний опис.');
+          expect(suggestionText('price')).toBe('від 2100.00 до 2600.00 ₴');
+          expect(priceButton()?.getAttribute('aria-disabled')).toBeNull();
+        });
+      }
     });
 
     function run(status: PreparationRunDto['status']): PreparationRunDto {

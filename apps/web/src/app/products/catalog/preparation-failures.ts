@@ -8,7 +8,7 @@ import type { PreparationRunDto } from '@contracts/ai.contract';
 import { apiErrorCodes } from '@contracts/error-codes';
 import { apiErrorMessage } from '../../api-error-message';
 import { ProductsApi } from '../products-api';
-import { runFailureMessages } from '../run-failure-messages';
+import { runFailureMessage } from '../run-failure-messages';
 
 export type PreparationFailuresData = {
   readonly productId: string;
@@ -64,7 +64,10 @@ export class PreparationFailures {
 
   /** Every failed run carries a code; the fallback only satisfies the nullable type. */
   protected message(run: PreparationRunDto): string {
-    return runFailureMessages[run.errorCode ?? 'preparation_failed'];
+    return runFailureMessage({
+      scope: run.scope,
+      errorCode: run.errorCode ?? 'preparation_failed',
+    });
   }
 
   protected time(run: PreparationRunDto): string {

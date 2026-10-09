@@ -990,6 +990,24 @@ describe('ProductCatalog', () => {
     await settle();
   });
 
+  it('words a refused price-only search without a word about the texts', async () => {
+    const items = await openFailures([
+      {
+        ...PRICE_NOT_FOUND_RUN,
+        id: '88888888-8888-4888-8888-888888888888',
+        errorCode: 'price_unavailable',
+      },
+    ]);
+
+    expect(items.length).toBe(1);
+    const text = items[0]?.textContent ?? '';
+    expect(text).toContain('Пошук ціни не пройшов — спробуйте ще раз.');
+    expect(text).not.toMatch(/текст/i);
+
+    TestBed.inject(MatDialog).closeAll();
+    await settle();
+  });
+
   it('words an exhausted daily search limit apart from an ordinary failure', async () => {
     const items = await openFailures([PRICE_QUOTA_EXHAUSTED_RUN]);
 

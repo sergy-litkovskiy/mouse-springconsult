@@ -14,8 +14,8 @@
         type="button"
         [disabled]="!canLaunch()"
         disabledInteractive
-        [matTooltip]="canRewrite() ? 'Застосувати як промпт' : rewriteHint()"
-        [attr.aria-label]="'Застосувати як промпт: ' + label()"
+        [matTooltip]="canRewrite() ? rewriteLabel() : rewriteHint()"
+        [attr.aria-label]="rewriteLabel() + ': ' + label()"
         data-testid="rewrite"
         (click)="canLaunch() && rewrite.emit()"
       >

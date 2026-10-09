@@ -1,15 +1,15 @@
 ---
 id: T115
 title: "Кнопка «Знайти ціну»: гейт «назва + опис» з чернетки й повідомлення трьох невдач"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1900
+context_budget: 2300
 blocked_by: [T108, T111, T112, T114]
 blocks: [T116, T119]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T115 — Кнопка «Знайти ціну»: гейт «назва + опис» з чернетки й повідомлення трьох невдач
@@ -87,11 +87,26 @@ updated_at: "2026-10-08"
 - «Згенерувати все» з ціною ([T116](generate-all-with-price.md)).
 - `ARCHITECTURE.md` ([T117](update-architecture-for-gemini.md)).
 
+## Результат
+
+- Поза `/tdd`, окремим комітом: вибір тексту `price_unavailable` за областю запуску живе в
+  `runFailureMessage` (`run-failure-messages.ts`), і форма та каталог беруть його звідти. Текст
+  `409` `preparation_input_incomplete` тепер називає й опис.
+- Playwright 2026-10-09 на живому стеку, картка «Масажна напівсфера AZUNI ASL572». Без обох
+  описів, коли опис Prom складається лише з тегів (`<p><br></p>`), кнопка вимкнена з підказкою
+  AC-02. Пара «назва Prom + опис OLX» вмикає кнопку. Поки триває пошук, кнопка вимкнена й видно
+  «Модель шукає ціну…». Один живий пошук на `gemini-3.5-flash-lite` (≈ $0,008, з дозволу) дав
+  «від 955 до 955 ₴» під полем. В модалці одне оголошення OLX з `target="_blank"` і
+  `rel="noopener noreferrer"` та дата пошуку. Поле ціни (`234.00`) не змінилось.
+- `price_not_found`, `price_quota_exhausted` і `price_unavailable` перевірено через `page.route` на
+  старт і полінг: кожен код показує свій текст, а для `price` текст не згадує текстів. Попередня
+  вилка й чернетка лишаються, кнопка знову доступна.
+
 ## DoD
 
-- [ ] Рядок `priceLookupEnabled` і коментарі про T54 зникли з коду.
-- [ ] `test` і `lint` для `web` зелені; Playwright-прохід виконано, а результат записано в story.
-- [ ] Коміт: `feat(web): turn the find price button back on`.
+- [x] Рядок `priceLookupEnabled` і коментарі про T54 зникли з коду.
+- [x] `test` і `lint` для `web` зелені; Playwright-прохід виконано, а результат записано в story.
+- [x] Коміт: `feat(web): turn the find price button back on`.
 
 ## Links
 
