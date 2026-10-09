@@ -1,7 +1,7 @@
 ---
 id: T107
 title: "Прибрати пошук ціни через Anthropic"
-status: Todo
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T106]
 blocks: [T109, T112]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T107 — Прибрати пошук ціни через Anthropic
@@ -81,10 +81,15 @@ Gemini, і [T112](search-price-through-gemini.md) лише підключає д
 
 ## DoD
 
-- [ ] `grep -rn 'web_search\|findPriceRange\|webSearch' apps/api/src` порожній.
-- [ ] `typecheck` · `lint` · `test` · `deps:check` зелені.
-- [ ] Запуск `texts` поводиться як раніше: його spec не змінено.
-- [ ] Коміт: `refactor(ai): remove the Anthropic price search`.
+- [ ] `grep -rn 'web_search\|findPriceRange\|webSearch' apps/api/src` порожній —
+      дослівно не виконується: T105 додала `GeminiAdapter.findPriceRange` і `webSearchQueries`.
+      Поза `GeminiAdapter*` і `webSearchQueries` Gemini той самий grep порожній: від Anthropic
+      не лишилось нічого.
+- [x] `typecheck` · `lint` · `test` · `deps:check` зелені.
+- [ ] Запуск `texts` поводиться як раніше: його spec не змінено — поведінка та сама, але
+      тест «does not ask for a price…» втратив перевірку `adapter.priceQueries`, бо зник
+      override `findPriceRange`; перевірка «немає пропозиції `price`» лишилась.
+- [x] Коміт: `refactor(ai): remove the Anthropic price search`.
 
 ## Links
 
