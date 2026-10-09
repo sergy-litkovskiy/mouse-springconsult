@@ -53,6 +53,12 @@ export type GeminiReply = {
   readonly call: PriceSearchCall;
 };
 
+/** What a marketplace listing page answered; the page is untrusted input. */
+export type ListingPage = {
+  readonly status: number;
+  readonly html: string;
+};
+
 /** An `ApiError` re-thrown under the adapter's name: a spec cannot import the SDK to build one. */
 export class GeminiHttpError extends Error {
   constructor(
@@ -92,6 +98,21 @@ const QuotaErrorSchema = z.object({
     ),
   }),
 });
+
+/** Only the offer of a JSON-LD `Product` block on a listing page. */
+const OfferSchema = z.object({
+  '@type': z.literal('Product'),
+  offers: z.object({
+    price: z.union([z.number(), z.string()]).optional(),
+    priceCurrency: z.string().optional(),
+    availability: z.string().optional(),
+  }),
+});
+
+type Offer = z.infer<typeof OfferSchema>['offers'];
+
+/** Pages write schema.org terms under both `http` and `https`. */
+const SCHEMA_ORG = /^https?:\/\/schema\.org\//;
 
 const NORMAL_FINISH = new Set(['STOP', 'MAX_TOKENS']);
 
@@ -156,7 +177,7 @@ export class GeminiAdapter {
   /**
    * Keeps the listings that came from the search and lead to a listing page, under its own address
    * rather than the redirect. The range is then rebuilt from them, so a price the model took from a
-   * search page never makes it into the range.
+   * search page never makes it into the range. Outside OLX the page itself has the last word.
    */
   private async listingPages(listings: readonly PriceListing[]): Promise<PriceListing[]> {
     const resolved = await Promise.all(
@@ -170,9 +191,14 @@ export class GeminiAdapter {
         }
         const page = new URL(target);
         const url = `${page.origin}${page.pathname}`;
-        return url.length <= 2048 && LISTING_PAGE.some((pattern) => pattern.test(url))
-          ? { price: listing.price, url }
-          : undefined;
+        if (url.length > 2048 || !LISTING_PAGE.some((pattern) => pattern.test(url))) {
+          return undefined;
+        }
+        // OLX answers a server with 403, so its listing stays at the model's price.
+        if (/(^|\.)olx\.ua$/.test(page.hostname)) {
+          return { price: listing.price, url };
+        }
+        return this.checkedOnPage({ price: listing.price, url });
       }),
     );
     const seen = new Set<string>();
@@ -185,6 +211,39 @@ export class GeminiAdapter {
     });
   }
 
+  /**
+   * The listing as its own page shows it: gone when the page is removed, not in stock or priced in
+   * another currency; at the page's UAH price when it has one; as the model gave it otherwise.
+   */
+  private async checkedOnPage(listing: PriceListing): Promise<PriceListing | undefined> {
+    let answer: ListingPage;
+    try {
+      answer = await this.readPage(listing.url);
+    } catch {
+      return listing;
+    }
+    if (answer.status === 404 || answer.status === 410) {
+      return undefined;
+    }
+    const offer = pageOffer(answer.html);
+    if (offer === undefined) {
+      return listing;
+    }
+    const availability = offer.availability?.replace(SCHEMA_ORG, '');
+    if (availability !== undefined && availability !== 'InStock') {
+      return undefined;
+    }
+    if (offer.priceCurrency !== undefined && offer.priceCurrency !== 'UAH') {
+      return undefined;
+    }
+    const price = String(offer.price);
+    return offer.priceCurrency === 'UAH' &&
+      PriceSchema.safeParse(price).success &&
+      Number(price) > 0
+      ? { price, url: listing.url }
+      : listing;
+  }
+
   /** Reads where a search redirect points without following it to the marketplace. */
   protected async resolveRedirect(url: string): Promise<string | undefined> {
     const response = await fetch(url, {
@@ -192,6 +251,32 @@ export class GeminiAdapter {
       signal: AbortSignal.timeout(config.ai.priceSearch.redirectTimeoutMs),
     });
     return response.headers.get('location') ?? undefined;
+  }
+
+  /**
+   * Follows a redirect only within the listing's own host, as Prom does to `/ua/`, so a page can
+   * never send the worker to an address the listing patterns did not admit.
+   */
+  protected async readPage(url: string): Promise<ListingPage> {
+    const { pageTimeoutMs, pageMaxRedirects, pageMaxBytes } = config.ai.priceSearch;
+    const signal = AbortSignal.timeout(pageTimeoutMs);
+    let target = new URL(url);
+    for (let redirects = 0; ; redirects++) {
+      const response = await fetch(target, { redirect: 'manual', signal });
+      const location = response.headers.get('location');
+      if (response.status < 300 || response.status >= 400 || location === null) {
+        return { status: response.status, html: await boundedText(response, pageMaxBytes) };
+      }
+      await response.body?.cancel();
+      const next = new URL(location, target);
+      if (next.protocol !== 'https:' || next.host !== target.host) {
+        throw new Error(`Listing page redirects off its host: ${next.host}`);
+      }
+      if (redirects === pageMaxRedirects) {
+        throw new Error('Listing page redirects too many times');
+      }
+      target = next;
+    }
   }
 
   /** One request per run: the SDK only repeats a call when asked to, and it is not asked here. */
@@ -317,4 +402,45 @@ function isDailyQuota(body: string): boolean {
       (detail.violations ?? []).some((violation) => violation.quotaId?.includes('PerDay')),
     )
   );
+}
+
+/** The marketplace controls the body, so it is read up to a limit rather than whole. */
+async function boundedText(response: Response, maxBytes: number): Promise<string> {
+  const reader = (response.body as ReadableStream<Uint8Array> | null)?.getReader();
+  if (reader === undefined) {
+    return '';
+  }
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return Buffer.concat(chunks).toString('utf8');
+    }
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel();
+      throw new Error('Listing page is over the size limit');
+    }
+    chunks.push(value);
+  }
+}
+
+/** The first JSON-LD block on the page that reads as a `Product`; a broken block is skipped. */
+function pageOffer(html: string): Offer | undefined {
+  for (const match of html.matchAll(
+    /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
+    let json: unknown;
+    try {
+      json = JSON.parse(match[1] ?? '');
+    } catch {
+      continue;
+    }
+    const parsed = OfferSchema.safeParse(json);
+    if (parsed.success) {
+      return parsed.data.offers;
+    }
+  }
+  return undefined;
 }
