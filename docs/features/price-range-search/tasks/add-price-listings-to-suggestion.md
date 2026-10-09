@@ -1,7 +1,7 @@
 ---
 id: T109
 title: "Оголошення-джерела в пропозиції price: форма value, межі й читання картки"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1800
 blocked_by: [T107]
 blocks: [T112, T114]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T109 — Оголошення-джерела в пропозиції price: форма value, межі й читання картки
@@ -91,10 +91,12 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] `web` імпортує `maxPriceListings` з `products-limits.ts`, а з `products.contract.ts` бере лише `import type`.
-- [ ] Жодного `transformer` і `float`: ціни лишаються рядками від драйвера до браузера.
-- [ ] `typecheck` і `test` обох застосунків зелені.
-- [ ] Коміт: `feat(products): carry the source listings in the price suggestion`.
+- [x] `web` імпортує `maxPriceListings` з `products-limits.ts`, а з `products.contract.ts` бере лише `import type`.
+  `maxPriceListings` лежить у `productConstraints`, який `web` уже імпортує в рантаймі з
+  `products-limits.ts`; окремого читача числа у `web` поки немає, а неужитий імпорт lint не пропустить.
+- [x] Жодного `transformer` і `float`: ціни лишаються рядками від драйвера до браузера.
+- [x] `typecheck` і `test` обох застосунків зелені.
+- [x] Коміт: `feat(products): carry the source listings in the price suggestion`.
 
 ## Links
 
