@@ -286,7 +286,9 @@ export class ProductForm {
   });
 
   protected readonly generatingAll = computed(
-    () => this.preparing() && this.poller.run()?.scope === 'texts',
+    () =>
+      this.preparing() &&
+      (this.poller.run()?.scope === 'texts' || this.poller.run()?.scope === 'both'),
   );
 
   /** The field comes from the form's own request: a run it merely watches names none. */
@@ -429,9 +431,12 @@ export class ProductForm {
     this.snackBar.open('ID скопійовано', undefined, SUCCESS_SNACK_BAR);
   }
 
-  /** Recognises the item from the main frame and fills every text at once (ADR 0014). */
+  /**
+   * Recognises the item from the main frame, fills every text at once (ADR 0014), then searches
+   * the price range.
+   */
   protected generateAll(): Promise<void> {
-    return this.startRun({ scope: 'texts' });
+    return this.startRun({ scope: 'both' });
   }
 
   /**
