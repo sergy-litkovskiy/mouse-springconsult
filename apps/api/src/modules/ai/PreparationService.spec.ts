@@ -20,7 +20,6 @@ import {
   AnthropicAdapter,
   ModelAnswerUnavailable,
   type FieldRewriteResult,
-  type PriceResult,
   type RewritableField,
   type TextsResult,
 } from './AnthropicAdapter.ts';
@@ -38,7 +37,6 @@ const dataSource = createDataSource({
 
 const MODEL = 'claude-sonnet-5';
 const TEXTS_USAGE = { model: MODEL, inputTokens: 1000, outputTokens: 200 };
-const PRICE_USAGE = { model: MODEL, inputTokens: 300, outputTokens: 50 };
 const FIELD_USAGE = { model: MODEL, inputTokens: 120, outputTokens: 30 };
 
 const TEXTS: TextsResult = {
@@ -51,16 +49,8 @@ const TEXTS: TextsResult = {
   usage: TEXTS_USAGE,
 };
 
-const PRICE: PriceResult = {
-  priceFrom: '1800.00',
-  priceTo: '2400.00',
-  sources: ['https://example.com/mx-master-3'],
-  usage: PRICE_USAGE,
-};
-
 type Script = {
   readonly textsFailure?: Error;
-  readonly priceFailure?: Error;
   readonly texts?: TextsResult;
   readonly fieldValue?: string;
 };
@@ -68,7 +58,6 @@ type Script = {
 /** Never talks to Anthropic: every public method is overridden and records what it was given. */
 class ScriptedAnthropicAdapter extends AnthropicAdapter {
   readonly textsCalls: (readonly Uint8Array[])[] = [];
-  readonly priceQueries: string[] = [];
   readonly fieldCalls: { field: RewritableField; draftText: string; mode: 'improve' | 'prompt' }[] =
     [];
 
@@ -82,14 +71,6 @@ class ScriptedAnthropicAdapter extends AnthropicAdapter {
       throw this.script.textsFailure;
     }
     return this.script.texts ?? TEXTS;
-  }
-
-  override async findPriceRange(query: string): Promise<PriceResult> {
-    this.priceQueries.push(query);
-    if (this.script.priceFailure !== undefined) {
-      throw this.script.priceFailure;
-    }
-    return PRICE;
   }
 
   override async rewriteField(
@@ -232,11 +213,6 @@ async function textsJob(scope: 'texts' | 'both' = 'texts'): Promise<PreparationJ
   return { runId: await seedRun(productId, scope), productId, scope };
 }
 
-async function priceJob(seed: CardSeed = {}): Promise<PreparationJob> {
-  const productId = await seedProduct(seed);
-  return { runId: await seedRun(productId, 'price'), productId, scope: 'price' };
-}
-
 const TEXT_SUGGESTIONS = [
   { field: 'description_olx', value: 'Опис для OLX.' },
   { field: 'description_prom', value: 'Опис для Prom.' },
@@ -248,8 +224,6 @@ const TEXT_SUGGESTIONS = [
 /** 239 characters, and the 200th falls inside a word: 33 whole words (197 characters) fit. */
 const OVERLONG_TITLE = Array.from({ length: 40 }, () => 'мишка').join(' ');
 const OVERLONG_TITLE_CUT = Array.from({ length: 33 }, () => 'мишка').join(' ');
-
-const PRICE_SUGGESTION = { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00' } };
 
 describe('preparation service (postgres)', () => {
   before(async () => {
@@ -321,12 +295,11 @@ describe('preparation service (postgres)', () => {
     });
 
     it('does not ask for a price when only the texts were requested', async () => {
-      const { service, adapter } = setup();
+      const { service } = setup();
       const job = await textsJob();
 
       await service.prepare(job);
 
-      assert.deepEqual(adapter.priceQueries, []);
       assert.equal(
         (await suggestionsOf(job.runId)).some(({ field }) => field === 'price'),
         false,
@@ -347,134 +320,14 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: both', () => {
-    it('stores the texts and the price range as six separate suggestions', async () => {
-      const { service } = setup();
-      const job = await textsJob('both');
-
-      await service.prepare(job);
-
-      assert.deepEqual(await suggestionsOf(job.runId), [
-        TEXT_SUGGESTIONS[0],
-        TEXT_SUGGESTIONS[1],
-        PRICE_SUGGESTION,
-        TEXT_SUGGESTIONS[2],
-        TEXT_SUGGESTIONS[3],
-        TEXT_SUGGESTIONS[4],
-      ]);
-      assert.equal((await loadRun(job.runId)).status, 'succeeded');
-    });
-
-    it('adds the tokens of both calls to the run', async () => {
-      const { service } = setup();
-      const job = await textsJob('both');
-
-      await service.prepare(job);
-
-      const run = await loadRun(job.runId);
-      assert.equal(run.model, MODEL);
-      assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens + PRICE_USAGE.inputTokens);
-      assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens + PRICE_USAGE.outputTokens);
-    });
-
-    it('keeps the texts and ends the run failed with price_unavailable when the price call fails', async () => {
-      const { service } = setup({ priceFailure: new ModelAnswerUnavailable('refused') });
-      const job = await textsJob('both');
-
-      await service.prepare(job);
-
-      assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
-      const run = await loadRun(job.runId);
-      assert.equal(run.status, 'failed');
-      assert.equal(run.errorCode, 'price_unavailable');
-      assert.equal(run.errorDetail, 'refused');
-      assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
-      assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens);
-    });
-
-    it('rethrows for a retry and stores nothing when both calls fail (Checklist 6)', async () => {
-      const { service } = setup({
-        textsFailure: new ModelAnswerUnavailable('refused'),
-        priceFailure: new ModelAnswerUnavailable('refused'),
-      });
+    it('rethrows for a retry and stores nothing when the texts call fails', async () => {
+      const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob('both');
 
       await assert.rejects(service.prepare(job), ModelAnswerUnavailable);
 
       assert.deepEqual(await suggestionsOf(job.runId), []);
       assert.notEqual((await loadRun(job.runId)).status, 'succeeded');
-    });
-  });
-
-  describe('scope: price', () => {
-    it('stores the range as a single price suggestion without re-running the texts', async () => {
-      const { service, adapter, media } = setup();
-      const job = await priceJob();
-
-      await service.prepare(job);
-
-      assert.deepEqual(await suggestionsOf(job.runId), [PRICE_SUGGESTION]);
-      assert.equal(adapter.textsCalls.length, 0);
-      assert.deepEqual(media.reads, []);
-      const run = await loadRun(job.runId);
-      assert.equal(run.status, 'succeeded');
-      assert.equal(run.inputTokens, PRICE_USAGE.inputTokens);
-      assert.equal(run.outputTokens, PRICE_USAGE.outputTokens);
-    });
-
-    it('ends the run failed with price_unavailable and no suggestions when the call fails', async () => {
-      const { service } = setup({ priceFailure: new ModelAnswerUnavailable('refused') });
-      const job = await priceJob();
-
-      await service.prepare(job);
-
-      assert.deepEqual(await suggestionsOf(job.runId), []);
-      const run = await loadRun(job.runId);
-      assert.equal(run.status, 'failed');
-      assert.equal(run.errorCode, 'price_unavailable');
-    });
-
-    // The card's text columns are NOT NULL with '' as the default, so an absent title or
-    // description in the price query is an empty string, not a null.
-    it('queries with the Prom title and the Prom description when the card has both of each', async () => {
-      const { service, adapter } = setup();
-      const job = await priceJob();
-
-      await service.prepare(job);
-
-      assert.deepEqual(adapter.priceQueries, [
-        'Миша Logitech MX Master 3 Бездротова, повний комплект.',
-      ]);
-    });
-
-    it('falls back to the OLX title and the OLX description when the Prom ones are empty', async () => {
-      const { service, adapter } = setup();
-      const job = await priceJob({ titleProm: '', descriptionProm: '' });
-
-      await service.prepare(job);
-
-      assert.deepEqual(adapter.priceQueries, [
-        'Logitech MX Master 3 миша Продам мишу, стан відмінний.',
-      ]);
-    });
-
-    it('queries with the title alone when the card has no description at all', async () => {
-      const { service, adapter } = setup();
-      const job = await priceJob({ descriptionProm: '', descriptionOlx: '' });
-
-      await service.prepare(job);
-
-      assert.deepEqual(adapter.priceQueries, ['Миша Logitech MX Master 3']);
-    });
-
-    it('takes the title and the description independently of each other', async () => {
-      const { service, adapter } = setup();
-      const job = await priceJob({ titleProm: '', descriptionOlx: '' });
-
-      await service.prepare(job);
-
-      assert.deepEqual(adapter.priceQueries, [
-        'Logitech MX Master 3 миша Бездротова, повний комплект.',
-      ]);
     });
   });
 
@@ -687,10 +540,6 @@ describe('preparation service (postgres)', () => {
           job: { runId: await seedRun(productId, 'price'), productId, scope: 'price' },
         },
         { script: {}, job: { runId: await seedRun(productId, 'both'), productId, scope: 'both' } },
-        {
-          script: { priceFailure: new ModelAnswerUnavailable('refused') },
-          job: { runId: await seedRun(productId, 'both'), productId, scope: 'both' },
-        },
         {
           script: {},
           job: {
