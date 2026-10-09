@@ -56,12 +56,12 @@ export class InvalidPrice extends AppError {
 
 /** One code for every gate: `details.missing` names what the input lacks. */
 export class PreparationInputIncomplete extends AppError {
-  constructor(missing: 'gallery' | 'title' | 'draft') {
+  constructor(...missing: ('gallery' | 'title' | 'description' | 'draft')[]) {
     super({
       code: apiErrorCodes.preparationInputIncomplete,
       statusCode: 409,
       message: 'The card lacks the input this preparation needs',
-      details: { missing: [missing] },
+      details: { missing },
     });
   }
 }

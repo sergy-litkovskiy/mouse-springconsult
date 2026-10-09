@@ -210,6 +210,14 @@ export const config = {
         inputMicroDollarsPerToken: 2,
         outputMicroDollarsPerToken: 10,
       },
+      /**
+       * `priceSearch.model`: a price run records no tokens (ADR 0025), so its zero rate keeps the
+       * card's cost known instead of turning it into `null`.
+       */
+      'gemini-3.5-flash-lite': {
+        inputMicroDollarsPerToken: 0,
+        outputMicroDollarsPerToken: 0,
+      },
     },
   },
 } as const;
