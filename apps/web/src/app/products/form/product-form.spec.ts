@@ -1398,11 +1398,17 @@ describe('ProductForm', () => {
       createdAt: '2026-09-20T09:00:35.000Z',
     };
 
+    const SUGGESTED_PRICE_RANGE = {
+      priceFrom: '2100.00',
+      priceTo: '2600.00',
+      listings: [{ price: '2100.00', url: 'https://prom.ua/ua/p2100-logitech-mx-master-3.html' }],
+    };
+
     const SUGGESTED_PRICE: FieldSuggestion = {
       ...SUGGESTED_OLX_DESCRIPTION,
       id: '66666666-6666-4666-8666-666666666666',
       field: 'price',
-      value: { priceFrom: '2100.00', priceTo: '2600.00' },
+      value: SUGGESTED_PRICE_RANGE,
     };
 
     /** A card read that carries the latest suggestion of every field, decided or not. */

@@ -298,6 +298,87 @@ describe('product card read contract', () => {
     assert.equal(result.success, false);
   });
 
+  const listing = { price: '1800.00', url: 'https://www.olx.ua/d/uk/obyavlenie/mysha.html' };
+  const priceSuggestion = {
+    ...suggestion,
+    id: '0199c0de-1111-7000-8000-000000000003',
+    field: 'price',
+    value: { priceFrom: '1800.00', priceTo: '2400.00', listings: [listing] },
+  };
+
+  function readWithPrice(value: Record<string, unknown>) {
+    return productCardReadSchema.safeParse({
+      ...card,
+      latestSuggestions: [{ ...priceSuggestion, value }],
+    });
+  }
+
+  it('carries the price and link of every listing in the price suggestion, dated by its createdAt', () => {
+    const second = { price: '2400.00', url: 'http://prom.ua/ua/p2400-mysha.html' };
+    const value = { priceFrom: '1800.00', priceTo: '2400.00', listings: [listing, second] };
+
+    const parsed: Record<string, unknown> = productCardReadSchema.parse({
+      ...card,
+      latestSuggestions: [{ ...priceSuggestion, value }],
+    });
+
+    assert.deepEqual(parsed['latestSuggestions'], [{ ...priceSuggestion, value }]);
+  });
+
+  it('takes five listings with a link of 2048 characters', () => {
+    const prefix = 'https://prom.ua/ua/p';
+    const longest = { price: '2100.00', url: prefix + '1'.repeat(2048 - prefix.length) };
+    const value = {
+      priceFrom: '1800.00',
+      priceTo: '2400.00',
+      listings: [listing, listing, listing, listing, longest],
+    };
+
+    const result = readWithPrice(value);
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.data?.latestSuggestions[0]?.value, value);
+  });
+
+  it('refuses a price range with no listings or with more than five', () => {
+    const range = { priceFrom: '1800.00', priceTo: '2400.00' };
+
+    assert.equal(readWithPrice(range).success, false);
+    assert.equal(readWithPrice({ ...range, listings: [] }).success, false);
+    assert.equal(
+      readWithPrice({ ...range, listings: Array.from({ length: 6 }, () => listing) }).success,
+      false,
+    );
+  });
+
+  it('refuses a listing link that is not http or https', () => {
+    for (const url of ['javascript:alert(1)', 'ftp://prom.ua/ua/p2400-mysha.html']) {
+      const value = { priceFrom: '1800.00', priceTo: '2400.00', listings: [{ ...listing, url }] };
+
+      assert.equal(readWithPrice(value).success, false, url);
+    }
+  });
+
+  it('refuses a listing link longer than 2048 characters', () => {
+    const prefix = 'https://prom.ua/ua/p';
+    const url = prefix + '1'.repeat(2049 - prefix.length);
+    const value = { priceFrom: '1800.00', priceTo: '2400.00', listings: [{ ...listing, url }] };
+
+    assert.equal(readWithPrice(value).success, false);
+  });
+
+  it('refuses a listing price that is not a decimal the column can hold', () => {
+    for (const price of ['1 800 грн', '-1800.00', '1800.001', 1800]) {
+      const value = {
+        priceFrom: '1800.00',
+        priceTo: '2400.00',
+        listings: [{ ...listing, price }],
+      };
+
+      assert.equal(readWithPrice(value).success, false, String(price));
+    }
+  });
+
   it('requires estimatedCostUsd as a four-digit decimal string or null (AC-84)', () => {
     const base = { ...card, latestSuggestions: [] };
 
