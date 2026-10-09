@@ -285,11 +285,10 @@ export class ProductForm {
     return status === 'queued' || status === 'running';
   });
 
-  protected readonly generatingAll = computed(
-    () =>
-      this.preparing() &&
-      (this.poller.run()?.scope === 'texts' || this.poller.run()?.scope === 'both'),
-  );
+  protected readonly generatingAll = computed(() => {
+    const scope = this.poller.run()?.scope;
+    return this.preparing() && (scope === 'texts' || scope === 'both');
+  });
 
   /** The field comes from the form's own request: a run it merely watches names none. */
   private readonly started = signal<{ runId: string; request: PreparationRunRequest } | null>(null);
