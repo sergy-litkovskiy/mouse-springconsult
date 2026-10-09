@@ -1,7 +1,7 @@
 ---
 id: T120
 title: "Перевіряти оголошення Prom, Shafa і Kloomba за структурованими даними сторінки"
-status: Todo
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -118,9 +118,9 @@ Prom, Shafa чи Kloomba береться зі сторінки, а зняте �
 
 ## DoD
 
-- [ ] `typecheck`, `lint`, `test`, `deps:check` для `api` зелені, тести без мережі.
-- [ ] `security-review` пройдено: сторінка майданчика — недовірений ввід.
-- [ ] Коміт: `feat(ai): check marketplace listings against their page data`.
+- [x] `typecheck`, `lint`, `test`, `deps:check` для `api` зелені, тести без мережі.
+- [x] `security-review` пройдено: сторінка майданчика — недовірений ввід.
+- [x] Коміт: `feat(ai): check marketplace listings against their page data`.
 
 ## Links
 

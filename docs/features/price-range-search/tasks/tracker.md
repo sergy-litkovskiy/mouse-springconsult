@@ -17,7 +17,8 @@ stage: "06"
 
 ## Зараз
 
-**Готові до старту:** T114, T120.
+**Готові до старту:** T112, T114.
+2026-10-09 закрито T120 (ціна оголошення Prom, Shafa й Kloomba — з JSON-LD сторінки; зняте, не в наявності чи не в гривнях відкидається, `itemCondition` не зважаємо): вона розблокувала T112.
 2026-10-09 закрито T111 (запуск `price` з назв і описів чернетки: пара через `priceSearchInput`, `409` з `missing` `title`/`description`, ключ із пари, модель Gemini з нульовим тарифом): нічого не розблокувала — T112 чекає ще на T120, T115 — на T112 і T114.
 2026-10-09 закрито T110 (`priceSearchInput`: пара назва + опис для пошуку ціни, Prom з перевагою, опис через `draftPlainText`, обидва рядки обрізано): вона розблокувала T111; T113 чекає ще на T112.
 2026-10-09 закрито T109 (оголошення-джерела в пропозиції `price`: форма `value`, межі 1–5 і `http(s)` ≤ 2048 у схемі читання): вона розблокувала T114; T112 чекає ще на T111 і T120.
@@ -43,8 +44,8 @@ T104–T118 заведено 2026-10-08. Поставка 2 (T107–T119) ста
 | T109 | [Оголошення в пропозиції `price`](add-price-listings-to-suggestion.md) | Done | T107 | XS | 2026-10-09 |
 | T110 | [`priceSearchInput`](add-price-search-input.md) | Done | T104, T106 | XS | 2026-10-09 |
 | T111 | [Запуск `price` з чернетки](start-price-run-from-draft.md) | Done | T110 | S | 2026-10-09 |
-| T120 | [Перевірка оголошень за JSON-LD сторінки](check-listings-against-page-data.md) | Todo | T106 | S | — |
-| T112 | [Запуск `price` через Gemini](search-price-through-gemini.md) | Blocked | T107, T108, T109, T111, T120 | S | — |
+| T120 | [Перевірка оголошень за JSON-LD сторінки](check-listings-against-page-data.md) | Done | T106 | S | 2026-10-09 |
+| T112 | [Запуск `price` через Gemini](search-price-through-gemini.md) | Todo | T107, T108, T109, T111, T120 | S | — |
 | T113 | [`both`: вилка після текстів](search-price-after-texts-in-both.md) | Blocked | T110, T112 | S | — |
 | T114 | [Вилка й оголошення в UI](show-price-range-and-listings.md) | Todo | T109 | S | — |
 | T115 | [Кнопка «Знайти ціну»](enable-find-price-button.md) | Blocked | T108, T111, T112, T114 | S | — |

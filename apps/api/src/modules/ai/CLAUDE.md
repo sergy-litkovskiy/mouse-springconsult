@@ -40,6 +40,9 @@
   пошуку `vertexaisearch` і веде на сторінку оголошення OLX, Prom, Shafa чи Kloomba;
   вилка будується з цін цих оголошень, а не з відповіді моделі
   ([ADR 0026](../../../../../docs/features/price-range-search/adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)).
+  Сторінку Prom, Shafa чи Kloomba адаптер читає сам (`readPage`: той самий хост, таймаут і межа
+  розміру з `config.ts`): зняте, не в наявності чи не в гривнях оголошення відкидає, ціну бере з
+  JSON-LD. OLX сервер не пускає, тож там і за будь-якого збою читання лишається ціна моделі.
 - Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`
   не використовуємо — параметр видалено на цій моделі. Ціну знижуємо через
   `output_config.effort` (старт — `low` на всіх викликах Claude), а не вимкненням thinking.
