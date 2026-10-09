@@ -502,8 +502,8 @@ describe('preparation service (postgres)', () => {
       assert.equal(gemini.queries.length, 1);
       const [query] = gemini.queries;
       assert.equal(query?.title, SEARCH_PAIR.title);
-      assert.equal(query?.description, SEARCH_PAIR.description);
-      assert.deepEqual(query?.frames ?? [], []);
+      assert.equal(query.description, SEARCH_PAIR.description);
+      assert.deepEqual(query.frames ?? [], []);
       assert.deepEqual(media.reads, []);
     });
 
