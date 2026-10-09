@@ -53,6 +53,12 @@ export type GeminiReply = {
   readonly call: PriceSearchCall;
 };
 
+/** What a marketplace listing page answered; the page is untrusted input. */
+export type ListingPage = {
+  readonly status: number;
+  readonly html: string;
+};
+
 /** An `ApiError` re-thrown under the adapter's name: a spec cannot import the SDK to build one. */
 export class GeminiHttpError extends Error {
   constructor(
@@ -192,6 +198,10 @@ export class GeminiAdapter {
       signal: AbortSignal.timeout(config.ai.priceSearch.redirectTimeoutMs),
     });
     return response.headers.get('location') ?? undefined;
+  }
+
+  protected readPage(url: string): Promise<ListingPage> {
+    throw new Error('Not implemented');
   }
 
   /** One request per run: the SDK only repeats a call when asked to, and it is not asked here. */

@@ -7,6 +7,7 @@ import {
   GeminiHttpError,
   type GeminiReply,
   type GeminiRequest,
+  type ListingPage,
   type PriceSearchResult,
 } from './GeminiAdapter.ts';
 
@@ -55,8 +56,8 @@ function quotaBody(quotaId: string): string {
 }
 
 /**
- * Never talks to Gemini or to the redirect host: both methods that reach the network are replaced
- * by a script.
+ * Never talks to Gemini, to the redirect host or to a marketplace: every method that reaches the
+ * network is replaced by a script.
  */
 class ScriptedGeminiAdapter extends GeminiAdapter {
   readonly requests: GeminiRequest[] = [];
@@ -64,6 +65,7 @@ class ScriptedGeminiAdapter extends GeminiAdapter {
   constructor(
     private readonly script: () => GeminiReply,
     private readonly redirects: ReadonlyMap<string, string> = new Map([[REDIRECT, LISTING_URL]]),
+    private readonly pages: ReadonlyMap<string, ListingPage | Error> = new Map(),
   ) {
     super(API_KEY);
   }
@@ -79,6 +81,15 @@ class ScriptedGeminiAdapter extends GeminiAdapter {
       throw new TypeError('fetch failed');
     }
     return target;
+  }
+
+  /** A page left out of the script behaves like a marketplace the network cannot reach. */
+  protected override async readPage(url: string): Promise<ListingPage> {
+    const page = this.pages.get(url) ?? new TypeError('fetch failed');
+    if (page instanceof Error) {
+      throw page;
+    }
+    return page;
   }
 }
 
@@ -98,6 +109,52 @@ function failingWith(error: unknown): ScriptedGeminiAdapter {
   return new ScriptedGeminiAdapter(() => {
     throw error;
   });
+}
+
+const PROM_PAGE = 'https://prom.ua/ua/p1898742664-casio-mtp.html';
+const SHAFA_PAGE = 'https://shafa.ua/uk/item/221618837-futbolka-dlya-divchinki-ff-blakitna';
+const KLOOMBA_PAGE = 'https://kloomba.com/o/kovdra-praporc-48069987/';
+
+const IN_STOCK = 'https://schema.org/InStock';
+
+function pageWith(offer: Record<string, unknown>): ListingPage {
+  const product = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'Casio MTP-1084',
+    offers: { '@type': 'Offer', ...offer },
+  };
+  return {
+    status: 200,
+    html:
+      '<html><head><script type="application/ld+json">' +
+      JSON.stringify(product) +
+      '</script></head><body><h1>Casio MTP-1084</h1></body></html>',
+  };
+}
+
+function inStock(price: number, offer: Record<string, unknown> = {}): ListingPage {
+  return pageWith({ price, priceCurrency: 'UAH', availability: IN_STOCK, ...offer });
+}
+
+/** Each listing comes through its own search redirect to `page`, whose answer is `answer`. */
+function checking(
+  listings: readonly { price: string; page: string; answer?: ListingPage | Error }[],
+): ScriptedGeminiAdapter {
+  const text = rangeText(
+    listings.map((listing, i) => ({ price: listing.price, url: redirect(String(i)) })),
+  );
+  const redirects = new Map(listings.map((listing, i) => [redirect(String(i)), listing.page]));
+  const pages = new Map(
+    listings.flatMap((listing) =>
+      listing.answer === undefined ? [] : [[listing.page, listing.answer] as const],
+    ),
+  );
+  return new ScriptedGeminiAdapter(
+    () => ({ text, refusal: undefined, call: CALL }),
+    redirects,
+    pages,
+  );
 }
 
 async function search(adapter: GeminiAdapter): Promise<PriceSearchResult> {
@@ -406,5 +463,176 @@ describe('GeminiAdapter', () => {
 
     assert.equal(result.kind, 'unavailable');
     assert.equal(adapter.requests.length, 0);
+  });
+
+  describe('checking a listing against its page', () => {
+    it('drops a listing whose page answers 404 or 410', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: PROM_PAGE, answer: { status: 404, html: 'Not Found' } },
+          { price: '900', page: SHAFA_PAGE, answer: { status: 410, html: 'Gone' } },
+          { price: '700', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [{ price: '700', url: KLOOMBA_PAGE }]);
+    });
+
+    it('drops a listing whose page says it is no longer in stock', async () => {
+      const result = await search(
+        checking([
+          {
+            price: '1800',
+            page: PROM_PAGE,
+            answer: inStock(1800, { availability: 'https://schema.org/OutOfStock' }),
+          },
+          {
+            price: '900',
+            page: SHAFA_PAGE,
+            answer: inStock(900, { availability: 'https://schema.org/SoldOut' }),
+          },
+          { price: '700', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [{ price: '700', url: KLOOMBA_PAGE }]);
+    });
+
+    it('reports an unparsed reply when the page check leaves no listing', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: PROM_PAGE, answer: { status: 404, html: 'Not Found' } },
+          {
+            price: '900',
+            page: SHAFA_PAGE,
+            answer: inStock(900, { availability: 'https://schema.org/OutOfStock' }),
+          },
+        ]),
+      );
+
+      assert.deepEqual(result, { kind: 'unparsed', call: CALL });
+    });
+
+    it('takes the listing price from the page and builds the range from it', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: PROM_PAGE, answer: inStock(3420) },
+          { price: '500', page: SHAFA_PAGE, answer: inStock(299) },
+        ]),
+      );
+
+      assert.deepEqual(result, {
+        kind: 'found',
+        priceFrom: '299',
+        priceTo: '3420',
+        listings: [
+          { price: '3420', url: PROM_PAGE },
+          { price: '299', url: SHAFA_PAGE },
+        ],
+        call: CALL,
+      });
+    });
+
+    it('drops a listing whose page prices it in another currency', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: PROM_PAGE, answer: inStock(45, { priceCurrency: 'USD' }) },
+          { price: '700', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [{ price: '700', url: KLOOMBA_PAGE }]);
+    });
+
+    it('keeps the model price of a listing whose page does not answer in time or at all', async () => {
+      const result = await search(
+        checking([
+          {
+            price: '1800',
+            page: PROM_PAGE,
+            answer: new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+          },
+          { price: '900', page: SHAFA_PAGE, answer: new TypeError('fetch failed') },
+          { price: '650', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [
+        { price: '1800', url: PROM_PAGE },
+        { price: '900', url: SHAFA_PAGE },
+        { price: '700', url: KLOOMBA_PAGE },
+      ]);
+    });
+
+    it('keeps the model price of a listing whose page has no JSON-LD or a broken one', async () => {
+      const result = await search(
+        checking([
+          {
+            price: '1800',
+            page: PROM_PAGE,
+            answer: { status: 200, html: '<html><body><h1>Casio MTP-1084</h1></body></html>' },
+          },
+          {
+            price: '900',
+            page: SHAFA_PAGE,
+            answer: {
+              status: 200,
+              html: '<script type="application/ld+json">{"@type":"Product","offers":</script>',
+            },
+          },
+          { price: '650', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [
+        { price: '1800', url: PROM_PAGE },
+        { price: '900', url: SHAFA_PAGE },
+        { price: '700', url: KLOOMBA_PAGE },
+      ]);
+    });
+
+    it('leaves an OLX listing at the model price whatever its page would say', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: LISTING_URL, answer: { status: 404, html: 'Not Found' } },
+          { price: '650', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [
+        { price: '1800', url: LISTING_URL },
+        { price: '700', url: KLOOMBA_PAGE },
+      ]);
+    });
+
+    it('drops a listing whose page describes a new item and keeps one that names no condition', async () => {
+      const result = await search(
+        checking([
+          { price: '1800', page: PROM_PAGE, answer: inStock(3420) },
+          {
+            price: '900',
+            page: SHAFA_PAGE,
+            answer: inStock(299, { itemCondition: 'https://schema.org/NewCondition' }),
+          },
+          {
+            price: '650',
+            page: KLOOMBA_PAGE,
+            answer: inStock(700, { itemCondition: 'https://schema.org/UsedCondition' }),
+          },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [
+        { price: '3420', url: PROM_PAGE },
+        { price: '700', url: KLOOMBA_PAGE },
+      ]);
+    });
   });
 });
