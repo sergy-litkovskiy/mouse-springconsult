@@ -1,15 +1,15 @@
 ---
 id: T115
 title: "Кнопка «Знайти ціну»: гейт «назва + опис» з чернетки й повідомлення трьох невдач"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1900
+context_budget: 2300
 blocked_by: [T108, T111, T112, T114]
 blocks: [T116, T119]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T115 — Кнопка «Знайти ціну»: гейт «назва + опис» з чернетки й повідомлення трьох невдач
@@ -104,9 +104,9 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] Рядок `priceLookupEnabled` і коментарі про T54 зникли з коду.
-- [ ] `test` і `lint` для `web` зелені; Playwright-прохід виконано, а результат записано в story.
-- [ ] Коміт: `feat(web): turn the find price button back on`.
+- [x] Рядок `priceLookupEnabled` і коментарі про T54 зникли з коду.
+- [x] `test` і `lint` для `web` зелені; Playwright-прохід виконано, а результат записано в story.
+- [x] Коміт: `feat(web): turn the find price button back on`.
 
 ## Links
 
