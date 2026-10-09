@@ -23,6 +23,12 @@ import {
   type RewritableField,
   type TextsResult,
 } from './AnthropicAdapter.ts';
+import {
+  GeminiAdapter,
+  type PriceSearchCall,
+  type PriceSearchQuery,
+  type PriceSearchResult,
+} from './GeminiAdapter.ts';
 import { PreparationService, type PreparationJob } from './PreparationService.ts';
 
 /**
@@ -85,6 +91,20 @@ class ScriptedAnthropicAdapter extends AnthropicAdapter {
     return field === 'seoKeywords'
       ? { value: ['миша', 'logitech', 'mx master'], usage: FIELD_USAGE }
       : { value: 'Новий варіант.', usage: FIELD_USAGE };
+  }
+}
+
+/** Never talks to Google: answers every search with the one result it was given. */
+class ScriptedGeminiAdapter extends GeminiAdapter {
+  readonly queries: PriceSearchQuery[] = [];
+
+  constructor(private readonly result: PriceSearchResult) {
+    super('test-gemini-key');
+  }
+
+  override async findPriceRange(query: PriceSearchQuery): Promise<PriceSearchResult> {
+    this.queries.push(query);
+    return this.result;
   }
 }
 
@@ -200,11 +220,28 @@ async function suggestionsOf(runId: string): Promise<{ field: string; value: unk
 function setup(
   script: Script = {},
   runs: PreparationRepository = new PreparationRepository(dataSource),
+  gemini: GeminiAdapter | null = null,
 ): { service: PreparationService; adapter: ScriptedAnthropicAdapter; media: KeyEchoingMedia } {
   const adapter = new ScriptedAnthropicAdapter(script);
   const media = new KeyEchoingMedia();
-  const service = new PreparationService(adapter, runs, new ProductRepository(dataSource), media);
+  const service = new PreparationService(
+    adapter,
+    gemini,
+    runs,
+    new ProductRepository(dataSource),
+    media,
+  );
   return { service, adapter, media };
+}
+
+function setupWithGemini(result: PriceSearchResult): {
+  service: PreparationService;
+  gemini: ScriptedGeminiAdapter;
+  media: KeyEchoingMedia;
+} {
+  const gemini = new ScriptedGeminiAdapter(result);
+  const { service, media } = setup({}, new PreparationRepository(dataSource), gemini);
+  return { service, gemini, media };
 }
 
 async function textsJob(scope: 'texts' | 'both' = 'texts'): Promise<PreparationJob> {
@@ -231,6 +268,35 @@ async function seedPriceSuggestion(productId: string): Promise<void> {
 
 async function priceSuggestionOf(productId: string): Promise<FieldSuggestion | null> {
   return dataSource.getRepository(FieldSuggestion).findOneBy({ productId, field: 'price' });
+}
+
+/** The pair the api picked from the draft; it differs from the saved card on purpose. */
+const SEARCH_PAIR = {
+  title: 'Миша Logitech MX Master 3S графітова',
+  description: 'Бездротова, Bluetooth і приймач, коробка й кабель у комплекті.',
+};
+
+async function pairedPriceJob(): Promise<Extract<PreparationJob, { title: string }>> {
+  const productId = await seedProduct();
+  await seedGallery(productId, 2);
+  return { runId: await seedRun(productId, 'price'), productId, scope: 'price', ...SEARCH_PAIR };
+}
+
+const GEMINI_CALL: PriceSearchCall = {
+  model: 'gemini-3.5-flash-lite',
+  webSearchQueries: ['Logitech MX Master 3S ціна OLX'],
+  groundingUris: [],
+  inputTokens: 900,
+  outputTokens: 300,
+};
+
+const LISTINGS = [
+  { price: '1800.00', url: 'https://www.olx.ua/d/uk/obyavlenie/mysha-logitech-mx-master-3s.html' },
+  { price: '2400.00', url: 'https://prom.ua/ua/p123456-mysha-logitech-mx-master.html' },
+];
+
+function found(priceFrom: string, priceTo: string): PriceSearchResult {
+  return { kind: 'found', priceFrom, priceTo, listings: LISTINGS, call: GEMINI_CALL };
 }
 
 const PRICE_NOT_CONFIGURED = 'price search is not configured';
@@ -405,6 +471,141 @@ describe('preparation service (postgres)', () => {
       assert.equal(run.inputTokens, 0);
       assert.equal(run.outputTokens, 0);
     });
+  });
+
+  describe('scope: price through Gemini', () => {
+    it('stores the range with its listings and succeeds without recording tokens', async () => {
+      const { service, gemini } = setupWithGemini(found('1800.00', '2400.00'));
+      const job = await pairedPriceJob();
+      await seedPriceSuggestion(job.productId);
+
+      await service.prepare(job);
+
+      assert.equal(gemini.queries.length, 1);
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'succeeded');
+      assert.equal(run.errorCode, null);
+      assert.equal(run.inputTokens, 0);
+      assert.equal(run.outputTokens, 0);
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00', listings: LISTINGS } },
+      ]);
+      assert.equal((await priceSuggestionOf(job.productId))?.runId, job.runId);
+    });
+
+    it('searches by the pair from the payload, not by the saved card, and sends no frames', async () => {
+      const { service, gemini, media } = setupWithGemini(found('1800.00', '2400.00'));
+      const job = await pairedPriceJob();
+
+      await service.prepare(job);
+
+      assert.equal(gemini.queries.length, 1);
+      const [query] = gemini.queries;
+      assert.equal(query?.title, SEARCH_PAIR.title);
+      assert.equal(query.description, SEARCH_PAIR.description);
+      assert.deepEqual(query.frames ?? [], []);
+      assert.deepEqual(media.reads, []);
+    });
+
+    it('accepts a range whose bounds are equal', async () => {
+      const { service } = setupWithGemini(found('2000.00', '2000.00'));
+      const job = await pairedPriceJob();
+
+      await service.prepare(job);
+
+      assert.equal((await loadRun(job.runId)).status, 'succeeded');
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        { field: 'price', value: { priceFrom: '2000.00', priceTo: '2000.00', listings: LISTINGS } },
+      ]);
+    });
+
+    it('compares the bounds as numbers, not as strings', async () => {
+      const { service } = setupWithGemini(found('950.00', '1200.00'));
+      const job = await pairedPriceJob();
+
+      await service.prepare(job);
+
+      assert.equal((await loadRun(job.runId)).status, 'succeeded');
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        { field: 'price', value: { priceFrom: '950.00', priceTo: '1200.00', listings: LISTINGS } },
+      ]);
+    });
+
+    const failures: { name: string; result: PriceSearchResult; errorCode: string }[] = [
+      {
+        name: 'the network fails',
+        result: { kind: 'unavailable', reason: 'TypeError: fetch failed' },
+        errorCode: 'price_unavailable',
+      },
+      {
+        name: 'Gemini answers 500',
+        result: { kind: 'unavailable', reason: 'HTTP 500: Internal error encountered.' },
+        errorCode: 'price_unavailable',
+      },
+      {
+        name: 'Gemini does not answer within the timeout',
+        result: {
+          kind: 'unavailable',
+          reason: 'TimeoutError: The operation was aborted due to timeout',
+        },
+        errorCode: 'price_unavailable',
+      },
+      {
+        name: 'Gemini answers 429 without a daily quota',
+        result: {
+          kind: 'unavailable',
+          reason: 'HTTP 429: GenerateRequestsPerMinutePerProjectPerModel',
+        },
+        errorCode: 'price_unavailable',
+      },
+      {
+        name: 'Gemini answers 429 for the daily quota',
+        result: {
+          kind: 'quotaExhausted',
+          reason: 'HTTP 429: GenerateRequestsPerDayPerProjectPerModel',
+        },
+        errorCode: 'price_quota_exhausted',
+      },
+      {
+        name: 'the answer does not parse as a range',
+        result: { kind: 'unparsed', call: GEMINI_CALL },
+        errorCode: 'price_not_found',
+      },
+      {
+        name: 'the lower bound is above the upper one',
+        result: found('2400.00', '1800.00'),
+        errorCode: 'price_not_found',
+      },
+      {
+        name: 'a bound is zero',
+        result: found('0.00', '2400.00'),
+        errorCode: 'price_not_found',
+      },
+    ];
+
+    for (const { name, result, errorCode } of failures) {
+      it(`ends the run ${errorCode} after one search, without throwing, when ${name}`, async () => {
+        const { service, gemini } = setupWithGemini(result);
+        const job = await pairedPriceJob();
+        await seedPriceSuggestion(job.productId);
+        const previous = await priceSuggestionOf(job.productId);
+        assert.ok(previous, 'expected the earlier price suggestion to be seeded');
+        const cardBefore = await loadCard(job.productId);
+
+        await assert.doesNotReject(service.prepare(job));
+
+        assert.equal(gemini.queries.length, 1);
+        const run = await loadRun(job.runId);
+        assert.equal(run.status, 'failed');
+        assert.equal(run.errorCode, errorCode);
+        assert.notEqual(run.finishedAt, null);
+        assert.equal(run.inputTokens, 0);
+        assert.equal(run.outputTokens, 0);
+        assert.deepEqual(await suggestionsOf(job.runId), []);
+        assert.deepEqual(await priceSuggestionOf(job.productId), previous);
+        assert.deepEqual(await loadCard(job.productId), cardBefore);
+      });
+    }
   });
 
   describe('scope: field', () => {

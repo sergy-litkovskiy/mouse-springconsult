@@ -1,6 +1,7 @@
 import { config } from '../../config.ts';
 import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
+import { logger } from '../../logger.ts';
 import type { MediaService } from '../media/index.ts';
 import {
   ProductNotFound,
@@ -11,12 +12,20 @@ import {
   type SuggestionField,
 } from '../products/index.ts';
 import type { AnthropicAdapter, RewritableField } from './AnthropicAdapter.ts';
+import type { GeminiAdapter } from './GeminiAdapter.ts';
 
 export type PreparationJob =
   | {
       readonly runId: string;
       readonly productId: string;
       readonly scope: 'texts' | 'price' | 'both';
+    }
+  | {
+      readonly runId: string;
+      readonly productId: string;
+      readonly scope: 'price';
+      readonly title: string;
+      readonly description: string;
     }
   | {
       readonly runId: string;
@@ -57,6 +66,7 @@ function singleLineTitle(text: string): string {
 export class PreparationService {
   constructor(
     private readonly adapter: AnthropicAdapter,
+    private readonly gemini: GeminiAdapter | null,
     private readonly runs: PreparationRepository,
     private readonly products: ProductRepository,
     private readonly media: MediaService,
@@ -105,9 +115,15 @@ export class PreparationService {
       );
     }
 
+    if (job.scope === 'price' && 'title' in job && this.gemini !== null) {
+      await this.searchPrice(this.gemini, job.runId, job.title, job.description);
+      return;
+    }
+
     if (job.scope === 'price' || job.scope === 'both') {
-      // No price search adapter is wired in yet: the texts already paid for stay with the run,
-      // and the run closes without a throw so pg-boss does not retry it.
+      // `both` does not search the price yet, and a `price` job gets here without a Gemini key or
+      // without the title to search by: the texts already paid for stay with the run, and the run
+      // closes without a throw so pg-boss does not retry it.
       await this.runs.finishRun(job.runId, {
         status: 'failed',
         errorCode: 'price_unavailable',
@@ -140,6 +156,75 @@ export class PreparationService {
    */
   async closeStuckRuns(): Promise<number> {
     return this.runs.closeStuckRuns(config.queue.preparation.stuckAfterSeconds);
+  }
+
+  private async searchPrice(
+    gemini: GeminiAdapter,
+    runId: string,
+    title: string,
+    description: string,
+  ): Promise<void> {
+    const result = await gemini.findPriceRange({ title, description });
+    // The pair is draft text and stays out of the log, as the queue payload does; tokens and
+    // queries live only here, never in the run row (ADR 0025).
+    const call = 'call' in result ? result.call : undefined;
+    const logSearch = (code: string): void => {
+      logger.info(
+        {
+          runId,
+          model: call?.model ?? config.ai.priceSearch.model,
+          code,
+          webSearchQueries: call?.webSearchQueries ?? [],
+          inputTokens: call?.inputTokens ?? 0,
+          outputTokens: call?.outputTokens ?? 0,
+        },
+        'price search finished',
+      );
+    };
+    if (result.kind === 'unavailable' || result.kind === 'quotaExhausted') {
+      const errorCode =
+        result.kind === 'unavailable' ? 'price_unavailable' : 'price_quota_exhausted';
+      logSearch(errorCode);
+      await this.runs.finishRun(runId, {
+        status: 'failed',
+        errorCode,
+        errorDetail: result.reason,
+        suggestions: [],
+      });
+      return;
+    }
+    if (
+      result.kind === 'unparsed' ||
+      !(Number(result.priceFrom) > 0) ||
+      !(Number(result.priceTo) > 0) ||
+      Number(result.priceFrom) > Number(result.priceTo)
+    ) {
+      logSearch('price_not_found');
+      await this.runs.finishRun(runId, {
+        status: 'failed',
+        errorCode: 'price_not_found',
+        errorDetail:
+          result.kind === 'unparsed'
+            ? 'the answer did not parse as a price range'
+            : `the range ${result.priceFrom}–${result.priceTo} is not a valid range`,
+        suggestions: [],
+      });
+      return;
+    }
+    logSearch('succeeded');
+    await this.runs.finishRun(runId, {
+      status: 'succeeded',
+      suggestions: [
+        {
+          field: 'price',
+          value: {
+            priceFrom: result.priceFrom,
+            priceTo: result.priceTo,
+            listings: result.listings,
+          },
+        },
+      ],
+    });
   }
 
   private async readRecognitionFrames(card: Product): Promise<Uint8Array[]> {
