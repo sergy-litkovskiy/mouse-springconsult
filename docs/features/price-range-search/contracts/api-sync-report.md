@@ -47,7 +47,7 @@
 | `PriceFieldSuggestion.createdAt` як дата пошуку | `product_field_suggestions.created_at`, upsert переписує (ADR 0022 №2) | high |
 | `Text-`/`KeywordsFieldSuggestion` | `fieldSuggestionSchema`, без змін форми | high |
 | `ProductCardRead` | `$ref` на product-creation-flow + звужений `latestSuggestions` | high |
-| `events.md` · `title`/`description` у payload `price` | ADR 0021 №3 каже «payload несе обрану пару», імен не дає | **low** — Section C |
+| `events.md` · `title`/`description` у payload `price` | ADR 0021 №3 каже «payload несе обрану пару», імен не дає; імена прийнято 2026-10-09 | high — Section C закрито |
 
 ## Section B — 5-point drift check
 
@@ -83,13 +83,15 @@
 
 ## Section C — unresolved_origins
 
-1. **Імена пари в payload `price`** (`events.md`). ADR 0021 №3 фіксує зміст, а не імена;
+1. ~~**Імена пари в payload `price`** (`events.md`). ADR 0021 №3 фіксує зміст, а не імена;
    `title`/`description` — пропозиція контракту. Межу API payload не перетинає, тож закриває
    story `priceSearchInput`. Іменувати можна будь-як, аби однаково в `PreparationJob` і в
-   `PreparationRunService`.
+   `PreparationRunService`.~~ **Закрито 2026-10-09:** прийнято `title`/`description` з
+   [events.md](events.md), однакові в `PreparationJob` (`ai`) і `PreparationRunJob`
+   (`products/preparation`).
 
-Обидва `## Open items` з `data-model.md` закрито рішеннями вище. У самому `data-model.md` вони
-досі позначені `<!-- TBD -->`: скіл джерел не правив, тож закрити їх там — справа людини.
+Обидва `## Open items` з `data-model.md` закрито рішеннями вище; 2026-10-09 їх закрито й у самому
+`data-model.md`.
 
 ## Розбіжності з дефолтами `feature-api-forge`
 
