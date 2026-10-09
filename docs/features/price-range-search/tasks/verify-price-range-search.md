@@ -1,15 +1,15 @@
 ---
 id: T118
 title: "Приймання: QG-1–QG-3 на живому стеку, ліміт і кадри"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: verification
 owner: "Serhii"
 estimate: S
-context_budget: 1800
+context_budget: 3300
 blocked_by: [T116, T117, T119]
 blocks: []
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T118 — Приймання: QG-1–QG-3 на живому стеку, ліміт і кадри
@@ -86,6 +86,40 @@ Quality goals [sad.md §10](../sad.md#10-quality-requirements):
 8. Запит до `pgboss.job` перед деплоєм (Context).
 9. Обидва проходи `security-review` ([T105](add-gemini-adapter.md), [T114](show-price-range-and-listings.md)) виконано, а знахідки закрито ([PRD §6.1](../PRD.md#61-security--privacy)).
 
+## Result — 2026-10-09: прийнято
+
+Прогін на локальному стеку (`api`, `worker`, Postgres, `web`), коміт `91088a9`. Відмови Gemini
+імітувалися оверрайдом compose лише для `worker`, а після прогону його повернено до `.env`:
+
+- недійсний ключ: `GEMINI_API_KEY: invalid-key-for-acceptance`;
+- вимкнена мережа: `extra_hosts` `generativelanguage.googleapis.com:0.0.0.0`, бо без мережі
+  `worker` не бачив би й Postgres;
+- без ключа: `unset GEMINI_API_KEY` перед стартом процесу.
+
+Дефектів не знайдено.
+
+| # | Пункт | Результат |
+|---|---|---|
+| 1 | QG-1, `price` | Картка «Вінтажна шкатулка» з вилкою від 15:43:02. Недійсний ключ — `price_unavailable`, `HTTP 400 API_KEY_INVALID`; вимкнена мережа — `price_unavailable`, `TypeError: fetch failed`. На кожен запуск один рядок `price search finished`, `job failed` — 0. Пропозиція `price`, її `created_at`, `products.price` (123.00) і `updated_at` не змінились |
+| 2 | QG-1, `both` | Та сама картка, 2 запуски: вимкнена мережа й недійсний ключ. Обидва `failed` з `price_unavailable`, `model` `claude-sonnet-5`, 4548/989 і 4548/1008 токенів. Тексти записано пропозиціями (`created_at` 16:36:22), а вилка лишилась від 15:43:02. На кожен запуск один `price search finished` |
+| 3 | `worker` без ключа | На старті `WARN: GEMINI_API_KEY is not set`, далі `worker subscribed`. Запуск `price` — `price_unavailable`, «price search is not configured». Рядка `price search finished` немає, отже до Google запиту не було |
+| 4 | QG-2 | Картка з 10 кадрами «Книга "100 притч…"», 250.00. Поле ціни у формі очищено без збереження, «Знайти ціну» — `succeeded`, вилка «від 450 до 1500 ₴», 2 оголошення OLX. Після пошуку поле ціни порожнє (`value` `""`), кнопки прийняття немає, у БД `products.price` 250.00, `updated_at` від 2026-09-20. Посилання мають `target="_blank"` і `rel="noopener noreferrer"`, клік відкрив оголошення в новій вкладці. Збережена пропозиція: `priceFrom` 450, `priceTo` 1500, 2 `listings` `https://www.olx.ua/…`. Кадри: payload задачі в `pgboss.job` має лише `runId`, `scope`, `title`, `productId`, `description`, тож у запит пішло 0 кадрів (`maxFrames: 0`). Лог кадрів не пише |
+| 5 | QG-3 | Картка «Набір іграшок "Пірати"». 10 стартів `price` (і всі 22 POST серії): `responseTime` у pino-лозі `api` — max 16,5 ms, медіана 12,9 ms. `waitMs` записів «job started» — max 1016 ms, медіана 587 ms. Під час запуску у формі вимкнені «Згенерувати все» й кнопки AI полів, текстові поля доступні |
+| 6 | Подвійний клік | Другий POST, поки запуск `queued`, дав `200` з тим самим `id`. POST після `failed` — `201` з новим `id` |
+| 7 | Ліміт | На тій самій картці запуски 1–20 — `201`, 21-й — `429` `preparation_rate_limited` |
+| 8 | `pgboss.job` | На dev задач `price`/`both` у `created`/`retry`/`active` немає (0); у черзі лише `completed`. На проді той самий запит виконує людина перед деплоєм: `select count(*) from pgboss.job where data->>'scope' in ('price','both') and state in ('created','retry','active');` |
+| 9 | `security-review` | T105 — PR #139: без знахідок. T114 — PR #150: без знахідок. T120 — PR #147: P0 0 · P1 0 · P2 0 |
+
+**Спостереження без порога.** `webSearchQueries` у лозі порожній і за успішного пошуку. Так і має
+бути на 3.x: `groundingMetadata` не приходить
+([ADR 0026](../adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)). Друге оголошення
+вилки — подарунковий набір на 8 предметів, а не та сама книга. Чи оголошення про ту саму річ,
+перевіряє лише людина (KPI [PRD §7](../PRD.md#7-metrics--kpis)), тож дефектом це не є.
+
+**Вартість.** Claude: два `both` — $0,0382 (вартість картки зросла з $0,0394 до $0,0776). Gemini:
+один успішний пошук, 1015/1879 токенів — ≈ $0,005; пошукові запити — у межах безкоштовних 5 000.
+Відмови з недійсним ключем і без мережі не тарифікуються. Разом ≈ $0,043 з погоджених ≤ $0,23.
+
 ## Out of scope
 
 - KPI першого місяця ([PRD §7](../PRD.md#7-metrics--kpis)) міряються після релізу, а не на прийманні.
@@ -93,9 +127,9 @@ Quality goals [sad.md §10](../sad.md#10-quality-requirements):
 
 ## DoD
 
-- [ ] Кожен пункт чеклиста має результат у story: число, код або посилання на лог, а не «працює».
-- [ ] Знайдені дефекти стали окремими story, а не правками в цій.
-- [ ] Коміт: `docs(price-range-search): record the acceptance run`.
+- [x] Кожен пункт чеклиста має результат у story: число, код або посилання на лог, а не «працює».
+- [x] Знайдені дефекти стали окремими story, а не правками в цій.
+- [x] Коміт: `docs(price-range-search): record the acceptance run`.
 
 ## Links
 
