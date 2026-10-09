@@ -11,7 +11,7 @@ ticket: "TBD"
 # Task breakdown — price-range-search
 
 > **Вхід:** [PRD](../PRD.md) · [sad.md](../sad.md) · [adr/](../adr/) 0020–0025 · [data-model.md](../data-model.md) · [contracts/openapi.yaml](../contracts/openapi.yaml) · [contracts/api-sync-report.md](../contracts/api-sync-report.md) · [contracts/events.md](../contracts/events.md)
-> **Вихід:** цей файл · [tracker.md](tracker.md) · 16 story у цій теці · [CONTEXT.md](../CONTEXT.md) фічі.
+> **Вихід:** цей файл · [tracker.md](tracker.md) · 17 story у цій теці · [CONTEXT.md](../CONTEXT.md) фічі.
 > **Скіл:** `feature-break-tasks` (локальний стейдж 06). Перевірка gate:
 > `python3 .claude/skills/feature-break-tasks/references/gate-check.py docs/features/price-range-search/tasks/`
 
@@ -94,6 +94,7 @@ flowchart LR
     T115[T115 кнопка Знайти ціну]
     T116[T116 Згенерувати все з ціною]
     T117[T117 ARCHITECTURE.md]
+    T119[T119 перемикач пошуку ціни]
     T118[T118 приймання]
   end
 
@@ -120,8 +121,11 @@ flowchart LR
   T113 --> T117
   T114 --> T115
   T115 --> T116
+  T115 --> T119
   T116 --> T118
+  T116 --> T119
   T117 --> T118
+  T119 --> T118
 ```
 
 **Чому саме такі ребра.** T107 → T109 означає «спершу прибрати писаря старої форми»: поки живий
@@ -143,11 +147,13 @@ flowchart LR
 рівень 6 │ T112 T114
 рівень 7 │ T113 T115
 рівень 8 │ T116 T117
-рівень 9 │ T118                ← приймання
+рівень 9 │ T119
+рівень 10 │ T118               ← приймання
 ```
 
-Десять рівнів дають критичний шлях T103 → T104 → T105 → T106 → T107 → T109 → T112 → T113 →
-T116 → T118. Паралельно йдуть контракт кодів (T108), вхід (T110 → T111) і фронт показу (T114).
+Одинадцять рівнів дають критичний шлях T103 → T104 → T105 → T106 → T107 → T109 → T112 → T113 →
+T116 → T119 → T118. Перемикач [T119](toggle-price-search-in-the-form.md) додано 2026-10-09 рішенням
+власника після заміру. Паралельно йдуть контракт кодів (T108), вхід (T110 → T111) і фронт показу (T114).
 
 **Граф ациклічний.** Скрипт перевірив і `blocks`, і `blocked_by` у кожній story: вони точно
 обернені одне до одного, висячих ID немає.
@@ -207,7 +213,8 @@ T116 → T118. Паралельно йдуть контракт кодів (T108
 | [T115](enable-find-price-button.md) | Кнопка «Знайти ціну» і повідомлення трьох невдач | T108, T111, T112, T114 | S | Serhii |
 | [T116](generate-all-with-price.md) | «Згенерувати все» стартує `both` | T113, T115 | XS | Serhii |
 | [T117](update-architecture-for-gemini.md) | `ARCHITECTURE.md` і CONTEXT product-creation-flow | T113 | XS | Serhii |
-| [T118](verify-price-range-search.md) | Приймання: QG-1–QG-3 на живому стеку | T116, T117 | S | Serhii |
+| [T119](toggle-price-search-in-the-form.md) | Перемикач «Пошук ціни» у формі картки | T115, T116 | S | Serhii |
+| [T118](verify-price-range-search.md) | Приймання: QG-1–QG-3 на живому стеку | T116, T117, T119 | S | Serhii |
 
 **Шкала:** XS ≤ 2 год, S ≤ 1 д; `M` і `L` не ставимо. Власник один на всі story, бо в системі
 один-два адміни ([CONTEXT.md](../../../CONTEXT.md), «user»).

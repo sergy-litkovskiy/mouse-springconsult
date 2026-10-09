@@ -8,7 +8,7 @@ owner: "Serhii"
 estimate: XS
 context_budget: 1200
 blocked_by: [T113, T115]
-blocks: [T118]
+blocks: [T118, T119]
 updated_at: "2026-10-08"
 ---
 

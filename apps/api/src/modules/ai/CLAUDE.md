@@ -41,8 +41,12 @@
   а відмову `PreparationService` класифікує в `price_not_found` / `price_quota_exhausted` /
   `price_unavailable` і закриває запуск без throw, тож pg-boss його не повторює
   ([ADR 0023](../../../../../docs/features/price-range-search/adr/0023-classify-price-search-failures-and-never-retry-them.md)).
-  Structured outputs на 2.5 не працюють разом із пошуком, тому JSON вилки розбирається з тексту
-  відповіді zod-схемою; збій розбору — `price_not_found`, а не падіння.
+  JSON вилки розбирається з тексту відповіді zod-схемою; збій розбору — `price_not_found`, а не
+  падіння. Модель — `gemini-3.5-flash-lite` на платному рівні з `thinkingLevel: MEDIUM`: нижче
+  вона не шукає, а пише адреси з пам'яті. Оголошення лишається, лише якщо прийшло редиректом
+  пошуку `vertexaisearch` і веде на сторінку оголошення OLX чи Prom; вилка будується з цін цих
+  оголошень, а не з відповіді моделі
+  ([ADR 0026](../../../../../docs/features/price-range-search/adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)).
 - Adaptive thinking (`thinking: {type: "adaptive"}`) увімкнено; `budget_tokens`
   не використовуємо — параметр видалено на цій моделі. Ціну знижуємо через
   `output_config.effort` (старт — `low` на всіх викликах Claude), а не вимкненням thinking.

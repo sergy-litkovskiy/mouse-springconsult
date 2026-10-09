@@ -1,7 +1,7 @@
 ---
 id: T108
 title: "Коди запуску price_not_found і price_quota_exhausted"
-status: Blocked
+status: Todo
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
