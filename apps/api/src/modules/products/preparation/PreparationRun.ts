@@ -6,9 +6,12 @@ export type PreparationScope = 'texts' | 'price' | 'both' | 'field';
 export type PreparationStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 /**
  * `price_unavailable` — the texts of a `both` run were stored, only the price is missing.
+ * `price_not_found` — the search answered, but not with a price range.
+ * `price_quota_exhausted` — the daily search quota of the provider is used up.
  * `preparation_failed` — every retry of the job failed and the run has no suggestions.
  */
-export type PreparationErrorCode = 'price_unavailable' | 'preparation_failed';
+export type PreparationErrorCode =
+  'price_unavailable' | 'price_not_found' | 'price_quota_exhausted' | 'preparation_failed';
 
 /**
  * An event rather than an entity edited as a whole, so there is no `updated_at`: the moments that

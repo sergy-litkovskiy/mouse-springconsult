@@ -32,8 +32,13 @@ export const preparationRunSchema = z.object({
   productId: z.uuid(),
   scope: z.enum(['texts', 'price', 'both', 'field']),
   status: z.enum(['queued', 'running', 'succeeded', 'failed']),
-  /** Only on `failed`: `price_unavailable` (texts kept) or `preparation_failed`. */
-  errorCode: z.enum(['price_unavailable', 'preparation_failed']).nullable(),
+  /**
+   * Only on `failed`: `price_unavailable` (texts kept), `price_not_found`, `price_quota_exhausted`
+   * or `preparation_failed`.
+   */
+  errorCode: z
+    .enum(['price_unavailable', 'price_not_found', 'price_quota_exhausted', 'preparation_failed'])
+    .nullable(),
   /**
    * Only on `failed`, and null on runs that failed before it was recorded: the English message of
    * the error behind `errorCode`, shown as a technical note under the Ukrainian text.

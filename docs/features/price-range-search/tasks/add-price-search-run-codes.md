@@ -1,7 +1,7 @@
 ---
 id: T108
 title: "Коди запуску price_not_found і price_quota_exhausted"
-status: Todo
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1500
 blocked_by: [T106]
 blocks: [T112, T115]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T108 — Коди запуску price_not_found і price_quota_exhausted
@@ -78,9 +78,9 @@ enum контракту, тож новий код без тексту ламає
 
 ## DoD
 
-- [ ] `typecheck` і `test` обох застосунків зелені.
-- [ ] Жодного нового значення в `error-codes.ts`.
-- [ ] Коміт: `feat(ai): add the price search run failure codes`.
+- [x] `typecheck` і `test` обох застосунків зелені.
+- [x] Жодного нового значення в `error-codes.ts`.
+- [x] Коміт: `feat(ai): add the price search run failure codes`.
 
 ## Links
 
