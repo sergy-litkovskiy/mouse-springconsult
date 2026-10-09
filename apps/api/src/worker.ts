@@ -29,13 +29,14 @@ async function main(): Promise<void> {
   });
   await dataSource.initialize();
 
-  if (env.GEMINI_API_KEY === undefined) {
+  const gemini = env.GEMINI_API_KEY === undefined ? null : new GeminiAdapter(env.GEMINI_API_KEY);
+  if (gemini === null) {
     logger.warn('GEMINI_API_KEY is not set');
   }
 
   const preparation = new PreparationService(
     new AnthropicAdapter(env.ANTHROPIC_API_KEY),
-    env.GEMINI_API_KEY === undefined ? null : new GeminiAdapter(env.GEMINI_API_KEY),
+    gemini,
     new PreparationRepository(dataSource),
     new ProductRepository(dataSource),
     new MediaService(
