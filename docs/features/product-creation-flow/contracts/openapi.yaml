@@ -763,6 +763,9 @@ components:
             `price_unavailable` — часткова відмова `scope: both`: пропозиції текстів
             записані, пропозиції `price` немає, ціну просить окремий `scope: price` (AC-10b).
             `preparation_failed` — усі спроби задачі впали, пропозицій немає (AC-10, events.md).
+            `price_not_found` і `price_quota_exhausted` — невдалий пошук ціни: вилки не знайдено
+            або вичерпано добову квоту пошуку
+            ([контракт price-range-search](../../price-range-search/contracts/openapi.yaml)).
         errorDetail:
           type: [string, null]
           description: >-
