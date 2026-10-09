@@ -87,7 +87,7 @@ Dockerfile-и лежать поруч з кодом (`apps/api/Dockerfile`, `app
 |---|---|---|---|
 | Конфіг фронту | `apps/web/src/environments/*.ts` | `production`, `apiBaseUrl` | браузер — усе публічне |
 | Константи бекенду | `apps/api/src/config.ts` — у коді | розміри зображень, ліміти, таймаути, TTL, параметри черги, модель AI | тільки сервер |
-| Секрети й машинозалежне | змінні оточення контейнерів | `DATABASE_URL`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_*`, ключі R2 і Anthropic, SMTP, домен | тільки процеси на VPS |
+| Секрети й машинозалежне | змінні оточення контейнерів | `DATABASE_URL`, `JWT_SECRET`, `ADMIN_BOOTSTRAP_*`, ключі R2, Anthropic і Gemini, SMTP, домен | тільки процеси на VPS |
 
 **Секрет не може жити на першому рівні:** Angular запікає `environment.ts` у бандл,
 який завантажує браузер. `postgres`, `api` і `caddy` до Angular стосунку не мають і

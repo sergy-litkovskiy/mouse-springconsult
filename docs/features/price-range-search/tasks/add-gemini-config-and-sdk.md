@@ -1,7 +1,7 @@
 ---
 id: T104
 title: "Ключ Gemini, константи пошуку ціни, SDK і правило dep-cruiser"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1800
 blocked_by: [T103]
 blocks: [T105, T110]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T104 — Ключ Gemini, константи пошуку ціни, SDK і правило dep-cruiser
@@ -83,10 +83,10 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] `typecheck` · `lint` · `test` · `deps:check` зелені без `GEMINI_API_KEY` у середовищі.
-- [ ] Пробний імпорт `@google/genai` з будь-якого файлу, крім `GeminiAdapter.ts`, `deps:check` відхиляє. Перевірено, а не припущено; пробу відкочено.
-- [ ] Ключ не потрапляє в лог на старті ні з ним, ні без нього.
-- [ ] Коміт: `feat(ai): add the Gemini key, price search constants and SDK boundary`.
+- [x] `typecheck` · `lint` · `test` · `deps:check` зелені без `GEMINI_API_KEY` у середовищі.
+- [x] Пробний імпорт `@google/genai` з будь-якого файлу, крім `GeminiAdapter.ts`, `deps:check` відхиляє. Перевірено, а не припущено; пробу відкочено.
+- [x] Ключ не потрапляє в лог на старті ні з ним, ні без нього.
+- [x] Коміт: `feat(ai): add the Gemini key, price search constants and SDK boundary`.
 
 ## Links
 
