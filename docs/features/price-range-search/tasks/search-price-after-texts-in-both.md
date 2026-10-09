@@ -1,7 +1,7 @@
 ---
 id: T113
 title: "Запуск both: вилка після текстів за щойно згенерованими назвою й описом"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 1800
 blocked_by: [T110, T112]
 blocks: [T116, T117]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T113 — Запуск both: вилка після текстів за щойно згенерованими назвою й описом
@@ -91,10 +91,10 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] Тексти `both` не губляться за жодного з трьох кодів: перевірено тестом.
-- [ ] Тести без мережі: обидва адаптери підмінені підкласами.
-- [ ] `typecheck` · `lint` · `test` · `deps:check` зелені.
-- [ ] Коміт: `feat(ai): search the price range after the texts in generate all`.
+- [x] Тексти `both` не губляться за жодного з трьох кодів: перевірено тестом.
+- [x] Тести без мережі: обидва адаптери підмінені підкласами.
+- [x] `typecheck` · `lint` · `test` · `deps:check` зелені.
+- [x] Коміт: `feat(ai): search the price range after the texts in generate all`.
 
 ## Links
 

@@ -17,7 +17,8 @@ stage: "06"
 
 ## Зараз
 
-**Готові до старту:** T113, T114.
+**Готові до старту:** T114, T117.
+2026-10-09 закрито T113 (`both` шукає вилку після текстів за щойно згенерованими назвою й описом: тексти лишаються пропозиціями за будь-якого з трьох кодів ціни, порожня пара закривається `price_not_found` без виклику Gemini, `recordUsage` — лише токени Claude): вона розблокувала T117; T116 чекає ще на T115.
 2026-10-09 закрито T112 (запуск `price` через Gemini: `price_not_found` / `price_quota_exhausted` / `price_unavailable` без throw і з одним викликом, інваріант вилки в сервісі, рядок пошуку в лозі без пари, `worker` без ключа стартує з warn): вона розблокувала T113; T115 чекає ще на T114.
 2026-10-09 закрито T120 (ціна оголошення Prom, Shafa й Kloomba — з JSON-LD сторінки; зняте, не в наявності чи не в гривнях відкидається, `itemCondition` не зважаємо): вона розблокувала T112.
 2026-10-09 закрито T111 (запуск `price` з назв і описів чернетки: пара через `priceSearchInput`, `409` з `missing` `title`/`description`, ключ із пари, модель Gemini з нульовим тарифом): нічого не розблокувала — T112 чекає ще на T120, T115 — на T112 і T114.
@@ -47,11 +48,11 @@ T104–T118 заведено 2026-10-08. Поставка 2 (T107–T119) ста
 | T111 | [Запуск `price` з чернетки](start-price-run-from-draft.md) | Done | T110 | S | 2026-10-09 |
 | T120 | [Перевірка оголошень за JSON-LD сторінки](check-listings-against-page-data.md) | Done | T106 | S | 2026-10-09 |
 | T112 | [Запуск `price` через Gemini](search-price-through-gemini.md) | Done | T107, T108, T109, T111, T120 | S | 2026-10-09 |
-| T113 | [`both`: вилка після текстів](search-price-after-texts-in-both.md) | Todo | T110, T112 | S | — |
+| T113 | [`both`: вилка після текстів](search-price-after-texts-in-both.md) | Done | T110, T112 | S | 2026-10-09 |
 | T114 | [Вилка й оголошення в UI](show-price-range-and-listings.md) | Todo | T109 | S | — |
 | T115 | [Кнопка «Знайти ціну»](enable-find-price-button.md) | Blocked | T108, T111, T112, T114 | S | — |
 | T116 | [«Згенерувати все» з ціною](generate-all-with-price.md) | Blocked | T113, T115 | XS | — |
-| T117 | [`ARCHITECTURE.md` і CONTEXT product-creation-flow](update-architecture-for-gemini.md) | Blocked | T113 | XS | — |
+| T117 | [`ARCHITECTURE.md` і CONTEXT product-creation-flow](update-architecture-for-gemini.md) | Todo | T113 | XS | — |
 | T119 | [Перемикач «Пошук ціни» у формі картки](toggle-price-search-in-the-form.md) | Blocked | T115, T116 | S | — |
 | T118 | [Приймання](verify-price-range-search.md) | Blocked | T116, T117, T119 | S | — |
 
