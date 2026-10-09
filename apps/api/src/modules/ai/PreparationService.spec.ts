@@ -14,6 +14,7 @@ import {
   ProductImage,
   ProductRepository,
   PRODUCTS_TABLE,
+  type CallUsage,
   type RunOutcome,
 } from '../products/index.ts';
 import {
@@ -108,6 +109,35 @@ class ScriptedGeminiAdapter extends GeminiAdapter {
   }
 }
 
+/** Writes each model call into a timeline it shares with the other model double. */
+class TimedAnthropicAdapter extends ScriptedAnthropicAdapter {
+  constructor(
+    script: Script,
+    private readonly timeline: string[],
+  ) {
+    super(script);
+  }
+
+  override async generateTexts(frames: readonly Uint8Array[]): Promise<TextsResult> {
+    this.timeline.push('claude');
+    return super.generateTexts(frames);
+  }
+}
+
+class TimedGeminiAdapter extends ScriptedGeminiAdapter {
+  constructor(
+    result: PriceSearchResult,
+    private readonly timeline: string[],
+  ) {
+    super(result);
+  }
+
+  override async findPriceRange(query: PriceSearchQuery): Promise<PriceSearchResult> {
+    this.timeline.push('gemini');
+    return super.findPriceRange(query);
+  }
+}
+
 /** The storage is never reached: `read` is overridden. */
 const NO_STORAGE = undefined as unknown as ImageStorage;
 
@@ -137,6 +167,15 @@ class FlakyFinishRepository extends PreparationRepository {
       throw new ConnectionLost('connection terminated unexpectedly');
     }
     return super.finishRun(runId, outcome);
+  }
+}
+
+class UsageRecordingRepository extends PreparationRepository {
+  readonly usages: CallUsage[] = [];
+
+  override async recordUsage(runId: string, usage: CallUsage): Promise<void> {
+    this.usages.push(usage);
+    return super.recordUsage(runId, usage);
   }
 }
 
@@ -309,6 +348,40 @@ const TEXT_SUGGESTIONS = [
   { field: 'title_prom', value: 'Бездротова миша Logitech MX Master 3' },
 ];
 
+function setupBoth(
+  result: PriceSearchResult,
+  script: Script = {},
+): {
+  service: PreparationService;
+  gemini: TimedGeminiAdapter;
+  runs: UsageRecordingRepository;
+  timeline: string[];
+} {
+  const timeline: string[] = [];
+  const gemini = new TimedGeminiAdapter(result, timeline);
+  const runs = new UsageRecordingRepository(dataSource);
+  const service = new PreparationService(
+    new TimedAnthropicAdapter(script, timeline),
+    gemini,
+    runs,
+    new ProductRepository(dataSource),
+    new KeyEchoingMedia(),
+  );
+  return { service, gemini, runs, timeline };
+}
+
+/** A card nobody has filled in yet: the search can only lean on what the model writes. */
+async function emptyCardBothJob(): Promise<PreparationJob> {
+  const productId = await seedProduct({
+    titleProm: '',
+    titleOlx: '',
+    descriptionProm: '',
+    descriptionOlx: '',
+  });
+  await seedGallery(productId, 2);
+  return { runId: await seedRun(productId, 'both'), productId, scope: 'both' };
+}
+
 /** 239 characters, and the 200th falls inside a word: 33 whole words (197 characters) fit. */
 const OVERLONG_TITLE = Array.from({ length: 40 }, () => 'мишка').join(' ');
 const OVERLONG_TITLE_CUT = Array.from({ length: 33 }, () => 'мишка').join(' ');
@@ -433,6 +506,139 @@ describe('preparation service (postgres)', () => {
 
       assert.deepEqual(await suggestionsOf(job.runId), []);
       assert.notEqual((await loadRun(job.runId)).status, 'succeeded');
+    });
+  });
+
+  describe('scope: both through Gemini', () => {
+    it('searches by the title and the description the model has just written, not by the saved card', async () => {
+      const { service, gemini } = setupBoth(found('1800.00', '2400.00'), {
+        texts: { ...TEXTS, titleProm: '  Бездротова миша\nLogitech MX Master 3 ' },
+      });
+      const job = await emptyCardBothJob();
+
+      await service.prepare(job);
+
+      assert.equal(gemini.queries.length, 1);
+      const [query] = gemini.queries;
+      assert.equal(query?.title, 'Бездротова миша Logitech MX Master 3');
+      assert.equal(query.description, TEXTS.descriptionProm);
+    });
+
+    it('searches by the OLX title and description when the model left the Prom ones empty', async () => {
+      const { service, gemini } = setupBoth(found('1800.00', '2400.00'), {
+        texts: { ...TEXTS, titleProm: '', descriptionProm: '' },
+      });
+      const job = await emptyCardBothJob();
+
+      await service.prepare(job);
+
+      assert.equal(gemini.queries.length, 1);
+      const [query] = gemini.queries;
+      assert.equal(query?.title, TEXTS.titleOlx);
+      assert.equal(query.description, TEXTS.descriptionOlx);
+    });
+
+    it('asks Gemini only after Claude has prepared the texts', async () => {
+      const { service, timeline } = setupBoth(found('1800.00', '2400.00'));
+      const job = await textsJob('both');
+
+      await service.prepare(job);
+
+      assert.deepEqual(timeline, ['claude', 'gemini']);
+    });
+
+    it('stores the texts and the range in one succeeded run that carries only the Claude tokens', async () => {
+      const { service, runs } = setupBoth(found('1800.00', '2400.00'));
+      const job = await textsJob('both');
+      await seedPriceSuggestion(job.productId);
+
+      await service.prepare(job);
+
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'succeeded');
+      assert.equal(run.errorCode, null);
+      assert.notEqual(run.finishedAt, null);
+      assert.equal(run.model, MODEL);
+      assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
+      assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens);
+      assert.deepEqual(runs.usages, [TEXTS_USAGE]);
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        ...TEXT_SUGGESTIONS.slice(0, 2),
+        { field: 'price', value: { priceFrom: '1800.00', priceTo: '2400.00', listings: LISTINGS } },
+        ...TEXT_SUGGESTIONS.slice(2),
+      ]);
+      assert.equal((await priceSuggestionOf(job.productId))?.runId, job.runId);
+    });
+
+    const failures: { name: string; result: PriceSearchResult; errorCode: string }[] = [
+      {
+        name: 'Gemini is unavailable',
+        result: { kind: 'unavailable', reason: 'HTTP 500: Internal error encountered.' },
+        errorCode: 'price_unavailable',
+      },
+      {
+        name: 'the daily quota is spent',
+        result: {
+          kind: 'quotaExhausted',
+          reason: 'HTTP 429: GenerateRequestsPerDayPerProjectPerModel',
+        },
+        errorCode: 'price_quota_exhausted',
+      },
+      {
+        name: 'the answer does not parse as a range',
+        result: { kind: 'unparsed', call: GEMINI_CALL },
+        errorCode: 'price_not_found',
+      },
+      {
+        name: 'the lower bound is above the upper one',
+        result: found('2400.00', '1800.00'),
+        errorCode: 'price_not_found',
+      },
+    ];
+
+    for (const { name, result, errorCode } of failures) {
+      it(`keeps the five text suggestions and ends the run ${errorCode} without a price when ${name}`, async () => {
+        const { service, gemini, runs } = setupBoth(result);
+        const job = await textsJob('both');
+        await seedPriceSuggestion(job.productId);
+        const previous = await priceSuggestionOf(job.productId);
+        assert.ok(previous, 'expected the earlier price suggestion to be seeded');
+
+        await assert.doesNotReject(service.prepare(job));
+
+        assert.equal(gemini.queries.length, 1);
+        const run = await loadRun(job.runId);
+        assert.equal(run.status, 'failed');
+        assert.equal(run.errorCode, errorCode);
+        assert.notEqual(run.finishedAt, null);
+        assert.equal(run.model, MODEL);
+        assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
+        assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens);
+        assert.deepEqual(runs.usages, [TEXTS_USAGE]);
+        assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
+        assert.deepEqual(await priceSuggestionOf(job.productId), previous);
+      });
+    }
+
+    it('keeps the texts and ends the run price_not_found without searching when the model wrote neither a title nor a description', async () => {
+      const { service, gemini } = setupBoth(found('1800.00', '2400.00'), {
+        texts: { ...TEXTS, titleProm: '', titleOlx: '', descriptionProm: '', descriptionOlx: '' },
+      });
+      const job = await emptyCardBothJob();
+
+      await assert.doesNotReject(service.prepare(job));
+
+      assert.equal(gemini.queries.length, 0);
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'failed');
+      assert.equal(run.errorCode, 'price_not_found');
+      assert.deepEqual(await suggestionsOf(job.runId), [
+        { field: 'description_olx', value: '' },
+        { field: 'description_prom', value: '' },
+        { field: 'seo_keywords', value: TEXTS.seoKeywords },
+        { field: 'title_olx', value: '' },
+        { field: 'title_prom', value: '' },
+      ]);
     });
   });
 
