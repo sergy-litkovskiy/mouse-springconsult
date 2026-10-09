@@ -5,6 +5,7 @@ import { logger } from '../../logger.ts';
 import type { MediaService } from '../media/index.ts';
 import {
   ProductNotFound,
+  priceSearchInput,
   type PreparationRepository,
   type Product,
   type ProductRepository,
@@ -113,17 +114,44 @@ export class PreparationService {
         { field: 'description_olx', value: texts.descriptionOlx },
         { field: 'seo_keywords', value: texts.seoKeywords },
       );
+
+      if (job.scope === 'both' && this.gemini !== null) {
+        // The search leans on the texts just written, not on the saved card, which may be empty.
+        const search = priceSearchInput({
+          titleProm: singleLineTitle(texts.titleProm),
+          titleOlx: singleLineTitle(texts.titleOlx),
+          descriptionProm: texts.descriptionProm,
+          descriptionOlx: texts.descriptionOlx,
+        });
+        if (search.kind === 'missing') {
+          await this.runs.finishRun(job.runId, {
+            status: 'failed',
+            errorCode: 'price_not_found',
+            errorDetail: `the texts carry no ${search.missing.join(' and ')} to search by`,
+            suggestions,
+          });
+          return;
+        }
+        await this.searchPrice(
+          this.gemini,
+          job.runId,
+          search.title,
+          search.description,
+          suggestions,
+        );
+        return;
+      }
     }
 
     if (job.scope === 'price' && 'title' in job && this.gemini !== null) {
-      await this.searchPrice(this.gemini, job.runId, job.title, job.description);
+      await this.searchPrice(this.gemini, job.runId, job.title, job.description, suggestions);
       return;
     }
 
     if (job.scope === 'price' || job.scope === 'both') {
-      // `both` does not search the price yet, and a `price` job gets here without a Gemini key or
-      // without the title to search by: the texts already paid for stay with the run, and the run
-      // closes without a throw so pg-boss does not retry it.
+      // A job gets here without a Gemini key, or a `price` one without the title to search by: the
+      // texts already paid for stay with the run, and the run closes without a throw so pg-boss
+      // does not retry it.
       await this.runs.finishRun(job.runId, {
         status: 'failed',
         errorCode: 'price_unavailable',
@@ -163,6 +191,7 @@ export class PreparationService {
     runId: string,
     title: string,
     description: string,
+    suggestions: readonly SuggestionDraft[],
   ): Promise<void> {
     const result = await gemini.findPriceRange({ title, description });
     // The pair is draft text and stays out of the log, as the queue payload does; tokens and
@@ -189,7 +218,7 @@ export class PreparationService {
         status: 'failed',
         errorCode,
         errorDetail: result.reason,
-        suggestions: [],
+        suggestions,
       });
       return;
     }
@@ -207,7 +236,7 @@ export class PreparationService {
           result.kind === 'unparsed'
             ? 'the answer did not parse as a price range'
             : `the range ${result.priceFrom}–${result.priceTo} is not a valid range`,
-        suggestions: [],
+        suggestions,
       });
       return;
     }
@@ -215,6 +244,7 @@ export class PreparationService {
     await this.runs.finishRun(runId, {
       status: 'succeeded',
       suggestions: [
+        ...suggestions,
         {
           field: 'price',
           value: {
