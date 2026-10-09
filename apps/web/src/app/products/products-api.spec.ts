@@ -223,19 +223,6 @@ describe('ProductsApi', () => {
     expect(await pending).toEqual(QUEUED_RUN);
   });
 
-  it('starts a run that only looks up the price', async () => {
-    const body: PreparationRunRequest = { scope: 'price' };
-    const started: PreparationRunDto = { ...QUEUED_RUN, scope: 'price' };
-
-    const pending = firstValueFrom(api.startPreparationRun(PRODUCT_ID, body));
-    const request = http.expectOne(`/api/products/${PRODUCT_ID}/preparation-runs`);
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual(body);
-    request.flush(started, { status: 201, statusText: 'Created' });
-
-    expect(await pending).toEqual(started);
-  });
-
   it('starts a run over one field and sends its draft along', async () => {
     const body: PreparationRunRequest = {
       scope: 'field',

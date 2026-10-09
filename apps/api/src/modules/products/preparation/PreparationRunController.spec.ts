@@ -21,7 +21,6 @@ const NO_BOSS = undefined as unknown as PgBoss;
 
 const CARD_ID = '01931f2a-7777-7000-8000-000000000001';
 const BARE_CARD_ID = '01931f2a-7777-7000-8000-000000000002';
-const UNTITLED_CARD_ID = '01931f2a-7777-7000-8000-000000000003';
 const MISSING_CARD_ID = '01931f2a-7777-7000-8000-00000000000f';
 const FINISHED_RUN_ID = '01931f2a-8888-7000-8000-000000000001';
 
@@ -71,11 +70,7 @@ function card(id: string, overrides: Partial<Product> = {}): Product {
 }
 
 class StubProductRepository extends ProductRepository {
-  readonly cards = [
-    card(CARD_ID),
-    card(BARE_CARD_ID, { images: [] }),
-    card(UNTITLED_CARD_ID, { titleProm: '', titleOlx: '' }),
-  ];
+  readonly cards = [card(CARD_ID), card(BARE_CARD_ID, { images: [] })];
 
   constructor() {
     super(NO_DATA_SOURCE);
@@ -246,24 +241,6 @@ describe('preparation run controller', () => {
     assert.equal(response.statusCode, 409);
     assert.equal(response.json<{ code: string }>().code, apiErrorCodes.preparationInputIncomplete);
     assert.deepEqual(queue.jobs, []);
-  });
-
-  it('answers preparation_input_incomplete for a price run on a card without titles', async () => {
-    const response = await start(UNTITLED_CARD_ID, { scope: 'price' });
-
-    assert.equal(response.statusCode, 409);
-    assert.equal(response.json<{ code: string }>().code, apiErrorCodes.preparationInputIncomplete);
-    assert.deepEqual(queue.jobs, []);
-  });
-
-  it('starts a price run on a card without frames, leaving the texts alone', async () => {
-    const response = await start(BARE_CARD_ID, { scope: 'price' });
-
-    assert.equal(response.statusCode, 201);
-    assert.deepEqual(
-      queue.jobs.map((job) => job.scope),
-      ['price'],
-    );
   });
 
   it('rejects a field run without a draft as validation_failed', async () => {

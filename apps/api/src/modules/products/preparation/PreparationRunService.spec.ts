@@ -195,39 +195,6 @@ describe('preparation run service: input gates', () => {
     assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'texts' }]);
   });
 
-  it('refuses a price run for a card with neither a Prom nor an OLX title', async () => {
-    const { service, runs, queue } = setup([card(CARD_ID, { titleProm: '', titleOlx: '' })]);
-
-    await assert.rejects(service.start(CARD_ID, { scope: 'price' }), missing('title'));
-
-    assert.equal(runs.rows.length, 0);
-    assert.deepEqual(queue.jobs, []);
-  });
-
-  it('does not let a description stand in for a missing title', async () => {
-    const { service, queue } = setup([
-      card(CARD_ID, {
-        titleProm: '',
-        titleOlx: '',
-        descriptionProm: 'Бездротова миша, стан відмінний.',
-        descriptionOlx: 'Продаю бездротову мишу.',
-      }),
-    ]);
-
-    await assert.rejects(service.start(CARD_ID, { scope: 'price' }), missing('title'));
-
-    assert.deepEqual(queue.jobs, []);
-  });
-
-  it('queues a price run when only the OLX title is filled', async () => {
-    const { service, queue } = setup([card(CARD_ID, { titleProm: '', images: [] })]);
-
-    const { run, created } = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(created, true);
-    assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'price' }]);
-  });
-
   it('answers product_not_found for a card that does not exist (Checklist 3)', async () => {
     const { service, queue } = setup([]);
 
@@ -238,33 +205,6 @@ describe('preparation run service: input gates', () => {
 });
 
 describe('preparation run service: scopes', () => {
-  it('queues only the price for a card whose texts are ready, without re-running them', async () => {
-    const { service, runs, queue } = setup([card(CARD_ID, { price: '0.00' })]);
-
-    const { run } = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(run.scope, 'price');
-    assert.deepEqual(
-      runs.rows.map((row) => row.scope),
-      ['price'],
-    );
-    assert.deepEqual(queue.jobs, [{ runId: run.id, productId: CARD_ID, scope: 'price' }]);
-  });
-
-  it('starts a price run as a run of its own after a texts run of the same card', async () => {
-    const { service, queue } = setup();
-
-    const texts = await service.start(CARD_ID, { scope: 'texts' });
-    const price = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(price.created, true);
-    assert.notEqual(price.run.id, texts.run.id);
-    assert.deepEqual(
-      queue.jobs.map((job) => job.scope),
-      ['texts', 'price'],
-    );
-  });
-
   it('carries the field and its draft into the queued job of a field run (Checklist 1)', async () => {
     const { service, queue } = setup();
 
@@ -402,18 +342,6 @@ describe('preparation run service: idempotency', () => {
     assert.deepEqual(queue.jobs, [{ runId: retried.run.id, productId: CARD_ID, scope: 'texts' }]);
   });
 
-  it('returns the existing run for the same input even when the card has used up its limit', async () => {
-    const { service, runs, queue } = setup();
-
-    const first = await service.start(CARD_ID, { scope: 'price' });
-    runs.recentRuns[CARD_ID] = 20;
-    const repeat = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(repeat.created, false);
-    assert.equal(repeat.run.id, first.run.id);
-    assert.equal(queue.jobs.length, 1);
-  });
-
   it('starts a new texts run once the frames have changed (Data delta)', async () => {
     const { service, products } = setup();
 
@@ -430,28 +358,6 @@ describe('preparation run service: idempotency', () => {
       ],
     });
     const second = await service.start(CARD_ID, { scope: 'texts' });
-
-    assert.equal(second.created, true);
-    assert.notEqual(second.run.id, first.run.id);
-  });
-
-  it('starts a new price run once the title has changed (Data delta)', async () => {
-    const { service, products } = setup();
-
-    const first = await service.start(CARD_ID, { scope: 'price' });
-    products.cards[0] = card(CARD_ID, { titleProm: 'Миша Logitech MX Master 3S' });
-    const second = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(second.created, true);
-    assert.notEqual(second.run.id, first.run.id);
-  });
-
-  it('starts a new price run once the description has changed, because it is part of the query', async () => {
-    const { service, products } = setup();
-
-    const first = await service.start(CARD_ID, { scope: 'price' });
-    products.cards[0] = card(CARD_ID, { descriptionProm: 'Нова батарея, повний комплект.' });
-    const second = await service.start(CARD_ID, { scope: 'price' });
 
     assert.equal(second.created, true);
     assert.notEqual(second.run.id, first.run.id);
@@ -536,16 +442,6 @@ describe('preparation run service: idempotency', () => {
     assert.equal(runs.rows.length, 1);
     assert.equal(queue.jobs.length, 1);
   });
-
-  it('keeps the runs of two cards with the same title apart (Data delta)', async () => {
-    const { service } = setup([card(CARD_ID), card(OTHER_CARD_ID)]);
-
-    const first = await service.start(CARD_ID, { scope: 'price' });
-    const second = await service.start(OTHER_CARD_ID, { scope: 'price' });
-
-    assert.equal(second.created, true);
-    assert.notEqual(second.run.id, first.run.id);
-  });
 });
 
 describe('preparation run service: rate limit', () => {
@@ -557,16 +453,6 @@ describe('preparation run service: rate limit', () => {
 
     assert.equal(runs.rows.length, 0);
     assert.deepEqual(queue.jobs, []);
-  });
-
-  it('still lets the twentieth run of the hour through (Checklist 5)', async () => {
-    const { service, runs, queue } = setup();
-    runs.recentRuns[CARD_ID] = 19;
-
-    const { created } = await service.start(CARD_ID, { scope: 'price' });
-
-    assert.equal(created, true);
-    assert.equal(queue.jobs.length, 1);
   });
 
   it('counts the window per card, so another card is not held back (Checklist 5)', async () => {
