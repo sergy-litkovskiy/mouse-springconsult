@@ -2,7 +2,7 @@
 status: Draft
 owner: "Serhii"
 reviewers: []
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 feature_size: M
 stage: "08"
 ticket: "TBD"
@@ -120,7 +120,7 @@ union `PreparationErrorCode` у `PreparationRun.ts`, а CHECK вимагав б�
 | `priceTo` | decimal string | `productConstraints.pricePattern`, ≥ `priceFrom` | як і зараз |
 | `listings` | array | 1–5 елементів; `maxPriceListings: 5` у `contracts/products-limits.ts` | **новий**; без жодного оголошення вилки немає (AC-10) |
 | `listings[].price` | decimal string | `productConstraints.pricePattern` | ціна оголошення в гривнях |
-| `listings[].url` | string | лише `http:` / `https:` <!-- TBD --> максимальна довжина | посилання з тексту відповіді моделі — недовірений ввід (PRD §6.1) |
+| `listings[].url` | string | лише `http:` / `https:`, ≤ 2048 символів; задовге посилання робить увесь результат `price_not_found` ([api-sync-report.md](contracts/api-sync-report.md)) | посилання з тексту відповіді моделі — недовірений ввід (PRD §6.1) |
 
 ```json
 {
@@ -186,8 +186,9 @@ Seed-и додаються в ті story, які змінюють ці файл�
 
 ## Open items
 
-- <!-- TBD --> Максимальна довжина `listings[].url` у zod-схемі контракту: обрізати, відкинути
-  оголошення чи весь результат як `price_not_found`. Хто вирішує: етап 10 (контракт).
-- <!-- TBD --> Чи мусить `listings[].price` лежати в межах [`priceFrom`, `priceTo`]. PRD і SAD
-  про це мовчать; інакше вилка може не збігатися з власними джерелами. Хто вирішує: етап 10 разом
-  з інваріантом ADR 0023.
+- **Закрито 2026-10-08** ([api-sync-report.md](contracts/api-sync-report.md), «Рішення»).
+  Максимальна довжина `listings[].url` у zod-схемі контракту — 2048 символів; задовге посилання
+  не обрізається й не відкидається поодинці, а робить увесь результат `price_not_found`.
+- **Закрито 2026-10-08** ([api-sync-report.md](contracts/api-sync-report.md), «Рішення»).
+  `listings[].price` не мусить лежати в межах [`priceFrom`, `priceTo`]: інваріант ADR 0023 №2 не
+  розширюється, тож CHECK чи перевірки під це немає.
