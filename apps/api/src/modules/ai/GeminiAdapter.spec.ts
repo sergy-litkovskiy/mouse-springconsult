@@ -500,6 +500,27 @@ describe('GeminiAdapter', () => {
       assert.deepEqual(result.listings, [{ price: '700', url: KLOOMBA_PAGE }]);
     });
 
+    it('drops a listing whose page gives any availability but in stock', async () => {
+      const result = await search(
+        checking([
+          {
+            price: '1800',
+            page: PROM_PAGE,
+            answer: inStock(1800, { availability: 'https://schema.org/Discontinued' }),
+          },
+          {
+            price: '900',
+            page: SHAFA_PAGE,
+            answer: inStock(900, { availability: 'http://schema.org/PreOrder' }),
+          },
+          { price: '700', page: KLOOMBA_PAGE, answer: inStock(700) },
+        ]),
+      );
+
+      assert.ok(result.kind === 'found');
+      assert.deepEqual(result.listings, [{ price: '700', url: KLOOMBA_PAGE }]);
+    });
+
     it('reports an unparsed reply when the page check leaves no listing', async () => {
       const result = await search(
         checking([
@@ -611,26 +632,25 @@ describe('GeminiAdapter', () => {
       ]);
     });
 
-    it('drops a listing whose page describes a new item and keeps one that names no condition', async () => {
+    it('keeps a listing whatever condition its page gives', async () => {
       const result = await search(
         checking([
-          { price: '1800', page: PROM_PAGE, answer: inStock(3420) },
           {
-            price: '900',
-            page: SHAFA_PAGE,
-            answer: inStock(299, { itemCondition: 'https://schema.org/NewCondition' }),
+            price: '1800',
+            page: PROM_PAGE,
+            answer: inStock(54, { itemCondition: 'https://schema.org/NewCondition' }),
           },
           {
             price: '650',
             page: KLOOMBA_PAGE,
-            answer: inStock(700, { itemCondition: 'https://schema.org/UsedCondition' }),
+            answer: inStock(700, { itemCondition: 'http://schema.org/UsedCondition' }),
           },
         ]),
       );
 
       assert.ok(result.kind === 'found');
       assert.deepEqual(result.listings, [
-        { price: '3420', url: PROM_PAGE },
+        { price: '54', url: PROM_PAGE },
         { price: '700', url: KLOOMBA_PAGE },
       ]);
     });
@@ -652,22 +672,6 @@ describe('GeminiAdapter', () => {
 
       assert.ok(result.kind === 'found');
       assert.deepEqual(result.listings, [{ price: '120', url: SHAFA_PAGE }]);
-    });
-
-    it('drops a listing whose page describes a new item under an http schema.org address', async () => {
-      const result = await search(
-        checking([
-          { price: '1800', page: PROM_PAGE, answer: inStock(3420) },
-          {
-            price: '650',
-            page: KLOOMBA_PAGE,
-            answer: inStock(700, { itemCondition: 'http://schema.org/NewCondition' }),
-          },
-        ]),
-      );
-
-      assert.ok(result.kind === 'found');
-      assert.deepEqual(result.listings, [{ price: '3420', url: PROM_PAGE }]);
     });
 
     it('takes a page price given as a string like one given as a number', async () => {

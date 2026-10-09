@@ -189,6 +189,12 @@ export const config = {
       maxFrames: 0,
       /** Resolving one search redirect into the listing address it points to. */
       redirectTimeoutMs: 5_000,
+      /** Reading one listing page of Prom, Shafa or Kloomba, redirects on its host included. */
+      pageTimeoutMs: 5_000,
+      /** Prom moves a listing to `/ua/` and Shafa to its full slug: one hop each. */
+      pageMaxRedirects: 2,
+      /** Listing pages of Shafa and Kloomba are under 0.3 MB; a larger body is not a listing. */
+      pageMaxBytes: 5 * 1024 * 1024,
       /** The queue payload carries the title and description, so both are cut to this length. */
       maxInputChars: 2_000,
     },
