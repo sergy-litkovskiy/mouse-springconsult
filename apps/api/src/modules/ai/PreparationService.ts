@@ -11,12 +11,20 @@ import {
   type SuggestionField,
 } from '../products/index.ts';
 import type { AnthropicAdapter, RewritableField } from './AnthropicAdapter.ts';
+import type { GeminiAdapter } from './GeminiAdapter.ts';
 
 export type PreparationJob =
   | {
       readonly runId: string;
       readonly productId: string;
       readonly scope: 'texts' | 'price' | 'both';
+    }
+  | {
+      readonly runId: string;
+      readonly productId: string;
+      readonly scope: 'price';
+      readonly title: string;
+      readonly description: string;
     }
   | {
       readonly runId: string;
@@ -57,6 +65,7 @@ function singleLineTitle(text: string): string {
 export class PreparationService {
   constructor(
     private readonly adapter: AnthropicAdapter,
+    private readonly gemini: GeminiAdapter | null,
     private readonly runs: PreparationRepository,
     private readonly products: ProductRepository,
     private readonly media: MediaService,

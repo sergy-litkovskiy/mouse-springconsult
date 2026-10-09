@@ -26,6 +26,7 @@ async function main(): Promise<void> {
 
   const preparation = new PreparationService(
     new AnthropicAdapter(env.ANTHROPIC_API_KEY),
+    null,
     new PreparationRepository(dataSource),
     new ProductRepository(dataSource),
     new MediaService(
