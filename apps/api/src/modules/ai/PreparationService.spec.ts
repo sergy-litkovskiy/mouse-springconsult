@@ -213,6 +213,28 @@ async function textsJob(scope: 'texts' | 'both' = 'texts'): Promise<PreparationJ
   return { runId: await seedRun(productId, scope), productId, scope };
 }
 
+async function priceJob(): Promise<PreparationJob> {
+  const productId = await seedProduct();
+  await seedGallery(productId, 2);
+  return { runId: await seedRun(productId, 'price'), productId, scope: 'price' };
+}
+
+/** A price suggestion left by an earlier run, as the card would carry it before this one. */
+async function seedPriceSuggestion(productId: string): Promise<void> {
+  await dataSource.getRepository(FieldSuggestion).save({
+    productId,
+    runId: await seedRun(productId, 'price'),
+    field: 'price',
+    value: { priceFrom: '1800.00', priceTo: '2400.00' },
+  });
+}
+
+async function priceSuggestionOf(productId: string): Promise<FieldSuggestion | null> {
+  return dataSource.getRepository(FieldSuggestion).findOneBy({ productId, field: 'price' });
+}
+
+const PRICE_NOT_CONFIGURED = 'price search is not configured';
+
 const TEXT_SUGGESTIONS = [
   { field: 'description_olx', value: 'Опис для OLX.' },
   { field: 'description_prom', value: 'Опис для Prom.' },
@@ -320,6 +342,23 @@ describe('preparation service (postgres)', () => {
   });
 
   describe('scope: both', () => {
+    it('keeps the five text suggestions and ends the run price_unavailable without a price suggestion', async () => {
+      const { service } = setup();
+      const job = await textsJob('both');
+
+      await service.prepare(job);
+
+      assert.deepEqual(await suggestionsOf(job.runId), TEXT_SUGGESTIONS);
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'failed');
+      assert.equal(run.errorCode, 'price_unavailable');
+      assert.equal(run.errorDetail, PRICE_NOT_CONFIGURED);
+      assert.notEqual(run.finishedAt, null);
+      assert.equal(run.model, MODEL);
+      assert.equal(run.inputTokens, TEXTS_USAGE.inputTokens);
+      assert.equal(run.outputTokens, TEXTS_USAGE.outputTokens);
+    });
+
     it('rethrows for a retry and stores nothing when the texts call fails', async () => {
       const { service } = setup({ textsFailure: new ModelAnswerUnavailable('refused') });
       const job = await textsJob('both');
@@ -328,6 +367,43 @@ describe('preparation service (postgres)', () => {
 
       assert.deepEqual(await suggestionsOf(job.runId), []);
       assert.notEqual((await loadRun(job.runId)).status, 'succeeded');
+    });
+  });
+
+  describe('scope: price', () => {
+    it('keeps the card and the previous price suggestion and ends the run price_unavailable without throwing', async () => {
+      const { service } = setup();
+      const job = await priceJob();
+      await seedPriceSuggestion(job.productId);
+      const previous = await priceSuggestionOf(job.productId);
+      assert.ok(previous, 'expected the earlier price suggestion to be seeded');
+      const cardBefore = await loadCard(job.productId);
+
+      await service.prepare(job);
+
+      assert.deepEqual(await loadCard(job.productId), cardBefore);
+      assert.deepEqual(await priceSuggestionOf(job.productId), previous);
+      const run = await loadRun(job.runId);
+      assert.equal(run.status, 'failed');
+      assert.equal(run.errorCode, 'price_unavailable');
+      assert.equal(run.errorDetail, PRICE_NOT_CONFIGURED);
+      assert.notEqual(run.finishedAt, null);
+    });
+
+    it('closes the run with neither suggestions nor tokens and without preparing the texts', async () => {
+      const { service, adapter, media } = setup();
+      const job = await priceJob();
+
+      await service.prepare(job);
+
+      assert.deepEqual(await suggestionsOf(job.runId), []);
+      assert.equal(adapter.textsCalls.length, 0);
+      assert.deepEqual(media.reads, []);
+      const run = await loadRun(job.runId);
+      assert.equal(run.errorCode, 'price_unavailable');
+      assert.equal(run.errorDetail, PRICE_NOT_CONFIGURED);
+      assert.equal(run.inputTokens, 0);
+      assert.equal(run.outputTokens, 0);
     });
   });
 
