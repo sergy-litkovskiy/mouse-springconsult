@@ -107,9 +107,11 @@ export class PreparationService {
     if (job.scope === 'texts' || job.scope === 'both') {
       const texts = await this.adapter.generateTexts(await this.readRecognitionFrames(card));
       await this.runs.recordUsage(job.runId, texts.usage);
+      const titleProm = singleLineTitle(texts.titleProm);
+      const titleOlx = singleLineTitle(texts.titleOlx);
       suggestions.push(
-        { field: 'title_prom', value: singleLineTitle(texts.titleProm) },
-        { field: 'title_olx', value: singleLineTitle(texts.titleOlx) },
+        { field: 'title_prom', value: titleProm },
+        { field: 'title_olx', value: titleOlx },
         { field: 'description_prom', value: texts.descriptionProm },
         { field: 'description_olx', value: texts.descriptionOlx },
         { field: 'seo_keywords', value: texts.seoKeywords },
@@ -118,8 +120,8 @@ export class PreparationService {
       if (job.scope === 'both' && this.gemini !== null) {
         // The search leans on the texts just written, not on the saved card, which may be empty.
         const search = priceSearchInput({
-          titleProm: singleLineTitle(texts.titleProm),
-          titleOlx: singleLineTitle(texts.titleOlx),
+          titleProm,
+          titleOlx,
           descriptionProm: texts.descriptionProm,
           descriptionOlx: texts.descriptionOlx,
         });
