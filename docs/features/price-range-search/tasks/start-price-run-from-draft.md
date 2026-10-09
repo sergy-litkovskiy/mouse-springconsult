@@ -1,7 +1,7 @@
 ---
 id: T111
 title: "Запуск price з назвами й описами чернетки: тіло запиту, ключ, модель запуску"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2500
 blocked_by: [T110]
 blocks: [T112, T115]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T111 — Запуск price з назвами й описами чернетки: тіло запиту, ключ, модель запуску
@@ -109,10 +109,10 @@ payload нічого не ламають.
 
 ## DoD
 
-- [ ] Повтор того самого входу ліміт частоти не витрачає: наявний запуск повертається до підрахунку.
-- [ ] Вартість картки із запуском `price` — `"0.0000"`, а не `null`: перевірено тестом.
-- [ ] `typecheck` · `lint` · `test` · `deps:check` обох застосунків зелені.
-- [ ] Коміт: `feat(products): start the price run from the draft title and description`.
+- [x] Повтор того самого входу ліміт частоти не витрачає: наявний запуск повертається до підрахунку.
+- [x] Вартість картки із запуском `price` — `"0.0000"`, а не `null`: перевірено тестом.
+- [x] `typecheck` · `lint` · `test` · `deps:check` обох застосунків зелені.
+- [x] Коміт: `feat(products): start the price run from the draft title and description`.
 
 ## Links
 
