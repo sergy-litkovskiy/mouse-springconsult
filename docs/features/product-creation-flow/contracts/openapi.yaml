@@ -798,7 +798,9 @@ components:
         value:
           description: >-
             Рядок для title*/description*, масив рядків для seoKeywords,
-            {priceFrom, priceTo} для price (десяткові рядки, як і products.price).
+            {priceFrom, priceTo, listings} для price (десяткові рядки, як і products.price);
+            форма й межі оголошень — `PriceRange`
+            ([контракт price-range-search](../../price-range-search/contracts/openapi.yaml)).
         createdAt: { type: string, format: date-time }
 
   responses:
