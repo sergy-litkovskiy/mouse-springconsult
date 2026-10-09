@@ -40,13 +40,13 @@ properties у конструкторах і жодного окремого ша
 
 Другий процес зʼявився разом із **поставкою 2** фічі `product-creation-flow`. Черга pg-boss
 і `worker` вже працюють: `api` ставить задачу підготовки (`POST /products/{id}/preparation-runs`),
-`worker` виконує її викликами Claude:
+`worker` виконує її викликами Claude і Gemini:
 
 ```
                                   ┌──────────────┐
                    ┌───────────┐  │    worker    │
                    │ postgres  │◄─┤ Claude API   │──► Anthropic API
-                   │ + pg-boss │  │ web search   │
+                   │ + pg-boss │  │ Gemini API   │──► Gemini API + Google Search
                    └───────────┘  └──────────────┘
 ```
 
@@ -61,7 +61,7 @@ properties у конструкторах і жодного окремого ша
 | `auth` | Вхід адміна, сесії, відновлення пароля через email | вхід/вихід/перевірка сесії реалізовані ([ADR 0002](docs/adr/0002-auth-jwt-and-typeorm.md)); відновлення пароля — попереду |
 | `products` | Картка товару: окремі тексти для Prom і OLX, ціна, категорія, стан речі, дві незалежні відмітки присутності, галерея | каталог з пагінацією, фільтрами і сортуванням, читання, створення й редагування картки, приймання, видалення й головний кадр, видалення картки разом з об'єктами в R2 реалізовані; на фронті — каталог, форма картки й галерея |
 | `media` | Прийом файлів: перевірка справжнього типу за сигнатурою вмісту, запис і видалення обʼєктів у R2. Домену не знає — слова «картка» в ньому немає ([ADR 0013](docs/features/product-creation-flow/adr/0013-call-media-from-products-as-a-storage-adapter.md)) | адаптер R2 (`ImageStorage`) і `MediaService` з перевіркою сигнатури вмісту реалізовані; маршрут вивантаження живе в `products` |
-| `ai` | Розпізнавання речі за головним фото, генерація опису й SEO під обидва майданчики, регенерація окремого поля з чернетки, пошук ринкових цін, облік `usage` ([ADR 0014](docs/features/product-creation-flow/adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](docs/features/product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md)) | `AnthropicAdapter` (модель, sharp, structured outputs, `web_search`) і `PreparationService` (запис пропозицій і `usage`, обробник у `worker`) реалізовані; маршрути запусків — у `products` (`PreparationRunController`). На поле картки зберігається одна, остання пропозиція; читання картки віддає її поруч зі значенням поля, а в картку вона потрапляє лише через форму, звичайним збереженням ([ADR 0017](docs/features/product-creation-flow/adr/0017-keep-one-latest-suggestion-per-field.md)). Пошук ціни реалізовано, але в продукті його відкладено: ціну адмін вписує руками |
+| `ai` | Розпізнавання речі за головним фото, генерація опису й SEO під обидва майданчики, регенерація окремого поля з чернетки, пошук вилки ринкових цін, облік `usage` викликів Claude. Два постачальники: Claude дає тексти й поле, Gemini — вилку ([ADR 0014](docs/features/product-creation-flow/adr/0014-let-ai-recognize-the-item-from-photos.md), [ADR 0015](docs/features/product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md), [ADR 0020](docs/features/price-range-search/adr/0020-search-price-ranges-through-gemini-in-the-ai-module.md)) | `AnthropicAdapter` (модель, sharp, structured outputs), `GeminiAdapter` (Gemini з Google Search, перевірка оголошень за JSON-LD сторінки) і `PreparationService` (запис пропозицій і `usage` Claude, обробник у `worker`) реалізовані; маршрути запусків — у `products` (`PreparationRunController`). На поле картки зберігається одна, остання пропозиція; читання картки віддає її поруч зі значенням поля, а в картку вона потрапляє лише через форму, звичайним збереженням ([ADR 0017](docs/features/product-creation-flow/adr/0017-keep-one-latest-suggestion-per-field.md)). Вилку й оголошення-джерела форма показує довідкою, а ціну в поле адмін вписує сам ([ADR 0024](docs/features/price-range-search/adr/0024-show-only-the-range-and-listing-links.md)) |
 
 Модуль — це **одна папка**. Шари всередині виражені суфіксом імені класу
 (`ProductController`, `ProductService`, `ProductRepository`), а не вкладеними
@@ -69,8 +69,8 @@ properties у конструкторах і жодного окремого ша
 має, бо він і є моделлю: `Product` — і доменний обʼєкт, і ORM-мапінг.
 Розкладаємо модуль на підпапки тоді, коли він справді виросте.
 
-Пошук цін не виділено в окремий модуль: це той самий Claude, лише інший метод сервісу
-всередині `ai`. Синхронізація з Prom/OLX стане модулем `marketplace`, коли до неї
+Пошук цін не виділено в окремий модуль: це той самий `ai`, лише інший постачальник
+([ADR 0020](docs/features/price-range-search/adr/0020-search-price-ranges-through-gemini-in-the-ai-module.md)). Синхронізація з Prom/OLX стане модулем `marketplace`, коли до неї
 дійде черга, — до того порожньої папки під неї не існує.
 
 Технічні сервіси без бізнес-змісту — конфіг, пул Postgres, логер, базовий клас помилки, а
@@ -171,11 +171,15 @@ R2-клієнт і SMTP свідомо туди не потрапили — це
    збережена копія, а перетворення в момент виклику), `ai` викликає `claude-sonnet-5` зі
    structured outputs — модель розпізнає річ і водночас повертає plain-text поля під
    обидва майданчики ([ADR 0014](docs/features/product-creation-flow/adr/0014-let-ai-recognize-the-item-from-photos.md)) —
-   а другим викликом через `web_search_20260209` знаходить діапазон цін по Україні (цей
-   виклик реалізовано, але в продукті відкладено: ціну адмін вписує руками). Окремий
+   а після текстів шукає вилку цін по Україні через Gemini з Google Search за щойно
+   згенерованими назвою й описом. Запуск лише ціни бере назву й опис з чернетки
+   ([ADR 0021](docs/features/price-range-search/adr/0021-search-prices-from-the-run-input-not-the-saved-card.md)); невдача
+   пошуку закриває запуск кодом без повтору й текстів не забирає
+   ([ADR 0023](docs/features/price-range-search/adr/0023-classify-price-search-failures-and-never-retry-them.md)). Окремий
    text-only виклик без фото регенерує одне поле з чернетки людини
    ([ADR 0015](docs/features/product-creation-flow/adr/0015-add-per-field-text-rewrite-scope.md)).
-7. Результат лягає **окремими пропозиціями** разом із `usage` виклику, а не в поля картки:
+7. Результат лягає **окремими пропозиціями** разом із `usage` виклику Claude (Gemini токенів
+   не пише, [ADR 0025](docs/features/price-range-search/adr/0025-keep-gemini-calls-out-of-the-token-ledger.md)), а не в поля картки:
    на кожне поле — одна, остання пропозиція, і нова генерація її замінює
    ([ADR 0017](docs/features/product-creation-flow/adr/0017-keep-one-latest-suggestion-per-field.md)).
    Поля картки міняє тільки людина: стрілка «<- AI» копіює пропозицію в поле форми, а в
