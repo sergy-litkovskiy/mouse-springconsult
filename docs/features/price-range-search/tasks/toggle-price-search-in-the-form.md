@@ -1,12 +1,12 @@
 ---
 id: T119
 title: "Перемикач «Пошук ціни» у формі картки"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 1600
+context_budget: 2000
 blocked_by: [T115, T116]
 blocks: [T118]
 updated_at: "2026-10-09"
@@ -101,8 +101,8 @@ updated_at: "2026-10-09"
 
 ## DoD
 
-- [ ] `test` і `lint` для `web` зелені; Playwright-прохід записано в story.
-- [ ] Коміт: `feat(web): let the admin switch the price search on and off`.
+- [x] `test` і `lint` для `web` зелені; Playwright-прохід записано в story.
+- [x] Коміт: `feat(web): let the admin switch the price search on and off`.
 
 ## Links
 
