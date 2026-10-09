@@ -404,9 +404,10 @@ components:
           pattern: '^https?://'
           maxLength: 2048
           description: >-
-            Задовге посилання не обрізається й не відкидається поодинці: `GeminiAdapter` не
-            розбирає таку відповідь, і запуск закривається `price_not_found` (рішення етапу
-            контракту, data-model.md Open items).
+            Лише сторінка оголошення, до якої веде редирект пошуку, без query (ADR 0026 №4).
+            Посилання довше 2048 у тексті моделі робить відповідь нерозбірною, а розкрита адреса
+            довша за 2048 відкидається поодинці; без жодного оголошення запуск закривається
+            `price_not_found`.
 
     PriceRange:
       type: object
@@ -415,8 +416,8 @@ components:
       description: >-
         Вилка — значення пропозиції `field: price` (data-model.md, `product_field_suggestions.value`).
         Інваріант тримає код, а не БД: обидві межі > 0 і `priceFrom ≤ priceTo` (ADR 0023 №2).
-        Ціни оголошень у межах вилки бути не мусять: модель може лишити поза вилкою
-        оголошення-викид, а user однаково бачить усі джерела.
+        `GeminiAdapter` будує вилку з цін відібраних оголошень, тож усі вони в її межах
+        (ADR 0026 №4).
       properties:
         priceFrom: { $ref: "#/components/schemas/Money" }
         priceTo: { $ref: "#/components/schemas/Money" }

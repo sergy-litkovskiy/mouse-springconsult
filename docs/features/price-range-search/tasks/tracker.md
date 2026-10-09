@@ -17,8 +17,8 @@ stage: "06"
 
 ## Зараз
 
-**Готові до старту:** T107, T108, T110.
-2026-10-09 закрито T106 (гейт заміру): **go** на `gemini-3.5-flash-lite` з пошуком Google на платному рівні, 7 з 10 карток ([ADR 0026](../adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)). Того ж дня заведено T119 (перемикач пошуку ціни у формі).
+**Готові до старту:** T107, T108, T110, T120.
+2026-10-09 закрито T106 (гейт заміру): **go** на `gemini-3.5-flash-lite` з пошуком Google на платному рівні, 7 з 10 карток ([ADR 0026](../adr/0026-search-on-the-paid-tier-with-gemini-3-5-flash-lite.md)). Того ж дня заведено T119 (перемикач пошуку ціни у формі) і T120 (перевірка оголошень Prom, Shafa й Kloomba за JSON-LD).
 2026-10-09 закрито T105 (`GeminiAdapter`): вона розблокувала гейт заміру T106.
 2026-10-09 закрито T104 (ключ Gemini, константи, SDK і межа dep-cruiser): вона розблокувала T105; T110 чекає ще на гейт T106.
 2026-10-09 закрито T103 (документи узгоджено з архітектурою пошуку ціни): вона розблокувала T104.
@@ -38,7 +38,8 @@ T104–T118 заведено 2026-10-08. Поставка 2 (T107–T119) ста
 | T109 | [Оголошення в пропозиції `price`](add-price-listings-to-suggestion.md) | Blocked | T107 | XS | — |
 | T110 | [`priceSearchInput`](add-price-search-input.md) | Todo | T104, T106 | XS | — |
 | T111 | [Запуск `price` з чернетки](start-price-run-from-draft.md) | Blocked | T110 | S | — |
-| T112 | [Запуск `price` через Gemini](search-price-through-gemini.md) | Blocked | T107, T108, T109, T111 | S | — |
+| T120 | [Перевірка оголошень за JSON-LD сторінки](check-listings-against-page-data.md) | Todo | T106 | S | — |
+| T112 | [Запуск `price` через Gemini](search-price-through-gemini.md) | Blocked | T107, T108, T109, T111, T120 | S | — |
 | T113 | [`both`: вилка після текстів](search-price-after-texts-in-both.md) | Blocked | T110, T112 | S | — |
 | T114 | [Вилка й оголошення в UI](show-price-range-and-listings.md) | Blocked | T109 | S | — |
 | T115 | [Кнопка «Знайти ціну»](enable-find-price-button.md) | Blocked | T108, T111, T112, T114 | S | — |
