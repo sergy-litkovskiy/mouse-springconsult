@@ -1,6 +1,7 @@
 import { config } from '../../config.ts';
 import type { FieldRewriteMode } from '../../contracts/ai.contract.ts';
 import { productConstraints } from '../../contracts/products-limits.ts';
+import { logger } from '../../logger.ts';
 import type { MediaService } from '../media/index.ts';
 import {
   ProductNotFound,
@@ -164,10 +165,29 @@ export class PreparationService {
     description: string,
   ): Promise<void> {
     const result = await gemini.findPriceRange({ title, description });
+    // The pair is draft text and stays out of the log, as the queue payload does; tokens and
+    // queries live only here, never in the run row (ADR 0025).
+    const call = 'call' in result ? result.call : undefined;
+    const logSearch = (code: string): void => {
+      logger.info(
+        {
+          runId,
+          model: call?.model ?? config.ai.priceSearch.model,
+          code,
+          webSearchQueries: call?.webSearchQueries ?? [],
+          inputTokens: call?.inputTokens ?? 0,
+          outputTokens: call?.outputTokens ?? 0,
+        },
+        'price search finished',
+      );
+    };
     if (result.kind === 'unavailable' || result.kind === 'quotaExhausted') {
+      const errorCode =
+        result.kind === 'unavailable' ? 'price_unavailable' : 'price_quota_exhausted';
+      logSearch(errorCode);
       await this.runs.finishRun(runId, {
         status: 'failed',
-        errorCode: result.kind === 'unavailable' ? 'price_unavailable' : 'price_quota_exhausted',
+        errorCode,
         errorDetail: result.reason,
         suggestions: [],
       });
@@ -179,6 +199,7 @@ export class PreparationService {
       !(Number(result.priceTo) > 0) ||
       Number(result.priceFrom) > Number(result.priceTo)
     ) {
+      logSearch('price_not_found');
       await this.runs.finishRun(runId, {
         status: 'failed',
         errorCode: 'price_not_found',
@@ -190,6 +211,7 @@ export class PreparationService {
       });
       return;
     }
+    logSearch('succeeded');
     await this.runs.finishRun(runId, {
       status: 'succeeded',
       suggestions: [
