@@ -175,6 +175,20 @@ export const productCardSchema = productSchema.extend({
 
 export type ProductCard = z.infer<typeof productCardSchema>;
 
+const priceListing = z.object({
+  price: priceDecimal,
+  url: z
+    .string()
+    .regex(/^https?:\/\//)
+    .max(2048),
+});
+
+const priceRange = z.object({
+  priceFrom: priceDecimal,
+  priceTo: priceDecimal,
+  listings: z.array(priceListing).min(1).max(5).readonly(),
+});
+
 /**
  * `field` is spelled the way the contract spells the card's own fields, while the column holds
  * `title_olx`: the card controller maps between the two.
@@ -191,27 +205,7 @@ export const fieldSuggestionSchema = z.object({
     'price',
   ]),
   /** Polymorphic by `field`, the way the JSONB column is: a text, a keyword list or a range. */
-  value: z.union([
-    z.string(),
-    z.array(z.string()).readonly(),
-    z.object({
-      priceFrom: priceDecimal,
-      priceTo: priceDecimal,
-      listings: z
-        .array(
-          z.object({
-            price: priceDecimal,
-            url: z
-              .string()
-              .regex(/^https?:\/\//)
-              .max(2048),
-          }),
-        )
-        .min(1)
-        .max(5)
-        .readonly(),
-    }),
-  ]),
+  value: z.union([z.string(), z.array(z.string()).readonly(), priceRange]),
   createdAt: z.iso.datetime(),
 });
 
