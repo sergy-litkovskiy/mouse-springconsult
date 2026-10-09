@@ -60,7 +60,7 @@ import { ProductGallery } from '../gallery/product-gallery';
 import { missingFieldsHint } from '../missing-fields-hint';
 import { PreparationRunPoller } from '../preparation-run-poller';
 import { ProductsApi } from '../products-api';
-import { runFailureMessages } from '../run-failure-messages';
+import { runFailureMessage } from '../run-failure-messages';
 import { PromDescriptionEditor } from './prom-description-editor';
 import { promDescriptionFromText } from './prom-description-from-text';
 import { SuggestionField } from './suggestion-field';
@@ -89,7 +89,7 @@ const PREPARATION_MESSAGES: Readonly<Record<string, string>> = {
   [apiErrorCodes.preparationRateLimited]:
     'Забагато запусків підготовки для цієї картки. Спробуйте за годину.',
   [apiErrorCodes.preparationInputIncomplete]:
-    'Для пошуку ціни потрібен хоча б один заголовок. Заповніть назву для Prom або для OLX.',
+    'Для пошуку ціни потрібні хоча б одна назва й хоча б один опис з будь-якого майданчика.',
   [apiErrorCodes.tooManyRequests]: 'Забагато запитів. Зачекайте трохи і спробуйте ще раз.',
   [apiErrorCodes.productNotFound]: 'Картку вже видалено.',
 };
@@ -385,9 +385,7 @@ export class ProductForm {
         this.formError.set(
           run.errorCode === null
             ? UNAVAILABLE_MODEL_MESSAGE
-            : run.scope === 'price' && run.errorCode === 'price_unavailable'
-              ? 'Пошук ціни не пройшов — спробуйте ще раз.'
-              : runFailureMessages[run.errorCode],
+            : runFailureMessage({ scope: run.scope, errorCode: run.errorCode }),
         );
       }
       // Even a failed run may have left texts behind (the price alone can be what went missing),
