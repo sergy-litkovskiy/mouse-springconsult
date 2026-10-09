@@ -1,15 +1,15 @@
 ---
 id: T105
 title: "GeminiAdapter: пошук вилки з googleSearch і розбір JSON з тексту"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2400
+context_budget: 3000
 blocked_by: [T104]
 blocks: [T106]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T105 — GeminiAdapter: пошук вилки з googleSearch і розбір JSON з тексту
@@ -86,6 +86,25 @@ updated_at: "2026-10-08"
 7. Виклик SDK винести в `protected` метод, щоб spec підміняв його підкласом з `override` (правило 8 `apps/api/CLAUDE.md`). Тести без мережі й без ключа покривають кожен варіант union-а, JSON в обгортці, 6 оголошень, `javascript:`-посилання, посилання на 2049 символів і 429 з `PerDay` та без нього.
 8. `index.ts` модуля `ai`: експорт `GeminiAdapter` і типу результату.
 
+**Звірка з `@google/genai` 2.28.0** (2026-10-09, типи `dist/genai.d.ts` і код `dist/node/index.mjs`
+встановленого пакета; сторінки ai.google.dev уже описують Interactions API, а не `generateContent`):
+
+- Клієнт — `new GoogleGenAI({ apiKey })`, виклик — `client.models.generateContent({ model, contents,
+  config: { tools: [{ googleSearch: {} }], httpOptions: { timeout } } })`; `httpOptions` є полем
+  `GenerateContentConfig`, тож таймаут ставиться на виклик, а не на клієнт.
+- Без опцій повтору `apiCall` робить рівно один `fetch`: повтор вмикається лише явним полем у
+  `httpOptions`. Таймаут — `AbortController` на `setTimeout`, тож він приходить як звичайна помилка
+  `fetch` (`AbortError`), а не `ApiError`.
+- `ApiError` має лише `status: number` і `message`. Для JSON-відповіді `message` — це
+  `JSON.stringify` усього тіла помилки, тож деталі 429 (`error.details[].violations[].quotaId`)
+  читаються розбором `message`. Сама форма `quotaId` офіційно не задокументована (sad.md §11, Low).
+- `response.text` — геттер, що склеює текстові частини першого кандидата; може бути `undefined`.
+  Відмову видно з `promptFeedback.blockReason` або `candidates[0].finishReason` (`SAFETY`,
+  `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`, …), нормальне завершення — `STOP`.
+- `candidates[0].groundingMetadata`: `webSearchQueries?: string[]`, `groundingChunks?: { web?: { uri?,
+  title? } }[]`, `searchEntryPoint?`. Токени — `usageMetadata`: `promptTokenCount`,
+  `toolUsePromptTokenCount`, `candidatesTokenCount`, `thoughtsTokenCount`.
+
 ## Out of scope
 
 - Класифікація в коди запуску, інваріант вилки й запис пропозиції ([T112](search-price-through-gemini.md)).
@@ -95,12 +114,12 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] `@google/genai` згадується лише в `GeminiAdapter.ts`; `deps:check` зелений.
-- [ ] Жоден варіант відмови не кидає виняток назовні: це перевірено тестом на кожен варіант.
-- [ ] Тести зелені без `GEMINI_API_KEY` і без мережі.
-- [ ] Ключ не потрапляє ні в лог, ні в текст помилки, який повертає адаптер.
-- [ ] Прохід `security-review` по diff: новий секрет і відповідь моделі як недовірений ввід ([PRD §6.1](../PRD.md#61-security--privacy)).
-- [ ] Коміт: `feat(ai): add the Gemini adapter for price range search`.
+- [x] `@google/genai` згадується лише в `GeminiAdapter.ts`; `deps:check` зелений.
+- [x] Жоден варіант відмови не кидає виняток назовні: це перевірено тестом на кожен варіант.
+- [x] Тести зелені без `GEMINI_API_KEY` і без мережі.
+- [x] Ключ не потрапляє ні в лог, ні в текст помилки, який повертає адаптер.
+- [x] Прохід `security-review` по diff: новий секрет і відповідь моделі як недовірений ввід ([PRD §6.1](../PRD.md#61-security--privacy)).
+- [x] Коміт: `feat(ai): add the Gemini adapter for price range search`.
 
 ## Links
 

@@ -17,7 +17,8 @@ stage: "06"
 
 ## Зараз
 
-**Готова до старту:** T105.
+**Готова до старту:** T106.
+2026-10-09 закрито T105 (`GeminiAdapter`): вона розблокувала гейт заміру T106.
 2026-10-09 закрито T104 (ключ Gemini, константи, SDK і межа dep-cruiser): вона розблокувала T105; T110 чекає ще на гейт T106.
 2026-10-09 закрито T103 (документи узгоджено з архітектурою пошуку ціни): вона розблокувала T104.
 T104–T118 заведено 2026-10-08. Поставка 2 (T107–T118) стартує лише після go на гейті
@@ -29,8 +30,8 @@ T104–T118 заведено 2026-10-08. Поставка 2 (T107–T118) ста
 |----|--------|--------|------------|-----|---------|
 | T103 | [Узгодити PRD, CLAUDE.md і відкриті пункти контракту](align-documents-with-price-search-architecture.md) | Done | — | S | 2026-10-09 |
 | T104 | [Ключ Gemini, константи, SDK, dep-cruiser](add-gemini-config-and-sdk.md) | Done | T103 | XS | 2026-10-09 |
-| T105 | [`GeminiAdapter`](add-gemini-adapter.md) | Todo | T104 | S | — |
-| T106 | [Гейт заміру: go / no-go](measure-price-search-on-ten-cards.md) | Blocked | T105 | S | — |
+| T105 | [`GeminiAdapter`](add-gemini-adapter.md) | Done | T104 | S | 2026-10-09 |
+| T106 | [Гейт заміру: go / no-go](measure-price-search-on-ten-cards.md) | Todo | T105 | S | — |
 | T107 | [Прибрати пошук ціни через Anthropic](remove-anthropic-price-search.md) | Blocked | T106 | S | — |
 | T108 | [Коди запуску ціни](add-price-search-run-codes.md) | Blocked | T106 | XS | — |
 | T109 | [Оголошення в пропозиції `price`](add-price-listings-to-suggestion.md) | Blocked | T107 | XS | — |
