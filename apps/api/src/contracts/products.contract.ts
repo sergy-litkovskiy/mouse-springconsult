@@ -194,7 +194,23 @@ export const fieldSuggestionSchema = z.object({
   value: z.union([
     z.string(),
     z.array(z.string()).readonly(),
-    z.object({ priceFrom: priceDecimal, priceTo: priceDecimal }),
+    z.object({
+      priceFrom: priceDecimal,
+      priceTo: priceDecimal,
+      listings: z
+        .array(
+          z.object({
+            price: priceDecimal,
+            url: z
+              .string()
+              .regex(/^https?:\/\//)
+              .max(2048),
+          }),
+        )
+        .min(1)
+        .max(5)
+        .readonly(),
+    }),
   ]),
   createdAt: z.iso.datetime(),
 });
