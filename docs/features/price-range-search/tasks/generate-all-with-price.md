@@ -1,15 +1,15 @@
 ---
 id: T116
 title: "«Згенерувати все» стартує both: тексти, потім вилка"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: XS
-context_budget: 1200
+context_budget: 1600
 blocked_by: [T113, T115]
 blocks: [T118, T119]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T116 — «Згенерувати все» стартує both: тексти, потім вилка
@@ -86,8 +86,8 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] `test` і `lint` для `web` зелені; Playwright-прохід записано в story.
-- [ ] Коміт: `feat(web): search the price range in generate all`.
+- [x] `test` і `lint` для `web` зелені; Playwright-прохід записано в story.
+- [x] Коміт: `feat(web): search the price range in generate all`.
 
 ## Links
 
