@@ -55,6 +55,20 @@
     <span class="suggestion__label">{{ label() }}</span>
     @if (text() === '') {
       <p class="suggestion__empty" data-testid="suggestion-empty">Пропозиції ще немає.</p>
+    } @else if (listings(); as listings) {
+      <div class="suggestion__range">
+        <p class="suggestion__text" data-testid="suggestion-value">{{ text() }}</p>
+        <button
+          matIconButton
+          type="button"
+          matTooltip="Оголошення й дата пошуку"
+          aria-label="Оголошення й дата пошуку"
+          data-testid="price-listings"
+          (click)="showListings(listings)"
+        >
+          <mat-icon>info</mat-icon>
+        </button>
+      </div>
     } @else {
       <p class="suggestion__text" data-testid="suggestion-value">{{ text() }}</p>
     }
