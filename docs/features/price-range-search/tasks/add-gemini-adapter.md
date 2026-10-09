@@ -1,7 +1,7 @@
 ---
 id: T105
 title: "GeminiAdapter: пошук вилки з googleSearch і розбір JSON з тексту"
-status: Blocked
+status: Done
 delivery: 1
 gate_profile: implementation
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 3000
 blocked_by: [T104]
 blocks: [T106]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T105 — GeminiAdapter: пошук вилки з googleSearch і розбір JSON з тексту
@@ -114,12 +114,12 @@ updated_at: "2026-10-08"
 
 ## DoD
 
-- [ ] `@google/genai` згадується лише в `GeminiAdapter.ts`; `deps:check` зелений.
-- [ ] Жоден варіант відмови не кидає виняток назовні: це перевірено тестом на кожен варіант.
-- [ ] Тести зелені без `GEMINI_API_KEY` і без мережі.
-- [ ] Ключ не потрапляє ні в лог, ні в текст помилки, який повертає адаптер.
-- [ ] Прохід `security-review` по diff: новий секрет і відповідь моделі як недовірений ввід ([PRD §6.1](../PRD.md#61-security--privacy)).
-- [ ] Коміт: `feat(ai): add the Gemini adapter for price range search`.
+- [x] `@google/genai` згадується лише в `GeminiAdapter.ts`; `deps:check` зелений.
+- [x] Жоден варіант відмови не кидає виняток назовні: це перевірено тестом на кожен варіант.
+- [x] Тести зелені без `GEMINI_API_KEY` і без мережі.
+- [x] Ключ не потрапляє ні в лог, ні в текст помилки, який повертає адаптер.
+- [x] Прохід `security-review` по diff: новий секрет і відповідь моделі як недовірений ввід ([PRD §6.1](../PRD.md#61-security--privacy)).
+- [x] Коміт: `feat(ai): add the Gemini adapter for price range search`.
 
 ## Links
 
