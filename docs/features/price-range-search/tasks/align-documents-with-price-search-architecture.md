@@ -1,7 +1,7 @@
 ---
 id: T103
 title: "Узгодити PRD, CLAUDE.md і відкриті пункти контракту з архітектурою пошуку ціни"
-status: Todo
+status: Done
 delivery: 0
 gate_profile: docs
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: S
 context_budget: 2300
 blocked_by: []
 blocks: [T104]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T103 — Узгодити PRD, CLAUDE.md і відкриті пункти контракту з архітектурою пошуку ціни
@@ -85,10 +85,10 @@ TBD у `data-model.md` фіксують межу `listings[].url` (2048 симв
 
 ## DoD
 
-- [ ] Пункти чеклиста 1–7 внесено. Жоден рядок §11 зі строком «до `break-tasks`» не лишився нерозглянутим.
-- [ ] У `data-model.md` не лишилось `<!-- TBD -->`.
-- [ ] `status` PRD і `data-model.md` не змінено, `updated_at` оновлено: правка узгоджує документ, а не перевідкриває його.
-- [ ] Коміт: `docs(price-range-search): align PRD and module rules with the architecture`.
+- [x] Пункти чеклиста 1–7 внесено. Жоден рядок §11 зі строком «до `break-tasks`» не лишився нерозглянутим: рядок `ARCHITECTURE.md` лишається відкритим, бо break-tasks завела під нього [T117](update-architecture-for-gemini.md).
+- [x] У `data-model.md` не лишилось `<!-- TBD -->`.
+- [x] `status` PRD і `data-model.md` не змінено, `updated_at` оновлено: правка узгоджує документ, а не перевідкриває його.
+- [x] Коміт: `docs(price-range-search): align PRD and module rules with the architecture`.
 
 ## Links
 
