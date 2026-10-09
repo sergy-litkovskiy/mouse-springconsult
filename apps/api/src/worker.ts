@@ -1,7 +1,12 @@
 import { config, env } from './config.ts';
 import { createDataSource } from './db.ts';
 import { logger } from './logger.ts';
-import { AnthropicAdapter, PreparationService, type PreparationJob } from './modules/ai/index.ts';
+import {
+  AnthropicAdapter,
+  GeminiAdapter,
+  PreparationService,
+  type PreparationJob,
+} from './modules/ai/index.ts';
 import { ImageStorage, MediaService } from './modules/media/index.ts';
 import {
   FieldSuggestion,
@@ -24,9 +29,13 @@ async function main(): Promise<void> {
   });
   await dataSource.initialize();
 
+  if (env.GEMINI_API_KEY === undefined) {
+    logger.warn('GEMINI_API_KEY is not set');
+  }
+
   const preparation = new PreparationService(
     new AnthropicAdapter(env.ANTHROPIC_API_KEY),
-    null,
+    env.GEMINI_API_KEY === undefined ? null : new GeminiAdapter(env.GEMINI_API_KEY),
     new PreparationRepository(dataSource),
     new ProductRepository(dataSource),
     new MediaService(

@@ -114,6 +114,53 @@ export class PreparationService {
       );
     }
 
+    if (job.scope === 'price' && 'title' in job && this.gemini !== null) {
+      const result = await this.gemini.findPriceRange({
+        title: job.title,
+        description: job.description,
+      });
+      if (result.kind === 'unavailable' || result.kind === 'quotaExhausted') {
+        await this.runs.finishRun(job.runId, {
+          status: 'failed',
+          errorCode: result.kind === 'unavailable' ? 'price_unavailable' : 'price_quota_exhausted',
+          errorDetail: result.reason,
+          suggestions: [],
+        });
+        return;
+      }
+      if (
+        result.kind === 'unparsed' ||
+        !(Number(result.priceFrom) > 0) ||
+        !(Number(result.priceTo) > 0) ||
+        Number(result.priceFrom) > Number(result.priceTo)
+      ) {
+        await this.runs.finishRun(job.runId, {
+          status: 'failed',
+          errorCode: 'price_not_found',
+          errorDetail:
+            result.kind === 'unparsed'
+              ? 'the answer did not parse as a price range'
+              : `the range ${result.priceFrom}–${result.priceTo} is not a valid range`,
+          suggestions: [],
+        });
+        return;
+      }
+      await this.runs.finishRun(job.runId, {
+        status: 'succeeded',
+        suggestions: [
+          {
+            field: 'price',
+            value: {
+              priceFrom: result.priceFrom,
+              priceTo: result.priceTo,
+              listings: result.listings,
+            },
+          },
+        ],
+      });
+      return;
+    }
+
     if (job.scope === 'price' || job.scope === 'both') {
       // No price search adapter is wired in yet: the texts already paid for stay with the run,
       // and the run closes without a throw so pg-boss does not retry it.
