@@ -37,7 +37,7 @@ SEO-опис і SEO-тексти під обидва майданчики. Ці�
 Angular 22 + Angular Material · Node.js 26 + Fastify · TypeScript 6.0.3 ·
 PostgreSQL 18 + TypeORM · JWT у httpOnly-cookie (`jose`) + argon2id · pg-boss ·
 Cloudflare R2 · sharp · Anthropic Claude (`claude-sonnet-5`) · Caddy 2 ·
-Docker Compose на Hetzner VPS · GitHub Actions
+Docker Compose на VPS (Hetzner / OVH) · GitHub Actions
 
 Бекенд збирається `tsc` у `dist/`: entity описані декораторами TypeORM, а Node їх не
 трансформує ([ADR 0003](docs/adr/0003-three-layer-classes.md)). Шари всередині модуля —
@@ -163,7 +163,7 @@ volume: нативні модулі (`argon2`, згодом `sharp`) ставл�
 хості не просто зайвий — він зламав би контейнер, якби `node_modules` монтувалися
 всередину.
 
-## Розгортання на Hetzner VPS
+## Розгортання на VPS
 
 Разова підготовка сервера:
 
