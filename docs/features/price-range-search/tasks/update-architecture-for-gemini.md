@@ -1,7 +1,7 @@
 ---
 id: T117
 title: "ARCHITECTURE.md і CONTEXT product-creation-flow: ціну шукає Gemini"
-status: Blocked
+status: Done
 delivery: 2
 gate_profile: docs
 owner: "Serhii"
@@ -9,7 +9,7 @@ estimate: XS
 context_budget: 1500
 blocked_by: [T113]
 blocks: [T118]
-updated_at: "2026-10-08"
+updated_at: "2026-10-09"
 ---
 
 # T117 — ARCHITECTURE.md і CONTEXT product-creation-flow: ціну шукає Gemini
@@ -80,8 +80,8 @@ errors. AC-02 цієї фічі вимагає назви **й** опису, а 
 
 ## DoD
 
-- [ ] `grep -n 'web_search' ARCHITECTURE.md SPEC.md apps/api/src/modules/ai/CLAUDE.md` порожній.
-- [ ] Коміт: `docs(price-range-search): describe the Gemini price search in the architecture`.
+- [x] `grep -n 'web_search' ARCHITECTURE.md SPEC.md apps/api/src/modules/ai/CLAUDE.md` порожній.
+- [x] Коміт: `docs(price-range-search): describe the Gemini price search in the architecture`.
 
 ## Links
 
