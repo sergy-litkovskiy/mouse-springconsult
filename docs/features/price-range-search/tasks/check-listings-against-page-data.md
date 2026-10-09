@@ -6,7 +6,7 @@ delivery: 2
 gate_profile: implementation
 owner: "Serhii"
 estimate: S
-context_budget: 2000
+context_budget: 2300
 blocked_by: [T106]
 blocks: [T112]
 updated_at: "2026-10-09"
@@ -46,8 +46,10 @@ OLX на серверний запит відповідає `403`, тож йог
    Kloomba — «інструменти для автоматичного чи ручного збирання та копіювання інформації»;
    Shafa п. 6.1–6.2 — використання контенту поза функціями сервісу без дозволу правовласника.
    Власник прийняв цей ризик з огляду на обсяг: кілька десятків сторінок на місяць.
-2. **`NewCondition` відкидаємо.** Промпт шукає вживаний товар, і PRD §7 рахує лише вживані речі.
-   Оголошення без `itemCondition` (як у Prom) лишається. Правило — AC-5.
+2. **`itemCondition` не зважаємо.** Спершу власник вирішив відкидати `NewCondition`, бо промпт
+   шукає вживаний товар. Але Prom ставить `NewCondition` і вживаним речам комісійного магазину
+   «Мышонок», тож правило вибило б з вилки майже всі оголошення Prom. Тому власник його скасував.
+   Правило — AC-5.
 
 ## Sequence
 
@@ -93,17 +95,17 @@ Prom, Shafa чи Kloomba береться зі сторінки, а зняте �
 **When** адаптер перевіряє оголошення
 **Then** оголошення лишається з ціною моделі, як до цієї задачі, і запуск не кидає виняток
 
-**AC-5** — нова річ
-**Given** JSON-LD сторінки має `itemCondition` `NewCondition`
+**AC-5** — стан речі
+**Given** JSON-LD сторінки має `itemCondition`, зокрема `NewCondition`
 **When** адаптер перевіряє оголошення
-**Then** оголошення відкинуто; оголошення без `itemCondition` лишається
+**Then** оголошення лишається з ціною сторінки, як за AC-2
 
 ## Checklist
 
 1. Прочитати правила `robots.txt` для `*` і умови Prom, Shafa й Kloomba; висновок записати в story. Заборона — стоп, рішення власника.
 2. Отримати рішення власника щодо `NewCondition` і записати його в story.
 3. `protected readPage(url)` у `GeminiAdapter`: таймаут `config.ai.priceSearch.pageTimeoutMs`, лише для шаблонів Prom, Shafa й Kloomba, редирект лише в межах того самого хоста (Prom `/ua/`).
-4. Розбір JSON-LD zod-схемою `Offer`: `price` за шаблоном `Money`, `priceCurrency`, `availability`, `itemCondition`.
+4. Розбір JSON-LD zod-схемою `Offer`: `price` за шаблоном `Money`, `priceCurrency`, `availability`.
 5. Застосувати правила AC-1–AC-5 і перебудувати вилку з цін, що лишились.
 6. Spec: тестовий підклас підміняє `readPage`; по тесту на кожен AC, без мережі.
 7. Опис `PriceListing.price` у контракті: ціна сторінки для Prom, Shafa й Kloomba — руками до Кроку Б.
