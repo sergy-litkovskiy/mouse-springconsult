@@ -111,6 +111,8 @@ const DISCARD_QUESTION: ConfirmDialogData = {
   confirmLabel: 'Закрити без збереження',
 };
 
+const PRICE_SEARCH_STORAGE_KEY = 'mouse.priceSearch';
+
 const CONDITION_OPTIONS: readonly { value: ProductCondition; label: string }[] = [
   { value: 'used', label: 'б/в' },
   { value: 'new', label: 'Новий' },
@@ -369,7 +371,7 @@ export class ProductForm {
     this.dialogRef.backdropClick().subscribe(() => void this.requestClose());
 
     try {
-      this.priceSearch.set(localStorage.getItem('mouse.priceSearch') === 'true');
+      this.priceSearch.set(localStorage.getItem(PRICE_SEARCH_STORAGE_KEY) === 'true');
     } catch {
       // A browser that refuses the storage still gets the switch, only not remembered.
     }
@@ -454,7 +456,7 @@ export class ProductForm {
   protected switchPriceSearch(on: boolean): void {
     this.priceSearch.set(on);
     try {
-      localStorage.setItem('mouse.priceSearch', String(on));
+      localStorage.setItem(PRICE_SEARCH_STORAGE_KEY, String(on));
     } catch {
       // Not remembered for the next card, but the switch holds for this one.
     }
