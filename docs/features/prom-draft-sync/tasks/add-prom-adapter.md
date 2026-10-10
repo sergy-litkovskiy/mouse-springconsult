@@ -27,7 +27,7 @@ updated_at: "2026-10-10"
 |---|---|---|
 | `findByExternalId(cardId)` | `GET /products/by_external_id/{id}` | товар (id, статус, наявність, `images.length`) або «немає» — **404 HTML** |
 | `submitImport(file, kind)` | `POST /products/import_file`, multipart `file` + `data` | id імпорту (24 hex, рядок) або «не прийнято» — відповідь без `id` |
-| `importStatus(importId)` | `GET /products/import/status/{id}` | статус, `created`/`updated`/`not_changed`/`not_in_file`, `errors[].download_images` |
+| `importStatus(importId)` | `GET /products/import/status/{id}` | статус, `created`/`updated`/`not_changed`/`not_in_file`/`with_errors_count`, `errors[].download_images` |
 | `makeDraft(cardId)` | `POST /products/edit_by_external_id` | `[{id, status: draft, presence: available}]` одним викликом; `processed_ids` або помилка |
 
 **Параметри подачі — дві константи без аргументів** ([ADR 0030](../adr/0030-identify-the-prom-product-by-the-card-id.md)):

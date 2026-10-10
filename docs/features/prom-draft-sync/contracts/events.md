@@ -48,7 +48,8 @@ stage: "05"
 трійки, наприклад SHA-1 з `node:crypto` у форматі UUID v5, без нової залежності. Тоді повторна
 постановка тієї самої спроби — no-op, як `{ id: runId }` у `PreparationQueue`, а кожна наступна
 перевірка (`check_count + 1`) дістає новий id. Номер спроби для `submit` і `finish` — 0, для
-`check` — `check_count` з рядка. Спосіб виведення обирає story `PromSyncQueue`.
+`check` — `check_count` з рядка. «Перевірити ще раз» спершу піднімає `check_count`, тож її
+перевірка не збігається з останньою. Спосіб виведення обирає story `PromSyncQueue`.
 
 ### Payload
 
@@ -83,6 +84,10 @@ PK і бере `product_id` звідти (data-model.md, access patterns «Кр�
 Кидаються лише власні збої — БД. Для `check` і `finish` це означає повтор, а для `submit`
 — відправку, яку закриє свіп.
 
+Кожен крок спершу читає рядок і нічого не робить, якщо відправка вже не в очікуваному стані
+(`queued` для `submit`, `running` для `check` і `finish`): її міг закрити свіп, поки задача чекала
+в черзі чи на повторі.
+
 **`submit`** — рядок `queued` → `running`, `started_at`:
 
 | Що сталося | Відправка | Далі |
@@ -102,7 +107,8 @@ PK і бере `product_id` звідти (data-model.md, access patterns «Кр�
 | статус не остаточний: `SUCCESS` чи `PARTIAL` з нулями або ще без статусу | `check_count + 1` | наступний `check` через 30 с, якщо дедлайн не минув |
 | дедлайн минув | `failed`, `prom_timeout`, `finished_at`; `prom_import_id` лишається | «Перевірити ще раз» опитує той самий імпорт |
 | `FATAL` | `failed`, `prom_rejected` | — |
-| `SUCCESS`/`PARTIAL` з ненульовими лічильниками | — | лічильники в лог, `not_in_file` ≠ 0 — `warn` (QG-1) → `finish` |
+| 401/403 | `failed`, `prom_access_denied` | — |
+| `SUCCESS`/`PARTIAL` з ненульовими лічильниками, зокрема лише `with_errors_count` | — | лічильники в лог, `not_in_file` ≠ 0 — `warn` (QG-1) → `finish` |
 | мережа, 5xx, незнайома форма | `check_count + 1` | наступний `check`; один збій опитування — ще не відмова Prom |
 
 Чим `SUCCESS` з нулями відрізняється від остаточного звіту — рішення одного методу
@@ -115,10 +121,12 @@ K рахує `finish` за `images` товару, а не `check` за стат�
 | Що сталося | Відправка | Далі |
 |---|---|---|
 | товару за зовнішнім id немає попри звіт | `failed`, `prom_rejected` | — |
+| 401/403 на будь-якому виклику | `failed`, `prom_access_denied` | — |
 | товар знайдено | пише `prom_product_id` | `edit_by_external_id` зі `status: draft`, `presence: available` |
 | переведення не вдалося (`errors` у відповіді, мережа) | `failed`, `prom_not_draft` | — |
 | фото на Prom K < N | `failed`, `prom_photos_incomplete`, `images_on_prom` = K | — |
 | чернетка, K ≥ N | однією транзакцією: `products.prom_id` = `prom_product_id`, відправка `succeeded`, `images_on_prom` = K | — |
+| id товару вже записано іншій картці (`products_prom_id_key`) | `failed`, `prom_sync_failed`, `error` у лог; без throw, бо повтор дав би той самий конфлікт | — |
 
 `edit_by_external_id` приймає `status` і `presence` одним викликом, тож обидва ставляться разом або
 жоден. Sad.md §6 малює їх двома повідомленнями, але порядок «спершу чернетка, потім наявність»

@@ -25,7 +25,7 @@ updated_at: "2026-10-10"
 `PromSyncRunService.recheck(productId, runId)`:
 
 - відправка `failed` з `prom_timeout` → `running`, `deadline_at` = зараз + 30 хв, `finished_at` =
-  `null`, задача «перевірити» з наступним номером спроби;
+  `null`, `check_count` + 1, задача «перевірити» з новим `check_count`;
 - уже `running` ця сама → `200` з нею ж, без другої задачі (подвійний клік);
 - інший стан чи код, або в картки вже є інша активна → `409 prom_sync_not_recheckable`;
 - картку тим часом довела до Prom інша відправка → `409 product_already_on_prom`.
@@ -41,7 +41,7 @@ updated_at: "2026-10-10"
 
 ## Data delta
 
-Оновлення рядка `product_prom_sync_runs`: `status`, `deadline_at`, `finished_at`, `error_code` →
+Оновлення рядка `product_prom_sync_runs`: `status`, `deadline_at`, `check_count`, `finished_at`, `error_code` →
 `null`. `prom_import_id` лишається. Схема не змінюється.
 
 ## API contract excerpt
@@ -77,7 +77,7 @@ updated_at: "2026-10-10"
 
 1. `PromSyncRunService.recheck` з гілками вище; spec на кожну.
 2. Маршрут `POST /products/:productId/prom-sync-runs/:runId/recheck` у `PromSyncRunController`, `sessionGuard`, zod params, без тіла; spec.
-3. Номер спроби задачі «перевірити» — `check_count + 1`, щоб детермінований id не збігся з попередньою перевіркою.
+3. `recheck` піднімає `check_count` на 1 тим самим оновленням рядка, а задача «перевірити» йде з новим значенням. Так її id не збігається ні з останньою перевіркою, ні з наступною, яку поставить вона сама; spec на два «Перевірити ще раз» поспіль.
 
 ## Out of scope
 

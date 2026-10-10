@@ -28,6 +28,10 @@ updated_at: "2026-10-10"
 4. K = `images.length` товару: головне фото входить у `images` (звірено 2026-10-10). K < N →
    `failed`, `prom_photos_incomplete`, `images_on_prom` = K. Інакше — `succeedRun`: одна
    транзакція пише `products.prom_id` і `succeeded` ([T131](add-prom-sync-repository.md)).
+   `succeedRun` повернув `false` (id товару вже записано іншій картці) → `failed`,
+   `prom_sync_failed`, `error` у лог: повтор кроку дав би той самий конфлікт.
+
+Доступ недійсний на будь-якому виклику → `failed`, `prom_access_denied`.
 
 Нескачане фото Prom показує в `errors[].download_images` (код 2004), але рахувати K за звітом не
 можна: Prom дочитує фото пізніше за статус. K береться з товару.
@@ -79,8 +83,9 @@ updated_at: "2026-10-10"
 
 1. `PromSyncService.finish(runId)` за кроками вище; spec на кожну гілку з адаптером-двійником.
 2. Порядок: чернетка ставиться **до** підрахунку фото, щоб частковий результат не лишав товар на вітрині.
-3. `succeedRun` з конфліктом `products_prom_id_key` (інша картка вже має цей id) — помилка БД кидається, `pg-boss` повторить крок; spec.
+3. `succeedRun` повернув `false` (конфлікт `products_prom_id_key`) → `prom_sync_failed` без throw; spec. Інші збої БД кидаються, і `pg-boss` повторює крок.
 4. Лог: `runId`, `prom_product_id`, K і N.
+5. Відправка вже не `running` (її закрив свіп, поки задача чекала) — крок нічого не робить, лише пише лог; spec.
 
 ## Out of scope
 

@@ -29,9 +29,11 @@ updated_at: "2026-10-10"
 - `findRun(productId, runId)` — чужа чи неіснуюча відправка → `null` (буде `404 product_not_found`);
 - `findLatestRun(productId)` — `order by created_at desc limit 1`, зокрема завершена;
 - кроки `worker` за PK: `startRun`, `recordImport(importId, deadlineAt)`, `recordProduct(promProductId)`,
-  `nextCheck` (`check_count + 1`), `failRun(code, imagesOnProm?)`, `recheck(deadlineAt)`;
+  `nextCheck` (`check_count + 1`), `failRun(code, imagesOnProm?)`, `recheck(deadlineAt)` (`running`, новий
+  дедлайн, `check_count + 1`);
 - `succeedRun(runId, imagesOnProm)` — **одна транзакція**: `products.prom_id` = `prom_product_id`,
-  відправка `succeeded`, `finished_at`. Порушення `products_prom_id_key` → транзакція відкочується;
+  відправка `succeeded`, `finished_at`. Порушення `products_prom_id_key` → транзакція відкочується, і
+  метод повертає `false`, а не кидає: повтор кроку дав би той самий конфлікт;
 - `findStuckRuns(olderThan)` / закриття свіпом — `prom_timeout` з `prom_import_id`, інакше
   `prom_sync_failed`.
 
@@ -74,14 +76,14 @@ CHECK статусу й `images_total > 0` ([data-model.md](../data-model.md)). 
 **AC-14** (US-01) — синхронізація одноразова
 **Given** `prom_id` 2000000001 уже має інша картка
 **When** `succeedRun` пише той самий id цій картці
-**Then** транзакція відкочується: відправка лишається `running`, `prom_id` картки — `null`
+**Then** транзакція відкочується, метод повертає `false`: відправка лишається `running`, `prom_id` картки — `null`
 
 ## Checklist
 
 1. `PromSyncRepository` з `DataSource` у конструкторі; методи вище. Розпізнавання порушення унікальності — як у `PreparationRepository.createRunOnce`.
 2. `succeedRun` — `dataSource.transaction`, обидва записи в одній.
 3. Свіп: вибірка активних з минулим `deadline_at` (із запасом) або без нього й зі старим `created_at`; код за наявністю `prom_import_id`.
-4. Spec проти тестової БД: гонка двох вставок, `findLatestRun` після кількох, `succeedRun` з конфліктом `products_prom_id_key`, `recheck` повертає `running` і обнуляє `finished_at`, свіп дає обидва коди.
+4. Spec проти тестової БД: гонка двох вставок, `findLatestRun` після кількох, `succeedRun` з конфліктом `products_prom_id_key`, `recheck` повертає `running`, обнуляє `finished_at` і піднімає `check_count`, свіп дає обидва коди.
 5. `products/index.ts` — експорт репозиторію для `marketplace` і composition root.
 
 ## Out of scope
