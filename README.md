@@ -165,21 +165,71 @@ volume: нативні модулі (`argon2`, згодом `sharp`) ставл�
 
 ## Розгортання на VPS
 
-Разова підготовка сервера:
+**DNS.** Зону `springconsult.com.ua` обслуговує FreeHost (NS `*.dns82.*`), тож запис
+додається в панелі доменів `domainadmin.freehost.com.ua`, а не в панелі хостингу:
+
+```
+mouse    A    <IPv4 сервера>    TTL 600
+```
+
+Для `mouse` має лишитись **рівно один** A-запис. Субдомен, створений у розділі хостингу,
+FreeHost може прив'язати до свого shared-сервера — тоді в DNS дві адреси, і Let's Encrypt
+час від часу не проходить перевірку. Такий субдомен видаляємо. Перевірка — напряму в
+авторитетного сервера, бо публічні резолвери до години пам'ятають, що імені не було:
 
 ```bash
-# 1. DNS: A-запис mouse.springconsult.com.ua → IP сервера
-# 2. На сервері
-ssh deploy@<server-ip>
-sudo apt update && sudo apt install -y docker.io docker-compose-plugin
-sudo mkdir -p /opt/mouse && sudo chown deploy:deploy /opt/mouse
-cd /opt/mouse
+dig +short mouse.springconsult.com.ua @a7.dns82.org   # → IP сервера
+```
 
-# 3. Покласти .env та docker-compose.prod.yml
-#    APP_DOMAIN=mouse.springconsult.com.ua
-#    ACME_EMAIL=<пошта для Let's Encrypt>
-#    NODE_ENV=production
-chmod 600 .env
+**Порти.** Ззовні мають бути доступні `22`, `80`, `443` і `443/udp` (HTTP/3): без `80`
+Caddy не отримає сертифікат. Якщо в панелі хостера ввімкнено мережевий файрвол — дозволити
+їх там.
+
+**Сервер.** На OVH образ Ubuntu пускає користувача `ubuntu` з `sudo` (на Hetzner — `root`,
+тоді без `sudo`); для деплою заводимо окремого `deploy` без `sudo`, але в групі `docker`.
+Compose у репозиторії Ubuntu — пакет `docker-compose-v2`; `docker-compose-plugin` є лише в
+репозиторії Docker.
+
+```bash
+ssh ubuntu@<server-ip>
+sudo apt update && sudo apt install -y docker.io docker-compose-v2
+sudo adduser --disabled-password --gecos '' deploy
+sudo usermod -aG docker deploy
+sudo install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+sudo install -m 600 -o deploy -g deploy ~/.ssh/authorized_keys /home/deploy/.ssh/
+sudo install -d -o deploy -g deploy /opt/mouse
+```
+
+**Файли.** У `/opt/mouse` кладемо `docker-compose.prod.yml` і `.env` — репозиторій на
+сервері не потрібен. Крім секретів з `.env.example`:
+
+```bash
+# APP_DOMAIN=mouse.springconsult.com.ua
+# ACME_EMAIL=<пошта для Let's Encrypt>
+# API_IMAGE=ghcr.io/<owner>/mouse-api:latest
+# WEB_IMAGE=ghcr.io/<owner>/mouse-web:latest
+# NODE_ENV=production
+chmod 600 /opt/mouse/.env
+```
+
+Пакети GitHub Container Registry за замовчуванням приватні, тож сервер логіниться
+токеном з правом `read:packages`:
+
+```bash
+ssh deploy@<server-ip>
+echo <token> | docker login ghcr.io -u <github-user> --password-stdin
+```
+
+**Образи для першого запуску.** Поки workflow деплою немає (див. нижче), образи
+збираються й публікуються вручну з кореня репозиторію. VPS — `x86_64`, а Mac на Apple
+Silicon збирає `arm64`, тому платформу задаємо явно:
+
+```bash
+echo <token> | docker login ghcr.io -u <github-user> --password-stdin   # write:packages
+docker buildx build --platform linux/amd64 -f apps/api/Dockerfile --target production \
+  -t ghcr.io/<owner>/mouse-api:latest --push .
+docker buildx build --platform linux/amd64 -f apps/web/Dockerfile --target caddy \
+  -t ghcr.io/<owner>/mouse-web:latest --push .
 ```
 
 Далі деплой виконуватиме GitHub Actions при пуші в `main`.
@@ -201,7 +251,7 @@ chmod 600 .env
 Registry, а публікувати їх має саме крок 2.
 
 ```bash
-ssh deploy@<server-ip> 'cd /opt/mouse && docker compose pull && docker compose up -d'
+ssh deploy@<server-ip> 'cd /opt/mouse && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d'
 ```
 
 Caddy отримує й автоматично оновлює сертифікат для `mouse.springconsult.com.ua` —
