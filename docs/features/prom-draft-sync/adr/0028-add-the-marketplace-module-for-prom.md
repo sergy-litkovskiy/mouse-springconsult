@@ -42,7 +42,7 @@ ticket: "TBD"
 ## Decision outcome
 
 **Chosen: `marketplace` + `products/prom-sync/`.** Лише ця опція тримає стрілки спрямованими вниз
-(`marketplace` → `products` і `marketplace` → `media` для файлу імпорту, ADR 0031) і водночас дозволяє читанню картки віддати стан відправки: у варіанті 2
+(`marketplace` → `products`) і водночас дозволяє читанню картки віддати стан відправки: у варіанті 2
 `products` мусив би імпортувати `marketplace`, який уже імпортує `products`, — цикл. Варіант 3
 суперечить `ARCHITECTURE.md` і тому, як живе `ai`: домен знав би формат чужого API.
 
@@ -73,7 +73,7 @@ ticket: "TBD"
 - SAD: [sad.md](../sad.md) §4 S2, §5
 - Пов'язане: [ADR 0013](../../product-creation-flow/adr/0013-call-media-from-products-as-a-storage-adapter.md) —
   той самий принцип «технічний модуль без домену картки»
-- Пов'язане: [ADR 0031](0031-hand-the-import-file-to-prom-from-the-public-bucket.md) — друга стрілка
-  `marketplace` → `media`
+- Пов'язане: [ADR 0032](0032-send-the-import-file-in-the-request-body.md) — файл імпорту йде тілом
+  запиту, тож стрілки `marketplace` → `media` з [ADR 0031](0031-hand-the-import-file-to-prom-from-the-public-bucket.md) немає
 - Пов'язане: [ADR 0020](../../price-range-search/adr/0020-search-price-ranges-through-gemini-in-the-ai-module.md) —
   попереднє рішення про межу модуля для нового зовнішнього постачальника

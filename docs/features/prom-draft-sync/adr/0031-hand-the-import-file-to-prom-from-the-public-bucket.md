@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Superseded by 0032
 owner: "Serhii"
 reviewers: ["Serhii"]
 updated_at: "2026-10-10"
@@ -10,7 +10,7 @@ ticket: "TBD"
 
 # 0031 — Передавати файл імпорту Prom через публічний бакет R2
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0032](0032-send-the-import-file-in-the-request-body.md) — контрольна відправка 2026-10-10 перевірила `import_file` на живому магазині й знайшла, що `import_url` перезаписує посилання в кабінеті
 - **Date:** 2026-10-10
 - **Deciders:** Serhii (Architect / Tech Lead)
 

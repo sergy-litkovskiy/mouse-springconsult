@@ -80,44 +80,45 @@ PK і бере `product_id` звідти (data-model.md, access patterns «Кр�
 Жодна відмова Prom не кидається. Крок закриває відправку кодом і завершується, тож pg-boss її не
 повторює (ADR 0027; той самий принцип, що
 [ADR 0023](../../price-range-search/adr/0023-classify-price-search-failures-and-never-retry-them.md)).
-Кидаються лише власні збої — БД і R2. Для `check` і `finish` це означає повтор, а для `submit`
+Кидаються лише власні збої — БД. Для `check` і `finish` це означає повтор, а для `submit`
 — відправку, яку закриє свіп.
 
 **`submit`** — рядок `queued` → `running`, `started_at`:
 
 | Що сталося | Відправка | Далі |
 |---|---|---|
-| `GET /products/by_external_id/{id картки}` — товару немає | — | кладе `prom-imports/<runId>.xlsx` у R2, `POST /products/import_url` |
-| `import_url` прийняв (`status: success`, `id`) | пише `prom_import_id`, `deadline_at` = зараз + 30 хв | `check` зі `startAfter` 30 с |
+| `GET /products/by_external_id/{id картки}` — 404, товару немає | — | будує xlsx з картки, `POST /products/import_file` ([ADR 0032](../adr/0032-send-the-import-file-in-the-request-body.md)) |
+| `import_file` прийняв (`status: success`, `id`) | пише `prom_import_id`, `deadline_at` = зараз + 30 хв | `check` зі `startAfter` 30 с |
 | товар за зовнішнім id **є**, фото N з N (повтор, AC-11) | пише `prom_product_id` | одразу `finish`, імпорту немає |
-| товар **є**, фото K < N (повтор, AC-12) | пише `prom_product_id` | той самий файл ще раз через `import_url` → `check` (див. знахідку про `updated_fields` нижче) |
-| 401/403 або токен не задано | `failed`, `prom_access_denied` | файл прибрано |
-| Prom відповів, що інший імпорт уже йде | `failed`, `prom_busy` | файл прибрано |
-| мережа, 5xx, незнайома форма відповіді (zod) | `failed`, `prom_unavailable` | файл прибрано |
+| товар **є**, фото K < N (повтор, AC-12) | пише `prom_product_id` | файл картки ще раз через `import_file` з `force_update: true` і `updated_fields: ["images_urls", "presence"]` (ADR 0030) → `check` |
+| 401/403 або токен не задано | `failed`, `prom_access_denied` | — |
+| Prom не прийняв імпорт — відповідь без `id` | `failed`, `prom_busy` | — |
+| мережа, 5xx, незнайома форма відповіді (zod) | `failed`, `prom_unavailable` | — |
 
 **`check`** — `GET /products/import/status/{prom_import_id}`:
 
 | Що сталося | Відправка | Далі |
 |---|---|---|
-| статус не остаточний: `SUCCESS` з нулями чи ще без статусу | `check_count + 1` | наступний `check` через 30 с, якщо дедлайн не минув |
-| дедлайн минув | `failed`, `prom_timeout`, `finished_at`; `prom_import_id` лишається | файл лишається до «Перевірити ще раз» чи свіпу |
-| `FATAL` | `failed`, `prom_rejected` | файл прибрано |
-| `SUCCESS`/`PARTIAL` з ненульовими лічильниками | — | лог лічильників «створено / оновлено / не у файлі» (QG-1) → `finish` |
+| статус не остаточний: `SUCCESS` чи `PARTIAL` з нулями або ще без статусу | `check_count + 1` | наступний `check` через 30 с, якщо дедлайн не минув |
+| дедлайн минув | `failed`, `prom_timeout`, `finished_at`; `prom_import_id` лишається | «Перевірити ще раз» опитує той самий імпорт |
+| `FATAL` | `failed`, `prom_rejected` | — |
+| `SUCCESS`/`PARTIAL` з ненульовими лічильниками | — | лічильники в лог, `not_in_file` ≠ 0 — `warn` (QG-1) → `finish` |
 | мережа, 5xx, незнайома форма | `check_count + 1` | наступний `check`; один збій опитування — ще не відмова Prom |
 
 Чим `SUCCESS` з нулями відрізняється від остаточного звіту — рішення одного методу
-`PromSyncService` (sad.md §9). `PARTIAL` для одного товару — найімовірніше помилки скачування фото
-(`errors[].download_images`), і їх рахує `finish`, а не `check`.
+`PromSyncService` (sad.md §9). `PARTIAL` сам нічого не означає: контрольна відправка 2026-10-10
+бачила його і без помилок, і з `not_changed`. Нескачане фото видно в `errors[].download_images`, але
+K рахує `finish` за `images` товару, а не `check` за статусом.
 
 **`finish`** — `GET /products/by_external_id/{id картки}` → `POST /products/edit_by_external_id`:
 
 | Що сталося | Відправка | Далі |
 |---|---|---|
-| товару за зовнішнім id немає попри звіт | `failed`, `prom_rejected` | файл прибрано |
+| товару за зовнішнім id немає попри звіт | `failed`, `prom_rejected` | — |
 | товар знайдено | пише `prom_product_id` | `edit_by_external_id` зі `status: draft`, `presence: available` |
-| переведення не вдалося (`errors` у відповіді, мережа) | `failed`, `prom_not_draft` | файл прибрано |
-| фото на Prom K < N | `failed`, `prom_photos_incomplete`, `images_on_prom` = K | файл прибрано |
-| чернетка, K ≥ N | однією транзакцією: `products.prom_id` = `prom_product_id`, відправка `succeeded`, `images_on_prom` = K | файл прибрано |
+| переведення не вдалося (`errors` у відповіді, мережа) | `failed`, `prom_not_draft` | — |
+| фото на Prom K < N | `failed`, `prom_photos_incomplete`, `images_on_prom` = K | — |
+| чернетка, K ≥ N | однією транзакцією: `products.prom_id` = `prom_product_id`, відправка `succeeded`, `images_on_prom` = K | — |
 
 `edit_by_external_id` приймає `status` і `presence` одним викликом, тож обидва ставляться разом або
 жоден. Sad.md §6 малює їх двома повідомленнями, але порядок «спершу чернетка, потім наявність»
@@ -137,8 +138,7 @@ PK і бере `product_id` звідти (data-model.md, access patterns «Кр�
   й відбутися, але «Повторити» безпечний: нова відправка спершу шукає товар за зовнішнім id
   (ADR 0030).
 
-В обох випадках свіп прибирає `prom-imports/<runId>.xlsx` з R2
-([ADR 0031](../adr/0031-hand-the-import-file-to-prom-from-the-public-bucket.md)). Пороги — константи
+Пороги — константи
 `config.queue.promSync`.
 
 ## Стан і полінг
@@ -150,8 +150,9 @@ PK і бере `product_id` звідти (data-model.md, access patterns «Кр�
 ## Спостережуваність
 
 - `worker` пише рядок на кожен крок з `runId`, кроком, `prom_import_id` і кодом. На остаточному
-  звіті додає лічильники `created`, `updated`, `not_in_fle`, `with_errors_count` (QG-1, PRD §6).
-  Ненульове `updated` на новій картці — сигнал перевірити кабінет.
+  звіті додає лічильники `created`, `updated`, `not_changed`, `not_in_file`, `with_errors_count`
+  (QG-1, PRD §6). Ненульове `not_in_file` — сигнал перевірити кабінет. На `created` і `updated`
+  сигнал не будується: з двох паралельних імпортів одного файлу їх отримує той, що встиг першим.
 - У лог не йдуть `PROM_API_TOKEN`, сирі тіла відповідей Prom і тексти картки
   (`modules/marketplace/CLAUDE.md`, sad.md §8).
 - На старті без `PROM_API_TOKEN` — `warn`, як без `GEMINI_API_KEY`.
