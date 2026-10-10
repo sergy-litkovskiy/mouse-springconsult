@@ -73,11 +73,9 @@ feature-ship skill executes it rather than reading it.
 
 If the feature has anything slow — sharp, a Claude call, an outbound HTTP request —
 it is a queued job, not the HTTP process's work. That decision is already taken —
-`apps/api/src/modules/ai/CLAUDE.md` and the ADRs of `product-creation-flow` — but
-`src/queue.ts` and `src/worker.ts` do not exist yet: they arrive with the story
-`docs/features/product-creation-flow/tasks/add-queue-and-worker.md`, and they create a
-second composition root. **Stop and ask the user before planning around them**:
-whether that story has landed decides whether this feature waits for it or carries it.
+`apps/api/src/modules/ai/CLAUDE.md` and the ADRs of `product-creation-flow`. A new job
+declares its queue in `src/queue.ts`, passes it to `startQueue` and subscribes to it in
+`src/worker.ts` — the second composition root.
 
 A plain CRUD feature skips this step.
 
