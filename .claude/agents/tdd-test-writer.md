@@ -11,7 +11,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 ## Вхід від координатора
 
-- `STORY` — шлях до story-файлу, напр. `docs/features/product-creation-flow/tasks/add-product-card-service.md`.
+- `STORY` — шлях до story-файлу, напр. `docs/features/prom-draft-sync/tasks/add-prom-sync-repository.md`.
 - `SCOPE` — scope коміту (`products`, `auth`, `media`, `web`…).
 
 Читаєш:
