@@ -1,0 +1,931 @@
+openapi: 3.1.0
+info:
+  title: prom-draft-sync API
+  version: 0.1.0
+  description: |
+    Готова картка потрапляє на Prom лише ручним перенесенням у кабінет продавця: 5–15 хв на
+    картку, 4–25 год на місяць ([idea-brief](../idea-brief.md) §2). Фіча робить це одним
+    натиском. Готова нова картка стає на Prom чернеткою з усіма фото, результат видно на самій
+    картці, а повтор не створює другого товару. Разом з кнопкою з адмінки зникає поле
+    «Категорія» з фільтром каталогу (US-05).
+
+    Контракт складається з двох частин:
+
+    - **відправка на Prom** — три нові маршрути `/products/{productId}/prom-sync-runs*`:
+      запуск, стан для полінгу й «Перевірити ще раз». Prom викликає лише `worker`, а `api`
+      ставить відправку й одразу відповідає
+      ([ADR 0027](../adr/0027-poll-prom-through-a-chain-of-short-jobs.md)). Відправка — окрема
+      подія в `product_prom_sync_runs`
+      ([ADR 0029](../adr/0029-record-each-prom-sync-as-its-own-run.md));
+    - **дельта картки** — `category` зникає з картки, тіл збереження й фільтра каталогу, а
+      маршрут `/products/categories` видаляється (US-05, AC-16). Назва для Prom при збереженні
+      обмежена 130 знаками (AC-05). Картка віддає `promId`, посилання на товар у кабінеті й
+      останню відправку.
+
+    `Product`, тіла збереження й `ProductCardRead` визначено тут заново, а не через `allOf`:
+    у контрактах [product-creation-flow](../../product-creation-flow/contracts/openapi.yaml) і
+    [price-range-search](../../price-range-search/contracts/openapi.yaml) `category` стоїть у
+    `required`, а `allOf` зняти його не може. Незмінні частини (параметри, спільні відповіді,
+    `ProductImage`, `FieldSuggestion`) взято звідти через `$ref`.
+
+    Джерела: [PRD](../PRD.md) · [data-model.md](../data-model.md) · [sad.md §6](../sad.md).
+    Аудит розбіжностей — [api-sync-report.md](./api-sync-report.md).
+
+servers:
+  - url: https://mouse.springconsult.com.ua/api
+    description: Production (Caddy handle_path /api/* → api:3000, префікс знято)
+  - url: http://localhost:4200/api
+    description: Local dev (ng serve proxy.conf.json, той самий префікс)
+
+security:
+  - sessionCookie: []
+
+tags:
+  - name: prom-sync
+    description: Відправка готової картки на Prom чернеткою
+  - name: products
+    description: Картка товару — дельта US-05 і стан Prom у читанні
+
+paths:
+  /products:
+    get:
+      tags: [products]
+      summary: Список карток з фільтрами й сторінкуванням
+      description: >-
+        Маршрут той самий, без параметра `category` (AC-16). `productListQuerySchema` — нестрога
+        `z.object`, тож `?category=` зі збереженої адреси після видалення поля відкидається без
+        `400`, і каталог відкривається без фільтра. Фронт так само ігнорує цей параметр у своїй
+        адресі.
+      operationId: listProducts
+      parameters:
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/Page" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/PageSize" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/TitleFilter" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/DescriptionFilter" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/PriceMin" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/PriceMax" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/PublishedProm" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/PublishedOlx" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ReadyFilter" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/Sort" }
+        - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/Direction" }
+      responses:
+        "200":
+          description: Сторінка карток
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductList" }
+              examples:
+                page: { $ref: "#/components/examples/ProductListPage" }
+        "400": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ValidationError" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+
+    post:
+      tags: [products]
+      summary: Створити нову картку
+      description: >-
+        Маршрут той самий: без `category`, а назва для Prom — до 130 знаків (AC-05).
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductCreateRequest" }
+            example: {}
+      responses:
+        "201":
+          description: Картку створено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+              examples:
+                new: { $ref: "#/components/examples/NewProduct" }
+        "400": { $ref: "#/components/responses/TitlePromTooLong" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+
+  /products/{productId}:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+
+    get:
+      tags: [products]
+      summary: Отримати картку зі станом на Prom і останньою відправкою
+      description: >-
+        Маршрут той самий. Нове в картці: `promId` і `promCabinetUrl` — товар уже на Prom, кнопки
+        немає (AC-14); `latestPromSyncRun` — остання відправка, зокрема завершена, з якої картка
+        показує підсумок чи причину відмови після перезавантаження сторінки (AC-07…AC-12).
+        Відправка дотягується другим запитом, як і пропозиції (ADR 0029; data-model.md, access
+        patterns `product_prom_sync_runs_product_id_idx`). Готовність до відправки картка окремим
+        полем не віддає: фронт підказує сам за константами меж Prom, а остаточно перевіряє запуск
+        відправки (sad.md §5).
+      operationId: getProduct
+      responses:
+        "200":
+          description: Картка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductCardRead" }
+              examples:
+                partialPhotos: { $ref: "#/components/examples/ProductCardReadPartialPhotos" }
+                onProm: { $ref: "#/components/examples/ProductCardReadOnProm" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+
+    patch:
+      tags: [products]
+      summary: Зберегти картку
+      description: >-
+        Маршрут той самий, без `category`. Назва для Prom довша за 130 знаків — `400` з
+        `details.fields.titleProm`, і картку не збережено (AC-05); скільки знаків зайві, рахує
+        фронт за `promTitleMaxLength`. Межі Prom для ключових слів (слово ≤ 50, разом ≤ 1024)
+        збереженню **не** заважають: їх тримає запуск відправки (AC-06). Тож тут лишаються межі
+        картки (слово ≤ 60, понад 30 обрізається). `promId` цим маршрутом не пишеться: його пише
+        лише `worker` на `succeeded` відправки.
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductUpdateRequest" }
+            example:
+              titleProm: "Кавомашина DeLonghi ECAM 22.110, б/у, автоматичний капучинатор"
+              seoKeywords: ["кавомашина", "delonghi", "ecam"]
+      responses:
+        "200":
+          description: Оновлена картка
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductUpdateResponse" }
+              examples:
+                updated: { $ref: "#/components/examples/ProductUpdated" }
+        "400": { $ref: "#/components/responses/TitlePromTooLong" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+
+  /products/{productId}/prom-sync-runs:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+
+    post:
+      tags: [prom-sync]
+      summary: Синхронізувати з Prom — запустити або повторити відправку
+      description: >-
+        Тіла немає: усе, що йде на Prom, бекенд читає зі **збереженої** картки (AC-04 — незбережене
+        не відправляється; фронт тримає кнопку неактивною, поки форма брудна). Повтор після збою
+        чи часткового результату — цей самий маршрут: нова відправка спершу шукає товар за
+        зовнішнім id, рівним id картки, і другого товару не створює (AC-11, AC-12;
+        [ADR 0030](../adr/0030-identify-the-prom-product-by-the-card-id.md)).
+
+
+        Порядок перевірок: картка є (`404`) → вона ще не на Prom (`409 product_already_on_prom`,
+        AC-14) → активної відправки немає, інакше повертається вона (`200`, AC-13) → картка
+        готова й вкладається в межі Prom (`409 prom_sync_not_ready`, AC-02, AC-05, AC-06) → нова
+        відправка `queued` і задача «подати» (`201`).
+
+
+        Ідемпотентність — не заголовок клієнта. Природний ключ — картка: частковий UNIQUE
+        `product_prom_sync_runs_active_key` (`product_id` WHERE `status in ('queued','running')`)
+        пропускає лише одну активну відправку. Друга вкладка, що програла гонку на вставці,
+        отримує наявну, як `createRunOnce` у підготовці. Ліміту частоти немає: виклики Prom
+        безкоштовні, а одну активну відправку тримає БД (sad.md §8). Відсутній `PROM_API_TOKEN`
+        тут не перевіряється: відправку закриває `worker` кодом `prom_access_denied` (sad.md §7).
+      operationId: startPromSyncRun
+      responses:
+        "201":
+          description: Нову відправку поставлено в чергу
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromSyncRun" }
+              examples:
+                queued: { $ref: "#/components/examples/PromSyncRunQueued" }
+        "200":
+          description: У картки вже є активна відправка (`queued` чи `running`) — повернуто її, нової немає
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromSyncRun" }
+              examples:
+                active: { $ref: "#/components/examples/PromSyncRunRunning" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+        "409":
+          description: >-
+            Картка вже на Prom (`product_already_on_prom`) або не готова до відправки
+            (`prom_sync_not_ready`, форма `details` — `PromSyncNotReadyError`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/PromSyncNotReadyError" }
+                  - { $ref: "#/components/schemas/ProductAlreadyOnPromError" }
+              examples:
+                notReady: { $ref: "#/components/examples/PromSyncNotReady" }
+                overLimit: { $ref: "#/components/examples/PromSyncOverLimit" }
+                alreadyOnProm: { $ref: "#/components/examples/ProductAlreadyOnProm" }
+
+  /products/{productId}/prom-sync-runs/{runId}:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/RunId" }
+
+    get:
+      tags: [prom-sync]
+      summary: Стан відправки (полінг)
+      description: >-
+        Фронт питає в циклі, поки відправка `queued` чи `running` (sad.md сценарій 1). Поки Prom
+        обробляє імпорт, це `running` — лоадер «Prom ще обробляє картку»; перший звіт Prom з нулями
+        відправку не завершує (AC-10). Відправка чужої картки чи неіснуюча — `404
+        product_not_found`, той самий код, що в `getPreparationRun`.
+      operationId: getPromSyncRun
+      responses:
+        "200":
+          description: Стан відправки
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromSyncRun" }
+              examples:
+                running: { $ref: "#/components/examples/PromSyncRunRunning" }
+                succeeded: { $ref: "#/components/examples/PromSyncRunSucceeded" }
+                photosIncomplete: { $ref: "#/components/examples/PromSyncRunPhotosIncomplete" }
+                busy: { $ref: "#/components/examples/PromSyncRunBusy" }
+                timeout: { $ref: "#/components/examples/PromSyncRunTimeout" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+
+  /products/{productId}/prom-sync-runs/{runId}/recheck:
+    parameters:
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/ProductId" }
+      - { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/parameters/RunId" }
+
+    post:
+      tags: [prom-sync]
+      summary: Перевірити ще раз — дочекатись того самого імпорту
+      description: >-
+        Лише для відправки `failed` з `prom_timeout` (AC-10, sad.md сценарій 3). Нової подачі
+        немає: той самий рядок повертається в `running` з новим `deadline_at` і
+        `finished_at = null`, і ставиться задача «перевірити» для того самого `prom_import_id`
+        (data-model.md: єдиний виняток з «завершене — остаточне»). `prom_timeout` завжди має
+        `prom_import_id`, тож за кодом фронт знає, що пропонувати: «Перевірити ще раз», а не
+        «Повторити».
+
+
+        Тіла немає. Повторне натискання на вже `running` цієї самої відправки — `200` з нею ж,
+        без другої задачі (подвійний клік, друга вкладка). Відправка в іншому стані чи з іншим
+        кодом, або в картки вже є інша активна відправка — `409 prom_sync_not_recheckable`.
+        Якщо інша відправка тим часом довела картку до Prom — `409 product_already_on_prom`.
+      operationId: recheckPromSyncRun
+      responses:
+        "200":
+          description: Відправка знову чекає на той самий імпорт
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromSyncRun" }
+              examples:
+                rechecked: { $ref: "#/components/examples/PromSyncRunRechecked" }
+        "401": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/NotAuthenticated" }
+        "404": { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/responses/ProductNotFound" }
+        "409":
+          description: Відправку не можна перевірити ще раз, або картка вже на Prom
+          content:
+            application/json:
+              schema: { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ErrorResponse" }
+              examples:
+                notRecheckable: { $ref: "#/components/examples/PromSyncNotRecheckable" }
+                alreadyOnProm: { $ref: "#/components/examples/ProductAlreadyOnProm" }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: mouse_session
+      description: >-
+        JWT (HS256, jose) у HttpOnly-cookie ([ADR 0002](../../../adr/0002-auth-jwt-and-typeorm.md)
+        · `modules/auth/CLAUDE.md`). Ролей немає, перевірка одна: активна сесія (`sessionGuard`).
+        Нових маршрутів без сесії фіча не вводить: файл імпорту Prom скачує з R2, а не з `api`
+        ([ADR 0031](../adr/0031-hand-the-import-file-to-prom-from-the-public-bucket.md)).
+
+  schemas:
+    PromProductId:
+      type: string
+      pattern: '^\d{1,19}$'
+      maxLength: 32
+      description: >-
+        Id товару на Prom. Колонка — `VARCHAR(32)` (`products.prom_id`,
+        `product_prom_sync_runs.prom_product_id`); у Prom це `int64`
+        (`Product.id` в OpenAPI Prom), тож лише цифри, до 19. Рядком, а не числом: `int64`
+        не вміщується в `number` JavaScript без втрат.
+      example: "2000000001"
+
+    PromCabinetUrl:
+      type: string
+      format: uri
+      description: >-
+        Похідне поле, не колонка: складене з id товару й шаблону адреси кабінету в
+        `config.prom` при мапінгу в DTO — так само, як `ProductImage.url` складається з `r2Key`
+        (ADR 0007). Схему адрес Prom знає лише бекенд. Шаблон в OpenAPI Prom не описано, тож
+        його звіряють на живому кабінеті (api-sync-report.md, Section C).
+      example: "https://my.prom.ua/cms/product/edit/2000000001"
+
+    Product:
+      type: object
+      description: >-
+        Картка з контракту product-creation-flow без `category` (US-05) і з двома полями стану на
+        Prom.
+      required:
+        - id
+        - titleProm
+        - descriptionProm
+        - titleOlx
+        - descriptionOlx
+        - price
+        - seoKeywords
+        - publishedProm
+        - publishedOlx
+        - condition
+        - images
+        - isReady
+        - promId
+        - promCabinetUrl
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: string, format: uuid }
+        titleProm:
+          type: string
+          maxLength: 200
+          description: >-
+            Колонка лишається `varchar(200)`: межу Prom у 130 тримає збереження й запуск
+            відправки, а не тип (data-model.md). Тож у відповіді можлива й довша назва, збережена
+            до появи межі.
+        descriptionProm: { type: string, description: "HTML з переліку ADR 0016" }
+        titleOlx: { type: string, maxLength: 200 }
+        descriptionOlx: { type: string }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          description: Десятковий рядок, як повертає decimal(12,2). На Prom іде ним самим, без округлення (AC-01).
+        seoKeywords:
+          type: array
+          maxItems: 30
+          items: { type: string, maxLength: 60 }
+        publishedProm:
+          type: boolean
+          description: Чернетка Prom — ще не published-prom; відмітку ставить user сам (AC-15).
+        publishedOlx: { type: boolean }
+        condition: { type: string, enum: [new, used] }
+        images:
+          type: array
+          maxItems: 10
+          items: { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ProductImage" }
+        isReady:
+          type: boolean
+          description: >-
+            Похідне, без змін ([ADR 0009](../../product-creation-flow/adr/0009-derive-card-readiness-instead-of-storing-it.md)).
+            Межі Prom сюди не входять: картка може бути готовою й водночас не вкладатися в Prom
+            (AC-06).
+        promId:
+          description: >-
+            `products.prom_id` — єдина ознака «товар уже на Prom» і для 557 імпортованих карток, і
+            для відправлених кнопкою. Не `null` — кнопки «Синхронізувати з Prom» немає (AC-14).
+            Пишеться лише на `succeeded` відправки (ADR 0029).
+          oneOf:
+            - { $ref: "#/components/schemas/PromProductId" }
+            - { type: "null" }
+        promCabinetUrl:
+          description: Посилання на товар у кабінеті Prom; `null` разом з `promId`.
+          oneOf:
+            - { $ref: "#/components/schemas/PromCabinetUrl" }
+            - { type: "null" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ProductCardRead:
+      description: >-
+        Читання однієї картки. Добавки product-creation-flow і price-range-search без змін, плюс
+        остання відправка на Prom.
+      allOf:
+        - { $ref: "#/components/schemas/Product" }
+        - type: object
+          required:
+            [latestSuggestions, totalInputTokens, totalOutputTokens, estimatedCostUsd, latestPromSyncRun]
+          properties:
+            latestSuggestions:
+              type: array
+              items: { $ref: "../../price-range-search/contracts/openapi.yaml#/components/schemas/FieldSuggestion" }
+            totalInputTokens: { type: integer, minimum: 0 }
+            totalOutputTokens: { type: integer, minimum: 0 }
+            estimatedCostUsd:
+              type: [string, "null"]
+              pattern: '^\d+\.\d{4}$'
+              description: Без змін, див. контракт product-creation-flow (ADR 0018).
+            latestPromSyncRun:
+              description: >-
+                Остання відправка картки за `created_at`, зокрема завершена; `null`, якщо картку
+                ще не відправляли. Читається через `product_prom_sync_runs_product_id_idx`
+                (data-model.md).
+              oneOf:
+                - { $ref: "#/components/schemas/PromSyncRun" }
+                - { type: "null" }
+
+    ProductList:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            allOf:
+              - { $ref: "#/components/schemas/Product" }
+              - type: object
+                required: [failedRuns]
+                properties:
+                  failedRuns:
+                    type: integer
+                    minimum: 0
+                    description: Без змін — невдалі запуски підготовки, не відправки на Prom.
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+
+    ProductCreateRequest:
+      type: object
+      description: >-
+        Як у product-creation-flow, без `category`; `titleProm` — до 130 знаків (AC-05).
+        Жодне поле не обов'язкове.
+      properties:
+        titleProm:
+          type: string
+          minLength: 1
+          maxLength: 130
+          description: >-
+            Межа Prom, `productConstraints.promTitleMaxLength`; назва для OLX лишається до 200.
+            Відсутнє поле стає `""` (default колонки), а передане порожнім відхиляється.
+        titleOlx: { type: string, minLength: 1, maxLength: 200, description: "Відсутнє — `\"\"`, як і titleProm." }
+        descriptionProm:
+          type: string
+          default: ""
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом.
+        descriptionOlx: { type: string, default: "" }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+          default: "0.00"
+        seoKeywords:
+          type: array
+          items: { type: string, maxLength: 60 }
+          default: []
+        condition: { type: string, enum: [new, used], default: used }
+
+    ProductUpdateRequest:
+      type: object
+      description: >-
+        Усі поля опційні. Без `category`; `titleProm` — до 130 знаків (AC-05). Надіслана
+        `category` відкидається нестрогою схемою, а не дає `400`: стара вкладка, відкрита до
+        релізу, збереже картку без помилки.
+      properties:
+        titleProm: { type: string, minLength: 1, maxLength: 130 }
+        descriptionProm:
+          type: string
+          description: HTML з переліку ADR 0016. Сервер чистить його перед записом.
+        titleOlx: { type: string, minLength: 1, maxLength: 200 }
+        descriptionOlx: { type: string }
+        price:
+          type: string
+          pattern: '^\d{1,10}(\.\d{1,2})?$'
+        seoKeywords:
+          type: array
+          items: { type: string, maxLength: 60 }
+          description: >-
+            Межі картки, не Prom: понад тридцять обрізається, слово до 60. Слово понад 50 чи
+            разом понад 1024 зберегти можна, але відправка не запуститься (AC-06).
+        condition: { type: string, enum: [new, used] }
+        publishedProm: { type: boolean }
+        publishedOlx: { type: boolean }
+
+    ProductUpdateResponse:
+      allOf:
+        - { $ref: "#/components/schemas/Product" }
+        - type: object
+          required: [discardedKeywordsCount]
+          properties:
+            discardedKeywordsCount: { type: integer, minimum: 0 }
+
+    PromSyncStatus:
+      type: string
+      enum: [queued, running, succeeded, failed]
+      description: >-
+        `product_prom_sync_runs.status` CHECK — той самий перелік, що в підготовки. `succeeded`
+        означає одне: чернетка, фото N з N, `promId` картки записано. Частковий результат — це
+        `failed` зі своїм кодом (data-model.md).
+
+    PromSyncErrorCode:
+      type: string
+      enum:
+        - prom_access_denied
+        - prom_busy
+        - prom_rejected
+        - prom_unavailable
+        - prom_timeout
+        - prom_sync_failed
+        - prom_photos_incomplete
+        - prom_not_draft
+      description: |
+        Код відправки, не HTTP: його пише `worker`, а текст українською фронт формує за ним сам —
+        сирий текст Prom до user-а не доходить (AC-07). `error_code VARCHAR(64)` без CHECK, union
+        `PromSyncErrorCode`.
+
+        | Код | Що сталося | Товар на Prom | Що пропонує картка |
+        |---|---|---|---|
+        | `prom_access_denied` | токен недійсний, без права запису чи не заданий (AC-08) | немає | поновити доступ, «Повторити» |
+        | `prom_busy` | у Prom уже йде інший імпорт (AC-09) | немає | «Повторити» пізніше |
+        | `prom_rejected` | Prom остаточно відхилив (`FATAL`) (AC-07) | немає | «Повторити» |
+        | `prom_unavailable` | Prom не відповів чи відповів незнайомою формою (AC-07) | немає | «Повторити» |
+        | `prom_timeout` | імпорт подано, остаточного звіту за 30 хв немає (AC-10); або свіп закрив завислу відправку з `prom_import_id` | невідомо | «Перевірити ще раз» |
+        | `prom_sync_failed` | свіп закрив завислу відправку **без** `prom_import_id`: упав `worker`, а не Prom | невідомо | «Повторити» — безпечно, бо спершу шукає товар за зовнішнім id |
+        | `prom_photos_incomplete` | чернетка є, фото K < N (AC-12) | є, `promProductId` | «Повторити» без другої чернетки |
+        | `prom_not_draft` | товар створено, переведення в чернетку не вдалося (AC-11) | є, «немає в наявності» | «Повторити» — лише переведення |
+
+    PromSyncRun:
+      type: object
+      description: >-
+        Одна відправка картки на Prom (`product_prom_sync_runs`). Службові колонки
+        `prom_import_id`, `check_count` і `deadline_at` на дріт не виходять: їх читає лише `worker`,
+        а фронт пропонує «Перевірити ще раз» за кодом `prom_timeout`.
+      required:
+        - id
+        - productId
+        - status
+        - errorCode
+        - promProductId
+        - promCabinetUrl
+        - imagesTotal
+        - imagesOnProm
+        - createdAt
+        - startedAt
+        - finishedAt
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/PromSyncStatus" }
+        errorCode:
+          description: "Лише при `status: failed`."
+          oneOf:
+            - { $ref: "#/components/schemas/PromSyncErrorCode" }
+            - { type: "null" }
+        promProductId:
+          description: >-
+            Id товару на Prom, щойно `worker` знайшов його за зовнішнім id (ADR 0030). Є в
+            `prom_photos_incomplete` і `prom_not_draft`, тож картка може дати посилання ще до
+            успіху (AC-11, AC-12). На `succeeded` те саме значення стає `promId` картки.
+          oneOf:
+            - { $ref: "#/components/schemas/PromProductId" }
+            - { type: "null" }
+        promCabinetUrl:
+          description: Посилання на товар у кабінеті; `null` разом з `promProductId`.
+          oneOf:
+            - { $ref: "#/components/schemas/PromCabinetUrl" }
+            - { type: "null" }
+        imagesTotal:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: >-
+            N з «фото K з N» — галерея на момент старту; пізнішу зміну галереї не відображає.
+            `CHECK > 0`, а верхня межа — `maxImagesPerProduct`.
+        imagesOnProm:
+          type: [integer, "null"]
+          minimum: 0
+          description: >-
+            K — скільки фото на Prom після довершення; `null`, поки не рахували. Може бути
+            **більшим** за N: повторний імпорт здатен задублювати фото, і контракт не ховає цього
+            за межею (data-model.md, без CHECK `<= images_total`).
+        createdAt: { type: string, format: date-time, description: Натискання кнопки }
+        startedAt: { type: [string, "null"], format: date-time, description: "`worker` узяв «подати»" }
+        finishedAt:
+          type: [string, "null"]
+          format: date-time
+          description: Остаточний стан; «Перевірити ще раз» повертає його в `null`.
+
+    PromSyncNotReadyError:
+      type: object
+      required: [error]
+      description: >-
+        `409 prom_sync_not_ready`. Готовність рахує бекенд на збереженій картці; фронт показує ту
+        саму підказку заздалегідь за константами `products-limits.ts` і тримає кнопку неактивною
+        (AC-02, AC-06). Хоч один масив непорожній.
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { type: string, const: prom_sync_not_ready }
+            message: { type: string }
+            details:
+              type: object
+              required: [missing, overLimit]
+              properties:
+                missing:
+                  type: array
+                  uniqueItems: true
+                  description: >-
+                    Чого бракує готовій картці — той самий предикат, що `isReady` (ADR 0009):
+                    обидва тексти під обидва майданчики, ціна > 0, хоч одне фото (AC-02).
+                  items:
+                    type: string
+                    enum: [titleProm, titleOlx, descriptionProm, descriptionOlx, price, gallery]
+                overLimit:
+                  type: array
+                  uniqueItems: true
+                  description: >-
+                    Що виходить за межі Prom. `titleProm` — назва понад 130, збережена до появи
+                    межі (AC-05). `seoKeywords` — слово понад 50 або всі разом понад 1024, рахуючи
+                    рядок, склеєний через `", "`: у такій формі Prom їх і приймає (AC-06).
+                  items:
+                    type: string
+                    enum: [titleProm, seoKeywords]
+
+    ProductAlreadyOnPromError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, const: product_already_on_prom }
+            message: { type: string }
+
+  responses:
+    TitlePromTooLong:
+      description: >-
+        Тіло не пройшло zod-валідацію; зокрема назва для Prom понад 130 знаків (AC-05).
+      content:
+        application/json:
+          schema: { $ref: "../../product-creation-flow/contracts/openapi.yaml#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: validation_failed
+              message: "Request body is invalid"
+              details: { fields: { titleProm: ["Too big: expected string to have <=130 characters"] } }
+
+  examples:
+    NewProduct:
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: ""
+        descriptionProm: ""
+        titleOlx: ""
+        descriptionOlx: ""
+        price: "0.00"
+        seoKeywords: []
+        publishedProm: false
+        publishedOlx: false
+        condition: used
+        images: []
+        isReady: false
+        promId: null
+        promCabinetUrl: null
+        createdAt: "2026-10-10T09:00:00.000Z"
+        updatedAt: "2026-10-10T09:00:00.000Z"
+
+    ProductUpdated:
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: "Кавомашина DeLonghi ECAM 22.110, б/у, автоматичний капучинатор"
+        descriptionProm: "<p>Кавомашина DeLonghi ECAM у гарному стані. Без сколів, повний комплект.</p>"
+        titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно."
+        price: "8500.50"
+        seoKeywords: ["кавомашина", "delonghi", "ecam"]
+        publishedProm: false
+        publishedOlx: false
+        condition: used
+        images:
+          - id: "01930000-0000-7000-8000-000000000002"
+            r2Key: "products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            url: "https://media.mouse.springconsult.com.ua/products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            position: 0
+            isMain: true
+        isReady: true
+        promId: null
+        promCabinetUrl: null
+        discardedKeywordsCount: 0
+        createdAt: "2026-10-10T09:00:00.000Z"
+        updatedAt: "2026-10-10T09:05:00.000Z"
+
+    ProductListPage:
+      value:
+        items:
+          - id: "01930000-0000-7000-8000-000000000001"
+            titleProm: "Кавомашина DeLonghi ECAM 22.110, б/у, автоматичний капучинатор"
+            descriptionProm: "<p>Кавомашина DeLonghi ECAM у гарному стані. Без сколів, повний комплект.</p>"
+            titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+            descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно."
+            price: "8500.50"
+            seoKeywords: ["кавомашина", "delonghi", "ecam"]
+            publishedProm: false
+            publishedOlx: false
+            condition: used
+            images: []
+            isReady: false
+            promId: null
+            promCabinetUrl: null
+            failedRuns: 0
+            createdAt: "2026-10-10T09:00:00.000Z"
+            updatedAt: "2026-10-10T09:05:00.000Z"
+        total: 1
+        page: 1
+        pageSize: 20
+
+    PromSyncRunQueued:
+      value:
+        id: "01930000-0000-7000-8000-000000000020"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: queued
+        errorCode: null
+        promProductId: null
+        promCabinetUrl: null
+        imagesTotal: 4
+        imagesOnProm: null
+        createdAt: "2026-10-10T10:00:00.000Z"
+        startedAt: null
+        finishedAt: null
+
+    PromSyncRunRunning:
+      summary: Prom ще обробляє імпорт — лоадер, а не помилка й не успіх (AC-10)
+      value:
+        id: "01930000-0000-7000-8000-000000000020"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: running
+        errorCode: null
+        promProductId: null
+        promCabinetUrl: null
+        imagesTotal: 4
+        imagesOnProm: null
+        createdAt: "2026-10-10T10:00:00.000Z"
+        startedAt: "2026-10-10T10:00:01.000Z"
+        finishedAt: null
+
+    PromSyncRunSucceeded:
+      summary: Чернетку створено, фото 4 з 4 (AC-01)
+      value:
+        id: "01930000-0000-7000-8000-000000000020"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: succeeded
+        errorCode: null
+        promProductId: "2000000001"
+        promCabinetUrl: "https://my.prom.ua/cms/product/edit/2000000001"
+        imagesTotal: 4
+        imagesOnProm: 4
+        createdAt: "2026-10-10T10:00:00.000Z"
+        startedAt: "2026-10-10T10:00:01.000Z"
+        finishedAt: "2026-10-10T10:08:12.000Z"
+
+    PromSyncRunPhotosIncomplete:
+      summary: Частково — фото 2 з 4, повтор без другої чернетки (AC-12)
+      value:
+        id: "01930000-0000-7000-8000-000000000020"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: failed
+        errorCode: prom_photos_incomplete
+        promProductId: "2000000001"
+        promCabinetUrl: "https://my.prom.ua/cms/product/edit/2000000001"
+        imagesTotal: 4
+        imagesOnProm: 2
+        createdAt: "2026-10-10T10:00:00.000Z"
+        startedAt: "2026-10-10T10:00:01.000Z"
+        finishedAt: "2026-10-10T10:08:12.000Z"
+
+    PromSyncRunBusy:
+      summary: Prom зайнятий іншим імпортом (AC-09)
+      value:
+        id: "01930000-0000-7000-8000-000000000021"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: failed
+        errorCode: prom_busy
+        promProductId: null
+        promCabinetUrl: null
+        imagesTotal: 4
+        imagesOnProm: null
+        createdAt: "2026-10-10T11:00:00.000Z"
+        startedAt: "2026-10-10T11:00:01.000Z"
+        finishedAt: "2026-10-10T11:00:03.000Z"
+
+    PromSyncRunTimeout:
+      summary: Prom не завершив обробку за 30 хв (AC-10)
+      value:
+        id: "01930000-0000-7000-8000-000000000022"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: failed
+        errorCode: prom_timeout
+        promProductId: null
+        promCabinetUrl: null
+        imagesTotal: 4
+        imagesOnProm: null
+        createdAt: "2026-10-10T12:00:00.000Z"
+        startedAt: "2026-10-10T12:00:01.000Z"
+        finishedAt: "2026-10-10T12:30:31.000Z"
+
+    PromSyncRunRechecked:
+      value:
+        id: "01930000-0000-7000-8000-000000000022"
+        productId: "01930000-0000-7000-8000-000000000001"
+        status: running
+        errorCode: null
+        promProductId: null
+        promCabinetUrl: null
+        imagesTotal: 4
+        imagesOnProm: null
+        createdAt: "2026-10-10T12:00:00.000Z"
+        startedAt: "2026-10-10T12:00:01.000Z"
+        finishedAt: null
+
+    ProductCardReadPartialPhotos:
+      summary: Картка після часткового результату — є «Повторити», кнопка синхронізації не прихована
+      value:
+        id: "01930000-0000-7000-8000-000000000001"
+        titleProm: "Кавомашина DeLonghi ECAM 22.110, б/у, автоматичний капучинатор"
+        descriptionProm: "<p>Кавомашина DeLonghi ECAM у гарному стані. Без сколів, повний комплект.</p>"
+        titleOlx: "Кавомашина DeLonghi ECAM з капучинатором"
+        descriptionOlx: "Продаю кавомашину DeLonghi, користувались акуратно."
+        price: "8500.50"
+        seoKeywords: ["кавомашина", "delonghi", "ecam"]
+        publishedProm: false
+        publishedOlx: false
+        condition: used
+        images:
+          - id: "01930000-0000-7000-8000-000000000002"
+            r2Key: "products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            url: "https://media.mouse.springconsult.com.ua/products/01930000-0000-7000-8000-000000000001/01930000-0000-7000-8000-000000000002"
+            position: 0
+            isMain: true
+        isReady: true
+        promId: null
+        promCabinetUrl: null
+        latestSuggestions: []
+        totalInputTokens: 1840
+        totalOutputTokens: 620
+        estimatedCostUsd: "0.0099"
+        latestPromSyncRun:
+          id: "01930000-0000-7000-8000-000000000020"
+          productId: "01930000-0000-7000-8000-000000000001"
+          status: failed
+          errorCode: prom_photos_incomplete
+          promProductId: "2000000001"
+          promCabinetUrl: "https://my.prom.ua/cms/product/edit/2000000001"
+          imagesTotal: 4
+          imagesOnProm: 2
+          createdAt: "2026-10-10T10:00:00.000Z"
+          startedAt: "2026-10-10T10:00:01.000Z"
+          finishedAt: "2026-10-10T10:08:12.000Z"
+        createdAt: "2026-10-10T09:00:00.000Z"
+        updatedAt: "2026-10-10T09:05:00.000Z"
+
+    ProductCardReadOnProm:
+      summary: Імпортована з експорту Prom картка — відправок немає, кнопки немає (AC-14)
+      value:
+        id: "01930000-0000-7000-8000-000000000005"
+        titleProm: "Механічна клавіатура Logitech G413, б/у"
+        descriptionProm: "<p>Клавіатура в робочому стані, підсвітка працює.</p>"
+        titleOlx: "Клавіатура Logitech G413"
+        descriptionOlx: "Механічна клавіатура, користувались вдома."
+        price: "1200.00"
+        seoKeywords: ["клавіатура", "logitech"]
+        publishedProm: true
+        publishedOlx: false
+        condition: used
+        images: []
+        isReady: false
+        promId: "2000000002"
+        promCabinetUrl: "https://my.prom.ua/cms/product/edit/2000000002"
+        latestSuggestions: []
+        totalInputTokens: 0
+        totalOutputTokens: 0
+        estimatedCostUsd: "0.0000"
+        latestPromSyncRun: null
+        createdAt: "2026-09-19T08:00:00.000Z"
+        updatedAt: "2026-09-19T08:00:00.000Z"
+
+    PromSyncNotReady:
+      summary: Картка не готова (AC-02)
+      value:
+        error:
+          code: prom_sync_not_ready
+          message: "The card is not ready for Prom"
+          details: { missing: [descriptionOlx, gallery], overLimit: [] }
+
+    PromSyncOverLimit:
+      summary: Збережена картка виходить за межі Prom (AC-05, AC-06)
+      value:
+        error:
+          code: prom_sync_not_ready
+          message: "The card is not ready for Prom"
+          details: { missing: [], overLimit: [titleProm, seoKeywords] }
+
+    ProductAlreadyOnProm:
+      value:
+        error: { code: product_already_on_prom, message: "The product is already on Prom" }
+
+    PromSyncNotRecheckable:
+      value:
+        error: { code: prom_sync_not_recheckable, message: "Only a run that timed out waiting for Prom can be checked again" }
