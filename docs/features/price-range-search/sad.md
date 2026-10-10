@@ -314,7 +314,7 @@ C4Container
 
     Person(user, "user")
 
-    Container_Boundary(vps, "Hetzner VPS — docker compose") {
+    Container_Boundary(vps, "OVH VPS — docker compose") {
         Container(caddy, "caddy", "Caddy 2", "TLS, статика Angular, reverse proxy /api")
         Container(web, "web", "Angular 22", "кнопка «Знайти ціну», вилка під полем, перелік оголошень")
         Container(api, "api", "Node 26 + Fastify", "приймає запуск price/both, перевіряє вхід, ставить задачу")
@@ -462,7 +462,7 @@ sequenceDiagram
 
 ## 7. Deployment view
 
-Топологія не змінюється: один Hetzner VPS, docker compose, `caddy` → `api` / статика, `worker` і
+Топологія не змінюється: один OVH VPS, docker compose, `caddy` → `api` / статика, `worker` і
 `postgres` з чергою pg-boss (`ARCHITECTURE.md`, «Розгортання»). Нового контейнера, тому чи ліміту
 в Caddy фіча не додає. Новий вихідний напрямок — `worker` → Gemini API по HTTPS; `api` до Gemini не
 звертається, як і до Anthropic.

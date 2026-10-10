@@ -426,7 +426,7 @@ C4Container
 
     Person(user, "user")
 
-    Container_Boundary(vps, "Hetzner VPS — docker compose") {
+    Container_Boundary(vps, "OVH VPS — docker compose") {
         Container(caddy, "caddy", "Caddy 2", "TLS, статика Angular, reverse proxy /api, піднятий ліміт тіла до 10 МБ")
         Container(web, "web", "Angular 22", "каталог, форма картки, діалог галереї, діалог підтвердження")
         Container(api, "api", "Node 26 + Fastify", "сесія, CRUD картки, приймання й видалення кадру, предикат готовності")

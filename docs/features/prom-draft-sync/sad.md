@@ -238,7 +238,7 @@ C4Container
 
     Person(user, "user")
 
-    Container_Boundary(vps, "Hetzner VPS — docker compose") {
+    Container_Boundary(vps, "OVH VPS — docker compose") {
         Container(caddy, "caddy", "Caddy 2", "TLS, статика Angular, reverse proxy /api → api:3000")
         Container(web, "web", "Angular 22", "кнопка «Синхронізувати з Prom», стан відправки на картці, форма без «Категорії»")
         Container(api, "api", "Node 26 + Fastify", "готовність картки, рядок відправки, постановка задачі prom-sync")
