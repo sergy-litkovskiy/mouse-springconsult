@@ -7,7 +7,9 @@
   [ADR 0003](0003-three-layer-classes.md) додав крок збірки `tsc` і замінив
   `routes → use-case → port ← repository` на `Controller → Service → Repository`;
   пункт 4 (модель `claude-opus-5`) — [ADR 0018](0018-use-sonnet-5-for-card-preparation.md)
-  замінив модель на `claude-sonnet-5`.
+  замінив модель на `claude-sonnet-5`; хостинг (у таблиці альтернатив — Hetzner) —
+  2026-10-10 обрано OVH VPS-1: у Hetzner немає серверів у потрібній ціновій категорії,
+  а FreeHost Cloud 1 за ту саму ціну дає менше ресурсів.
 
 ## Контекст
 
