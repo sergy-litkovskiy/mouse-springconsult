@@ -68,6 +68,23 @@ async function insertSuggestion(
   );
 }
 
+async function insertPromSyncRun(
+  productId: string,
+  status = 'queued',
+  imagesTotal = 3,
+): Promise<string> {
+  const rows = await dataSource.query<{ id: string }[]>(
+    `insert into "product_prom_sync_runs" ("product_id", "status", "images_total")
+     values ($1, $2, $3)
+     returning "id"`,
+    [productId, status, imagesTotal],
+  );
+
+  const id = rows[0]?.id;
+  assert.ok(id !== undefined, 'insert into product_prom_sync_runs returned no row');
+  return id;
+}
+
 describe('database schema constraints', () => {
   before(async () => {
     await prepareTestDatabase();
@@ -80,6 +97,7 @@ describe('database schema constraints', () => {
 
   beforeEach(async () => {
     await resetTables(dataSource, [
+      'product_prom_sync_runs',
       'product_field_suggestions',
       'product_preparation_runs',
       'product_images',
@@ -238,5 +256,78 @@ describe('database schema constraints', () => {
               (select count(*)::int from "product_field_suggestions") as "suggestions"`,
     );
     assert.deepEqual(counts, { runs: 0, suggestions: 0 });
+  });
+
+  it('lets a card have one send going at a time, while finished ones pile up', async () => {
+    const productId = await insertProduct();
+    await insertPromSyncRun(productId, 'failed');
+    await insertPromSyncRun(productId, 'failed');
+    await insertPromSyncRun(productId, 'queued');
+
+    await assert.rejects(
+      insertPromSyncRun(productId, 'running'),
+      /product_prom_sync_runs_active_key/,
+    );
+  });
+
+  it('counts the sends going per card and not across the table', async () => {
+    await insertPromSyncRun(await insertProduct(), 'running');
+
+    await assert.doesNotReject(insertPromSyncRun(await insertProduct(), 'running'));
+  });
+
+  it('rejects a send status outside the listed ones', async () => {
+    const productId = await insertProduct();
+
+    await assert.rejects(
+      insertPromSyncRun(productId, 'partial'),
+      /product_prom_sync_runs_status_check/,
+    );
+  });
+
+  it('rejects a send with no photos and negative photo counts', async () => {
+    const productId = await insertProduct();
+    const runId = await insertPromSyncRun(productId, 'failed');
+
+    await assert.rejects(
+      insertPromSyncRun(productId, 'queued', 0),
+      /product_prom_sync_runs_images_total_check/,
+    );
+    await assert.rejects(
+      dataSource.query(
+        `update "product_prom_sync_runs" set "images_on_prom" = -1 where "id" = $1`,
+        [runId],
+      ),
+      /product_prom_sync_runs_images_on_prom_check/,
+    );
+    await assert.rejects(
+      dataSource.query(`update "product_prom_sync_runs" set "check_count" = -1 where "id" = $1`, [
+        runId,
+      ]),
+      /product_prom_sync_runs_check_count_check/,
+    );
+  });
+
+  it('records more photos on Prom than were sent, since a repeated import may duplicate them', async () => {
+    const productId = await insertProduct();
+    const runId = await insertPromSyncRun(productId, 'failed', 3);
+
+    await assert.doesNotReject(
+      dataSource.query(`update "product_prom_sync_runs" set "images_on_prom" = 6 where "id" = $1`, [
+        runId,
+      ]),
+    );
+  });
+
+  it('removes the sends together with the card', async () => {
+    const productId = await insertProduct();
+    await insertPromSyncRun(productId, 'succeeded');
+
+    await dataSource.query(`delete from "products" where "id" = $1`, [productId]);
+
+    const [counts] = await dataSource.query<{ sends: number }[]>(
+      `select count(*)::int as "sends" from "product_prom_sync_runs"`,
+    );
+    assert.deepEqual(counts, { sends: 0 });
   });
 });

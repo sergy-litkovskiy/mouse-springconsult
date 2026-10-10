@@ -22,7 +22,7 @@ const REPOSITORIES = '^src/modules/[^/]+/.*Repository\\.ts$';
  * file elsewhere in a module must not inherit the permission.
  */
 const ENTITIES =
-  '^src/modules/(auth/user/User|products/Product|products/ProductImage|products/preparation/PreparationRun|products/preparation/FieldSuggestion)\\.ts$';
+  '^src/modules/(auth/user/User|products/Product|products/ProductImage|products/preparation/PreparationRun|products/preparation/FieldSuggestion|products/prom-sync/PromSyncRun)\\.ts$';
 // depcruise matches `to.path` against the *resolved* path, not against the package name.
 const ORM_PACKAGES = '^node_modules/(typeorm|pg)(/|$)';
 
