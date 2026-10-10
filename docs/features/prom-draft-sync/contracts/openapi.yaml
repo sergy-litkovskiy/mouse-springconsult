@@ -301,8 +301,8 @@ components:
       description: >-
         JWT (HS256, jose) у HttpOnly-cookie ([ADR 0002](../../../adr/0002-auth-jwt-and-typeorm.md)
         · `modules/auth/CLAUDE.md`). Ролей немає, перевірка одна: активна сесія (`sessionGuard`).
-        Нових маршрутів без сесії фіча не вводить: файл імпорту Prom скачує з R2, а не з `api`
-        ([ADR 0031](../adr/0031-hand-the-import-file-to-prom-from-the-public-bucket.md)).
+        Нових маршрутів без сесії фіча не вводить: файл імпорту йде до Prom тілом запиту, а не
+        за адресою `api` ([ADR 0032](../adr/0032-send-the-import-file-in-the-request-body.md)).
 
   schemas:
     PromProductId:
@@ -322,8 +322,8 @@ components:
       description: >-
         Похідне поле, не колонка: складене з id товару й шаблону адреси кабінету в
         `config.prom` при мапінгу в DTO — так само, як `ProductImage.url` складається з `r2Key`
-        (ADR 0007). Схему адрес Prom знає лише бекенд. Шаблон в OpenAPI Prom не описано, тож
-        його звіряють на живому кабінеті (api-sync-report.md, Section C).
+        (ADR 0007). Схему адрес Prom знає лише бекенд. Шаблон в OpenAPI Prom не описано; на
+        живому кабінеті його звірено 2026-10-10 (api-sync-report.md, Section C).
       example: "https://my.prom.ua/cms/product/edit/2000000001"
 
     Product:
@@ -596,9 +596,9 @@ components:
           type: [integer, "null"]
           minimum: 0
           description: >-
-            K — скільки фото на Prom після довершення; `null`, поки не рахували. Може бути
-            **більшим** за N: повторний імпорт здатен задублювати фото, і контракт не ховає цього
-            за межею (data-model.md, без CHECK `<= images_total`).
+            K — скільки фото на Prom після довершення; `null`, поки не рахували. Верхньої межі
+            немає (data-model.md, без CHECK `<= images_total`): на контрольній відправці повтор
+            фото не задублював, але K рахується з Prom, і більше за N контракт не ховає.
         createdAt: { type: string, format: date-time, description: Натискання кнопки }
         startedAt: { type: [string, "null"], format: date-time, description: "`worker` узяв «подати»" }
         finishedAt:
